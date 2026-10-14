@@ -66,7 +66,7 @@ final class ScannerController: UIViewController, AVCaptureMetadataOutputObjectsD
         guard !handled, let object = metadataObjects.first as? AVMetadataMachineReadableCodeObject, let value = object.stringValue else { return }
         handled = true
         session.stopRunning()
-        onCode(value)
+        onCode?(value)
     }
 
     @objc private func cancelTapped() {

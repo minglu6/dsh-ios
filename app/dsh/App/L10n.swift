@@ -1,7 +1,7 @@
 import Foundation
 
 enum L {
-    static var en: Bool { AppModel.shared.language == .en }
+    static var en: Bool { AppPrefs.language == .en }
 
     static func sendMessage() -> String { en ? "Send message" : "发送消息" }
     static func queueSend() -> String { en ? "Queue message" : "排队发送" }

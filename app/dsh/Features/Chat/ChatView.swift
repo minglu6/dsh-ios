@@ -195,9 +195,7 @@ struct ComposerView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if let mentions = mentionPanel {
-                mentions
-            }
+            mentionPanel
             HStack(alignment: .bottom, spacing: 8) {
                 TextField(L.composerPlaceholder(), text: $model.composerText, axis: .vertical)
                     .lineLimit(1...6)

@@ -510,8 +510,8 @@ final class AppModel: ObservableObject {
         chat = ChatState(
             sessionId: sessionId,
             items: reducer.items(),
-            running: reducer.running,
-            title: sessions.first { $0.sessionId == sessionId }?.title
+            title: sessions.first { $0.sessionId == sessionId }?.title,
+            running: reducer.running
         )
         unreadIds.remove(sessionId)
     }

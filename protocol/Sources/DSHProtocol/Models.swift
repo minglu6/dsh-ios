@@ -357,6 +357,12 @@ public struct PairingLink: Sendable, Equatable {
     public var host: String
     public var port: Int
     public var code: String
+
+    public init(host: String, port: Int, code: String) {
+        self.host = host
+        self.port = port
+        self.code = code
+    }
 }
 
 public struct DiscoveredHost: Sendable, Equatable, Identifiable {
@@ -366,6 +372,13 @@ public struct DiscoveredHost: Sendable, Equatable, Identifiable {
     public var deviceName: String
 
     public var id: String { instanceId.isEmpty ? "\(host):\(port)" : instanceId }
+
+    public init(instanceId: String, host: String, port: Int, deviceName: String) {
+        self.instanceId = instanceId
+        self.host = host
+        self.port = port
+        self.deviceName = deviceName
+    }
 }
 
 public func parseHostPort(_ raw: String) -> (String, Int)? {
