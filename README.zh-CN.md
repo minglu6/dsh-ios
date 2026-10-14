@@ -21,7 +21,7 @@
 | 聊天 | 流式正文与思考、工具行、本地回显、排队／插话发送、审批、`@` 文件与会话引用、模型选择、历史上翻。消息动作：复制／赞／踩（Host 有 `feedback.set` 时）／分支（已完成轮次最后一条上的 `sessions.fork`） |
 | 轨迹 | 对话／轨迹页签：紧凑账本（7 种格子）、工具栏时长／轮次／调用＋搜索、泳道、检视 概述／参数／结果／Schema／计时（官方 `ui-trajectory` 文案）。请求检视尚未做。差距矩阵：[docs/parity-gap.md](docs/parity-gap.md) |
 | 配置 | Host 镜像的通用设置（外观／语言）与模型目录。无自造「凭证」页。诊断只在「手机连接」 |
-| 主机工具 | 仅当 Host 公布对应 op 时，抽屉／设置才显示插件与自动化任务。PTY、文件树、实时任务在有真实界面前不暴露入口 |
+| 主机工具 | 仅当 Host 公布对应 op 时，抽屉／设置才显示插件与自动化任务。PTY、文件树、实时任务在有真实界面前不暴露入口。差距矩阵：[docs/parity-gap.md](docs/parity-gap.md) |
 
 Host 配置来自 `plugins.settingsDescribe` 与 `settings.changed`。正常态不放手动同步。
 

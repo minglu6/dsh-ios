@@ -21,7 +21,7 @@ Available surfaces depend on the Host version and enabled plugins. The phone mir
 | Chat | Streaming text and reasoning, tool rows, local echo, queue / steer send, approvals, `@` file and session mentions, model picker, history page. Message actions: copy / like / dislike (when Host has `feedback.set`) / branch (`sessions.fork` on the last message of a completed turn) |
 | Trajectory | Chat / 轨迹 tab: compact ledger (7 cell kinds), toolbar 时长 / 轮次 / 调用 + search, swimlane, inspector 概述 / 参数 / 结果 / Schema / 计时 (official `ui-trajectory` copy). Request inspector still missing. Gap matrix: [docs/parity-gap.md](docs/parity-gap.md) |
 | Configuration | Host-mirrored general settings (appearance / language) and model catalog. No invented “credentials” page. Diagnostics live on Phone connection |
-| Host tools | Drawer / settings show plugins and scheduled tasks only when the Host advertises those ops. PTY, file tree, and live jobs are not exposed until they have a real surface |
+| Host tools | Drawer / settings show plugins and scheduled tasks only when the Host advertises those ops. PTY, file tree, and live jobs are not exposed until they have a real surface. Gap matrix: [docs/parity-gap.md](docs/parity-gap.md) |
 
 Host configuration is adopted from `plugins.settingsDescribe` and `settings.changed`. Normal use does not show a manual sync control.
 
