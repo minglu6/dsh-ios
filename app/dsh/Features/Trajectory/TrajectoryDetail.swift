@@ -338,6 +338,11 @@ private struct TrajPayload: View {
 
 private struct TrajSchema: View {
     let json: String?
+
+    init(_ json: String?) {
+        self.json = json
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             if let parsed = json.flatMap({ try? JSONValue.parse($0) }),
