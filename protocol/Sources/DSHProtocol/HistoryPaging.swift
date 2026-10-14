@@ -4,6 +4,16 @@ public struct HistoryPageRequest: Sendable, Equatable {
     public var maxMessages: Int
 }
 
+/// Phone follow request. `maxMessages` is intentionally absent (Android P0).
+public enum FollowRequest {
+    public static func args(sessionId: String, afterSeq: Int64? = nil) -> JSONValue {
+        jsonObject([
+            "sessionId": .string(sessionId),
+            "afterSeq": afterSeq.map { .number(Double($0)) },
+        ])
+    }
+}
+
 public enum HistoryPagingPolicy {
     public static let pageSize = 100
 

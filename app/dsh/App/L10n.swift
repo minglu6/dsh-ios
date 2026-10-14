@@ -42,7 +42,6 @@ enum L {
     static func pluginsNav() -> String { en ? "Plugins" : "插件" }
     static func builtinPluginsNav() -> String { en ? "Built-in plugins" : "内置插件" }
     static func scheduleNav() -> String { en ? "Scheduled tasks" : "自动化任务" }
-    static func agentPresets() -> String { en ? "Agent presets" : "Agent 预设" }
     static func phoneConnection() -> String { en ? "Phone connection" : "手机连接" }
     static func language() -> String { en ? "Language" : "语言" }
     static func appearance() -> String { en ? "Appearance" : "外观" }
@@ -85,8 +84,6 @@ enum L {
     static func terminal() -> String { en ? "Terminal" : "终端" }
     static func trajectory() -> String { en ? "Trajectory" : "轨迹" }
     static func jobs() -> String { en ? "Jobs" : "任务" }
-    static func comingWithHost() -> String { en ? "Uses the Host surface. Layout is pending." : "使用 Host 能力；界面分级实现中。" }
-    static func more() -> String { en ? "More" : "更多" }
     static func reasoning() -> String { en ? "Reasoning" : "思考" }
     static func tool() -> String { en ? "Tool" : "工具" }
     static func composerPlaceholder() -> String { en ? "Message" : "消息" }

@@ -20,7 +20,7 @@ Available surfaces depend on the Host version and enabled plugins. The phone mir
 | Sessions | Workspace grouping, pin / fork / archive, unread green dot, relative time. No session path, no move up/down, no chat “scroll to bottom” button |
 | Chat | Streaming text and reasoning, tool rows, local echo, queue / steer send, approvals, `@` file and session mentions, model picker, history page |
 | Configuration | Host-mirrored general settings (appearance / language) and model catalog. No invented “credentials” page. Diagnostics live on Phone connection |
-| Host tools | Drawer entries for plugins, scheduled tasks, files, terminal, trajectory, and jobs. Plugins list and schedule list call Host ops when advertised; trajectory / PTY / file tree / live jobs inspector are module stubs |
+| Host tools | Drawer / settings show plugins and scheduled tasks only when the Host advertises those ops. Trajectory, PTY, file tree, and live jobs are not exposed until they have a real surface |
 
 Host configuration is adopted from `plugins.settingsDescribe` and `settings.changed`. Normal use does not show a manual sync control.
 

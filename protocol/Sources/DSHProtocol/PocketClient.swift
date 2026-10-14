@@ -124,12 +124,9 @@ public final class PocketClient: @unchecked Sendable {
         try await call("cancel", args: jsonObject(["sessionId": .string(sessionId)]))
     }
 
-    public func follow(sessionId: String, afterSeq: Int64? = nil, maxMessages: Int? = nil) async throws -> String {
-        let result = try await call("follow", args: jsonObject([
-            "sessionId": .string(sessionId),
-            "afterSeq": afterSeq.map { .number(Double($0)) },
-            "maxMessages": maxMessages.map { .number(Double($0)) },
-        ]))
+    /// Session follow. Do not send `maxMessages` / iroh frame caps on the phone WS path.
+    public func follow(sessionId: String, afterSeq: Int64? = nil) async throws -> String {
+        let result = try await call("follow", args: FollowRequest.args(sessionId: sessionId, afterSeq: afterSeq))
         return result["subId"].str() ?? ""
     }
 

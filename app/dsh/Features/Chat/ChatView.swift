@@ -5,7 +5,6 @@ import DSHProtocol
 struct ChatView: View {
     @ObservedObject var model: AppModel
     @State private var showModels = false
-    @State private var showMore = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -16,13 +15,6 @@ struct ChatView: View {
         }
         .background(T.bg.ignoresSafeArea())
         .sheet(isPresented: $showModels) { ModelPickerSheet(model: model) }
-        .confirmationDialog(L.more(), isPresented: $showMore, titleVisibility: .visible) {
-            Button(L.trajectory()) { model.push(.panel(.trajectory)) }
-            Button(L.files()) { model.push(.panel(.files)) }
-            Button(L.terminal()) { model.push(.panel(.terminal)) }
-            Button(L.jobs()) { model.push(.panel(.jobs)) }
-            Button(L.cancel(), role: .cancel) {}
-        }
     }
 
     private var header: some View {
@@ -45,9 +37,6 @@ struct ChatView: View {
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(T.tint, in: Capsule())
-            }
-            Button { showMore = true } label: {
-                Image(systemName: "ellipsis").foregroundStyle(T.ink)
             }
         }
         .padding(.horizontal, 14)

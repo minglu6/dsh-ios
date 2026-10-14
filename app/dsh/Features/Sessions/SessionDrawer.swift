@@ -48,7 +48,9 @@ struct SessionDrawer: View {
                     if grouped.allSatisfy(\.sessions.isEmpty) {
                         Text(L.emptySessions()).foregroundStyle(T.text3).padding(24)
                     }
-                    drawerPanels
+                    if model.ops.contains("plugins.list") || model.ops.contains("schedule.catalog") {
+                        drawerPanels
+                    }
                 }
             }
             footer
@@ -133,12 +135,12 @@ struct SessionDrawer: View {
     private var drawerPanels: some View {
         VStack(spacing: 0) {
             Divider().padding(.vertical, 8)
-            panel(L.pluginsNav(), "puzzlepiece.extension", .plugins)
-            panel(L.scheduleNav(), "calendar", .schedule)
-            panel(L.files(), "folder", .files)
-            panel(L.terminal(), "terminal", .terminal)
-            panel(L.trajectory(), "point.3.connected.trianglepath.dotted", .trajectory)
-            panel(L.jobs(), "list.bullet.rectangle", .jobs)
+            if model.ops.contains("plugins.list") {
+                panel(L.pluginsNav(), "puzzlepiece.extension", .plugins)
+            }
+            if model.ops.contains("schedule.catalog") {
+                panel(L.scheduleNav(), "calendar", .schedule)
+            }
         }
     }
 

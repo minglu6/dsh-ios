@@ -10,11 +10,13 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     card {
                         nav(L.generalNav(), "slider.horizontal.3") { model.push(.general) }
-                        nav(L.modelsNav(), "cpu") { model.push(.models) }
-                        if model.ops.contains("plugins.inventory") {
-                            nav(L.builtinPluginsNav(), "puzzlepiece.extension") { model.push(.panel(.plugins)) }
+                        nav(L.modelsNav(), "cpu", divider: hasPluginSettings || hasScheduleSettings) { model.push(.models) }
+                        if hasPluginSettings {
+                            nav(L.builtinPluginsNav(), "puzzlepiece.extension", divider: hasScheduleSettings) { model.push(.panel(.plugins)) }
                         }
-                        nav(L.agentPresets(), "person.2", divider: false) { model.push(.panel(.settings)) }
+                        if hasScheduleSettings {
+                            nav(L.scheduleNav(), "calendar", divider: false) { model.push(.panel(.schedule)) }
+                        }
                     }
                     Text(L.phoneConnection())
                         .font(.caption)
@@ -25,11 +27,6 @@ struct SettingsView: View {
                             model.push(.connections)
                         }
                     }
-                    Text("\(L.currentVersion())：\(AppModel.appVersion)")
-                        .font(.caption)
-                        .foregroundStyle(T.caption)
-                        .frame(maxWidth: .infinity)
-                        .padding(16)
                 }
                 .padding(.vertical, 12)
             }
@@ -37,6 +34,9 @@ struct SettingsView: View {
         }
         .background(T.bg.ignoresSafeArea())
     }
+
+    private var hasPluginSettings: Bool { model.ops.contains("plugins.inventory") }
+    private var hasScheduleSettings: Bool { model.ops.contains("schedule.catalog") }
 }
 
 struct GeneralSettingsView: View {

@@ -14,15 +14,11 @@ struct HostPanelView: View {
             switch panel {
             case .plugins: PluginsPanel(model: model)
             case .schedule: SchedulePanel(model: model)
-            default:
-                VStack(spacing: 12) {
-                    Image(systemName: icon).font(.largeTitle).foregroundStyle(T.text3)
-                    Text(title).font(.headline).foregroundStyle(T.ink)
-                    Text(L.comingWithHost()).font(.subheadline).foregroundStyle(T.text3).multilineTextAlignment(.center)
-                }
-                .padding(32)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(T.bg)
+            case .files, .terminal, .trajectory, .jobs, .settings:
+                Color.clear
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(T.bg)
+                    .onAppear { model.pop() }
             }
         }
         .background(T.bg.ignoresSafeArea())
@@ -40,30 +36,22 @@ struct HostPanelView: View {
         }
     }
 
-    private var icon: String {
-        switch panel {
-        case .plugins: return "puzzlepiece.extension"
-        case .schedule: return "calendar"
-        case .files: return "folder"
-        case .terminal: return "terminal"
-        case .trajectory: return "point.3.connected.trianglepath.dotted"
-        case .jobs: return "list.bullet.rectangle"
-        case .settings: return "gearshape"
-        }
-    }
 }
 
 struct PluginsPanel: View {
     @ObservedObject var model: AppModel
     @State private var rows: [JSONValue] = []
     @State private var error: String?
+    @State private var loaded = false
 
     var body: some View {
         Group {
             if let error {
                 Text(error).foregroundStyle(T.err).padding()
-            } else if rows.isEmpty {
+            } else if !loaded {
                 Text(L.loading()).foregroundStyle(T.text3).padding()
+            } else if rows.isEmpty {
+                Color.clear
             } else {
                 List(Array(rows.enumerated()), id: \.offset) { _, row in
                     HStack {
@@ -86,12 +74,13 @@ struct PluginsPanel: View {
 
     private func load() async {
         guard model.ops.contains("plugins.list") else {
-            error = L.comingWithHost()
+            loaded = true
             return
         }
         do {
             let result = try await PocketCall.pluginsList()
             rows = result["plugins"].arr() ?? result["items"].arr() ?? result["entries"].arr() ?? []
+            loaded = true
         } catch {
             self.error = error.localizedDescription
         }
@@ -102,14 +91,16 @@ struct SchedulePanel: View {
     @ObservedObject var model: AppModel
     @State private var rows: [JSONValue] = []
     @State private var error: String?
+    @State private var loaded = false
 
     var body: some View {
         Group {
             if let error {
                 Text(error).foregroundStyle(T.err).padding()
+            } else if !loaded {
+                Text(L.loading()).foregroundStyle(T.text3).padding()
             } else if rows.isEmpty {
-                Text(model.language == .en ? "No automation tasks" : "暂无自动化任务")
-                    .foregroundStyle(T.text3).padding()
+                Color.clear
             } else {
                 List(Array(rows.enumerated()), id: \.offset) { _, row in
                     VStack(alignment: .leading) {
@@ -125,13 +116,15 @@ struct SchedulePanel: View {
     }
 
     private func load() async {
-        guard let sessionId = model.chat?.sessionId, model.ops.contains("schedule.list") else {
-            error = L.comingWithHost()
+        guard let sessionId = model.chat?.sessionId,
+              model.ops.contains("schedule.list") || model.ops.contains("schedule.catalog") else {
+            loaded = true
             return
         }
         do {
             let result = try await PocketCall.scheduleList(sessionId: sessionId)
             rows = result["tasks"].arr() ?? result["items"].arr() ?? []
+            loaded = true
         } catch {
             self.error = error.localizedDescription
         }

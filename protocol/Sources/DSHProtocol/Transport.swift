@@ -109,7 +109,7 @@ final class URLSessionFrameTransport: FrameTransport {
     private let task: URLSessionWebSocketTask
     private let session: URLSession
     private let waiter: WebSocketOpenWaiter
-    private let mutex = Mutex()
+    private let queue = DispatchQueue(label: "dev.dsh.pocket.transport")
     private var closed = false
     private(set) var closeReason: String?
 
@@ -121,13 +121,18 @@ final class URLSessionFrameTransport: FrameTransport {
     }
 
     func send(_ text: String) async throws {
-        if snapshotClosed() { throw PocketError(code: "transport", message: "not connected") }
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
-            task.send(.string(text)) { error in
-                if let error {
-                    cont.resume(throwing: PocketError(code: "transport", message: error.localizedDescription))
-                } else {
-                    cont.resume()
+            queue.async {
+                if self.closed {
+                    cont.resume(throwing: PocketError(code: "transport", message: "not connected"))
+                    return
+                }
+                self.task.send(.string(text)) { error in
+                    if let error {
+                        cont.resume(throwing: PocketError(code: "transport", message: error.localizedDescription))
+                    } else {
+                        cont.resume()
+                    }
                 }
             }
         }
@@ -153,12 +158,8 @@ final class URLSessionFrameTransport: FrameTransport {
         finish(reason: reason)
     }
 
-    private func snapshotClosed() -> Bool {
-        mutex.withLock { closed }
-    }
-
     private func finish(reason: String?) {
-        mutex.withLock {
+        queue.sync {
             if closed { return }
             closed = true
             closeReason = reason

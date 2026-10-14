@@ -35,6 +35,18 @@ final class ProtocolPolicyTests: XCTestCase {
         XCTAssertEqual(ReconnectBackoffPolicy.next(30_000), 30_000)
     }
 
+    func testFollowArgsOmitMaxMessages() {
+        let args = FollowRequest.args(sessionId: "B")
+        XCTAssertEqual(args["sessionId"].str(), "B")
+        XCTAssertTrue(args["maxMessages"].isNull)
+        XCTAssertTrue(args["afterSeq"].isNull)
+        let encoded = try? args.encodeString()
+        XCTAssertFalse(encoded?.contains("maxMessages") == true)
+        let resumed = FollowRequest.args(sessionId: "B", afterSeq: 12)
+        XCTAssertEqual(resumed["afterSeq"].long(), 12)
+        XCTAssertTrue(resumed["maxMessages"].isNull)
+    }
+
     func testHistoryPaging() {
         XCTAssertFalse(HistoryPagingPolicy.canLoadOlder(hasMore: true, loadingOlder: false, firstSeq: -1))
         XCTAssertTrue(HistoryPagingPolicy.canLoadOlder(hasMore: true, loadingOlder: false, firstSeq: 12))

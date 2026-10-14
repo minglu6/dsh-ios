@@ -536,9 +536,25 @@ final class AppModel: ObservableObject {
         }
         subId = sid
         chat?.loaded = true
-        if ops.contains("completion.view") {
-            if let snapshot = try? await client.call("completion.view", args: jsonObject(["sessionId": .string(sessionId)])) {
-                applyCompletion(snapshot)
+        await syncCompletionView(client, sessionId: sessionId)
+    }
+
+    /// View confirmation is not connectivity. Failures must not close the WebSocket.
+    private func syncCompletionView(_ client: PocketClient, sessionId: String) async {
+        guard ops.contains("completion.view") else { return }
+        let args = jsonObject(["sessionId": .string(sessionId)])
+        do {
+            applyCompletion(try await client.call("completion.view", args: args))
+        } catch is CancellationError {
+            return
+        } catch {
+            emit(error.localizedDescription)
+            do {
+                applyCompletion(try await client.call("completion.view", args: args))
+            } catch is CancellationError {
+                return
+            } catch {
+                emit(error.localizedDescription)
             }
         }
     }
