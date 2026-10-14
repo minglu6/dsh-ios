@@ -232,7 +232,7 @@ final class TrajectoryBuilderTests: XCTestCase {
         ])
         XCTAssertNil(trajectorySearchMatches(turns, query: "  "))
         let hits = trajectorySearchMatches(turns, query: "runtime cwd")
-        XCTAssertEqual(hits, ["x1"])
+        XCTAssertEqual(hits, Set(["x1"]))
         XCTAssertTrue(trajectorySearchMatches(turns, query: "read")?.contains("t1") == true)
     }
 

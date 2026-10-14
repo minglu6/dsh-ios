@@ -392,10 +392,11 @@ private func oneLinePreview(_ text: String, max: Int = 96) -> String {
 }
 
 private func firstLine(_ text: String) -> String {
-    text.split(whereSeparator: \.isNewline)
-        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-        .first { !$0.isEmpty }
-        .map(String.init) ?? ""
+    for line in text.split(whereSeparator: \.isNewline) {
+        let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty { return trimmed }
+    }
+    return ""
 }
 
 private func assistantTitle(reply: String, reasoning: String) -> (String, Bool) {
@@ -423,10 +424,10 @@ public func codeProgram(toolName: String?, inputDetail: String?, schemaDetail: S
 }
 
 private func recordedLanguage(_ schemaRaw: String?) -> String? {
-    guard let schemaRaw, let parsed = try? JSONValue.parse(schemaRaw), let obj = parsed.obj() else { return nil }
-    let description = obj["parameters"]["properties"]["code"]["description"].str() ?? ""
-    let ts = description.range(of: #"\bTypeScript\b"#, options: [.regularExpression, .caseInsensitive]) != nil
-    let py = description.range(of: #"\bPython\b"#, options: [.regularExpression, .caseInsensitive]) != nil
+    guard let schemaRaw, let parsed = try? JSONValue.parse(schemaRaw) else { return nil }
+    let description = parsed["parameters"]["properties"]["code"]["description"].str() ?? ""
+    let ts = description.range(of: "\\bTypeScript\\b", options: [.regularExpression, .caseInsensitive]) != nil
+    let py = description.range(of: "\\bPython\\b", options: [.regularExpression, .caseInsensitive]) != nil
     if ts == py { return nil }
     return ts ? "typescript" : "python"
 }
@@ -607,10 +608,12 @@ private func itemSeq(_ item: Item) -> Int64? {
     switch item {
     case .text(let t):
         let body = String(t.key.dropFirst())
-        return Int64(body.split(separator: ".").first.map(String.init) ?? "")
+        if let part = body.split(separator: ".").first { return Int64(String(part)) }
+        return nil
     case .reasoning(let r):
         let body = String(r.key.dropFirst())
-        return Int64(body.split(separator: ".").first.map(String.init) ?? "")
+        if let part = body.split(separator: ".").first { return Int64(String(part)) }
+        return nil
     default:
         return nil
     }
@@ -732,7 +735,7 @@ public func buildTrajectory(_ items: [Item], steps: [StepRecord] = []) -> [TrajT
                     rows.append(TrajRow(
                         key: text.key, depth: 0, kind: TrajL.kindAssistant, title: title,
                         think: "—",
-                        rawDetail: text.text, outputDetail: text.text,
+                        outputDetail: text.text, rawDetail: text.text,
                         toolCallOnly: toolOnly,
                         searchText: text.text
                     ))
