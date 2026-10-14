@@ -13,6 +13,32 @@ enum L {
 
     static func copy() -> String { en ? "Copy" : "复制" }
     static func copied() -> String { en ? "Copied" : "复制成功" }
+    static func like() -> String { en ? "Good response" : "好的回答" }
+    static func dislike() -> String { en ? "Bad response" : "有问题的回答" }
+    static func undoRating() -> String { en ? "Remove rating" : "取消标记" }
+    static func submitFeedback() -> String { en ? "Submit feedback" : "提交反馈" }
+    static func feedbackCategory() -> String { en ? "Feedback category" : "反馈分类" }
+    static func feedbackDetail() -> String { en ? "Feedback details" : "反馈详情" }
+    static func feedbackHint() -> String { en ? "Add details to help us improve…" : "填写详情以帮助我们改进…" }
+    static func thanksFeedback() -> String { en ? "Thanks for your feedback" : "感谢你的反馈" }
+    /// Android sheet only; desktop has no bilingual key for this retry line.
+    static func feedbackSubmitFailed() -> String { "提交失败，内容已保留，请重试" }
+    static func feedbackCategories() -> [(id: String, label: String)] {
+        [
+            ("task-result", en ? "Task result" : "任务结果"),
+            ("instruction-following", en ? "Instruction understanding and following" : "指令理解与遵循"),
+            ("product-interaction", en ? "Product features and interaction" : "产品功能与交互"),
+            ("service-stability", en ? "Stability and speed" : "稳定性和速度"),
+            ("resource-cost", en ? "Resource usage and cost" : "资源使用与费用"),
+            ("security-privacy-permission", en ? "Security, privacy, and permissions" : "安全隐私与权限"),
+            ("other", en ? "Other" : "其他"),
+        ]
+    }
+    static func branch() -> String { en ? "Branch into a new conversation" : "在新对话中分支" }
+    static func branchUnavailable() -> String {
+        en ? "Available only on the last message of a completed turn" : "仅可从已完成轮次的最后一条消息分支"
+    }
+    static func chatTab() -> String { en ? "Chat" : "对话" }
     static func stop() -> String { en ? "Stop" : "停止" }
     static func newSession() -> String { en ? "New session" : "新会话" }
     static func search() -> String { en ? "Search" : "搜索" }

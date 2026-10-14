@@ -17,7 +17,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 
 | Batch | Scope | Status |
 | --- | --- | --- |
-| A | Trajectory ledger + inspector; chat message actions (copy / like / dislike / branch) | next |
+| A | Trajectory ledger + inspector; chat message actions (copy / like / dislike / branch) | next (#2) → this PR |
 | B | Host PTY terminal + workspace file tree | queued |
 | C | Live jobs panel + completion unread green-dot sync | queued |
 | D | Plugin manager + schedule + remaining official settings | queued |
@@ -29,8 +29,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Surface | Official package | Android | iOS now |
 | --- | --- | --- | --- |
 | Transcript fold | `ui-chat` / `ui-conversation` | `protocol/Transcript.kt`, `Chat.kt`, `ChatProcess.kt` | `protocol/…/Transcript.swift`, `Features/Chat/ChatView.swift` |
-| Message actions | `ui-chat` `MessageIconActions` | `Chat.kt` `MessageActions` | copy-only on assistant text |
-| Trajectory | `ui-trajectory` | `Trajectory.kt` + Detail/Inspector/Request/Locales; `protocol/TrajectoryTimeline.kt` | hidden; no builder |
+| Message actions | `ui-chat` `MessageIconActions` | `Chat.kt` `MessageActions` | copy-only on assistant text → `ChatView` `MessageActions` (copy / like / dislike / branch) |
+| Trajectory | `ui-trajectory` | `Trajectory.kt` + Detail/Inspector/Request/Locales; `protocol/TrajectoryTimeline.kt` | hidden; no builder → `Features/Trajectory/` + `protocol/Trajectory.swift` |
 | Terminal | Host `terminalController` | `TerminalPanel.kt`, `TerminalView.kt`, `TerminalEmulator.kt` | hidden |
 | Files | `workspaceFiles` | `FilesPanel.kt` | hidden |
 | Jobs | `job-controller` | `JobsAction.kt`, jobs follow in `Pocket.kt` | hidden |
@@ -57,8 +57,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Notices (stopped / max-tokens / account) | reducer + official `message.*` | reducer emits; plain `.notice` | **partial** | A |
 | Deliverables | `Item.Deliverable` | row exists, no file open | **partial** | B |
 | Markdown / code block / tables | `Markdown.kt` | raw `Text` | **partial** | D |
-| Copy / like / dislike / branch | `MessageActions` + `feedback.set` + `sessions.fork` | copy on assistant only | **missing** | **A** |
-| Turn usage pill | `ComposerStats.kt` | missing | **missing** | D |
+| Copy / like / dislike / branch | `MessageActions` + `FeedbackCategory` + `feedback.set` + `sessions.fork` | copy / like / dislike (category+note sheet; retap clears) / branch; `canFork` needs `firstPrompt == nil` | **missing** → **present** | **A** |
+| Turn usage pill | `ComposerStats.kt` `TurnUsageAction` | missing (needs `TurnTokenUsage` + `PerformanceUsage.Detailed`) | **missing** | D |
 | Composer queue / steer | busyEnter | `busySend` | **present** | — |
 | `@` mentions | `MentionMenu.kt` | `ComposerView` mention panel | **partial** | D |
 | No “scroll to bottom” FAB | `followBottom` | auto-scroll only | **present** | — |
@@ -68,15 +68,15 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 
 | Item | Android | iOS | Tag | Batch |
 | --- | --- | --- | --- | --- |
-| Build ledger from items | `Trajectory.kt` `buildTrajectory` | none | **missing** | **A** |
-| 7 cell kinds | system / user / context / compacted / message / tool / subtool | none | **missing** | **A** |
-| Compact ledger (事件 + 内容) | `Trajectory.kt` | none | **missing** | **A** |
-| Toolbar 时长 / 轮次 / 调用 + search | `TrajectoryToolbar` port | none | **missing** | **A** |
-| Swimlane overview | `TrajectoryTimeline.kt` | none | **missing** | **A** |
-| Inspector tabs 概述 / 参数 / 结果 / Schema / 计时 | `TrajectoryDetail.kt` | none | **missing** | **A** |
-| Request inspector | `TrajectoryRequest.kt` | none | **missing** | **A** |
-| Official locales | `TrajectoryLocales.kt` ← `ui-trajectory` `locales.ts` | none | **missing** | **A** |
-| Chat / 轨迹 entry | session header + more sheet | hidden | **missing** | **A** |
+| Build ledger from items | `Trajectory.kt` `buildTrajectory` | none → `Trajectory.swift` `buildTrajectory` | **missing** → **present** | **A** |
+| 7 cell kinds | system / user / context / compacted / message / tool / subtool | none → same kinds + reducer `system/message` / compaction | **missing** → **present** | **A** |
+| Compact ledger (事件 + 内容) | `Trajectory.kt` | none → `TrajRowView` | **missing** → **present** | **A** |
+| Toolbar 时长 / 轮次 / 调用 + search | `TrajectoryToolbar` port | none → same chips + search field | **missing** → **present** | **A** |
+| Swimlane overview | `TrajectoryTimeline.kt` | none → `TrajectoryTimeline.swift` + `SwimlaneChart` | **missing** → **present** | **A** |
+| Inspector tabs 概述 / 参数 / 结果 / Schema / 计时 | `TrajectoryDetail.kt` | none → `TrajectoryDetailSheet` | **missing** → **present** | **A** |
+| Request inspector | `TrajectoryRequest.kt` | none → not yet (cell inspector only) | **missing** | **A** leftover |
+| Official locales | `TrajectoryLocales.kt` ← `ui-trajectory` `locales.ts` | none → `TrajL` | **missing** → **present** | **A** |
+| Chat / 轨迹 entry | session header + more sheet | hidden → session header tabs 对话 / 轨迹 | **missing** → **present** | **A** |
 
 ## 3. Terminal
 
@@ -135,8 +135,8 @@ Port as the matching batch needs them (same JSON, no second protocol):
 
 | Android `app/core/protocol` | Used by | Batch |
 | --- | --- | --- |
-| `TrajectoryTimeline.kt` | Trajectory swimlane | A |
-| `Transcript.kt` extra items (`System`, `Compacted`, `Retry`, `TurnFailure`, `Changes`) | Chat + trajectory | A / D |
+| `TrajectoryTimeline.kt` | Trajectory swimlane | A → **A done** (`TrajectoryTimeline.swift`) |
+| `Transcript.kt` extra items (`System`, `Compacted`, `Retry`, `TurnFailure`, `Changes`; System/Compacted folded, Retry/TurnFailure/Changes still unused in chat) | Chat + trajectory | A / D |
 | `TurnTokenUsage.kt` | Inspector + usage | A / D |
 | `WorkspaceChanges.kt` | Changed-file cards | B / D |
 | `PermissionModels.kt` | Permission pickers | D |

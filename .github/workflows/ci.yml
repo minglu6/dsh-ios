@@ -1,6 +1,7 @@
 name: ci
 on:
-  push: { branches: [main] }
+  push:
+    branches: [main, "cursor/**"]
   pull_request:
 
 permissions:

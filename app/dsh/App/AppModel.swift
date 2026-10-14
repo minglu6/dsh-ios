@@ -19,6 +19,17 @@ struct ChatState {
     var loadingOlder = false
     var todos: [TodoItem] = []
     var planMode = false
+    var steps: [StepRecord] = []
+    var turns: [TurnRecord] = []
+    /// Last committed assistant text key per turn; filled in `publishChat`.
+    var lastAnswerKeys: [Int: String] = [:]
+}
+
+/// Android `FirstPrompt`: first send creating a session. iOS has no that path yet; kept for canFork.
+struct FirstPrompt: Equatable {
+    var requestId: String
+    var text: String
+    var error: String? = nil
 }
 
 struct ModelChoice: Equatable {
@@ -77,6 +88,8 @@ final class AppModel: ObservableObject {
     @Published var sessionMentions: [SessionReference] = []
     @Published var routeStack: [AppRoute] = []
     @Published var showDrawer = false
+    @Published var feedback: [String: MessageFeedback] = [:]
+    @Published var firstPrompt: FirstPrompt? = nil
 
     let hostSettings = HostSettings()
     let lan = LanDiscovery()
@@ -94,6 +107,7 @@ final class AppModel: ObservableObject {
     var isOnline: Bool { currentDot == .online }
 
     private init() {
+        TrajL.en = AppPrefs.language == .en
         if let id = activeId { connect(profileId: id) }
         lan.onHosts = { [weak self] hosts in
             Task { @MainActor in self?.applyDiscovery(hosts) }
@@ -121,6 +135,7 @@ final class AppModel: ObservableObject {
         ProfileStore.activeId = profileId
         sessions = []
         chat = nil
+        firstPrompt = nil
         approvals = []
         userQuestions = []
         ops = []
@@ -286,12 +301,61 @@ final class AppModel: ObservableObject {
     }
 
     func fork(_ session: SessionSummary) {
+        forkSession(sessionId: session.sessionId, atSeq: nil)
+    }
+
+    func forkCurrent(atSeq: Int64?) {
+        guard let sessionId = chat?.sessionId else { return }
+        forkSession(sessionId: sessionId, atSeq: atSeq)
+    }
+
+    func forkSession(sessionId: String, atSeq: Int64?) {
         Task {
             guard let client else { return }
             do {
-                let result = try await client.forkSession(sessionId: session.sessionId)
+                let result = try await client.forkSession(sessionId: sessionId, atSeq: atSeq)
                 if let id = result["sessionId"].str() { openSession(id) }
             } catch { emit(error.localizedDescription) }
+        }
+    }
+
+    func setMessageFeedback(
+        messageId: String,
+        rating: String?,
+        category: String? = nil,
+        note: String? = nil,
+        onResult: ((Bool) -> Void)? = nil
+    ) {
+        Task {
+            guard let client, let sessionId = chat?.sessionId else {
+                onResult?(false)
+                return
+            }
+            let previous = feedback[messageId]
+            do {
+                let result = try await client.setFeedback(
+                    sessionId: sessionId,
+                    messageId: messageId,
+                    rating: rating,
+                    category: rating == nil ? nil : category,
+                    note: rating == nil ? nil : note,
+                    ifVersion: previous?.version
+                )
+                if rating == nil {
+                    feedback.removeValue(forKey: messageId)
+                    onResult?(true)
+                } else if let next = MessageFeedback.parse(result) {
+                    feedback[messageId] = next
+                    toast = L.thanksFeedback()
+                    onResult?(true)
+                } else {
+                    emit(PocketError(code: "bad-reply", message: "主机未返回已保存的反馈").localizedDescription)
+                    onResult?(false)
+                }
+            } catch {
+                emit(error.localizedDescription)
+                onResult?(false)
+            }
         }
     }
 
@@ -365,6 +429,7 @@ final class AppModel: ObservableObject {
     func setLanguage(_ value: AppLanguage) {
         language = value
         AppPrefs.language = value
+        TrajL.en = value == .en
         if hostSettings.ready {
             hostSettings.write(.language, value: .string(value == .en ? "en" : "zh"))
         }
@@ -513,6 +578,7 @@ final class AppModel: ObservableObject {
             title: sessions.first { $0.sessionId == sessionId }?.title,
             running: reducer.running
         )
+        feedback = [:]
         unreadIds.remove(sessionId)
     }
 
@@ -536,7 +602,21 @@ final class AppModel: ObservableObject {
         }
         subId = sid
         chat?.loaded = true
+        await loadFeedback(client, sessionId: sessionId)
         await syncCompletionView(client, sessionId: sessionId)
+    }
+
+    private func loadFeedback(_ client: PocketClient, sessionId: String) async {
+        guard ops.contains("feedback.get") else { return }
+        do {
+            let result = try await client.getFeedback(sessionId: sessionId)
+            let items = (result["items"].arr() ?? []).compactMap(MessageFeedback.parse)
+            if chat?.sessionId == sessionId {
+                feedback = Dictionary(uniqueKeysWithValues: items.map { ($0.messageId, $0) })
+            }
+        } catch {
+            // Feedback is decorative; never drop the follow socket.
+        }
     }
 
     /// View confirmation is not connectivity. Failures must not close the WebSocket.
@@ -693,6 +773,9 @@ final class AppModel: ObservableObject {
         state.firstSeq = reducer.firstSeq
         state.todos = reducer.todosSnapshot()
         state.planMode = reducer.planMode
+        state.steps = reducer.stepRecords()
+        state.turns = reducer.turnRecords()
+        state.lastAnswerKeys = ChatActionKeys.lastCommittedAnswerKeys(state.items)
         state.loaded = true
         chat = state
         if let title = state.title {
