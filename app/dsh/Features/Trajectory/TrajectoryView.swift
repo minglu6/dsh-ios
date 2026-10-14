@@ -225,7 +225,7 @@ private struct TrajRowView: View {
             .overlay(alignment: .bottom) { Divider() }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(row.kind) \(row.title)")
+            .accessibilityLabel("\(TrajL.kindLabel(row.kind)) \(row.title)")
     }
 
     private var isTool: Bool {
@@ -246,7 +246,7 @@ private struct KindBadge: View {
             .foregroundStyle(fg)
             .frame(width: 19, height: 19)
             .background(bg, in: RoundedRectangle(cornerRadius: 3))
-            .accessibilityLabel(kind)
+            .accessibilityLabel(TrajL.kindLabel(kind))
     }
 
     private var icon: String {

@@ -108,4 +108,37 @@ final class ProtocolPolicyTests: XCTestCase {
         }
         XCTAssertEqual(live, ["Hi"])
     }
+
+    func testMessageFeedbackParseRequiresMessageId() throws {
+        XCTAssertNil(MessageFeedback.parse(try JSONValue.parse(#"{"rating":"positive"}"#)))
+        let parsed = MessageFeedback.parse(try JSONValue.parse(
+            #"{"messageId":"m1","rating":"negative","category":"other","note":"n","version":"v1"}"#
+        ))
+        XCTAssertEqual(parsed?.messageId, "m1")
+        XCTAssertEqual(parsed?.rating, "negative")
+        XCTAssertEqual(parsed?.category, "other")
+        XCTAssertEqual(parsed?.note, "n")
+        XCTAssertEqual(parsed?.version, "v1")
+    }
+
+    func testLastCommittedAnswerKeysSkipsLiveAndKeepsLastPerTurn() {
+        let items: [Item] = [
+            .text(Item.Text(key: "a1", text: "one", live: false, turn: 1)),
+            .text(Item.Text(key: "a2", text: "two", live: false, turn: 1)),
+            .text(Item.Text(key: "live", text: "…", live: true, turn: 2)),
+            .text(Item.Text(key: "b1", text: "three", live: false, turn: 2)),
+        ]
+        XCTAssertEqual(ChatActionKeys.lastCommittedAnswerKeys(items), [1: "a2", 2: "b1"])
+    }
+
+    func testTrajLEnglishFollowsDesktopLocales() {
+        let previous = TrajL.en
+        defer { TrajL.en = previous }
+        TrajL.en = true
+        XCTAssertEqual(TrajL.viewTrajectory, "Trajectory")
+        XCTAssertEqual(TrajL.toolbarDuration, "Duration")
+        XCTAssertEqual(TrajL.kindLabel(TrajL.kindUser), "USER")
+        XCTAssertEqual(TrajL.turnLabel(2), "Turn 2")
+        XCTAssertEqual(TrajL.kindUser, "用户")
+    }
 }

@@ -57,8 +57,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Notices (stopped / max-tokens / account) | reducer + official `message.*` | reducer emits; plain `.notice` | **partial** | A |
 | Deliverables | `Item.Deliverable` | row exists, no file open | **partial** | B |
 | Markdown / code block / tables | `Markdown.kt` | raw `Text` | **partial** | D |
-| Copy / like / dislike / branch | `MessageActions` + `feedback.set` + `sessions.fork` | copy on assistant only → copy / like / dislike / branch; like only when `feedback.set` | **missing** → **present** | **A** |
-| Turn usage pill | `ComposerStats.kt` | missing | **missing** | D |
+| Copy / like / dislike / branch | `MessageActions` + `FeedbackCategory` + `feedback.set` + `sessions.fork` | copy / like / dislike (category+note sheet; retap clears) / branch; `canFork` needs `firstPrompt == nil` | **missing** → **present** | **A** |
+| Turn usage pill | `ComposerStats.kt` `TurnUsageAction` | missing (needs `TurnTokenUsage` + `PerformanceUsage.Detailed`) | **missing** | D |
 | Composer queue / steer | busyEnter | `busySend` | **present** | — |
 | `@` mentions | `MentionMenu.kt` | `ComposerView` mention panel | **partial** | D |
 | No “scroll to bottom” FAB | `followBottom` | auto-scroll only | **present** | — |

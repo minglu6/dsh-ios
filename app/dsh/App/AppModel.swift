@@ -21,6 +21,15 @@ struct ChatState {
     var planMode = false
     var steps: [StepRecord] = []
     var turns: [TurnRecord] = []
+    /// Last committed assistant text key per turn; filled in `publishChat`.
+    var lastAnswerKeys: [Int: String] = [:]
+}
+
+/// Android `FirstPrompt`: first send creating a session. iOS has no that path yet; kept for canFork.
+struct FirstPrompt: Equatable {
+    var requestId: String
+    var text: String
+    var error: String? = nil
 }
 
 struct ModelChoice: Equatable {
@@ -80,6 +89,7 @@ final class AppModel: ObservableObject {
     @Published var routeStack: [AppRoute] = []
     @Published var showDrawer = false
     @Published var feedback: [String: MessageFeedback] = [:]
+    @Published var firstPrompt: FirstPrompt? = nil
 
     let hostSettings = HostSettings()
     let lan = LanDiscovery()
@@ -97,6 +107,7 @@ final class AppModel: ObservableObject {
     var isOnline: Bool { currentDot == .online }
 
     private init() {
+        TrajL.en = AppPrefs.language == .en
         if let id = activeId { connect(profileId: id) }
         lan.onHosts = { [weak self] hosts in
             Task { @MainActor in self?.applyDiscovery(hosts) }
@@ -124,6 +135,7 @@ final class AppModel: ObservableObject {
         ProfileStore.activeId = profileId
         sessions = []
         chat = nil
+        firstPrompt = nil
         approvals = []
         userQuestions = []
         ops = []
@@ -307,25 +319,42 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func setMessageFeedback(messageId: String, rating: String?) {
+    func setMessageFeedback(
+        messageId: String,
+        rating: String?,
+        category: String? = nil,
+        note: String? = nil,
+        onResult: ((Bool) -> Void)? = nil
+    ) {
         Task {
-            guard let client, let sessionId = chat?.sessionId else { return }
+            guard let client, let sessionId = chat?.sessionId else {
+                onResult?(false)
+                return
+            }
             let previous = feedback[messageId]
             do {
                 let result = try await client.setFeedback(
                     sessionId: sessionId,
                     messageId: messageId,
                     rating: rating,
+                    category: rating == nil ? nil : category,
+                    note: rating == nil ? nil : note,
                     ifVersion: previous?.version
                 )
                 if rating == nil {
                     feedback.removeValue(forKey: messageId)
+                    onResult?(true)
                 } else if let next = MessageFeedback.parse(result) {
                     feedback[messageId] = next
                     toast = L.thanksFeedback()
+                    onResult?(true)
+                } else {
+                    emit(PocketError(code: "bad-reply", message: "主机未返回已保存的反馈").localizedDescription)
+                    onResult?(false)
                 }
             } catch {
                 emit(error.localizedDescription)
+                onResult?(false)
             }
         }
     }
@@ -400,6 +429,7 @@ final class AppModel: ObservableObject {
     func setLanguage(_ value: AppLanguage) {
         language = value
         AppPrefs.language = value
+        TrajL.en = value == .en
         if hostSettings.ready {
             hostSettings.write(.language, value: .string(value == .en ? "en" : "zh"))
         }
@@ -745,6 +775,7 @@ final class AppModel: ObservableObject {
         state.planMode = reducer.planMode
         state.steps = reducer.stepRecords()
         state.turns = reducer.turnRecords()
+        state.lastAnswerKeys = ChatActionKeys.lastCommittedAnswerKeys(state.items)
         state.loaded = true
         chat = state
         if let title = state.title {

@@ -1,14 +1,20 @@
 import Foundation
 
-/// Desktop `@deepseek-ai/dsh-client-ui-trajectory` `locales.ts` zh dictionary
-/// (`deepseek-harness` @ d743267). Invent no copy.
+/// Desktop `@deepseek-ai/dsh-client-ui-trajectory` `locales.ts` zh/en
+/// (`@deepseek-ai/dsh@0.2.1-alpha.2`, git `d743267`). Invent no copy.
+/// Kind identifiers stay on the zh keys so ledger identity does not flip with language.
 public enum TrajL {
-    public static let viewTrajectory = "轨迹"
-    public static let toolbarDuration = "时长"
-    public static let toolbarTurns = "轮次"
-    public static let toolbarCalls = "调用"
-    public static let toolbarSearch = "搜索轨迹"
-    public static let toolbarSearchPlaceholder = "搜索"
+    /// App sets this from the same preference as `L.en`.
+    public static var en = false
+
+    private static func pick(_ zh: String, _ english: String) -> String { en ? english : zh }
+
+    public static var viewTrajectory: String { pick("轨迹", "Trajectory") }
+    public static var toolbarDuration: String { pick("时长", "Duration") }
+    public static var toolbarTurns: String { pick("轮次", "Turns") }
+    public static var toolbarCalls: String { pick("调用", "Calls") }
+    public static var toolbarSearch: String { pick("搜索轨迹", "Search trajectory") }
+    public static var toolbarSearchPlaceholder: String { pick("搜索", "Search") }
 
     public static let kindSystem = "系统"
     public static let kindUser = "用户"
@@ -18,137 +24,155 @@ public enum TrajL {
     public static let kindTool = "工具"
     public static let kindSubtool = "子工具"
 
-    public static let columnInput = "输入"
-    public static let columnOutput = "输出"
-    public static let columnThink = "思考"
-    public static let columnTime = "时间"
-    public static let columnModel = "模型"
-    public static let columnTools = "工具"
+    public static func kindLabel(_ kind: String) -> String {
+        switch kind {
+        case kindSystem: return pick("系统", "SYSTEM")
+        case kindUser: return pick("用户", "USER")
+        case kindContext: return pick("上下文", "CONTEXT")
+        case kindCompacted: return pick("已压缩", "COMPACTED")
+        case kindAssistant: return pick("助手", "ASSISTANT")
+        case kindTool: return pick("工具", "TOOL")
+        case kindSubtool: return pick("子工具", "SUBTOOL")
+        default: return kind
+        }
+    }
 
-    public static func turnLabel(_ turn: Int) -> String { "第 \(turn) 轮" }
-    public static let sectionBetweenTurns = "轮次之间"
-    public static func groupStep(_ step: Int) -> String { "第 \(step) 步" }
-    public static func groupCompaction(_ seq: Int64) -> String { "压缩 \(seq)" }
+    public static var columnInput: String { pick("输入", "Input") }
+    public static var columnOutput: String { pick("输出", "Output") }
+    public static var columnThink: String { pick("思考", "Think") }
+    public static var columnTime: String { pick("时间", "Time") }
+    public static var columnModel: String { pick("模型", "Model") }
+    public static var columnTools: String { pick("工具", "Tools") }
 
-    public static let statusFailed = "失败"
-    public static let statusPending = "等待中"
-    public static let statusCompleted = "已完成"
+    public static func turnLabel(_ turn: Int) -> String { en ? "Turn \(turn)" : "第 \(turn) 轮" }
+    public static var sectionBetweenTurns: String { pick("轮次之间", "Between turns") }
+    public static func groupStep(_ step: Int) -> String { en ? "Step \(step)" : "第 \(step) 步" }
+    public static func groupCompaction(_ seq: Int64) -> String { en ? "Compaction \(seq)" : "压缩 \(seq)" }
 
-    public static let timingNotAvailable = "不可用"
-    public static let timingStarted = "开始时间"
-    public static let timingTotalDuration = "总时长"
-    public static let timingTtft = "首 token 延迟"
-    public static let timingGeneration = "生成"
-    public static let timingThroughput = "吞吐量"
-    public static let timingDuration = "时长"
-    public static let timingSource = "计时来源"
-    public static let timingSessionTimestamps = "会话时间戳"
-    public static let timingSessionTimestampsRunning = "会话时间戳（运行中）"
-    public static let timingFirstTokenUnavailable = "首 token 时间不可用"
-    public static let timingRequest = "请求计时"
+    public static var statusFailed: String { pick("失败", "Failed") }
+    public static var statusPending: String { pick("等待中", "Pending") }
+    public static var statusCompleted: String { pick("已完成", "Completed") }
 
-    public static func unitMilliseconds(_ value: String) -> String { "\(value) 毫秒" }
+    public static var timingNotAvailable: String { pick("不可用", "Not available") }
+    public static var timingStarted: String { pick("开始时间", "Started") }
+    public static var timingTotalDuration: String { pick("总时长", "Total duration") }
+    public static var timingTtft: String { pick("首 token 延迟", "TTFT") }
+    public static var timingGeneration: String { pick("生成", "Generation") }
+    public static var timingThroughput: String { pick("吞吐量", "Throughput") }
+    public static var timingDuration: String { pick("时长", "Duration") }
+    public static var timingSource: String { pick("计时来源", "Timing source") }
+    public static var timingSessionTimestamps: String { pick("会话时间戳", "Session timestamps") }
+    public static var timingSessionTimestampsRunning: String { pick("会话时间戳（运行中）", "Session timestamps (running)") }
+    public static var timingFirstTokenUnavailable: String { pick("首 token 时间不可用", "First token unavailable") }
+    public static var timingRequest: String { pick("请求计时", "Request Timing") }
+
+    public static func unitMilliseconds(_ value: String) -> String { en ? "\(value) ms" : "\(value) 毫秒" }
     public static func unitTokens(_ value: Int64) -> String { "\(value) tok" }
     public static func unitTokensPerSecond(_ value: String) -> String { "\(value) tok/s" }
 
-    public static let usageTokens = "Token"
-    public static let usageReasoning = "推理"
-    public static let usageContent = "内容"
-    public static let usageInput = "输入"
-    public static let usageOutput = "输出"
+    public static var usageTokens: String { pick("Token", "Tokens") }
+    public static var usageReasoning: String { pick("推理", "Reasoning") }
+    public static var usageContent: String { pick("内容", "Content") }
+    public static var usageInput: String { pick("输入", "Input") }
+    public static var usageOutput: String { pick("输出", "Output") }
 
-    public static let tabSummary = "概述"
-    public static let tabRawOutput = "原始输出"
-    public static let tabPreview = "预览"
-    public static let tabRaw = "原始内容"
-    public static let tabSource = "来源"
-    public static let tabPayload = "参数"
-    public static let tabResult = "结果"
-    public static let tabSchema = "Schema"
-    public static let tabTiming = "计时"
-    public static let tabDiff = "差异"
-    public static let tabSystemPrompt = "系统提示词"
-    public static let tabTools = "工具"
-    public static let tabOptions = "选项"
-    public static let tabUsage = "用量"
+    public static var tabSummary: String { pick("概述", "Summary") }
+    public static var tabRawOutput: String { pick("原始输出", "Raw Output") }
+    public static var tabPreview: String { pick("预览", "Preview") }
+    public static var tabRaw: String { pick("原始内容", "Raw") }
+    public static var tabSource: String { pick("来源", "Source") }
+    public static var tabPayload: String { pick("参数", "Payload") }
+    public static var tabResult: String { pick("结果", "Result") }
+    public static var tabSchema: String { pick("Schema", "Schema") }
+    public static var tabTiming: String { pick("计时", "Timing") }
+    public static var tabDiff: String { pick("差异", "Diff") }
+    public static var tabSystemPrompt: String { pick("系统提示词", "System Prompt") }
+    public static var tabTools: String { pick("工具", "Tools") }
+    public static var tabOptions: String { pick("选项", "Options") }
+    public static var tabUsage: String { pick("用量", "Usage") }
 
-    public static let requestLabelPrefix = "请求 #"
-    public static func requestLabel(_ n: Int) -> String { "请求 #\(n)" }
-    public static func requestLabelCompaction(_ n: Int) -> String { "请求 #\(n) · 压缩" }
-    public static let requestCompactionPurpose = "压缩"
-    public static func requestRetryProgress(retry: Int, maximum: Int) -> String { "\(retry)/\(maximum)" }
+    public static var requestLabelPrefix: String { pick("请求 #", "Request #") }
+    public static func requestLabel(_ n: Int) -> String { en ? "Request #\(n)" : "请求 #\(n)" }
+    public static func requestLabelCompaction(_ n: Int) -> String { en ? "Request #\(n) · Compaction" : "请求 #\(n) · 压缩" }
+    public static var requestCompactionPurpose: String { pick("压缩", "Compaction") }
+    public static func requestRetryProgress(retry: Int, maximum: Int) -> String {
+        en ? "\(retry) of \(maximum)" : "\(retry)/\(maximum)"
+    }
 
-    public static let detailsPurpose = "用途"
-    public static let detailsProvider = "提供方"
-    public static let detailsModel = "模型"
-    public static let detailsToolCalls = "工具调用"
-    public static let detailsSubtoolCalls = "子工具调用"
-    public static let detailsError = "错误"
-    public static let detailsLastAttemptError = "上次尝试错误"
-    public static let detailsRetry = "重试"
-    public static let detailsRetryDelay = "重试延迟"
-    public static let detailsResult = "结果"
-    public static let detailsCompacted = "已压缩"
-    public static let detailsFailureAuth = "API 密钥无效"
-    public static func requestCompactionSection(_ section: String) -> String { "压缩 · \(section)" }
+    public static var detailsPurpose: String { pick("用途", "Purpose") }
+    public static var detailsProvider: String { pick("提供方", "Provider") }
+    public static var detailsModel: String { pick("模型", "Model") }
+    public static var detailsToolCalls: String { pick("工具调用", "Tool calls") }
+    public static var detailsSubtoolCalls: String { pick("子工具调用", "Subtool calls") }
+    public static var detailsError: String { pick("错误", "Error") }
+    public static var detailsLastAttemptError: String { pick("上次尝试错误", "Last attempt error") }
+    public static var detailsRetry: String { pick("重试", "Retry") }
+    public static var detailsRetryDelay: String { pick("重试延迟", "Retry delay") }
+    public static var detailsResult: String { pick("结果", "Result") }
+    public static var detailsCompacted: String { pick("已压缩", "Compacted") }
+    public static var detailsFailureAuth: String { pick("API 密钥无效", "API key is invalid") }
+    public static func requestCompactionSection(_ section: String) -> String {
+        en ? "Compaction · \(section)" : "压缩 · \(section)"
+    }
 
-    public static let usageThisRequest = "本次请求"
-    public static let usageSessionCumulative = "会话累计"
-    public static let usageCached = "缓存读取"
-    public static let usageCacheCreated = "缓存写入"
-    public static let usageNotReported = "未报告用量"
-    public static let optionsNotRecorded = "未记录选项"
-    public static let optionsJson = "请求选项 JSON"
+    public static var usageThisRequest: String { pick("本次请求", "This request") }
+    public static var usageSessionCumulative: String { pick("会话累计", "Session cumulative") }
+    public static var usageCached: String { pick("缓存读取", "Cached") }
+    public static var usageCacheCreated: String { pick("缓存写入", "Cache created") }
+    public static var usageNotReported: String { pick("未报告用量", "Usage not reported") }
+    public static var optionsNotRecorded: String { pick("未记录选项", "Options not recorded") }
+    public static var optionsJson: String { pick("请求选项 JSON", "Request options JSON") }
 
-    public static let historyLoadingTrajectory = "正在加载轨迹…"
-    public static let historyLoadingEarlier = "正在加载更早的历史…"
-    public static let historyLoadEarlier = "加载更早的历史"
-    public static let historyClickToLoadEarlier = "点击加载更早的历史"
+    public static var historyLoadingTrajectory: String { pick("正在加载轨迹…", "Loading trajectory…") }
+    public static var historyLoadingEarlier: String { pick("正在加载更早的历史…", "Loading earlier history…") }
+    public static var historyLoadEarlier: String { pick("加载更早的历史", "Load earlier history") }
+    public static var historyClickToLoadEarlier: String { pick("点击加载更早的历史", "Click to load earlier history") }
 
-    public static let recordToolCallOnly = "（仅工具调用）"
-    public static let recordNoContent = "无内容"
-    public static let recordNoPayload = "未捕获参数"
-    public static let recordNoResult = "未捕获结果"
-    public static let recordNoOutput = "无输出"
-    public static let recordSchemaUnavailable = "Schema 不可用"
-    public static let recordParameters = "参数"
-    public static let recordThinking = "思考"
-    public static let recordSystemPromptMissing = "本次请求没有系统提示词"
-    public static let recordToolsMissing = "本次请求没有工具"
-    public static let recordSystemPrompt = "系统提示词"
-    public static let recordTools = "工具"
+    public static var recordToolCallOnly: String { pick("（仅工具调用）", "(tool call only)") }
+    public static var recordNoContent: String { pick("无内容", "No content") }
+    public static var recordNoPayload: String { pick("未捕获参数", "No payload captured") }
+    public static var recordNoResult: String { pick("未捕获结果", "No result captured") }
+    public static var recordNoOutput: String { pick("无输出", "No output") }
+    public static var recordSchemaUnavailable: String { pick("Schema 不可用", "Schema unavailable") }
+    public static var recordParameters: String { pick("参数", "Parameters") }
+    public static var recordThinking: String { pick("思考", "Thinking") }
+    public static var recordSystemPromptMissing: String { pick("本次请求没有系统提示词", "No system prompt in this request") }
+    public static var recordToolsMissing: String { pick("本次请求没有工具", "No tools in this request") }
+    public static var recordSystemPrompt: String { pick("系统提示词", "System Prompt") }
+    public static var recordTools: String { pick("工具", "Tools") }
 
-    public static let codeSource = "代码"
-    public static let codeOutput = "输出"
-    public static let codeRunning = "执行中…"
-    public static let codeOriginalJson = "原始 JSON"
+    public static var codeSource: String { pick("代码", "Code") }
+    public static var codeOutput: String { pick("输出", "Output") }
+    public static var codeRunning: String { pick("执行中…", "Running…") }
+    public static var codeOriginalJson: String { pick("原始 JSON", "Original JSON") }
 
-    public static let detailsStatus = "状态"
-    public static let detailsHierarchy = "层级"
-    public static let detailsAssistantMessage = "助手消息"
-    public static let detailsToolCall = "工具调用"
-    public static let detailsSource = "来源"
-    public static let detailsEvent = "事件详情"
-    public static let detailsClose = "关闭详情"
+    public static var detailsStatus: String { pick("状态", "Status") }
+    public static var detailsHierarchy: String { pick("层级", "Hierarchy") }
+    public static var detailsAssistantMessage: String { pick("助手消息", "Assistant Message") }
+    public static var detailsToolCall: String { pick("工具调用", "Tool Call") }
+    public static var detailsSource: String { pick("来源", "Source") }
+    public static var detailsEvent: String { pick("事件详情", "Event details") }
+    public static var detailsClose: String { pick("关闭详情", "Close details") }
 
-    public static let sourceUser = "用户"
-    public static let sourceUnknown = "未知"
-    public static let sourceNotRecorded = "未记录来源"
+    public static var sourceUser: String { pick("用户", "User") }
+    public static var sourceUnknown: String { pick("未知", "Unknown") }
+    public static var sourceNotRecorded: String { pick("未记录来源", "Source not recorded") }
 
-    public static let layoutCompacting = "正在压缩上下文…"
-    public static let layoutCompactionFailed = "上下文压缩失败"
-    public static let layoutCompacted = "上下文已压缩"
-    public static let layoutToolCallOnly = "仅工具调用"
-    public static let layoutInitialSystemPrompt = "初始系统提示词"
-    public static let layoutSystemPromptUpdated = "系统提示词已更新"
-    public static let layoutToolsUpdated = "工具已更新"
-    public static let layoutSystemPromptAndToolsUpdated = "系统提示词和工具已更新"
-    public static let layoutCompactionInterrupted = "上下文压缩在完成前被中断。"
-    public static func layoutImageCount(_ count: Int) -> String { "图片 ×\(count)" }
-    public static func layoutFileAttachments(_ count: Int) -> String { "文件 ×\(count)" }
-    public static func layoutToolAdded(_ name: String) -> String { "已添加工具：\(name)" }
-    public static func layoutToolRemoved(_ name: String) -> String { "已移除工具：\(name)" }
+    public static var layoutCompacting: String { pick("正在压缩上下文…", "Compacting context…") }
+    public static var layoutCompactionFailed: String { pick("上下文压缩失败", "Compaction failed") }
+    public static var layoutCompacted: String { pick("上下文已压缩", "Context compacted") }
+    public static var layoutToolCallOnly: String { pick("仅工具调用", "Tool call only") }
+    public static var layoutInitialSystemPrompt: String { pick("初始系统提示词", "Initial System Prompt") }
+    public static var layoutSystemPromptUpdated: String { pick("系统提示词已更新", "System Prompt Updated") }
+    public static var layoutToolsUpdated: String { pick("工具已更新", "Tools Updated") }
+    public static var layoutSystemPromptAndToolsUpdated: String { pick("系统提示词和工具已更新", "System Prompt and Tools Updated") }
+    public static var layoutCompactionInterrupted: String { pick("上下文压缩在完成前被中断。", "Compaction was interrupted before completion.") }
+    public static func layoutImageCount(_ count: Int) -> String { en ? "Images ×\(count)" : "图片 ×\(count)" }
+    public static func layoutFileAttachments(_ count: Int) -> String { en ? "Files ×\(count)" : "文件 ×\(count)" }
+    public static func layoutToolAdded(_ name: String) -> String { en ? "Tool added: \(name)" : "已添加工具：\(name)" }
+    public static func layoutToolRemoved(_ name: String) -> String { en ? "Tool removed: \(name)" : "已移除工具：\(name)" }
 
+    /// Android-only empty copy; desktop locales.ts has no key — do not invent English.
     public static let emptyTrajectory = "暂无轨迹"
 }
 
@@ -834,16 +858,7 @@ public func trajDetailTabs(_ row: TrajRow) -> [TrajDetailTab] {
 }
 
 public func trajDetailKindLabel(_ kind: String) -> String {
-    switch kind {
-    case TrajL.kindAssistant: return TrajL.kindAssistant
-    case TrajL.kindTool: return TrajL.kindTool
-    case TrajL.kindSubtool: return TrajL.kindSubtool
-    case TrajL.kindUser: return TrajL.kindUser
-    case TrajL.kindContext: return TrajL.kindContext
-    case TrajL.kindSystem: return TrajL.kindSystem
-    case TrajL.kindCompacted: return TrajL.kindCompacted
-    default: return kind
-    }
+    TrajL.kindLabel(kind)
 }
 
 public func trajDetailLocation(_ row: TrajRow, turnIndex: Int) -> String {

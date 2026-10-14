@@ -6,6 +6,7 @@ struct ChatView: View {
     @ObservedObject var model: AppModel
     @State private var showModels = false
     @State private var tab = 0
+    @State private var feedbackDraft: FeedbackDraft?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -21,7 +22,25 @@ struct ChatView: View {
         }
         .background(T.bg.ignoresSafeArea())
         .sheet(isPresented: $showModels) { ModelPickerSheet(model: model) }
+        .sheet(item: $feedbackDraft) { draft in
+            FeedbackCategorySheet(
+                onDismiss: { feedbackDraft = nil },
+                onSubmit: { category, note, complete in
+                    model.setMessageFeedback(
+                        messageId: draft.messageId,
+                        rating: draft.rating,
+                        category: category,
+                        note: note,
+                        onResult: complete
+                    )
+                }
+            )
+        }
         .onChange(of: model.chat?.sessionId) { _ in tab = 0 }
+    }
+
+    private func openFeedback(messageId: String, rating: String) {
+        feedbackDraft = FeedbackDraft(messageId: messageId, rating: rating)
     }
 
     private var header: some View {
@@ -117,7 +136,7 @@ struct ChatView: View {
                             .padding(.vertical, 8)
                     }
                     ForEach(model.chat?.items ?? []) { item in
-                        MessageRow(item: item, model: model)
+                        MessageRow(item: item, model: model, onOpenFeedback: openFeedback)
                             .id(item.key)
                     }
                     if model.chat?.loaded == false {
@@ -139,9 +158,16 @@ struct ChatView: View {
     }
 }
 
+private struct FeedbackDraft: Identifiable {
+    let messageId: String
+    let rating: String
+    var id: String { "\(messageId):\(rating)" }
+}
+
 struct MessageRow: View {
     let item: Item
     @ObservedObject var model: AppModel
+    var onOpenFeedback: (String, String) -> Void = { _, _ in }
 
     var body: some View {
         switch item {
@@ -216,22 +242,15 @@ struct MessageRow: View {
         let turns = model.chat?.turns ?? []
         if let turn = text.turn {
             let record = turns.first { $0.turn == turn }
-            return record?.closed == true && lastAnswerKey(turn) == text.key
+            return record?.closed == true && model.chat?.lastAnswerKeys[turn] == text.key
         }
         return model.chat?.running != true
-    }
-
-    private func lastAnswerKey(_ turn: Int) -> String? {
-        model.chat?.items.reversed().compactMap { item -> String? in
-            if case .text(let text) = item, text.turn == turn, !text.live { return text.key }
-            return nil
-        }.first
     }
 
     private func assistantActions(_ text: Item.Text) -> some View {
         let turn = text.turn
         let turnRecord = (model.chat?.turns ?? []).first { $0.turn == turn }
-        let canFork = model.ops.contains("sessions.fork")
+        let canFork = model.chat != nil && model.firstPrompt == nil && model.ops.contains("sessions.fork")
         let branchSeq = turnRecord?.endSeq
         let branchHere = canFork && branchSeq != nil
         let mid = text.messageId
@@ -248,11 +267,11 @@ struct MessageRow: View {
             rating: rating,
             onLike: canFeedback ? {
                 if rating == "positive" { model.setMessageFeedback(messageId: mid!, rating: nil) }
-                else { model.setMessageFeedback(messageId: mid!, rating: "positive") }
+                else { onOpenFeedback(mid!, "positive") }
             } : nil,
             onDislike: canFeedback ? {
                 if rating == "negative" { model.setMessageFeedback(messageId: mid!, rating: nil) }
-                else { model.setMessageFeedback(messageId: mid!, rating: "negative") }
+                else { onOpenFeedback(mid!, "negative") }
             } : nil
         )
     }
