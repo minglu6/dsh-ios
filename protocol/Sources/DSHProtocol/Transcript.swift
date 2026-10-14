@@ -48,6 +48,16 @@ public struct TodoItem: Sendable, Equatable, Identifiable {
     public var id: String { content }
 }
 
+public struct RetryAttempt: Sendable, Equatable {
+    public var seq: Int64
+    public var retry: Int
+    public var maxRetries: Int?
+    public var mode: String
+    public var delayMs: Int64
+    public var message: String
+    public var code: String?
+}
+
 public enum Item: Sendable, Equatable, Identifiable {
     case user(User)
     case reasoning(Reasoning)
@@ -56,6 +66,11 @@ public enum Item: Sendable, Equatable, Identifiable {
     case notice(Notice)
     case deliverable(Deliverable)
     case context(Context)
+    case system(System)
+    case compacted(Compacted)
+    case retry(Retry)
+    case turnFailure(TurnFailure)
+    case changes(Changes)
 
     public var id: String { key }
     public var key: String {
@@ -67,6 +82,11 @@ public enum Item: Sendable, Equatable, Identifiable {
         case .notice(let v): return v.key
         case .deliverable(let v): return v.key
         case .context(let v): return v.key
+        case .system(let v): return v.key
+        case .compacted(let v): return v.key
+        case .retry(let v): return v.key
+        case .turnFailure(let v): return v.key
+        case .changes(let v): return v.key
         }
     }
 
@@ -80,6 +100,31 @@ public enum Item: Sendable, Equatable, Identifiable {
         public var imageRefs: [ImageRef]
         public var requestId: String?
         public var messageId: String?
+        public var messageSourceJson: String?
+
+        public init(
+            key: String,
+            text: String,
+            images: Int = 0,
+            pending: Bool = false,
+            at: Int64? = nil,
+            seq: Int64? = nil,
+            imageRefs: [ImageRef] = [],
+            requestId: String? = nil,
+            messageId: String? = nil,
+            messageSourceJson: String? = nil
+        ) {
+            self.key = key
+            self.text = text
+            self.images = images
+            self.pending = pending
+            self.at = at
+            self.seq = seq
+            self.imageRefs = imageRefs
+            self.requestId = requestId
+            self.messageId = messageId
+            self.messageSourceJson = messageSourceJson
+        }
     }
 
     public struct Reasoning: Sendable, Equatable {
@@ -90,6 +135,16 @@ public enum Item: Sendable, Equatable, Identifiable {
         public var turn: Int?
         public var step: Int?
         public var seq: Int64?
+
+        public init(key: String, text: String, durationMs: Int64? = nil, live: Bool, turn: Int? = nil, step: Int? = nil, seq: Int64? = nil) {
+            self.key = key
+            self.text = text
+            self.durationMs = durationMs
+            self.live = live
+            self.turn = turn
+            self.step = step
+            self.seq = seq
+        }
     }
 
     public struct Text: Sendable, Equatable {
@@ -101,6 +156,17 @@ public enum Item: Sendable, Equatable, Identifiable {
         public var messageId: String?
         public var turn: Int?
         public var step: Int?
+
+        public init(key: String, text: String, live: Bool, at: Int64? = nil, seq: Int64? = nil, messageId: String? = nil, turn: Int? = nil, step: Int? = nil) {
+            self.key = key
+            self.text = text
+            self.live = live
+            self.at = at
+            self.seq = seq
+            self.messageId = messageId
+            self.turn = turn
+            self.step = step
+        }
     }
 
     public struct Tool: Sendable, Equatable {
@@ -116,18 +182,61 @@ public enum Item: Sendable, Equatable, Identifiable {
         public var turn: Int?
         public var step: Int?
         public var parentCallId: String?
+        public var schemaJson: String?
+
+        public init(
+            key: String,
+            callId: String,
+            name: String,
+            arguments: String,
+            status: ToolStatus,
+            result: String? = nil,
+            error: String? = nil,
+            startedAt: Int64? = nil,
+            endedAt: Int64? = nil,
+            turn: Int? = nil,
+            step: Int? = nil,
+            parentCallId: String? = nil,
+            schemaJson: String? = nil
+        ) {
+            self.key = key
+            self.callId = callId
+            self.name = name
+            self.arguments = arguments
+            self.status = status
+            self.result = result
+            self.error = error
+            self.startedAt = startedAt
+            self.endedAt = endedAt
+            self.turn = turn
+            self.step = step
+            self.parentCallId = parentCallId
+            self.schemaJson = schemaJson
+        }
     }
 
     public struct Notice: Sendable, Equatable {
         public var key: String
         public var text: String
         public var turn: Int?
+
+        public init(key: String, text: String, turn: Int? = nil) {
+            self.key = key
+            self.text = text
+            self.turn = turn
+        }
     }
 
     public struct Deliverable: Sendable, Equatable {
         public var key: String
         public var files: [DeliverableFile]
         public var turn: Int?
+
+        public init(key: String, files: [DeliverableFile], turn: Int? = nil) {
+            self.key = key
+            self.files = files
+            self.turn = turn
+        }
     }
 
     public struct Context: Sendable, Equatable {
@@ -135,6 +244,98 @@ public enum Item: Sendable, Equatable, Identifiable {
         public var text: String
         public var sourceKind: String?
         public var at: Int64?
+        public var messageSourceJson: String?
+
+        public init(key: String, text: String, sourceKind: String? = nil, at: Int64? = nil, messageSourceJson: String? = nil) {
+            self.key = key
+            self.text = text
+            self.sourceKind = sourceKind
+            self.at = at
+            self.messageSourceJson = messageSourceJson
+        }
+    }
+
+    public struct System: Sendable, Equatable {
+        public var key: String
+        public var label: String
+        public var text: String
+        public var at: Int64?
+        public var previousText: String?
+        public var toolsJson: String?
+        public var previousToolsJson: String?
+
+        public init(
+            key: String,
+            label: String,
+            text: String,
+            at: Int64? = nil,
+            previousText: String? = nil,
+            toolsJson: String? = nil,
+            previousToolsJson: String? = nil
+        ) {
+            self.key = key
+            self.label = label
+            self.text = text
+            self.at = at
+            self.previousText = previousText
+            self.toolsJson = toolsJson
+            self.previousToolsJson = previousToolsJson
+        }
+    }
+
+    public struct Compacted: Sendable, Equatable {
+        public var key: String
+        public var compactionId: String
+        public var status: CompactionStatus
+        public var summary: String?
+        public var error: String?
+        public var interrupted: Bool
+        public var startedAt: Int64?
+        public var endedAt: Int64?
+        public var turn: Int?
+
+        public init(
+            key: String,
+            compactionId: String,
+            status: CompactionStatus,
+            summary: String? = nil,
+            error: String? = nil,
+            interrupted: Bool = false,
+            startedAt: Int64? = nil,
+            endedAt: Int64? = nil,
+            turn: Int? = nil
+        ) {
+            self.key = key
+            self.compactionId = compactionId
+            self.status = status
+            self.summary = summary
+            self.error = error
+            self.interrupted = interrupted
+            self.startedAt = startedAt
+            self.endedAt = endedAt
+            self.turn = turn
+        }
+    }
+
+    public struct Retry: Sendable, Equatable {
+        public var key: String
+        public var retryId: String
+        public var turn: Int?
+        public var step: Int?
+        public var attempts: [RetryAttempt]
+    }
+
+    public struct TurnFailure: Sendable, Equatable {
+        public var key: String
+        public var message: String
+        public var code: String?
+        public var turn: Int?
+    }
+
+    public struct Changes: Sendable, Equatable {
+        public var key: String
+        public var turn: Int
+        public var seq: Int64?
     }
 }
 
@@ -146,12 +347,75 @@ public struct Usage: Sendable, Equatable {
     public var outputTokens: Int64
 }
 
+public struct StepUsage: Sendable, Equatable {
+    public var inputTokens: Int64?
+    public var cacheReadTokens: Int64?
+    public var cacheWriteTokens: Int64?
+    public var outputTokens: Int64?
+    public var reasoningTokens: Int64?
+
+    public init(
+        inputTokens: Int64? = nil,
+        cacheReadTokens: Int64? = nil,
+        cacheWriteTokens: Int64? = nil,
+        outputTokens: Int64? = nil,
+        reasoningTokens: Int64? = nil
+    ) {
+        self.inputTokens = inputTokens
+        self.cacheReadTokens = cacheReadTokens
+        self.cacheWriteTokens = cacheWriteTokens
+        self.outputTokens = outputTokens
+        self.reasoningTokens = reasoningTokens
+    }
+}
+
 public struct StepRecord: Sendable, Equatable {
     public var seq: Int64
     public var turn: Int
     public var step: Int
+    public var stepStartTime: Int64?
+    public var messageTime: Int64?
+    public var firstTokenTime: Int64?
     public var replyText: String
     public var reasoningText: String
+    public var usage: StepUsage
+    public var provider: String?
+    public var model: String?
+    public var toolCallIds: [String]
+    public var interrupted: Bool
+    public var requestConfigJson: String?
+
+    public init(
+        seq: Int64,
+        turn: Int,
+        step: Int,
+        stepStartTime: Int64? = nil,
+        messageTime: Int64? = nil,
+        firstTokenTime: Int64? = nil,
+        replyText: String = "",
+        reasoningText: String = "",
+        usage: StepUsage = StepUsage(),
+        provider: String? = nil,
+        model: String? = nil,
+        toolCallIds: [String] = [],
+        interrupted: Bool = false,
+        requestConfigJson: String? = nil
+    ) {
+        self.seq = seq
+        self.turn = turn
+        self.step = step
+        self.stepStartTime = stepStartTime
+        self.messageTime = messageTime
+        self.firstTokenTime = firstTokenTime
+        self.replyText = replyText
+        self.reasoningText = reasoningText
+        self.usage = usage
+        self.provider = provider
+        self.model = model
+        self.toolCallIds = toolCallIds
+        self.interrupted = interrupted
+        self.requestConfigJson = requestConfigJson
+    }
 }
 
 public struct TurnRecord: Sendable, Equatable {
@@ -198,6 +462,11 @@ public final class TranscriptReducer {
     private var inputTokens: Int64 = 0
     private var cacheRead: Int64 = 0
     private var outputTokens: Int64 = 0
+    private var settledSteps: [StepRecord] = []
+    private var stepStartTimes: [String: Int64] = [:]
+    private var compactIndex: [String: Int] = [:]
+    private var systemPromptSeen = false
+    private var lastSystemPromptText: String?
 
     public private(set) var needsResync = false
     public private(set) var cursor: Int64 = -1
@@ -212,6 +481,7 @@ public final class TranscriptReducer {
     public var planMode: Bool { planActive }
     public func todosSnapshot() -> [TodoItem] { todos }
     public func turnRecords() -> [TurnRecord] { turnFacts.values.sorted { $0.turn < $1.turn } }
+    public func stepRecords() -> [StepRecord] { settledSteps }
 
     public func items() -> [Item] {
         var result: [Item] = []
@@ -316,6 +586,7 @@ public final class TranscriptReducer {
         let older = prior.items()
         if !older.isEmpty {
             committed.insert(contentsOf: older, at: 0)
+            settledSteps.insert(contentsOf: prior.stepRecords(), at: 0)
             rebuildIndexes()
         }
         if let min = filtered.compactMap({ $0["event"]["seq"].long() }).min() {
@@ -382,12 +653,18 @@ public final class TranscriptReducer {
         planActive = false
         planProjectionSeq = -1
         titleValue = nil
+        settledSteps.removeAll()
+        stepStartTimes.removeAll()
+        compactIndex.removeAll()
+        systemPromptSeen = false
+        lastSystemPromptText = nil
     }
 
     private func rebuildIndexes() {
         toolIndex.removeAll()
         userByRpc.removeAll()
         userByMessage.removeAll()
+        compactIndex.removeAll()
         for (index, item) in committed.enumerated() {
             switch item {
             case .tool(let tool):
@@ -395,6 +672,8 @@ public final class TranscriptReducer {
             case .user(let user):
                 if let rpc = user.requestId { userByRpc[rpc] = index }
                 if let messageId = user.messageId { userByMessage[messageId] = index }
+            case .compacted(let compacted):
+                compactIndex[compacted.compactionId] = index
             default:
                 break
             }
@@ -543,6 +822,9 @@ public final class TranscriptReducer {
         case "step/start":
             openTurn = data["turn"].int() ?? openTurn
             openStep = data["step"].int() ?? (steps + 1)
+            if let turn = openTurn, let step = openStep, let time = e["time"].long() {
+                stepStartTimes["\(turn):\(step)"] = time
+            }
             if let turn = openTurn, turnFacts[turn] == nil { turnFacts[turn] = TurnRecord(turn: turn) }
         case "user/message":
             let msg = data["content"].isNull ? data["message"] : data
@@ -558,17 +840,23 @@ public final class TranscriptReducer {
             steps += 1
             let matching = matchingAttempt(e)
             let ownerTurn = data["turn"].int() ?? openTurn
+            let turn = ownerTurn ?? turns
             let step = data["step"].int() ?? openStep ?? steps
             settleAttempt(e)
             let messageTime = e["time"].long()
             if let ownerTurn, turnFacts[ownerTurn] == nil { turnFacts[ownerTurn] = TurnRecord(turn: ownerTurn) }
             let messageId = data["message"]["id"].str()
+            var replyParts: [String] = []
+            var reasoningParts: [String] = []
+            var toolCallIds: [String] = []
             for (i, block) in (data["message"]["content"].arr() ?? []).enumerated() {
                 switch block["type"].str() {
                 case "reasoning":
+                    let text = block["text"].str() ?? ""
+                    reasoningParts.append(text)
                     committed.append(.reasoning(Item.Reasoning(
                         key: "r\(seq).\(i)",
-                        text: block["text"].str() ?? "",
+                        text: text,
                         durationMs: nil,
                         live: false,
                         turn: ownerTurn,
@@ -577,6 +865,7 @@ public final class TranscriptReducer {
                     )))
                 case "text":
                     if let text = block["text"].str(), !text.isEmpty {
+                        replyParts.append(text)
                         committed.append(.text(Item.Text(
                             key: "t\(seq).\(i)",
                             text: text,
@@ -590,6 +879,7 @@ public final class TranscriptReducer {
                     }
                 case "tool-call":
                     let id = block["id"].str() ?? "c\(seq).\(i)"
+                    toolCallIds.append(id)
                     upsertTool(
                         id: id,
                         name: block["name"].str() ?? "",
@@ -604,12 +894,45 @@ public final class TranscriptReducer {
                 }
             }
             let u = data["usage"]
+            let stepUsage = StepUsage(
+                inputTokens: u["inputTokens"].long(),
+                cacheReadTokens: u["cacheReadTokens"].long(),
+                cacheWriteTokens: u["cacheWriteTokens"].long(),
+                outputTokens: u["outputTokens"].long(),
+                reasoningTokens: u["reasoningTokens"].long()
+            )
             outputTokens += u["outputTokens"].long() ?? 0
             inputTokens += (u["inputTokens"].long() ?? 0) + (u["cacheReadTokens"].long() ?? 0) + (u["cacheWriteTokens"].long() ?? 0)
             cacheRead += u["cacheReadTokens"].long() ?? 0
-            if data["interrupted"].bool() == true {
+            let source = data["message"]["source"]
+            let interrupted = data["interrupted"].bool() == true
+            let stepStartTime = stepStartTimes.removeValue(forKey: "\(turn):\(step)")
+            settledSteps.append(StepRecord(
+                seq: seq,
+                turn: turn,
+                step: step,
+                stepStartTime: stepStartTime,
+                messageTime: messageTime,
+                firstTokenTime: matching?.firstTokenTime,
+                replyText: replyParts.joined(separator: "\n\n"),
+                reasoningText: reasoningParts.joined(separator: "\n\n"),
+                usage: stepUsage,
+                provider: source["provider"].str(),
+                model: source["model"].str(),
+                toolCallIds: toolCallIds,
+                interrupted: interrupted
+            ))
+            if interrupted {
                 committed.append(.notice(Item.Notice(key: "i\(seq)", text: "已停止", turn: ownerTurn)))
             }
+        case "system/message":
+            upsertSystemPrompt(e, data: data, seq: seq)
+        case "compaction/start":
+            upsertCompactionStart(data, time: e["time"].long())
+        case "compaction/summary":
+            upsertCompactionSummary(data)
+        case "compaction/end":
+            upsertCompactionEnd(data, time: e["time"].long())
         case "assistant/attempt":
             settleAttempt(e)
         case "tool/call":
@@ -783,6 +1106,7 @@ public final class TranscriptReducer {
         let images = imageRefs.isEmpty ? blocks.filter { $0["type"].str() == "image" }.count : imageRefs.count
         let rpc = msg["source"]["rpcId"].str()
         let messageId = msg["id"].str()
+        let sourceJson = prettySource(msg["source"])
         let idx = rpc.flatMap { userByRpc[$0] } ?? messageId.flatMap { userByMessage[$0] }
         if let idx, case .user(var old) = committed[idx] {
             old.text = text
@@ -793,6 +1117,7 @@ public final class TranscriptReducer {
             old.imageRefs = imageRefs.isEmpty ? old.imageRefs : imageRefs
             old.requestId = rpc ?? old.requestId
             old.messageId = messageId ?? old.messageId
+            old.messageSourceJson = sourceJson ?? old.messageSourceJson
             committed[idx] = .user(old)
             if let rpc { userByRpc[rpc] = idx }
             if let messageId { userByMessage[messageId] = idx }
@@ -801,7 +1126,7 @@ public final class TranscriptReducer {
             if let messageId { userByMessage[messageId] = committed.count }
             committed.append(.user(Item.User(
                 key: key, text: text, images: images, pending: pending, at: at, seq: seq,
-                imageRefs: imageRefs, requestId: rpc, messageId: messageId
+                imageRefs: imageRefs, requestId: rpc, messageId: messageId, messageSourceJson: sourceJson
             )))
         }
     }
@@ -818,7 +1143,10 @@ public final class TranscriptReducer {
     private func upsertContext(_ msg: JSONValue, key: String, at: Int64?) {
         let text = (msg["content"].arr() ?? []).filter { $0["type"].str() == "text" }.map { $0["text"].str() ?? "" }.joined(separator: "\n")
         if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return }
-        committed.append(.context(Item.Context(key: key, text: text, sourceKind: msg["source"]["kind"].str(), at: at)))
+        committed.append(.context(Item.Context(
+            key: key, text: text, sourceKind: msg["source"]["kind"].str(), at: at,
+            messageSourceJson: prettySource(msg["source"])
+        )))
     }
 
     private func upsertTool(id: String, name: String, args: String, time: Int64?, turn: Int?, step: Int?, status: ToolStatus = .running) {
@@ -834,7 +1162,7 @@ public final class TranscriptReducer {
             toolIndex[id] = committed.count
             committed.append(.tool(Item.Tool(
                 key: "k\(id)", callId: id, name: name, arguments: args, status: status,
-                result: nil, error: nil, startedAt: time, endedAt: nil, turn: turn, step: step, parentCallId: nil
+                result: nil, error: nil, startedAt: time, endedAt: nil, turn: turn, step: step, parentCallId: nil, schemaJson: nil
             )))
         }
     }
@@ -888,6 +1216,61 @@ public final class TranscriptReducer {
         return true
     }
 
+    private func prettySource(_ source: JSONValue) -> String? {
+        guard source.obj() != nil else { return nil }
+        return source.prettyString()
+    }
+
+    private func upsertSystemPrompt(_ e: JSONValue, data: JSONValue, seq: Int64) {
+        let surface = e["surfaceOp"]
+        if surface.obj() != nil { return }
+        if let op = surface.str(), op != "append" { return }
+        let msg = data["message"].isNull ? data : data["message"]
+        let text = (msg["content"].arr() ?? []).filter { $0["type"].str() == "text" }.map { $0["text"].str() ?? "" }.joined(separator: "\n")
+        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return }
+        let label = systemPromptSeen ? TrajL.layoutSystemPromptUpdated : TrajL.layoutInitialSystemPrompt
+        let previous = systemPromptSeen ? lastSystemPromptText : nil
+        systemPromptSeen = true
+        lastSystemPromptText = text
+        committed.append(.system(Item.System(
+            key: "sys\(seq)", label: label, text: text, at: e["time"].long(), previousText: previous
+        )))
+    }
+
+    private func upsertCompactionStart(_ data: JSONValue, time: Int64?) {
+        guard let id = data["compactionId"].str(), compactIndex[id] == nil else { return }
+        compactIndex[id] = committed.count
+        committed.append(.compacted(Item.Compacted(
+            key: "cmp\(id)", compactionId: id, status: .running,
+            startedAt: time, turn: data["turn"].int() ?? openTurn
+        )))
+    }
+
+    private func upsertCompactionSummary(_ data: JSONValue) {
+        guard let id = data["compactionId"].str() else { return }
+        let summary = data["summary"].str() ?? (data["message"]["content"].arr() ?? [])
+            .filter { $0["type"].str() == "text" }
+            .map { $0["text"].str() ?? "" }
+            .joined(separator: "\n")
+            .nilIfBlank
+        guard let i = compactIndex[id], case .compacted(var c) = committed[i] else { return }
+        c.summary = summary ?? c.summary
+        committed[i] = .compacted(c)
+    }
+
+    private func upsertCompactionEnd(_ data: JSONValue, time: Int64?) {
+        guard let id = data["compactionId"].str() else { return }
+        let err = data["error"]
+        let interrupted = err["code"].str() == "interrupted" || err["reason"].str() == "interrupted" || data["interrupted"].bool() == true
+        let isErr = !err.isNull
+        guard let i = compactIndex[id], case .compacted(var c) = committed[i] else { return }
+        c.status = isErr ? .error : .ok
+        c.error = err.isNull ? nil : (err["reason"].str() ?? err["message"].str() ?? err["code"].str())
+        c.interrupted = interrupted
+        c.endedAt = time
+        committed[i] = .compacted(c)
+    }
+
     private func observeInboxMessage(target: String, message: JSONValue, seq: Int64, index: Int) {
         if isRetired(message) { return }
         let rpc = message["source"]["rpcId"].str()
@@ -907,6 +1290,7 @@ private final class LiveAttempt {
     var nextIndex: Int64
     var settlementSeq: Int64?
     var settlementType: String?
+    var firstTokenTime: Int64?
 
     private struct Block {
         var type: String
@@ -965,6 +1349,7 @@ private final class LiveAttempt {
             var b = block(idx, "text")
             b.text += c["text"].str() ?? ""
             blocks[idx] = b
+            if firstTokenTime == nil { firstTokenTime = time }
         case "reasoning-delta":
             var b = block(idx, "reasoning")
             b.startedAt = b.startedAt ?? time
@@ -1004,5 +1389,11 @@ private final class LiveAttempt {
                 return .text(Item.Text(key: "live-\(id)-\(i)", text: b.text, live: true, at: nil, seq: nil, messageId: nil, turn: turn, step: step))
             }
         }
+    }
+}
+
+private extension String {
+    var nilIfBlank: String? {
+        trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : self
     }
 }

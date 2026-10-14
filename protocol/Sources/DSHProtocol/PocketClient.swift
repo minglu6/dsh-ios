@@ -177,6 +177,30 @@ public final class PocketClient: @unchecked Sendable {
         ]))
     }
 
+    public func getFeedback(sessionId: String) async throws -> JSONValue {
+        try await call("feedback.get", args: jsonObject(["sessionId": .string(sessionId)]))
+    }
+
+    public func setFeedback(
+        sessionId: String,
+        messageId: String,
+        rating: String?,
+        category: String? = nil,
+        note: String? = nil,
+        ifVersion: String? = nil
+    ) async throws -> JSONValue {
+        // jsonObject drops nulls; Host needs an explicit null to clear a rating.
+        var object: [String: JSONValue] = [
+            "sessionId": .string(sessionId),
+            "messageId": .string(messageId),
+            "rating": rating.map { .string($0) } ?? .null,
+        ]
+        if let category { object["category"] = .string(category) }
+        if let note { object["note"] = .string(note) }
+        if let ifVersion { object["ifVersion"] = .string(ifVersion) }
+        return try await call("feedback.set", args: .object(object))
+    }
+
     public func pinSession(_ sessionId: String) async throws {
         _ = try await call("workspace.pinSession", args: jsonObject(["sessionId": .string(sessionId)]))
     }

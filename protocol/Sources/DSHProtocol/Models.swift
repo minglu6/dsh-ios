@@ -258,6 +258,34 @@ public struct PromptFile: Sendable {
     public init(receiptId: String) { self.receiptId = receiptId }
 }
 
+/// One message-feedback rating from `feedback.get`.
+public struct MessageFeedback: Sendable, Equatable {
+    public var messageId: String
+    public var rating: String?
+    public var version: String?
+    public var category: String?
+    public var note: String?
+
+    public init(messageId: String, rating: String? = nil, version: String? = nil, category: String? = nil, note: String? = nil) {
+        self.messageId = messageId
+        self.rating = rating
+        self.version = version
+        self.category = category
+        self.note = note
+    }
+
+    public static func parse(_ element: JSONValue) -> MessageFeedback? {
+        guard let id = element["messageId"].str() else { return nil }
+        return MessageFeedback(
+            messageId: id,
+            rating: element["rating"].str(),
+            version: element["version"].str(),
+            category: element["category"].str(),
+            note: element["note"].str()
+        )
+    }
+}
+
 public struct UserQuestionOption: Sendable, Equatable {
     public var label: String
     public var description: String?

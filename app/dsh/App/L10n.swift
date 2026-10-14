@@ -13,6 +13,15 @@ enum L {
 
     static func copy() -> String { en ? "Copy" : "复制" }
     static func copied() -> String { en ? "Copied" : "复制成功" }
+    static func like() -> String { en ? "Good response" : "好的回答" }
+    static func dislike() -> String { en ? "Bad response" : "有问题的回答" }
+    static func undoRating() -> String { en ? "Remove rating" : "取消标记" }
+    static func thanksFeedback() -> String { en ? "Thanks for your feedback" : "感谢你的反馈" }
+    static func branch() -> String { en ? "Branch into a new conversation" : "在新对话中分支" }
+    static func branchUnavailable() -> String {
+        en ? "Available only on the last message of a completed turn" : "仅可从已完成轮次的最后一条消息分支"
+    }
+    static func chatTab() -> String { en ? "Chat" : "对话" }
     static func stop() -> String { en ? "Stop" : "停止" }
     static func newSession() -> String { en ? "New session" : "新会话" }
     static func search() -> String { en ? "Search" : "搜索" }

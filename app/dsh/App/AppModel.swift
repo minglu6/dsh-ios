@@ -19,6 +19,8 @@ struct ChatState {
     var loadingOlder = false
     var todos: [TodoItem] = []
     var planMode = false
+    var steps: [StepRecord] = []
+    var turns: [TurnRecord] = []
 }
 
 struct ModelChoice: Equatable {
@@ -77,6 +79,7 @@ final class AppModel: ObservableObject {
     @Published var sessionMentions: [SessionReference] = []
     @Published var routeStack: [AppRoute] = []
     @Published var showDrawer = false
+    @Published var feedback: [String: MessageFeedback] = [:]
 
     let hostSettings = HostSettings()
     let lan = LanDiscovery()
@@ -286,12 +289,44 @@ final class AppModel: ObservableObject {
     }
 
     func fork(_ session: SessionSummary) {
+        forkSession(sessionId: session.sessionId, atSeq: nil)
+    }
+
+    func forkCurrent(atSeq: Int64?) {
+        guard let sessionId = chat?.sessionId else { return }
+        forkSession(sessionId: sessionId, atSeq: atSeq)
+    }
+
+    func forkSession(sessionId: String, atSeq: Int64?) {
         Task {
             guard let client else { return }
             do {
-                let result = try await client.forkSession(sessionId: session.sessionId)
+                let result = try await client.forkSession(sessionId: sessionId, atSeq: atSeq)
                 if let id = result["sessionId"].str() { openSession(id) }
             } catch { emit(error.localizedDescription) }
+        }
+    }
+
+    func setMessageFeedback(messageId: String, rating: String?) {
+        Task {
+            guard let client, let sessionId = chat?.sessionId else { return }
+            let previous = feedback[messageId]
+            do {
+                let result = try await client.setFeedback(
+                    sessionId: sessionId,
+                    messageId: messageId,
+                    rating: rating,
+                    ifVersion: previous?.version
+                )
+                if rating == nil {
+                    feedback.removeValue(forKey: messageId)
+                } else if let next = MessageFeedback.parse(result) {
+                    feedback[messageId] = next
+                    toast = L.thanksFeedback()
+                }
+            } catch {
+                emit(error.localizedDescription)
+            }
         }
     }
 
@@ -513,6 +548,7 @@ final class AppModel: ObservableObject {
             title: sessions.first { $0.sessionId == sessionId }?.title,
             running: reducer.running
         )
+        feedback = [:]
         unreadIds.remove(sessionId)
     }
 
@@ -536,7 +572,21 @@ final class AppModel: ObservableObject {
         }
         subId = sid
         chat?.loaded = true
+        await loadFeedback(client, sessionId: sessionId)
         await syncCompletionView(client, sessionId: sessionId)
+    }
+
+    private func loadFeedback(_ client: PocketClient, sessionId: String) async {
+        guard ops.contains("feedback.get") else { return }
+        do {
+            let result = try await client.getFeedback(sessionId: sessionId)
+            let items = (result["items"].arr() ?? []).compactMap(MessageFeedback.parse)
+            if chat?.sessionId == sessionId {
+                feedback = Dictionary(uniqueKeysWithValues: items.map { ($0.messageId, $0) })
+            }
+        } catch {
+            // Feedback is decorative; never drop the follow socket.
+        }
     }
 
     /// View confirmation is not connectivity. Failures must not close the WebSocket.
@@ -693,6 +743,8 @@ final class AppModel: ObservableObject {
         state.firstSeq = reducer.firstSeq
         state.todos = reducer.todosSnapshot()
         state.planMode = reducer.planMode
+        state.steps = reducer.stepRecords()
+        state.turns = reducer.turnRecords()
         state.loaded = true
         chat = state
         if let title = state.title {

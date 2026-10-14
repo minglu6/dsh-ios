@@ -1,9 +1,9 @@
 import SwiftUI
 import DSHProtocol
 
-/// Host surfaces that share official desktop semantics. Chat-loop first;
-/// trajectory / PTY / file tree remain module-bounded until the matching
-/// inspector and emulator ports land.
+/// Host surfaces that share official desktop semantics.
+/// Trajectory is the Chat / 轨迹 tab; this panel is only reached if something
+/// still pushes `.panel(.trajectory)` (same ledger, no empty TODO).
 struct HostPanelView: View {
     @ObservedObject var model: AppModel
     let panel: DrawerPanel
@@ -14,7 +14,8 @@ struct HostPanelView: View {
             switch panel {
             case .plugins: PluginsPanel(model: model)
             case .schedule: SchedulePanel(model: model)
-            case .files, .terminal, .trajectory, .jobs, .settings:
+            case .trajectory: TrajectoryView(model: model)
+            case .files, .terminal, .jobs, .settings:
                 Color.clear
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(T.bg)
