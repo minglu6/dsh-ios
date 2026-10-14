@@ -1,0 +1,82 @@
+import SwiftUI
+
+enum Appearance: String, CaseIterable, Codable {
+    case light, dark, system
+}
+
+enum AppLanguage: String, CaseIterable, Codable {
+    case zh, en
+}
+
+enum BusySend: String, CaseIterable, Codable {
+    case queue, steer
+    var mode: String { rawValue }
+}
+
+enum SessionGroupBy: String, Codable { case workspace, workspaceTree, flat }
+enum SessionOrderBy: String, Codable { case manual, updated }
+enum ArchivedFilter: String, Codable { case hide, show, only }
+
+final class ThemeState: ObservableObject {
+    @Published var dark = false
+    var colors: DswColors { dark ? .dark : .light }
+
+    func resolve(appearance: Appearance, systemDark: Bool) {
+        switch appearance {
+        case .dark: dark = true
+        case .light: dark = false
+        case .system: dark = systemDark
+        }
+    }
+}
+
+/// App chrome tokens mapped from desktop `--dsw-alias-*` via [ThemeState].
+enum T {
+    static var colors: DswColors { ThemeStateHolder.shared.colors }
+    static var ink: Color { colors.labelPrimary }
+    static var accent: Color { colors.buttonInfoFill }
+    static var tint: Color { colors.stateBusinessTertiary }
+    static var text2: Color { colors.labelSecondary }
+    static var text3: Color { colors.labelTertiary }
+    static var caption: Color { colors.labelCaption }
+    static var fill: Color { colors.interactiveBgHoverSolid }
+    static var fill2: Color { colors.bgModulePlatform }
+    static var drawer: Color { colors.specificSidebarFill }
+    static var border: Color { colors.borderL2 }
+    static var warnBorder: Color { colors.stateWarnSecondary }
+    static var warnTint: Color { colors.stateWarnTertiary }
+    static var warnText: Color { colors.stateWarnLabel }
+    static var scrim: Color { colors.bgMask1 }
+    static var bluish: Color { colors.labelPrimaryBluish }
+    static var hoverBg: Color { colors.interactiveBgHover }
+    static var ok: Color { colors.stateSuccessPrimary }
+    static var err: Color { colors.stateErrorPrimary }
+    static var bg: Color { colors.bgBase }
+    static var surface: Color { colors.bgLayer1 }
+    static var surface2: Color { colors.bgLayer2 }
+    static var surface3: Color { colors.bgLayer3 }
+    static var link: Color { colors.link }
+    static var bubble: Color { colors.specificBubble }
+    static var primaryButton: Color { colors.buttonPrimaryFill }
+    static var onPrimary: Color { colors.labelPrimaryForeground }
+    static var codeBlock: Color { colors.markdownCodeBlock }
+    static var settingsCard: Color { colors.settingsCardFill }
+    static var settingsCardStroke: Color { colors.settingsCardStroke }
+    static var input: Color { colors.specificLoginInput }
+    static var inputMajor: Color { colors.specificInputMajor }
+    static var borderStrong: Color { colors.borderL4 }
+    static var sidebarActive: Color { colors.specificSidebarNavItemActive }
+    static var sidebarActiveAccent: Color { colors.specificSidebarNavItemActiveAccent }
+}
+
+enum ThemeStateHolder {
+    static let shared = ThemeState()
+}
+
+func resolveDarkAppearance(_ appearance: Appearance, systemDark: Bool) -> Bool {
+    switch appearance {
+    case .dark: return true
+    case .light: return false
+    case .system: return systemDark
+    }
+}

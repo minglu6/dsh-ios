@@ -1,0 +1,723 @@
+import Foundation
+import SwiftUI
+import UIKit
+import DSHProtocol
+
+enum Dot: String {
+    case online, connecting, offline, unauthorized
+}
+
+struct ChatState {
+    var sessionId: String
+    var items: [Item] = []
+    var queuedPrompts: [QueuedPrompt] = []
+    var title: String?
+    var running = false
+    var loaded = false
+    var hasMore = false
+    var firstSeq: Int64 = -1
+    var loadingOlder = false
+    var todos: [TodoItem] = []
+    var planMode = false
+}
+
+struct ModelChoice: Equatable {
+    var provider: String
+    var model: String
+    var name: String
+    var effort: String?
+}
+
+enum DrawerPanel: String, Identifiable {
+    case plugins, schedule, files, terminal, trajectory, jobs, settings
+    var id: String { rawValue }
+}
+
+enum AppRoute: Equatable {
+    case sessions
+    case chat
+    case connections
+    case pair
+    case settings
+    case general
+    case models
+    case diagnostics
+    case panel(DrawerPanel)
+}
+
+@MainActor
+final class AppModel: ObservableObject {
+    static let shared = AppModel()
+    static let appVersion = "0.1.0"
+
+    @Published var profiles: [Profile] = ProfileStore.load()
+    @Published var activeId: String? = ProfileStore.activeId
+    @Published var status: [String: Dot] = [:]
+    @Published var routes: [String: Route] = [:]
+    @Published var sessions: [SessionSummary] = []
+    @Published var workspaces: [WorkspaceView] = []
+    @Published var archivedIds: Set<String> = []
+    @Published var pinnedIds: Set<String> = []
+    @Published var unreadIds: Set<String> = []
+    @Published var chat: ChatState?
+    @Published var approvals: [Approval] = []
+    @Published var userQuestions: [UserQuestion] = []
+    @Published var ops: Set<String> = []
+    @Published var catalog: ModelCatalog?
+    @Published var modelChoice: ModelChoice?
+    @Published var errorMessage: String?
+    @Published var toast: String?
+    @Published var language: AppLanguage = AppPrefs.language
+    @Published var appearance: Appearance = AppPrefs.appearance
+    @Published var busySend: BusySend = AppPrefs.busySend
+    @Published var nearby: [DiscoveredHost] = []
+    @Published var composerText = ""
+    @Published var mentionQuery: String?
+    @Published var fileMentions: [FileReference] = []
+    @Published var sessionMentions: [SessionReference] = []
+    @Published var routeStack: [AppRoute] = []
+    @Published var showDrawer = false
+
+    let hostSettings = HostSettings()
+    let lan = LanDiscovery()
+
+    private var client: PocketClient?
+    private var connectTask: Task<Void, Never>?
+    private var reducer = TranscriptReducer()
+    private var subId: String?
+    private var followEpoch: Int64 = 0
+    private var backoffMs: Int64 = ReconnectBackoffPolicy.reset()
+    private var reconnectWake = false
+
+    var activeProfile: Profile? { profiles.first { $0.id == activeId } }
+    var currentDot: Dot? { activeId.flatMap { status[$0] } }
+    var isOnline: Bool { currentDot == .online }
+
+    private init() {
+        if let id = activeId { connect(profileId: id) }
+        lan.onHosts = { [weak self] hosts in
+            Task { @MainActor in self?.applyDiscovery(hosts) }
+        }
+        lan.start()
+    }
+
+    var currentRoute: AppRoute {
+        if let last = routeStack.last { return last }
+        if chat != nil { return .chat }
+        return .sessions
+    }
+
+    func push(_ route: AppRoute) { routeStack.append(route) }
+    func pop() { if !routeStack.isEmpty { routeStack.removeLast() } }
+
+    func connect(profileId: String) {
+        connectTask?.cancel()
+        client?.close()
+        client = nil
+        hostSettings.clear()
+        followEpoch += 1
+        detachFollow()
+        activeId = profileId
+        ProfileStore.activeId = profileId
+        sessions = []
+        chat = nil
+        approvals = []
+        userQuestions = []
+        ops = []
+        catalog = nil
+        routes[profileId] = nil
+        connectTask = Task { await runConnection(profileId) }
+    }
+
+    func pair(name: String, host: String, port: Int, code: String) async throws {
+        let deviceName = try clipProfileName(name.isEmpty ? host : name)
+        guard let url = websocketURL(host: host, port: port) else {
+            throw PocketError(code: "transport", message: "invalid host:port")
+        }
+        let client = PocketClient(appVersion: Self.appVersion)
+        let hello = try await client.connect(url: url, host: host, auth: .pair(code: code, deviceName: deviceName))
+        if let issue = hello.handshakeVersions().flatMap({
+            VersionCompatibility.evaluate(appVersion: Self.appVersion, handshake: $0)
+        }) {
+            client.close()
+            throw compatibilityError(issue)
+        }
+        guard let token = hello.issuedToken, let deviceId = hello.deviceId else {
+            client.close()
+            throw PocketError(code: "pair", message: L.pairFailed())
+        }
+        let profile = Profile(
+            id: UUID().uuidString,
+            name: deviceName,
+            deviceId: deviceId,
+            host: host,
+            port: port,
+            instanceId: hello.instanceId ?? "",
+            lastUsedAt: Int64(Date().timeIntervalSince1970 * 1000)
+        )
+        try TokenStore.put(profileId: profile.id, token: token)
+        profiles = [profile] + profiles.filter { $0.id != profile.id }
+        ProfileStore.save(profiles)
+        client.close()
+        connect(profileId: profile.id)
+    }
+
+    func pair(link: PairingLink, name: String) async throws {
+        try await pair(name: name, host: link.host, port: link.port, code: link.code)
+    }
+
+    func removeProfile(_ id: String) {
+        if activeId == id {
+            connectTask?.cancel()
+            client?.close()
+            client = nil
+            activeId = nil
+            ProfileStore.activeId = nil
+        }
+        TokenStore.remove(profileId: id)
+        profiles.removeAll { $0.id == id }
+        ProfileStore.save(profiles)
+        status[id] = nil
+        routes[id] = nil
+    }
+
+    func openSession(_ sessionId: String) {
+        initializeChat(sessionId)
+        showDrawer = false
+        Task {
+            guard let client else { return }
+            do {
+                try await refollow(client, sessionId: sessionId, afterSeq: nil)
+            } catch is CancellationError {
+            } catch {
+                if chat?.sessionId == sessionId {
+                    emit(error.localizedDescription)
+                    chat?.loaded = true
+                }
+            }
+        }
+    }
+
+    func createAndOpenSession() {
+        Task {
+            guard let client else { return }
+            do {
+                let id = try await client.createSession()
+                openSession(id)
+            } catch {
+                emit(error.localizedDescription)
+            }
+        }
+    }
+
+    func sendCurrent() {
+        let text = composerText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, let chat, let client else { return }
+        composerText = ""
+        Task { await sendPrompt(client, chat: chat, text: text) }
+    }
+
+    func stopRun() {
+        Task {
+            guard let client, let id = chat?.sessionId else { return }
+            do { _ = try await client.cancel(sessionId: id) }
+            catch { emit(error.localizedDescription) }
+        }
+    }
+
+    func answer(_ approval: Approval, outcome: String) {
+        Task {
+            guard let client else { return }
+            do { try await client.answerApproval(approvalId: approval.approvalId, outcome: outcome) }
+            catch { emit(error.localizedDescription) }
+        }
+    }
+
+    func loadOlderHistory() {
+        Task {
+            guard var state = chat, let client else { return }
+            if !HistoryPagingPolicy.canLoadOlder(hasMore: state.hasMore, loadingOlder: state.loadingOlder, firstSeq: state.firstSeq) {
+                return
+            }
+            let epoch = followEpoch
+            let target = reducer
+            state.loadingOlder = true
+            chat = state
+            do {
+                let req = HistoryPagingPolicy.pageRequest(cursor: reducer.cursor, firstSeq: state.firstSeq)
+                let page = try await client.historyPage(
+                    sessionId: state.sessionId,
+                    throughSeq: req.throughSeq,
+                    beforeSeq: req.beforeSeq,
+                    maxMessages: req.maxMessages
+                )
+                guard followEpoch == epoch, reducer === target else { return }
+                _ = reducer.prepend(records: page["records"], pageHasMore: page["hasMore"].bool() ?? false)
+                publishChat()
+                chat?.loadingOlder = false
+            } catch {
+                if followEpoch == epoch {
+                    emit(error.localizedDescription)
+                    chat?.loadingOlder = false
+                }
+            }
+        }
+    }
+
+    func pin(_ session: SessionSummary) {
+        Task {
+            guard let client else { return }
+            do {
+                if pinnedIds.contains(session.sessionId) {
+                    try await client.unpinSession(session.sessionId)
+                } else {
+                    try await client.pinSession(session.sessionId)
+                }
+            } catch { emit(error.localizedDescription) }
+        }
+    }
+
+    func archive(_ session: SessionSummary) {
+        Task {
+            guard let client else { return }
+            do { try await client.archiveSession(session.sessionId) }
+            catch { emit(error.localizedDescription) }
+        }
+    }
+
+    func fork(_ session: SessionSummary) {
+        Task {
+            guard let client else { return }
+            do {
+                let result = try await client.forkSession(sessionId: session.sessionId)
+                if let id = result["sessionId"].str() { openSession(id) }
+            } catch { emit(error.localizedDescription) }
+        }
+    }
+
+    func selectModel(_ info: ModelInfo, effort: String?) {
+        Task {
+            guard let client, let sessionId = chat?.sessionId else { return }
+            do {
+                try await client.selectModel(sessionId: sessionId, provider: info.provider, model: info.id, effort: effort)
+                modelChoice = ModelChoice(provider: info.provider, model: info.id, name: info.name, effort: effort)
+            } catch {
+                emit(error.localizedDescription)
+            }
+        }
+    }
+
+    func fetchMentions(query: String) {
+        Task {
+            guard let client, let sessionId = chat?.sessionId else { return }
+            async let files = client.call("references.files", args: jsonObject([
+                "sessionId": .string(sessionId),
+                "query": .string(query),
+            ]))
+            async let sessions = client.call("references.sessions", args: jsonObject([
+                "sessionId": .string(sessionId),
+                "query": .string(query),
+            ]))
+            do {
+                let fileResult = try await files
+                let sessionResult = try await sessions
+                fileMentions = (fileResult["items"].arr() ?? []).compactMap(FileReference.parse)
+                sessionMentions = (sessionResult["items"].arr() ?? []).compactMap(SessionReference.parse)
+            } catch {
+                fileMentions = []
+                sessionMentions = []
+            }
+        }
+    }
+
+    func call(_ op: String, args: JSONValue = .object([:])) async throws -> JSONValue {
+        guard let client else { throw PocketError(code: "transport", message: "not connected") }
+        return try await client.call(op, args: args)
+    }
+
+    func copyDiagnostics() async -> String? {
+        guard let profile = activeProfile, !profile.needsRepair else { return nil }
+        guard let url = URL(string: "http://\(profile.host):\(profile.port)/diagnostics") else { return nil }
+        do {
+            let (data, response) = try await URLSession.shared.data(from: url)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+                throw PocketError(code: "diagnostics", message: L.diagnosticsUnavailable())
+            }
+            let text = String(data: data, encoding: .utf8) ?? ""
+            UIPasteboard.general.string = text
+            toast = L.diagnosticsCopied()
+            return text
+        } catch {
+            emit(error.localizedDescription)
+            return nil
+        }
+    }
+
+    func handleIncomingURL(_ url: URL) {
+        if let link = PairingUriPolicy.parse(url.absoluteString) {
+            push(.pair)
+            pendingPair = link
+        }
+    }
+
+    @Published var pendingPair: PairingLink?
+
+    func setLanguage(_ value: AppLanguage) {
+        language = value
+        AppPrefs.language = value
+        if hostSettings.ready {
+            hostSettings.write(.language, value: .string(value == .en ? "en" : "zh"))
+        }
+    }
+
+    func setAppearance(_ value: Appearance) {
+        appearance = value
+        AppPrefs.appearance = value
+        if hostSettings.ready {
+            let mapped: String
+            switch value {
+            case .light: mapped = "light"
+            case .dark: mapped = "dark"
+            case .system: mapped = "system"
+            }
+            hostSettings.write(.appearance, value: .string(mapped))
+        }
+    }
+
+    private func runConnection(_ profileId: String) async {
+        backoffMs = ReconnectBackoffPolicy.reset()
+        while !Task.isCancelled {
+            guard let profile = profiles.first(where: { $0.id == profileId }) else { return }
+            if profile.needsRepair {
+                status[profile.id] = .unauthorized
+                return
+            }
+            guard let token = TokenStore.get(profileId: profile.id) else {
+                status[profile.id] = .unauthorized
+                return
+            }
+            status[profile.id] = .connecting
+            let client = PocketClient(appVersion: Self.appVersion)
+            client.setEventHandler { [weak self] event in
+                Task { @MainActor in self?.onPush(event) }
+            }
+            do {
+                guard let url = websocketURL(host: profile.host, port: profile.port) else {
+                    status[profile.id] = .offline
+                    emit("地址无效，请重新配对（需要 host:port）")
+                    return
+                }
+                let hello = try await client.connect(url: url, host: profile.host, auth: .token(token))
+                if let issue = hello.handshakeVersions().flatMap({
+                    VersionCompatibility.evaluate(appVersion: Self.appVersion, handshake: $0)
+                }) {
+                    emit(compatibilityError(issue).message)
+                }
+                self.client = client
+                ops = hello.ops
+                routes[profile.id] = client.route ?? hello.route
+                status[profile.id] = .online
+                backoffMs = ReconnectBackoffPolicy.reset()
+                if let instance = hello.instanceId, !instance.isEmpty, instance != profile.instanceId {
+                    profiles = profiles.map { row in
+                        row.id == profile.id ? Profile(
+                            id: row.id, name: row.name, deviceId: row.deviceId,
+                            host: row.host, port: row.port, instanceId: instance, lastUsedAt: row.lastUsedAt
+                        ) : row
+                    }
+                    ProfileStore.save(profiles)
+                }
+                if ops.contains("plugins.settingsDescribe") && ops.contains("plugins.settingsMutate") {
+                    hostSettings.bind(
+                        describe: { try await client.call("plugins.settingsDescribe") },
+                        mutate: { ns, ops, rev in
+                            try await client.call("plugins.settingsMutate", args: jsonObject([
+                                "ns": .string(ns),
+                                "ops": ops,
+                                "expectedRevision": .number(Double(rev)),
+                            ]))
+                        }
+                    )
+                }
+                try await refreshAll(client)
+                while !Task.isCancelled && client.state == .open {
+                    try await Task.sleep(nanoseconds: 250_000_000)
+                }
+                if client.state != .open {
+                    throw PocketError(code: "transport", message: client.closeReason ?? "closed")
+                }
+            } catch is CancellationError {
+                client.close()
+                return
+            } catch {
+                client.close()
+            }
+            self.client = nil
+            hostSettings.clear()
+            followEpoch += 1
+            detachFollow()
+            ops = []
+            let reason = client.closeReason ?? ""
+            if reason.contains("4401") || reason.contains("4403") || reason.contains("auth/") {
+                status[profile.id] = .unauthorized
+                return
+            }
+            status[profile.id] = .offline
+            routes[profileId] = nil
+            let wait = backoffMs
+            backoffMs = ReconnectBackoffPolicy.next(backoffMs)
+            let ns = UInt64(wait) * 1_000_000
+            var slept: UInt64 = 0
+            while slept < ns && !Task.isCancelled && !reconnectWake {
+                let step: UInt64 = 200_000_000
+                try? await Task.sleep(nanoseconds: step)
+                slept += step
+            }
+            reconnectWake = false
+        }
+    }
+
+    private func refreshAll(_ client: PocketClient) async throws {
+        if ops.contains("completion.state") {
+            if let snapshot = try? await client.call("completion.state") {
+                applyCompletion(snapshot)
+            }
+        }
+        if let list = try? await client.listSessions() {
+            sessions = list.sorted { $0.updatedAt > $1.updatedAt }
+        }
+        if ops.contains("approval.pending") {
+            if let pending = try? await client.call("approval.pending") {
+                approvals = (pending["approvals"].arr() ?? []).map(Approval.parse)
+            }
+        }
+        if let catalog = try? await client.modelCatalog() {
+            self.catalog = catalog
+        }
+        if ops.contains("workspace.state"), let state = try? await client.call("workspace.state") {
+            applyWorkspaceState(state)
+        }
+        if let sessionId = chat?.sessionId {
+            try await refollow(client, sessionId: sessionId, afterSeq: reducer.cursor >= 0 ? reducer.cursor : nil)
+        }
+    }
+
+    private func initializeChat(_ sessionId: String) {
+        followEpoch += 1
+        detachFollow()
+        reducer = TranscriptReducer()
+        reducer.setRunning(sessions.first { $0.sessionId == sessionId }?.running ?? false)
+        chat = ChatState(
+            sessionId: sessionId,
+            items: reducer.items(),
+            running: reducer.running,
+            title: sessions.first { $0.sessionId == sessionId }?.title
+        )
+        unreadIds.remove(sessionId)
+    }
+
+    private func detachFollow() {
+        subId = nil
+    }
+
+    private func refollow(_ client: PocketClient, sessionId: String, afterSeq: Int64?) async throws {
+        followEpoch += 1
+        let epoch = followEpoch
+        let old = subId
+        detachFollow()
+        if let old {
+            try? await client.unfollow(old)
+        }
+        guard self.client === client, chat?.sessionId == sessionId, followEpoch == epoch else { return }
+        let sid = try await client.follow(sessionId: sessionId, afterSeq: afterSeq)
+        guard self.client === client, chat?.sessionId == sessionId, followEpoch == epoch else {
+            try? await client.unfollow(sid)
+            return
+        }
+        subId = sid
+        chat?.loaded = true
+        if ops.contains("completion.view") {
+            if let snapshot = try? await client.call("completion.view", args: jsonObject(["sessionId": .string(sessionId)])) {
+                applyCompletion(snapshot)
+            }
+        }
+    }
+
+    private func sendPrompt(_ client: PocketClient, chat: ChatState, text: String) async {
+        let target = reducer
+        let requestId = UUID().uuidString
+        let mode = chat.running ? busySend.mode : "queue"
+        target.echo(text: text, requestId: requestId, mode: mode)
+        publishChat()
+        do {
+            _ = try await client.prompt(sessionId: chat.sessionId, text: text, mode: mode, requestId: requestId)
+        } catch {
+            target.discardEcho(requestId)
+            publishChat()
+            emit(error.localizedDescription)
+        }
+    }
+
+    private func onPush(_ m: JSONValue) {
+        switch m["ev"].str() {
+        case "ops.changed":
+            ops = Set((m["ops"].arr() ?? []).compactMap { $0.str() })
+        case "follow":
+            if m["subId"].str() == subId {
+                _ = reducer.apply(m["frame"])
+                publishChat()
+            }
+        case "follow.end":
+            if m["subId"].str() == subId, let client, let sessionId = chat?.sessionId {
+                Task { try? await refollow(client, sessionId: sessionId, afterSeq: reducer.cursor >= 0 ? reducer.cursor : nil) }
+            }
+        case "follow.error":
+            if m["subId"].str() == subId {
+                subId = nil
+                emit(m["error"]["message"].str() ?? m["error"]["code"].str() ?? "follow error")
+                chat?.loaded = true
+            }
+        case "session":
+            switch m["kind"].str() {
+            case "added":
+                if let s = SessionSummary.parse(m["summary"]) {
+                    sessions = [s] + sessions.filter { $0.sessionId != s.sessionId }
+                }
+            case "removed":
+                sessions.removeAll { $0.sessionId == m["sessionId"].str() }
+            case "status":
+                let id = m["sessionId"].str()
+                let running = m["running"].bool() ?? false
+                sessions = sessions.map { $0.sessionId == id ? mutated($0, running: running) : $0 }
+                if chat?.sessionId == id {
+                    reducer.setRunning(running)
+                    publishChat()
+                }
+            case "activity":
+                let id = m["sessionId"].str()
+                let t = m["updatedAt"].long() ?? 0
+                sessions = sessions.map { row in
+                    var next = row
+                    if next.sessionId == id { next.updatedAt = t }
+                    return next
+                }.sorted { $0.updatedAt > $1.updatedAt }
+            case "error":
+                if let message = m["message"].str() { emit(message) }
+            default:
+                break
+            }
+        case "approval":
+            let a = Approval.parse(m)
+            approvals = approvals.filter { $0.approvalId != a.approvalId } + [a]
+        case "approval.closed":
+            approvals.removeAll { $0.approvalId == m["approvalId"].str() }
+        case "user-question":
+            if let q = UserQuestion.parse(m) {
+                userQuestions = userQuestions.filter { $0.questionId != q.questionId } + [q]
+            }
+        case "user-question.closed":
+            userQuestions.removeAll { $0.questionId == m["questionId"].str() }
+        case "workspace.changed":
+            applyWorkspaceFrame(m["frame"])
+        case "settings.changed":
+            hostSettings.refresh()
+        case "completion":
+            applyCompletion(m)
+        default:
+            break
+        }
+    }
+
+    private func mutated(_ session: SessionSummary, running: Bool) -> SessionSummary {
+        var next = session
+        next.running = running
+        return next
+    }
+
+    private func applyWorkspaceState(_ state: JSONValue) {
+        workspaces = (state["items"].arr() ?? state["workspaces"].arr() ?? []).compactMap(WorkspaceView.parse)
+        archivedIds = Set((state["archivedSessionIds"].arr() ?? []).compactMap { $0.str() })
+        pinnedIds = Set((state["pinnedSessionIds"].arr() ?? []).compactMap { $0.str() })
+    }
+
+    private func applyWorkspaceFrame(_ frame: JSONValue) {
+        switch frame["type"].str() {
+        case "baseline":
+            applyWorkspaceState(frame["value"])
+        case "upsert":
+            if let row = WorkspaceView.parse(frame["workspace"]) {
+                if workspaces.contains(where: { $0.workspaceId == row.workspaceId }) {
+                    workspaces = workspaces.map { $0.workspaceId == row.workspaceId ? row : $0 }
+                } else {
+                    workspaces.append(row)
+                }
+            }
+        case "remove":
+            workspaces.removeAll { $0.workspaceId == frame["workspaceId"].str() }
+        case "archived":
+            archivedIds = Set((frame["archivedSessionIds"].arr() ?? []).compactMap { $0.str() })
+        case "pinned":
+            pinnedIds = Set((frame["pinnedSessionIds"].arr() ?? []).compactMap { $0.str() })
+        default:
+            break
+        }
+    }
+
+    private func applyCompletion(_ snapshot: JSONValue) {
+        unreadIds = Set((snapshot["unreadIds"].arr() ?? []).compactMap { $0.str() })
+    }
+
+    private func publishChat() {
+        guard var state = chat else { return }
+        state.items = reducer.items()
+        state.queuedPrompts = reducer.queueMessages()
+        state.running = reducer.running
+        state.title = reducer.title ?? state.title
+        state.hasMore = reducer.hasMore
+        state.firstSeq = reducer.firstSeq
+        state.todos = reducer.todosSnapshot()
+        state.planMode = reducer.planMode
+        state.loaded = true
+        chat = state
+        if let title = state.title {
+            sessions = sessions.map { row in
+                var next = row
+                if next.sessionId == state.sessionId { next.title = title }
+                return next
+            }
+        }
+    }
+
+    private func applyDiscovery(_ hosts: [DiscoveredHost]) {
+        nearby = unpairedNearby(hosts)
+        for host in hosts {
+            if let index = profiles.firstIndex(where: { !$0.instanceId.isEmpty && $0.instanceId == host.instanceId }) {
+                if profiles[index].host != host.host || profiles[index].port != host.port {
+                    profiles[index].host = host.host
+                    profiles[index].port = host.port
+                    ProfileStore.save(profiles)
+                }
+            }
+        }
+    }
+
+    private func unpairedNearby(_ found: [DiscoveredHost]) -> [DiscoveredHost] {
+        found.filter { disc in
+            profiles.allSatisfy { p in
+                !((!p.instanceId.isEmpty && p.instanceId == disc.instanceId) || (!p.needsRepair && p.host == disc.host && p.port == disc.port))
+            }
+        }
+    }
+
+    private func emit(_ message: String) {
+        errorMessage = message
+    }
+
+    private func compatibilityError(_ issue: CompatibilityIssue) -> PocketError {
+        switch issue.kind {
+        case .appTooOld: return PocketError(code: "compat", message: L.appTooOld(issue.requiredVersion))
+        case .pluginTooOld: return PocketError(code: "compat", message: L.pluginTooOld(issue.requiredVersion))
+        case .protocolUnsupported: return PocketError(code: "compat", message: L.protocolUnsupported())
+        }
+    }
+}

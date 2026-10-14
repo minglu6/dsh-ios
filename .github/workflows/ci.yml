@@ -1,0 +1,62 @@
+name: ci
+on:
+  push: { branches: [main] }
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  protocol:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Protocol tests
+        run: swift test --package-path protocol
+
+  ios:
+    needs: [protocol]
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+      - name: Build unsigned IPA
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          xcodebuild \
+            -project app/dsh.xcodeproj \
+            -scheme dsh \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath derived \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            DEVELOPMENT_TEAM="" \
+            build
+          APP="derived/Build/Products/Release-iphoneos/dsh.app"
+          test -d "$APP"
+          rm -rf Payload dsh-ios.ipa
+          mkdir Payload
+          ditto "$APP" Payload/dsh.app
+          zip -qr dsh-ios.ipa Payload
+          ls -lh dsh-ios.ipa
+          unzip -l dsh-ios.ipa | head
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dsh-ios
+          path: dsh-ios.ipa
+      - name: Publish rolling release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git tag -f dsh-ios-latest
+          git push -f origin dsh-ios-latest
+          gh release view dsh-ios-latest >/dev/null 2>&1 || gh release create dsh-ios-latest --prerelease --title "dsh-ios (latest)" --notes "Rolling build."
+          notes="Rolling unsigned IPA @ ${GITHUB_SHA::7}. Sign with 轻松签 (or any sideload signer) before install. Phone talks to dsh-plugin-pocket over LAN/Tailscale WebSocket — install the Host plugin from https://github.com/minglu6/dsh-android."
+          gh release edit dsh-ios-latest --notes "$notes"
+          gh release upload dsh-ios-latest dsh-ios.ipa --clobber
