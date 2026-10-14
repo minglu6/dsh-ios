@@ -53,43 +53,53 @@ public func transportPlan(host: String?, port: Int) -> [URL] {
 }
 
 final class WebSocketOpenWaiter: NSObject, URLSessionWebSocketDelegate, @unchecked Sendable {
-    private let lock = NSLock()
+    private let mutex = Mutex()
     private var continuation: CheckedContinuation<Void, Error>?
     private var opened = false
     private var failure: Error?
 
     func wait() async throws {
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
-            lock.lock()
-            if opened {
-                lock.unlock()
-                cont.resume()
-            } else if let failure {
-                lock.unlock()
-                cont.resume(throwing: failure)
-            } else {
+            enum Outcome {
+                case alreadyOpen
+                case failed(Error)
+                case waiting
+            }
+            let outcome: Outcome = mutex.withLock {
+                if opened { return .alreadyOpen }
+                if let failure { return .failed(failure) }
                 continuation = cont
-                lock.unlock()
+                return .waiting
+            }
+            switch outcome {
+            case .alreadyOpen:
+                cont.resume()
+            case .failed(let error):
+                cont.resume(throwing: error)
+            case .waiting:
+                break
             }
         }
     }
 
     func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol protocol: String?) {
-        lock.lock()
-        opened = true
-        let cont = continuation
-        continuation = nil
-        lock.unlock()
+        let cont: CheckedContinuation<Void, Error>? = mutex.withLock {
+            opened = true
+            let pending = continuation
+            continuation = nil
+            return pending
+        }
         cont?.resume()
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         guard let error else { return }
-        lock.lock()
-        failure = error
-        let cont = continuation
-        continuation = nil
-        lock.unlock()
+        let cont: CheckedContinuation<Void, Error>? = mutex.withLock {
+            failure = error
+            let pending = continuation
+            continuation = nil
+            return pending
+        }
         cont?.resume(throwing: PocketError(code: "transport", message: error.localizedDescription))
     }
 }
@@ -99,7 +109,7 @@ final class URLSessionFrameTransport: FrameTransport {
     private let task: URLSessionWebSocketTask
     private let session: URLSession
     private let waiter: WebSocketOpenWaiter
-    private let lock = NSLock()
+    private let mutex = Mutex()
     private var closed = false
     private(set) var closeReason: String?
 
@@ -111,10 +121,7 @@ final class URLSessionFrameTransport: FrameTransport {
     }
 
     func send(_ text: String) async throws {
-        lock.lock()
-        let isClosed = closed
-        lock.unlock()
-        if isClosed { throw PocketError(code: "transport", message: "not connected") }
+        if snapshotClosed() { throw PocketError(code: "transport", message: "not connected") }
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
             task.send(.string(text)) { error in
                 if let error {
@@ -146,18 +153,22 @@ final class URLSessionFrameTransport: FrameTransport {
         finish(reason: reason)
     }
 
+    private func snapshotClosed() -> Bool {
+        mutex.withLock { closed }
+    }
+
     private func finish(reason: String?) {
-        lock.lock()
-        defer { lock.unlock() }
-        if closed { return }
-        closed = true
-        closeReason = reason
-        if reason == nil {
-            task.cancel(with: .goingAway, reason: Data("bye".utf8))
-        } else {
-            task.cancel(with: .abnormalClosure, reason: reason?.data(using: .utf8))
+        mutex.withLock {
+            if closed { return }
+            closed = true
+            closeReason = reason
+            if reason == nil {
+                task.cancel(with: .goingAway, reason: Data("bye".utf8))
+            } else {
+                task.cancel(with: .abnormalClosure, reason: reason?.data(using: .utf8))
+            }
+            session.finishTasksAndInvalidate()
         }
-        session.finishTasksAndInvalidate()
     }
 }
 

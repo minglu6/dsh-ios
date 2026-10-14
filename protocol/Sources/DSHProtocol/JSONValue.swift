@@ -96,10 +96,6 @@ public enum JSONValue: Sendable, Equatable, CustomStringConvertible {
         return data.flatMap { String(data: $0, encoding: .utf8) }
     }
 
-    public static func object(_ pairs: [String: JSONValue]) -> JSONValue {
-        .object(pairs)
-    }
-
     public static func from(_ raw: Any) -> JSONValue {
         switch raw {
         case let dictionary as [String: Any]:

@@ -12,7 +12,7 @@ public final class PocketClient: @unchecked Sendable {
     public private(set) var closeReason: String?
     public private(set) var route: Route?
 
-    private let lock = NSLock()
+    private let mutex = Mutex()
     private var nextId: Int64 = 1
     private var pending: [Int64: CheckedContinuation<JSONValue, Error>] = [:]
     private var transport: URLSessionFrameTransport?
@@ -26,11 +26,11 @@ public final class PocketClient: @unchecked Sendable {
     }
 
     public func setEventHandler(_ handler: (@Sendable (JSONValue) -> Void)?) {
-        lock.lock(); eventHandler = handler; lock.unlock()
+        mutex.withLock { eventHandler = handler }
     }
 
     public func setStateHandler(_ handler: (@Sendable (State) -> Void)?) {
-        lock.lock(); stateHandler = handler; lock.unlock()
+        mutex.withLock { stateHandler = handler }
     }
 
     public func connect(url: URL, host: String, auth: Auth, timeoutMs: Int64 = 120_000) async throws -> HelloResult {
@@ -205,10 +205,10 @@ public final class PocketClient: @unchecked Sendable {
     }
 
     public func close() {
-        lock.lock()
-        closeLocked()
-        if state != .idle { applyStateLocked(.closed) }
-        lock.unlock()
+        mutex.withLock {
+            closeLocked()
+            if state != .idle { applyStateLocked(.closed) }
+        }
         notifyState(.closed)
     }
 
@@ -233,40 +233,38 @@ public final class PocketClient: @unchecked Sendable {
     }
 
     private func beginConnect() -> Int64 {
-        lock.lock()
-        closeLocked()
-        applyStateLocked(.connecting)
-        closeReason = nil
-        let generation = self.generation
-        lock.unlock()
+        let generation: Int64 = mutex.withLock {
+            closeLocked()
+            applyStateLocked(.connecting)
+            closeReason = nil
+            return self.generation
+        }
         notifyState(.connecting)
         return generation
     }
 
     private func attach(_ transport: URLSessionFrameTransport, attempt: Int64) throws {
-        lock.lock()
-        defer { lock.unlock() }
-        if attempt != generation {
-            transport.close()
-            throw PocketError(code: "transport", message: "connection superseded")
-        }
-        self.transport = transport
-        route = transport.route
-        pump = Task { [weak self] in
-            await self?.pumpIncoming(attempt: attempt, transport: transport)
+        try mutex.withLock {
+            if attempt != generation {
+                transport.close()
+                throw PocketError(code: "transport", message: "connection superseded")
+            }
+            self.transport = transport
+            route = transport.route
+            pump = Task { [weak self] in
+                await self?.pumpIncoming(attempt: attempt, transport: transport)
+            }
         }
     }
 
     private func markOpen(attempt: Int64, transport: URLSessionFrameTransport) throws {
-        lock.lock()
-        if attempt != generation || self.transport !== transport {
-            let reason = closeReason ?? "connection superseded"
-            lock.unlock()
-            throw PocketError(code: "transport", message: reason)
+        try mutex.withLock {
+            if attempt != generation || self.transport !== transport {
+                throw PocketError(code: "transport", message: closeReason ?? "connection superseded")
+            }
+            applyStateLocked(.open)
+            route = transport.route
         }
-        applyStateLocked(.open)
-        route = transport.route
-        lock.unlock()
         notifyState(.open)
     }
 
@@ -276,21 +274,19 @@ public final class PocketClient: @unchecked Sendable {
         timeoutMs: Int64,
         expectedGeneration: Int64?
     ) async throws -> JSONValue {
-        let id: Int64
-        let transport: URLSessionFrameTransport
-        lock.lock()
-        if let expectedGeneration, expectedGeneration != generation {
-            lock.unlock()
-            throw PocketError(code: "transport", message: "connection superseded")
+        let prepared: (id: Int64, transport: URLSessionFrameTransport) = try mutex.withLock {
+            if let expectedGeneration, expectedGeneration != generation {
+                throw PocketError(code: "transport", message: "connection superseded")
+            }
+            guard let current = self.transport else {
+                throw PocketError(code: "transport", message: "not connected")
+            }
+            let id = nextId
+            nextId += 1
+            return (id, current)
         }
-        guard let current = self.transport else {
-            lock.unlock()
-            throw PocketError(code: "transport", message: "not connected")
-        }
-        id = nextId
-        nextId += 1
-        transport = current
-        lock.unlock()
+        let id = prepared.id
+        let transport = prepared.transport
         let frame = jsonObject([
             "id": .number(Double(id)),
             "op": .string(op),
@@ -299,24 +295,18 @@ public final class PocketClient: @unchecked Sendable {
         do {
             let reply: JSONValue = try await withTimeout(ms: timeoutMs) {
                 try await withCheckedThrowingContinuation { continuation in
-                    self.lock.lock()
-                    self.pending[id] = continuation
-                    self.lock.unlock()
+                    self.mutex.withLock { self.pending[id] = continuation }
                     Task {
                         do {
                             try await transport.send(try frame.encodeString())
                         } catch {
-                            self.lock.lock()
-                            let waiter = self.pending.removeValue(forKey: id)
-                            self.lock.unlock()
+                            let waiter = self.mutex.withLock { self.pending.removeValue(forKey: id) }
                             waiter?.resume(throwing: PocketError(code: "transport", message: error.localizedDescription))
                         }
                     }
                 }
             }
-            lock.lock()
-            pending.removeValue(forKey: id)
-            lock.unlock()
+            mutex.withLock { pending.removeValue(forKey: id) }
             if reply["ok"].bool() == true {
                 return reply.obj()?["result"] ?? .null
             }
@@ -326,9 +316,7 @@ public final class PocketClient: @unchecked Sendable {
                 details: reply["error"]["details"].isNull ? nil : reply["error"]["details"]
             )
         } catch {
-            lock.lock()
-            pending.removeValue(forKey: id)
-            lock.unlock()
+            mutex.withLock { pending.removeValue(forKey: id) }
             throw error
         }
     }
@@ -342,7 +330,8 @@ public final class PocketClient: @unchecked Sendable {
                     try? await transport.send(#"{"op":"pong"}"#)
                 }
                 if let event = outcome.event {
-                    eventHandler?(event)
+                    let handler = mutex.withLock { eventHandler }
+                    handler?(event)
                 }
             }
         } catch {
@@ -353,30 +342,44 @@ public final class PocketClient: @unchecked Sendable {
     }
 
     private func handleFrame(_ text: String, attempt: Int64) -> (pong: Bool, event: JSONValue?) {
-        lock.lock()
-        defer { lock.unlock() }
-        if attempt != generation { return (false, nil) }
-        guard let parsed = try? JSONValue.parse(text) else { return (false, nil) }
-        if let id = parsed["id"].long(), let waiter = pending.removeValue(forKey: id) {
+        enum Outcome {
+            case ignore
+            case reply(CheckedContinuation<JSONValue, Error>, JSONValue)
+            case pong
+            case event(JSONValue)
+        }
+        let outcome: Outcome = mutex.withLock {
+            if attempt != generation { return .ignore }
+            guard let parsed = try? JSONValue.parse(text) else { return .ignore }
+            if let id = parsed["id"].long(), let waiter = pending.removeValue(forKey: id) {
+                return .reply(waiter, parsed)
+            }
+            if parsed["ev"].str() == "ping" { return .pong }
+            if parsed["ev"].isNull { return .ignore }
+            return .event(parsed)
+        }
+        switch outcome {
+        case .ignore:
+            return (false, nil)
+        case .reply(let waiter, let parsed):
             waiter.resume(returning: parsed)
             return (false, nil)
+        case .pong:
+            return (true, nil)
+        case .event(let parsed):
+            return (false, parsed)
         }
-        if parsed["ev"].str() == "ping" { return (true, nil) }
-        if parsed["ev"].isNull { return (false, nil) }
-        return (false, parsed)
     }
 
     private func fail(_ attempt: Int64, _ reason: String) {
-        lock.lock()
-        if attempt != generation {
-            lock.unlock()
-            return
+        let shouldNotify = mutex.withLock { () -> Bool in
+            if attempt != generation { return false }
+            closeReason = reason
+            closeLocked()
+            applyStateLocked(.closed)
+            return true
         }
-        closeReason = reason
-        closeLocked()
-        applyStateLocked(.closed)
-        lock.unlock()
-        notifyState(.closed)
+        if shouldNotify { notifyState(.closed) }
     }
 
     private func closeLocked() {
@@ -396,6 +399,7 @@ public final class PocketClient: @unchecked Sendable {
     }
 
     private func notifyState(_ next: State) {
-        stateHandler?(next)
+        let handler = mutex.withLock { stateHandler }
+        handler?(next)
     }
 }

@@ -6,7 +6,7 @@ import DSHProtocol
 final class LanDiscovery {
     var onHosts: (([DiscoveredHost]) -> Void)?
     private var browser: NWBrowser?
-    private let lock = NSLock()
+    private let queue = DispatchQueue(label: "dev.dsh.pocket.ios.mdns")
     private var found: [String: DiscoveredHost] = [:]
 
     func start() {
@@ -22,7 +22,7 @@ final class LanDiscovery {
             }
         }
         self.browser = browser
-        browser.start(queue: .global(qos: .utility))
+        browser.start(queue: queue)
     }
 
     func stop() {
@@ -48,10 +48,7 @@ final class LanDiscovery {
             let discovered = DiscoveredHost(instanceId: instanceId, host: host, port: port, deviceName: deviceName)
             next[discovered.id] = discovered
         }
-        lock.lock()
         found = next
-        let hosts = Array(next.values)
-        lock.unlock()
-        onHosts?(hosts)
+        onHosts?(Array(next.values))
     }
 }

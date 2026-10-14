@@ -51,10 +51,8 @@ public enum VersionCompatibility {
         guard let leftParts = parse(left) else { return -1 }
         guard let rightParts = parse(right) else { return 1 }
         for index in 0..<3 {
-            let compared = leftParts[index].compare(rightParts[index])
-            if compared != .orderedSame {
-                return compared == .orderedAscending ? -1 : 1
-            }
+            if leftParts[index] < rightParts[index] { return -1 }
+            if leftParts[index] > rightParts[index] { return 1 }
         }
         return 0
     }

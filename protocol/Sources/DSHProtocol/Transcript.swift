@@ -305,13 +305,14 @@ public final class TranscriptReducer {
         if filtered.isEmpty { return false }
         let prior = TranscriptReducer()
         let maxSeq = filtered.compactMap { $0["event"]["seq"].long() }.max() ?? 0
-        _ = prior.apply(jsonObject([
+        let snapshot: JSONValue = .object([
             "type": .string("snapshot"),
             "cursor": .number(Double(maxSeq)),
             "hasMore": .bool(false),
             "records": .array(filtered),
-            "projections": .object([:]),
-        ]))
+            "projections": .object([String: JSONValue]()),
+        ])
+        _ = prior.apply(snapshot)
         let older = prior.items()
         if !older.isEmpty {
             committed.insert(contentsOf: older, at: 0)
@@ -557,7 +558,6 @@ public final class TranscriptReducer {
             steps += 1
             let matching = matchingAttempt(e)
             let ownerTurn = data["turn"].int() ?? openTurn
-            let turn = ownerTurn ?? turns
             let step = data["step"].int() ?? openStep ?? steps
             settleAttempt(e)
             let messageTime = e["time"].long()
