@@ -38,6 +38,12 @@ struct HostUiView: View {
         session = nil
         error = nil
         loading = true
+        var ticket: String?
+        defer {
+            if let ticket, let client = model.clientOrNull() {
+                Task { _ = try? await client.uiClose(ticket: ticket) }
+            }
+        }
         guard model.isOnline, let profile = model.activeProfile, let client = model.clientOrNull() else {
             error = L.t("远程主机未连接，请连接后重试。", "Remote host disconnected; reconnect and retry.")
             loading = false
@@ -50,7 +56,8 @@ struct HostUiView: View {
         }
         do {
             let grant = try await client.uiOpen(section: section)
-            let ticket = try grant["ticket"].requiredString("ticket")
+            let issued = try grant["ticket"].requiredString("ticket")
+            ticket = issued
             let origin = HostUiOrigin(scheme: "http", host: profile.host.trimmingCharacters(in: CharacterSet(charactersIn: "[]")), port: profile.port)
             let path = grant["path"].str().flatMap { $0.isEmpty ? nil : $0 } ?? "/pocket-ui/open"
             let exchanged = try await Task.detached {
@@ -58,12 +65,17 @@ struct HostUiView: View {
                     http: URLSessionHostUiHTTP(),
                     origin: origin,
                     path: path,
-                    ticket: ticket
+                    ticket: issued
                 )
             }.value
             session = exchanged
+            while !Task.isCancelled {
+                try await Task.sleep(nanoseconds: 60_000_000_000)
+            }
+        } catch is CancellationError {
+            return
         } catch {
-            self.error = error.localizedDescription
+            self.error = L.t("插件界面加载失败，请确认远程主机在线并重试。", "Plugin interface could not load. Check the remote host connection and retry.")
             loading = false
         }
     }
