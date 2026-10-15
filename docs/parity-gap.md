@@ -19,7 +19,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | --- | --- | --- |
 | A | Trajectory ledger + inspector; chat message actions (copy / like / dislike / branch) | done (#3) |
 | B | Host PTY terminal + workspace file tree | done (#4) |
-| C | Live jobs panel + completion unread green-dot sync | this PR |
+| C | Live jobs panel + completion unread green-dot sync | this PR (#5) |
 | D | Plugin manager + schedule + remaining official settings | queued |
 
 ---
