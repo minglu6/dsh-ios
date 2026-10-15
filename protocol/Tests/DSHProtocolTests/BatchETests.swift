@@ -1,6 +1,9 @@
 import XCTest
 @testable import DSHProtocol
 
+/// Distinguishes Android's omitted `usage()` default from an explicit `nil`.
+private let defaultUsageSentinel = "__default_usage__"
+
 final class TurnTokenUsageTests: XCTestCase {
     private func event(_ seq: Int, _ type: String, turn: Int = 1, step: Int = 1, extra: String = "") throws -> JSONValue {
         try JSONValue.parse(
@@ -18,43 +21,32 @@ final class TurnTokenUsageTests: XCTestCase {
         return "{\(body)}"
     }
 
+    /// Android `message(seq, value = usage(), streamUsage = value)`: omitted args use
+    /// the default sample; an explicit `nil` omits that usage object.
     private func message(
         _ seq: Int,
-        value: String? = nil,
-        streamUsage: String? = nil,
+        value: String? = defaultUsageSentinel,
+        streamUsage: String? = defaultUsageSentinel,
         turn: Int = 1,
         step: Int = 1,
         provider: String = "deepseek",
         model: String = "deepseek-chat"
     ) throws -> JSONValue {
-        let sample = value ?? usage()
-        let streamSample = streamUsage ?? sample
-        let stream = streamUsage == nil && value == nil
-            ? #"[{"type":"chunk","chunk":{"type":"usage","usage":\#(sample)}}]"#
-            : streamUsage == nil && value != nil
-            ? #"[{"type":"chunk","chunk":{"type":"usage","usage":\#(sample)}}]"#
-            : streamUsage == nil
+        let resolvedValue = value == defaultUsageSentinel ? usage() : value
+        let resolvedStream = streamUsage == defaultUsageSentinel ? resolvedValue : streamUsage
+        let stream = resolvedStream == nil
             ? "[]"
-            : #"[{"type":"chunk","chunk":{"type":"usage","usage":\#(streamSample)}}]"#
-        let final = value == nil ? "" : #", "usage":\#(sample)"#
-        let actualStream: String
-        if value == nil && streamUsage == nil {
-            actualStream = #"[{"type":"chunk","chunk":{"type":"usage","usage":\#(usage())}}]"#
-        } else if let streamUsage, value != nil {
-            actualStream = #"[{"type":"chunk","chunk":{"type":"usage","usage":\#(streamUsage)}}]"#
-        } else if value == nil, let streamUsage {
-            actualStream = #"[{"type":"chunk","chunk":{"type":"usage","usage":\#(streamUsage)}}]"#
-        } else {
-            actualStream = stream
-        }
+            : #"[{"type":"chunk","chunk":{"type":"usage","usage":\#(resolvedStream!)}}]"#
+        let final = resolvedValue == nil ? "" : #", "usage":\#(resolvedValue!)"#
         return try event(
             seq, "assistant/message", turn: turn, step: step,
-            extra: #", "stream":\#(actualStream), "message":{"id":"m\#(seq)","role":"assistant","content":[{"type":"text","text":"done"}],"source":{"provider":"\#(provider)","model":"\#(model)"}}\#(final)"#
+            extra: #", "stream":\#(stream), "message":{"id":"m\#(seq)","role":"assistant","content":[{"type":"text","text":"done"}],"source":{"provider":"\#(provider)","model":"\#(model)"}}\#(final)"#
         )
     }
 
-    private func attempt(_ seq: Int, value: String? = nil, step: Int = 1) throws -> JSONValue {
-        let sample = value == nil ? "" : #"{"type":"chunk","chunk":{"type":"usage","usage":\#(value!)}},"#
+    private func attempt(_ seq: Int, value: String? = defaultUsageSentinel, step: Int = 1) throws -> JSONValue {
+        let resolved = value == defaultUsageSentinel ? usage() : value
+        let sample = resolved == nil ? "" : #"{"type":"chunk","chunk":{"type":"usage","usage":\#(resolved!)}},"#
         return try event(
             seq, "assistant/attempt", step: step,
             extra: #", "stream":[\#(sample){"type":"chunk","chunk":{"type":"finish","reason":{"kind":"error"}}}]"#
@@ -134,7 +126,7 @@ final class TurnTokenUsageTests: XCTestCase {
         ]
         XCTAssertEqual(
             result(events),
-            TurnTokenUsage(200, 40, 340, 100, routes: [
+            TurnTokenUsage(200, 40, 340, 100, nil, nil, [
                 TurnTokenUsageRoute(provider: "deepseek", model: "deepseek-chat"),
                 TurnTokenUsageRoute(provider: "openai", model: "gpt-5"),
             ])
@@ -486,7 +478,7 @@ final class ComposerMetricsTests: XCTestCase {
     private func opening(type: String = "snapshot", seq: Int = 50, values: String = "", records: String = "") throws -> JSONValue {
         try json(#"{"type":"\#(type)","cursor":\#(seq),"records":[\#(records)],"projections":{"asOfSeq":\#(seq),"values":{\#(values)}}}"#)
     }
-    private func event(_ seq: Int, time: Int, type: String, data: String) -> String {
+    private func event(_ seq: Int, _ time: Int, _ type: String, _ data: String) -> String {
         #"{"type":"event","event":{"seq":\#(seq),"time":\#(time),"type":"\#(type)","data":\#(data)}}"#
     }
     private func start(_ seq: Int, turn: Int, time: Int) -> String {
@@ -495,14 +487,14 @@ final class ComposerMetricsTests: XCTestCase {
     private func message(_ seq: Int, turn: Int, first: Int, end: Int, tokens: Int) -> String {
         event(seq, end, "assistant/message", #"{"turn":\#(turn),"step":1,"usage":{"inputTokens":50,"outputTokens":\#(tokens)},"stream":[{"type":"text-chunks","index":0,"time0":\#(first),"dt":[0],"texts":["reply"]}],"message":{"content":[{"type":"text","text":"reply"}]}}"#)
     }
-    private func declaration(_ seq: Int, time: Int, _ callIds: String...) -> String {
+    private func declaration(_ seq: Int, _ time: Int, _ callIds: String...) -> String {
         let blocks = callIds.map { #"{"type":"tool-call","id":"\#($0)","name":"read","arguments":"{}"}"# }.joined(separator: ",")
         return event(seq, time, "assistant/message", #"{"turn":1,"step":1,"message":{"content":[\#(blocks)]}}"#)
     }
-    private func call(_ seq: Int, time: Int, id: String) -> String {
+    private func call(_ seq: Int, _ time: Int, id: String) -> String {
         event(seq, time, "tool/call", #"{"turn":1,"step":1,"callId":"\#(id)","name":"read","arguments":"{}"}"#)
     }
-    private func result(_ seq: Int, time: Int, id: String, isError: Bool = false) -> String {
+    private func result(_ seq: Int, _ time: Int, id: String, isError: Bool = false) -> String {
         event(seq, time, "tool/result", #"{"turn":1,"step":1,"message":{"role":"tool","source":{"callId":"\#(id)"},"isError":\#(isError),"content":[{"type":"text","text":"done"}]}}"#)
     }
 
@@ -568,7 +560,7 @@ final class ComposerMetricsTests: XCTestCase {
         _ = r.apply(try opening(seq: 4, records: "\(start(3, turn: 2, time: 1000)),\(message(4, turn: 2, first: 2000, end: 4000, tokens: 100))"))
         XCTAssertFalse(r.composerMetrics.activityIsWholeSession)
         XCTAssertEqual(r.composerMetrics.activity?.tokensPerSecond, 50)
-        let page = try json("[\(start(1, turn: 1, time: 100)),\(message(2, turn: 1, first: 200, end: 300, tokens: 10))]")
+        let page = try json("[\(start(1, turn: 1, time: 100)),\(message(2, turn: 1, first: 200, end: 1200, tokens: 200))]")
         _ = r.prepend(records: page, pageHasMore: false)
         let m = r.composerMetrics
         XCTAssertEqual(m.activity?.tokensPerSecond, 100)
