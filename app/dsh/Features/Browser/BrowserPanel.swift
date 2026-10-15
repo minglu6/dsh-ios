@@ -55,30 +55,10 @@ private struct BrowserPanelContent: View {
         HStack(spacing: 0) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 4) {
-                    ForEach(tabs.pages, id: \.id) { page in
-                        let selected = page.id == tabs.selectedId
-                        HStack(spacing: 0) {
-                            Button {
-                                tabs.select(page)
-                            } label: {
-                                Text(page.title.isEmpty ? L.t("浏览器", "Browser") : page.title)
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(selected ? T.ink : T.text3)
-                                    .lineLimit(1)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                            .buttonStyle(.plain)
-                            Button {
-                                tabs.close(page)
-                            } label: {
-                                Image(systemName: "xmark").font(.system(size: 9)).foregroundStyle(T.text3).frame(width: 32, height: 32)
-                            }
-                            .accessibilityLabel(L.t("关闭", "Close"))
+                    ForEach(tabs.pages.map(\.id), id: \.self) { id in
+                        if let page = tabs.pages.first(where: { $0.id == id }) {
+                            BrowserTabChip(tabs: tabs, page: page)
                         }
-                        .padding(.leading, 9)
-                        .frame(minWidth: 80, maxWidth: 180, height: 32)
-                        .background(selected ? T.bg : T.surface, in: RoundedRectangle(cornerRadius: 8))
-                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(selected ? T.border : T.surface, lineWidth: 0.5))
                     }
                 }
             }
@@ -226,6 +206,37 @@ private struct BrowserSelectedPage: View {
                 }
             }
         }
+    }
+}
+
+private struct BrowserTabChip: View {
+    @ObservedObject var tabs: BrowserTabsStore
+    @ObservedObject var page: BrowserPageState
+
+    var body: some View {
+        let selected = page.id == tabs.selectedId
+        HStack(spacing: 0) {
+            Button {
+                tabs.select(page)
+            } label: {
+                Text(page.title.isEmpty ? L.t("浏览器", "Browser") : page.title)
+                    .font(.system(size: 12))
+                    .foregroundStyle(selected ? T.ink : T.text3)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+            Button {
+                tabs.close(page)
+            } label: {
+                Image(systemName: "xmark").font(.system(size: 9)).foregroundStyle(T.text3).frame(width: 32, height: 32)
+            }
+            .accessibilityLabel(L.t("关闭", "Close"))
+        }
+        .padding(.leading, 9)
+        .frame(minWidth: 80, maxWidth: 180, height: 32)
+        .background(selected ? T.bg : T.surface, in: RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(selected ? T.border : T.surface, lineWidth: 0.5))
     }
 }
 
