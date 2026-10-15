@@ -400,10 +400,11 @@ struct GoalSheet: View {
         Task {
             do {
                 let commands = try await model.commandCatalog(sessionId: sessionId)
-                guard let command = commands.first(where: { builtinCommandName($0.definitionId) == "goal" }) else {
+                guard let command = commands.first(where: { builtinCommandName($0["definitionId"].str()) == "goal" }),
+                      let name = command["name"].str() else {
                     throw PocketError(code: "unsupported", message: L.t("远程主机没有提供目标指令", "The remote host did not provide a goal command"))
                 }
-                model.executeCommand("/\(command.name) \(text.trimmingCharacters(in: .whitespacesAndNewlines))") { success in
+                model.executeCommand("/\(name) \(text.trimmingCharacters(in: .whitespacesAndNewlines))") { success in
                     busy = false
                     if success { onDismiss() } else { error = L.t("目标创建失败，内容已保留", "Could not create the goal; the text was kept") }
                 }
@@ -556,6 +557,8 @@ struct PromptQueue: View {
 struct CommandSheet: View {
     @ObservedObject var model: AppModel
     var initialQuery: String = ""
+    var leading: Bool = true
+    var consumeSlash: Bool = true
     var onDismiss: () -> Void
     var onFile: () -> Void
     var onGoal: () -> Void
@@ -564,17 +567,35 @@ struct CommandSheet: View {
     var onCompact: () -> Void
     var onPerm: () -> Void
     var onModel: () -> Void
+    var onExport: () -> Void
 
     @State private var query = ""
+    @State private var commands: [JSONValue] = []
     @State private var loading = true
     @State private var error: String?
     @State private var attempt = 0
+
+    private var sessionReady: Bool { model.chat?.loaded == true }
+    private var subagent: Bool {
+        model.sessions.first { $0.sessionId == model.chat?.sessionId }?.origin == "subagent"
+    }
+
+    private var candidates: [JSONValue] {
+        var rows = commands
+        if sessionReady && model.ops.contains("attachments.upload") {
+            rows.append(jsonObject(["name": .string("file"), "client": .string("file")]))
+        }
+        if sessionReady && !subagent && model.ops.contains("models.catalog") {
+            rows.append(jsonObject(["name": .string("model"), "client": .string("model")]))
+        }
+        return rows
+    }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
-                    TextField(L.t("搜索指令", "Search commands"), text: $query)
+                    TextField(L.en ? "Search…" : "搜索…", text: $query)
                         .padding(12)
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 1))
                     if loading { ProgressView().frame(maxWidth: .infinity) }
@@ -582,89 +603,93 @@ struct CommandSheet: View {
                         Text(error).foregroundStyle(T.err)
                         Button(L.retry()) { attempt += 1 }.disabled(!model.isOnline)
                     }
-                    if model.chat == nil {
-                        Text(L.t("请先打开会话以读取远程主机指令目录", "Open a session to load the remote host command catalog"))
-                            .foregroundStyle(T.text3)
+                    let collision = commandContributionCollision(candidates)
+                    if let collision {
+                        Text("Command contribution /\(collision) collides with a host command")
+                            .foregroundStyle(T.err)
                     }
-                    Text(L.sectionAdd()).font(.caption).foregroundStyle(T.text3)
-                    if "file".localizedCaseInsensitiveContains(query) || L.file().localizedCaseInsensitiveContains(query) {
-                        row(L.file(), "paperclip", enabled: model.isOnline && model.chat != nil && model.ops.contains("attachments.upload")) {
-                            model.consumeComposerSlash(); onFile(); onDismiss()
-                        }
-                    }
-                    if "model".localizedCaseInsensitiveContains(query) || "模型".contains(query) {
-                        row(L.t("模型", "Model"), "cpu", enabled: model.isOnline) {
-                            model.consumeComposerSlash(); onModel()
-                        }
-                    }
-                    Text(L.sectionCommands()).font(.caption).foregroundStyle(T.text3)
-                    let filtered = model.commandEntries.filter {
-                        $0.name.localizedCaseInsensitiveContains(query) || ($0.description ?? "").localizedCaseInsensitiveContains(query) || query.isEmpty
-                    }
-                    if !loading && error == nil && model.chat != nil && filtered.isEmpty {
+                    let rows = collision == nil ? commandMenuRows(candidates, query: query, leading: leading, english: L.en) : []
+                    if !loading && error == nil && rows.isEmpty {
                         Text(L.noOptions()).foregroundStyle(T.text3)
                     }
-                    ForEach(filtered) { command in
-                        let builtin = builtinCommandName(command.definitionId)
-                        let requiresHost = builtin == "plan" || builtin == "compact" || builtin == "export" || builtin == "permission"
-                        let exportReady = builtin != "export" || model.ops.contains("session.export")
-                        row("/\(command.name)", "chevron.left.forwardslash.chevron.right", detail: command.description, enabled: (model.isOnline || !requiresHost) && exportReady) {
-                            switch builtin {
-                            case "goal": model.consumeComposerSlash(); onGoal()
-                            case "plan":
-                                model.consumeComposerSlash()
-                                if command.name == "plan" { onPlan() } else { model.executeCommand("/\(command.name)") }
-                                onDismiss()
-                            case "feedback": model.consumeComposerSlash(); onFeedback()
-                            case "compact":
-                                model.consumeComposerSlash()
-                                if command.name == "compact" { onCompact() } else { model.executeCommand("/\(command.name)") }
-                                onDismiss()
-                            case "permission": model.consumeComposerSlash(); onPerm()
-                            case "export":
-                                model.consumeComposerSlash()
-                                model.exportSession()
-                                onDismiss()
-                            default:
-                                model.insertComposer("/\(command.name)")
-                                onDismiss()
-                            }
+                    if !query.isEmpty && !rows.isEmpty {
+                        Text(L.sectionCommands()).font(.caption).foregroundStyle(T.text3)
+                    }
+                    ForEach(Array(commandSections(rows).enumerated()), id: \.offset) { _, item in
+                        switch item {
+                        case .section(let title):
+                            Text(title).font(.caption).foregroundStyle(T.text3)
+                        case .command(let command):
+                            let name = command["name"].str() ?? ""
+                            commandRow(command, name: name, kind: commandMenuKind(command))
                         }
                     }
                 }
                 .padding(22)
             }
-            .navigationTitle(L.t("指令", "Commands"))
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L.cancel(), action: onDismiss) } }
         }
         .onAppear { query = initialQuery }
-        .task(id: "\(model.chat?.sessionId ?? "")-\(attempt)") {
+        .task(id: "\(model.activeId ?? "")-\(model.chat?.sessionId ?? "")-\(sessionReady)-\(attempt)-\(model.isOnline)-\(model.ops.sorted().joined())-\(subagent)") {
             await load()
         }
     }
 
-    private func load() async {
-        loading = true
-        error = nil
-        guard model.isOnline, let sessionId = model.chat?.sessionId else {
-            loading = false
-            return
-        }
-        do {
-            model.commandEntries = try await model.commandCatalog(sessionId: sessionId)
-        } catch {
-            self.error = error.localizedDescription
-        }
-        loading = false
-    }
-
-    private func row(_ title: String, _ icon: String, detail: String? = nil, enabled: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack {
-                Image(systemName: icon).foregroundStyle(T.text2)
-                VStack(alignment: .leading) {
-                    Text(title).foregroundStyle(T.ink)
-                    if let detail { Text(detail).font(.caption).foregroundStyle(T.text3) }
+    @ViewBuilder
+    private func commandRow(_ command: JSONValue, name: String, kind: String?) -> some View {
+        let label = commandMenuLabel(command, english: L.en)
+        let available: Bool = {
+            switch kind {
+            case "file": return model.ops.contains("attachments.upload")
+            case "model": return model.ops.contains("models.catalog")
+            case "feedback": return model.ops.contains("sessionFeedback.record")
+            case "export": return model.ops.contains("session.export")
+            case "permission": return model.ops.contains("permissions.catalog")
+            default: return model.ops.contains("commands.execute")
+            }
+        }()
+        let enabled = model.isOnline && sessionReady && available
+        Button {
+            guard enabled else { return }
+            func consume() { if consumeSlash { model.consumeComposerSlash() } }
+            switch kind {
+            case "file": consume(); onDismiss(); onFile()
+            case "model": consume(); onModel()
+            case "goal": consume(); onGoal()
+            case "plan":
+                consume()
+                if name == "plan" { onPlan() } else { model.executeCommand("/\(name)") }
+                onDismiss()
+            case "feedback": consume(); onFeedback()
+            case "compact":
+                consume()
+                if name == "compact" { onCompact() } else { model.executeCommand("/\(name)") }
+                onDismiss()
+            case "permission": consume(); onPerm()
+            case "export": consume(); onExport(); onDismiss()
+            default:
+                if command["input"].obj() != nil {
+                    model.insertComposer("/\(name)")
+                } else {
+                    consume()
+                    model.executeCommand("/\(name)")
+                }
+                onDismiss()
+            }
+        } label: {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Image(systemName: commandIcon(kind)).foregroundStyle(enabled ? T.text2 : T.text3)
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack {
+                        Text(label ?? name).foregroundStyle(enabled ? T.ink : T.text3)
+                        if let label, label.caseInsensitiveCompare(name) != .orderedSame {
+                            Text(name).font(.caption).foregroundStyle(T.text3)
+                        }
+                    }
+                    if let detail = commandMenuDescription(command, english: L.en) {
+                        Text(detail).font(.caption).foregroundStyle(T.text3)
+                    }
                 }
                 Spacer()
             }
@@ -672,5 +697,62 @@ struct CommandSheet: View {
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
+    }
+
+    private func commandIcon(_ kind: String?) -> String {
+        switch kind {
+        case "file": return "paperclip"
+        case "model": return "cylinder.split.1x2"
+        case "goal": return "flag"
+        case "plan": return "checklist"
+        case "feedback": return D.paperPlane
+        case "compact": return "arrow.down.right.and.arrow.up.left"
+        case "permission": return "hand.raised"
+        case "export": return D.download
+        default: return "chevron.left.forwardslash.chevron.right"
+        }
+    }
+
+    private enum CommandListItem {
+        case section(String)
+        case command(JSONValue)
+    }
+
+    private func commandSections(_ rows: [JSONValue]) -> [CommandListItem] {
+        var items: [CommandListItem] = []
+        var lastSection: String?
+        for command in rows {
+            if query.isEmpty, let name = command["name"].str() {
+                let section = commandAddNames.contains(name) ? L.sectionAdd() : L.sectionCommands()
+                if section != lastSection {
+                    items.append(.section(section))
+                    lastSection = section
+                }
+            }
+            items.append(.command(command))
+        }
+        return items
+    }
+
+    private func load() async {
+        if !model.isOnline || !sessionReady {
+            loading = model.isOnline && !sessionReady
+            return
+        }
+        loading = true
+        error = nil
+        do {
+            let id = model.chat?.sessionId
+            if id == nil || subagent || !model.ops.contains("commands.list") {
+                commands = []
+            } else {
+                commands = try await model.commandCatalog(sessionId: id!)
+            }
+        } catch is CancellationError {
+            return
+        } catch {
+            self.error = error.localizedDescription.isEmpty ? (L.en ? "Could not load commands" : "无法加载指令") : error.localizedDescription
+        }
+        loading = false
     }
 }

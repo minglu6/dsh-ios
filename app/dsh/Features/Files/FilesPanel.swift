@@ -3,6 +3,7 @@ import DSHProtocol
 
 struct FilesPanel: View {
     @ObservedObject var model: AppModel
+    @Environment(\.scenePhase) private var scenePhase
     @State private var requestedPath = ""
     @State private var path = ""
     @State private var entries: [WorkspaceFileEntry] = []
@@ -15,6 +16,7 @@ struct FilesPanel: View {
     private var sessionId: String? { model.chat?.sessionId }
     private var cwd: String? { model.sessions.first { $0.sessionId == sessionId }?.cwd }
     private var canList: Bool { model.isOnline && model.ops.contains("files.list") }
+    private var canWatch: Bool { canList && model.ops.contains("files.follow") }
 
     var body: some View {
         Group {
@@ -54,7 +56,8 @@ struct FilesPanel: View {
         .onAppear {
             load(requestedPath)
         }
-        .task(id: "\(sessionId ?? "")-\(generation)-\(cwd ?? "")-\(model.filesRevision)") {
+        .task(id: "\(sessionId ?? "")-\(generation)-\(cwd ?? "")-\(model.filesRevision)-\(canWatch)-\(previewPath ?? "")-\(scenePhase == .active)") {
+            guard scenePhase == .active else { return }
             await fetch()
         }
     }
@@ -172,15 +175,19 @@ struct FilesPanel: View {
 
     private func load(_ target: String) {
         guard canList else { return }
+        if target != path {
+            entries = []
+            truncated = false
+            loading = true
+        }
         requestedPath = target
         path = target
-        loading = true
         failure = nil
         generation += 1
     }
 
     private func fetch() async {
-        guard canList, let sessionId else {
+        guard canList, let sessionId, previewPath == nil else {
             loading = false
             return
         }
@@ -191,25 +198,51 @@ struct FilesPanel: View {
             loading = false
             return
         }
+        func currentRequest() -> Bool { generation == request }
         do {
-            let result = try await model.listFiles(sessionId: sessionId, path: target.isEmpty ? "." : target)
-            if generation != request { return }
-            let listedPath = result["path"].str() ?? target
-            let relative = listedPath == "." ? "" : listedPath
-            if !workspaceFileListIsRelative(relative) {
-                throw PocketError(code: "workspace-file/outside-workspace", message: listedPath)
-            }
-            path = relative
-            entries = parseWorkspaceFileEntries(result)
-            truncated = result["truncated"].bool() == true
+            try await observeWorkspaceDirectory(
+                list: { watchedPath in
+                    try await model.listFiles(sessionId: sessionId, path: watchedPath ?? (target.isEmpty ? "." : target))
+                },
+                changes: canWatch ? model.followFiles(sessionId: sessionId, path: target.isEmpty ? "." : target) : nil,
+                onListing: { result in
+                    Task { @MainActor in
+                        guard currentRequest() else { return }
+                        let listedPath = result["path"].str() ?? target
+                        let relative = listedPath == "." ? "" : listedPath
+                        if !workspaceFileListIsRelative(relative) {
+                            entries = []
+                            truncated = false
+                            failure = filesFailureMessage(error: PocketError(code: "workspace-file/outside-workspace", message: listedPath), english: L.en)
+                            loading = false
+                            return
+                        }
+                        path = relative
+                        entries = parseWorkspaceFileEntries(result)
+                        truncated = result["truncated"].bool() == true
+                        failure = nil
+                        loading = false
+                    }
+                },
+                onFailure: { error in
+                    Task { @MainActor in
+                        guard currentRequest() else { return }
+                        entries = []
+                        truncated = false
+                        failure = filesFailureMessage(error: error, english: L.en)
+                        loading = false
+                    }
+                }
+            )
         } catch is CancellationError {
             return
         } catch {
-            if generation != request { return }
-            entries = []
-            truncated = false
-            failure = filesFailureMessage(error: error, english: L.en)
+            if currentRequest() {
+                entries = []
+                truncated = false
+                failure = filesFailureMessage(error: error, english: L.en)
+                loading = false
+            }
         }
-        if generation == request { loading = false }
     }
 }

@@ -146,7 +146,8 @@ final class AppModel: ObservableObject {
     @Published var catalogError: String?
     @Published var goalActivation: String?
     @Published var pendingAttaches: [PendingAttach] = []
-    @Published var commandEntries: [CommandEntry] = []
+    @Published var commandEntries: [JSONValue] = []
+    private var appearanceOverride: Appearance?
     @Published var hiddenQuestionId: String?
     @Published var nearby: [DiscoveredHost] = []
     @Published var composerText = ""
@@ -358,9 +359,6 @@ final class AppModel: ObservableObject {
         Task {
             guard let client else { return }
             do {
-                if ops.contains("commands.list") {
-                    commandEntries = (try? await client.listCommands(sessionId: sessionId)) ?? []
-                }
                 try await refollow(client, sessionId: sessionId, afterSeq: nil)
             } catch is CancellationError {
             } catch {
@@ -724,7 +722,7 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func commandCatalog(sessionId: String) async throws -> [CommandEntry] {
+    func commandCatalog(sessionId: String) async throws -> [JSONValue] {
         guard let client else { throw PocketError(code: "transport", message: L.t("未连接", "Not connected")) }
         let entries = try await client.listCommands(sessionId: sessionId)
         if chat?.sessionId == sessionId { commandEntries = entries }
@@ -1160,11 +1158,8 @@ final class AppModel: ObservableObject {
 
     func setLanguage(_ value: AppLanguage) {
         language = value
-        AppPrefs.language = value
         TrajL.en = value == .en
-        if hostSettings.writable(.language) {
-            hostSettings.write(.language, value: .string(value == .en ? "en" : "zh"))
-        }
+        hostSettings.write(.language, value: .string(value == .en ? "en" : "zh"))
     }
 
     func applyHostMirroredPrefs() {
@@ -1172,11 +1167,52 @@ final class AppModel: ObservableObject {
             busySend = parsed
         }
         if let hosted = hostSettings.value(.language)?.str() {
-            let next: AppLanguage = hosted.hasPrefix("zh") ? .zh : .en
-            if next != language {
-                language = next
-                TrajL.en = next == .en
+            language = hosted.hasPrefix("zh") ? .zh : .en
+        } else if !hostSettings.ready {
+            language = Locale.current.language.languageCode?.identifier.hasPrefix("zh") == true ? .zh : .en
+        }
+        TrajL.en = language == .en
+        if let hosted = hostSettings.value(.appearance)?.str() {
+            appearanceOverride = nil
+            switch hosted {
+            case "light": appearance = .light
+            case "dark": appearance = .dark
+            default: appearance = .system
             }
+        } else if let appearanceOverride {
+            appearance = appearanceOverride
+        } else if !hostSettings.ready {
+            appearance = .system
+        }
+        if let value = hostSettings.value(.fontSize)?.int() {
+            fontSize = clampFontSize(value, range: 10...22)
+        } else if !hostSettings.ready {
+            fontSize = 14
+        }
+        if let value = hostSettings.value(.codeFontSize)?.int() {
+            codeFontSize = clampFontSize(value, range: 10...16)
+        } else if !hostSettings.ready {
+            codeFontSize = 11
+        }
+        if let value = hostSettings.value(.terminalFontSize)?.int() {
+            terminalFontSize = clampFontSize(value, range: 10...20)
+        } else if !hostSettings.ready {
+            terminalFontSize = 13
+        }
+        if hostSettings.hasField(.textFontFamily) {
+            textFontFamily = hostSettings.value(.textFontFamily)?.str() ?? ""
+        } else if !hostSettings.ready {
+            textFontFamily = ""
+        }
+        if hostSettings.hasField(.codeFontFamily) {
+            codeFontFamily = hostSettings.value(.codeFontFamily)?.str() ?? ""
+        } else if !hostSettings.ready {
+            codeFontFamily = ""
+        }
+        if hostSettings.hasField(.terminalFontFamily) {
+            terminalFontFamily = hostSettings.value(.terminalFontFamily)?.str() ?? ""
+        } else if !hostSettings.ready {
+            terminalFontFamily = ""
         }
     }
 
@@ -1264,9 +1300,9 @@ final class AppModel: ObservableObject {
         return try await client.readFile(sessionId: sessionId, path: path, offset: offset, limit: limit)
     }
 
-    func readFileBytes(sessionId: String, path: String) async throws -> JSONValue {
+    func readFileBytes(sessionId: String, path: String, offset: Int? = nil, length: Int? = nil) async throws -> JSONValue {
         guard let client else { throw PocketError(code: "transport", message: "未连接") }
-        return try await client.readFileBytes(sessionId: sessionId, path: path)
+        return try await client.readFileBytes(sessionId: sessionId, path: path, offset: offset, length: length)
     }
 
     func readAllText(sessionId: String, path: String) async throws -> String {
@@ -1479,38 +1515,59 @@ final class AppModel: ObservableObject {
     }
 
     func setAppearance(_ value: Appearance) {
-        appearance = value
-        AppPrefs.appearance = value
+        if hostSettings.writable(.appearance) {
+            appearanceOverride = nil
+            appearance = value
+            hostSettings.write(.appearance, value: .string(value.rawValue))
+        } else if !hostSettings.online {
+            appearanceOverride = value
+            appearance = value
+        } else {
+            hostSettings.write(.appearance, value: .string(value.rawValue))
+        }
     }
 
     func setFontSize(_ value: Int) {
         fontSize = clampFontSize(value, range: 10...22)
-        AppPrefs.fontSize = fontSize
+        hostSettings.write(.fontSize, value: .number(Double(fontSize)))
     }
 
     func setCodeFontSize(_ value: Int) {
         codeFontSize = clampFontSize(value, range: 10...16)
-        AppPrefs.codeFontSize = codeFontSize
+        hostSettings.write(.codeFontSize, value: .number(Double(codeFontSize)))
     }
 
     func setTerminalFontSize(_ value: Int) {
         terminalFontSize = clampFontSize(value, range: 10...20)
-        AppPrefs.terminalFontSize = terminalFontSize
+        hostSettings.write(.terminalFontSize, value: .number(Double(terminalFontSize)))
     }
 
     func setTextFontFamily(_ value: String) {
         textFontFamily = normalizeFontFamily(value)
-        AppPrefs.textFontFamily = textFontFamily
+        hostSettings.write(.textFontFamily, value: .string(textFontFamily))
     }
 
     func setCodeFontFamily(_ value: String) {
         codeFontFamily = normalizeFontFamily(value)
-        AppPrefs.codeFontFamily = codeFontFamily
+        hostSettings.write(.codeFontFamily, value: .string(codeFontFamily))
     }
 
     func setTerminalFontFamily(_ value: String) {
         terminalFontFamily = normalizeFontFamily(value)
-        AppPrefs.terminalFontFamily = terminalFontFamily
+        hostSettings.write(.terminalFontFamily, value: .string(terminalFontFamily))
+    }
+
+    func followFiles(sessionId: String, path: String) -> AsyncThrowingStream<JSONValue, Error>? {
+        client?.followFiles(sessionId: sessionId, path: path)
+    }
+
+    func withOfficePreview<T>(
+        sessionId: String,
+        path: String,
+        _ block: (OfficePreviewReader) async throws -> T
+    ) async throws -> T {
+        guard let client else { throw PocketError(code: "transport", message: L.t("未连接", "Not connected")) }
+        return try await client.withOfficePreview(sessionId: sessionId, path: path, block)
     }
 
     func setBusySend(_ value: BusySend) {

@@ -39,15 +39,6 @@ enum SharedSetting: String, CaseIterable {
         }
     }
 
-    /// Appearance and fonts stay on the phone; they must never mutate the remote host.
-    var writesRemoteHost: Bool {
-        switch self {
-        case .appearance, .fontSize, .codeFontSize, .terminalFontSize, .textFontFamily, .codeFontFamily, .terminalFontFamily:
-            return false
-        default:
-            return true
-        }
-    }
 }
 
 /// Live Host settings mirror. Never a persisted mobile copy.
@@ -108,8 +99,7 @@ final class HostSettings: ObservableObject {
     }
 
     func writable(_ setting: SharedSetting) -> Bool {
-        guard setting.writesRemoteHost else { return false }
-        return ready && !saving && mutate != nil && snapshot?["writable"].bool() == true
+        ready && !saving && mutate != nil && snapshot?["writable"].bool() == true
             && namespace(setting)?["writable"].bool() != false
             && (namespace(setting)?["revision"].int() ?? -1) >= 0
     }
@@ -152,10 +142,6 @@ final class HostSettings: ObservableObject {
     }
 
     func write(_ setting: SharedSetting, value: JSONValue, onSaved: @escaping () -> Void = {}) {
-        if !setting.writesRemoteHost {
-            error = L.t("外观与字体仅保存在本机，不会写入远程主机", "Appearance and fonts stay on this device and are not written to the remote host")
-            return
-        }
         guard let mutate else {
             error = L.t("远程主机设置尚未连接、不可用或只读，未保存", "Remote host settings are disconnected, unavailable, or read-only; nothing was saved")
             return

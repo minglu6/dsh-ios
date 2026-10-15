@@ -53,6 +53,9 @@ enum T {
     static var scrim: Color { colors.bgMask1 }
     static var bluish: Color { colors.labelPrimaryBluish }
     static var hoverBg: Color { colors.interactiveBgHover }
+    static var interactiveBgActive: Color { colors.interactiveBgActive }
+    static var tooltipBg: Color { colors.tooltipBg }
+    static var documentPreviewBg: Color { colors.bgDocumentPreview }
     static var ok: Color { colors.stateSuccessPrimary }
     static var err: Color { colors.stateErrorPrimary }
     static var bg: Color { colors.bgBase }

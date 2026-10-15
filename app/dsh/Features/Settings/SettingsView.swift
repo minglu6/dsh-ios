@@ -3,23 +3,23 @@ import DSHProtocol
 
 struct SettingsView: View {
     @ObservedObject var model: AppModel
+    @State private var lastOps: Set<String> = []
 
     var body: some View {
         VStack(spacing: 0) {
             header(L.settings()) { model.pop() }
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    settingsDisconnectedBanner(model)
                     card {
                         nav(L.generalNav(), D.sliders) { model.push(.general) }
-                        nav(L.modelsNav(), "cpu", divider: hasPresets || hasPluginSettings) { model.push(.models) }
-                        if hasPresets {
-                            nav(L.agentPresets(), D.agentPreset, divider: hasPluginSettings) { model.push(.presets) }
+                        nav(L.modelsNav(), "cpu", enabled: model.isOnline) { model.push(.models) }
+                        if visibleOps.contains("plugins.inventory") {
+                            nav(L.builtinPluginsNav(), D.plugin, enabled: model.isOnline) { model.push(.builtinPlugins) }
                         }
-                        if hasPluginSettings {
-                            nav(L.builtinPluginsNav(), D.plugin, divider: false) { model.push(.builtinPlugins) }
-                        }
+                        nav(L.agentPresets(), D.agentPreset, divider: false, enabled: model.isOnline) { model.push(.presets) }
                     }
-                    Text(L.phoneConnection())
+                    Text(L.mobileSection())
                         .font(.caption)
                         .foregroundStyle(T.text3)
                         .padding(.horizontal, 22)
@@ -34,10 +34,16 @@ struct SettingsView: View {
             .background(T.bg)
         }
         .background(T.bg.ignoresSafeArea())
+        .onAppear { rememberOps() }
+        .onChange(of: model.isOnline) { _ in rememberOps() }
+        .onChange(of: model.ops) { _ in rememberOps() }
     }
 
-    private var hasPluginSettings: Bool { model.ops.contains("plugins.inventory") }
-    private var hasPresets: Bool { model.ops.contains("presets.list") || model.ops.contains("presets.settings") }
+    private var visibleOps: Set<String> { model.isOnline ? model.ops : lastOps }
+
+    private func rememberOps() {
+        if model.isOnline && !model.ops.isEmpty { lastOps = model.ops }
+    }
 }
 
 struct GeneralSettingsView: View {
@@ -57,6 +63,7 @@ struct GeneralSettingsView: View {
             header(L.generalNav()) { model.pop() }
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    settingsDisconnectedBanner(model)
                     if shared.saving {
                         settingsMessage(L.saving())
                     } else if shared.loading {
@@ -82,7 +89,7 @@ struct GeneralSettingsView: View {
                         picker(L.language(), selection: Binding(
                             get: { model.language },
                             set: { model.setLanguage($0); sheet = nil }
-                        ), divider: true) {
+                        ), divider: true, enabled: model.isOnline && shared.writable(.language)) {
                             Text("中文").tag(AppLanguage.zh)
                             Text("English").tag(AppLanguage.en)
                         }
@@ -100,14 +107,12 @@ struct GeneralSettingsView: View {
                         Divider().padding(.leading, 16)
                         fontRow
                         if fontsExpanded { fontDetails }
-                        nav(L.workDetails(), "list.bullet", value: transcriptText(model.transcriptView)) {
+                        nav(L.workDetails(), "list.bullet", value: transcriptText(model.transcriptView), enabled: shared.writable(.transcript)) {
                             sheet = "transcript"
                         }
-                        .disabled(!shared.writable(.transcript))
-                        nav(L.collapseTiming(), "rectangle.compress.vertical", value: collapseText(model.collapseTiming)) {
+                        nav(L.collapseTiming(), "rectangle.compress.vertical", value: collapseText(model.collapseTiming), enabled: model.isOnline) {
                             sheet = "collapse"
                         }
-                        .disabled(!model.isOnline)
                         HStack {
                             VStack(alignment: .leading) {
                                 Text(L.t("显示代码工作视图", "Show coding view")).foregroundStyle(T.ink)
@@ -232,10 +237,11 @@ struct GeneralSettingsView: View {
                     Image(systemName: fontsExpanded ? "chevron.up" : "chevron.down").font(.caption).foregroundStyle(T.text3)
                 }
             }
-            Slider(value: Binding(
+                            Slider(value: Binding(
                 get: { Double(model.fontSize) },
                 set: { model.setFontSize(Int($0.rounded())) }
             ), in: 10...22, step: 1)
+            .disabled(!shared.writable(.fontSize))
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -258,6 +264,7 @@ struct GeneralSettingsView: View {
             Text(hint).font(.caption).foregroundStyle(T.text3)
             TextField("", text: Binding(get: { value }, set: set))
                 .textInputAutocapitalization(.never)
+                .disabled(!model.isOnline)
                 .padding(8)
                 .background(T.input, in: RoundedRectangle(cornerRadius: 8))
         }
@@ -279,6 +286,7 @@ struct GeneralSettingsView: View {
                 in: Double(range.lowerBound)...Double(range.upperBound),
                 step: 1
             )
+            .disabled(!model.isOnline)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -365,6 +373,14 @@ func collapseText(_ mode: CollapseTiming) -> String {
     }
 }
 
+func settingsDisconnectedBanner(_ model: AppModel) -> some View {
+    Group {
+        if !model.isOnline {
+            settingsMessage(L.hostDisconnected())
+        }
+    }
+}
+
 func settingsMessage(_ text: String, error: Bool = false) -> some View {
     Text(text)
         .font(.footnote)
@@ -390,7 +406,7 @@ func card<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         .padding(.horizontal, 16)
 }
 
-func nav(_ title: String, _ system: String, value: String? = nil, divider: Bool = true, action: @escaping () -> Void) -> some View {
+func nav(_ title: String, _ system: String, value: String? = nil, divider: Bool = true, enabled: Bool = true, action: @escaping () -> Void) -> some View {
     VStack(spacing: 0) {
         Button(action: action) {
             HStack {
@@ -404,7 +420,9 @@ func nav(_ title: String, _ system: String, value: String? = nil, divider: Bool 
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
+            .opacity(enabled ? 1 : 0.5)
         }
+        .disabled(!enabled)
         if divider { Divider().padding(.leading, 16) }
     }
 }
@@ -413,6 +431,7 @@ func picker<Selection: Hashable, Content: View>(
     _ title: String,
     selection: Binding<Selection>,
     divider: Bool = true,
+    enabled: Bool = true,
     @ViewBuilder content: () -> Content
 ) -> some View {
     VStack(spacing: 0) {
@@ -422,9 +441,11 @@ func picker<Selection: Hashable, Content: View>(
             Picker("", selection: selection, content: content)
                 .labelsHidden()
                 .tint(T.accent)
+                .disabled(!enabled)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
+        .opacity(enabled ? 1 : 0.5)
         if divider { Divider().padding(.leading, 16) }
     }
 }

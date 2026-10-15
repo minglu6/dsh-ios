@@ -1,7 +1,7 @@
 import Foundation
 
 public enum PreviewKind: String, Sendable, Equatable {
-    case text, image, pdf, unsupported
+    case text, image, pdf, office, workbook, unsupported
 }
 
 public func previewKindFor(_ path: String) -> PreviewKind {
@@ -16,8 +16,11 @@ public func previewKindFor(_ path: String) -> PreviewKind {
         return .image
     case "pdf":
         return .pdf
-    case "doc", "docx", "xls", "xlsx", "xlsm", "xlsb", "ppt", "pptx",
-         "odt", "ods", "odp", "pages", "numbers", "key",
+    case "doc", "docx", "ppt", "pptx":
+        return .office
+    case "xls", "xlsx":
+        return .workbook
+    case "xlsm", "xlsb", "odt", "ods", "odp", "pages", "numbers", "key",
          "zip", "gz", "tar", "7z", "rar", "exe", "so", "dylib",
          "mp4", "mov", "mp3", "wav", "woff", "ttf":
         return .unsupported

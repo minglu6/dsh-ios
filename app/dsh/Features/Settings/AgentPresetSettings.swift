@@ -20,6 +20,7 @@ struct AgentPresetSettingsView: View {
             header
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    settingsDisconnectedBanner(model)
                     Text(L.presetOnboarding()).font(.subheadline).foregroundStyle(T.text2).padding(.horizontal, 18)
                     if let error { Text(error).foregroundStyle(T.err).padding(.horizontal, 18) }
                     if busy { ProgressView().padding(.horizontal, 18) }

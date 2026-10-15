@@ -5,6 +5,10 @@ public let hiddenProfileBundles: Set<String> = [
     "@deepseek-ai/dsh-sdk-app", "@deepseek-ai/dsh-acp-app", "@deepseek-ai/dsh-sdk-minimal",
 ]
 
+public let officialConfigurations = [
+    "subagent", "web-search-deepseek", "agent-loop", "bash-sandbox", "pwsh-sandbox",
+]
+
 public let primaryOptionalBundles = [
     "@deepseek-ai/dsh-experimental-agent-team-profile",
     "@deepseek-ai/dsh-experimental-voice-input-bundle",
@@ -287,7 +291,7 @@ private func isLocalPluginSvgCss(_ value: String) -> Bool {
 public func pluginChangeText(_ result: JSONValue, en: Bool) -> String {
     switch result["application"].str() {
     case "applied": return en ? "Change applied" : "更改已生效"
-    case "restart-required": return en ? "Saved; takes effect after the remote host restarts" : "更改已保存，将在远程主机下次启动生效"
+    case "restart-required": return en ? "Saved; takes effect after the host restarts" : "更改已保存，将在主机下次启动生效"
     case "overridden": return en ? "Saved, but overridden by higher-priority configuration" : "更改已保存，但被更高优先级配置覆盖，当前未生效"
     case "cancelled": return en ? "Installation cancelled" : "已取消安装"
     case "failed": return en ? "Operation failed" : "操作失败"

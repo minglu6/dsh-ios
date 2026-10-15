@@ -39,8 +39,11 @@ private struct MdBlockView: View {
         case .bulletList(let items, _):
             VStack(alignment: .leading, spacing: 4) {
                 ForEach(Array(items.enumerated()), id: \.offset) { _, item in
-                    HStack(alignment: .top, spacing: 6) {
-                        Text("•").foregroundStyle(T.text3)
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Circle()
+                            .fill(T.text3)
+                            .frame(width: 5, height: 5)
+                            .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + CGFloat(AppPrefs.fontSize) * 0.35 }
                         nested(item)
                     }
                 }
@@ -48,7 +51,7 @@ private struct MdBlockView: View {
         case .orderedList(let items, let start, _):
             VStack(alignment: .leading, spacing: 4) {
                 ForEach(Array(items.enumerated()), id: \.offset) { index, item in
-                    HStack(alignment: .top, spacing: 6) {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text("\(start + index).").foregroundStyle(T.text3)
                         nested(item)
                     }

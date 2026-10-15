@@ -195,11 +195,7 @@ private struct RequestOptions: View {
         if let configJson, !configJson.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             VStack(alignment: .leading, spacing: 6) {
                 Text(TrajL.optionsJson).font(.system(size: 12)).foregroundStyle(T.text3)
-                Text(prettyRequestJson(configJson))
-                    .font(LocalFonts.code())
-                    .foregroundStyle(T.ink)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                TrajectoryJsonValue(source: configJson)
             }
         } else {
             Text(TrajL.optionsNotRecorded).font(.subheadline).foregroundStyle(T.text3)

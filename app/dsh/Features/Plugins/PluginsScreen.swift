@@ -3,7 +3,8 @@ import DSHProtocol
 
 struct PluginsScreen: View {
     @ObservedObject var model: AppModel
-    @State private var hostUi = false
+    var onCreatePlugin: () -> Void = {}
+    @State private var creatorState = "idle"
     @State private var bundles: [JSONValue] = []
     @State private var plugins: [JSONValue] = []
     @State private var namespaces: [JSONValue] = []
@@ -17,6 +18,8 @@ struct PluginsScreen: View {
     @State private var configError: String?
     @State private var outcome: JSONValue?
     @State private var detail: String?
+    @State private var partsQuery = ""
+    @State private var catalogSelection: Bool?
     @State private var config: JSONValue?
     @State private var installOpen = false
     @State private var installSpec = ""
@@ -32,9 +35,7 @@ struct PluginsScreen: View {
     @State private var uninstall: JSONValue?
 
     var body: some View {
-        if hostUi {
-            HostUiView(model: model, title: L.pluginInterfaces(), onBack: { hostUi = false })
-        } else if let config {
+        if let config {
             PluginConfigurationView(model: model, namespace: config, writable: model.isOnline && writable && model.ops.contains("plugins.settingsMutate"), onBack: { self.config = nil })
         } else {
             list
@@ -50,38 +51,37 @@ struct PluginsScreen: View {
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
+                    settingsDisconnectedBanner(model)
                     HStack {
                         Button(L.refresh()) { reload() }.disabled(!model.isOnline || locked)
                         Spacer()
-                        if selected == nil && !moreOptional && managementAvailable && model.ops.contains("plugins.install") || installRequest != nil {
-                            Button(installRequest != nil ? L.t("安装任务", "Installation") : L.addPlugin()) { openInstall() }
-                                .disabled(!(installRequest != nil || (model.isOnline && !locked)))
+                        if selected == nil && !moreOptional && (managementAvailable && model.ops.contains("plugins.install") || installRequest != nil) {
+                            PluginAddMenu(
+                                enabled: installRequest != nil || (model.isOnline && !locked),
+                                creatorEnabled: creatorState == "ready" && creatorPresent && model.ops.contains("sessions.create"),
+                                creatorDescription: creatorDescription,
+                                onOpen: loadCreator,
+                                onInstall: { openInstall() },
+                                onCreatePlugin: onCreatePlugin
+                            )
                         }
                     }
                     .padding(.horizontal, 18)
                     if let error { settingsMessage(error, error: true) }
-                    if let outcome { Text(pluginChangeText(outcome, en: L.en)).foregroundStyle(T.text2).padding(.horizontal, 22) }
+                    if let outcome { PluginOutcome(outcome) }
                     if loading || busy { ProgressView().frame(maxWidth: .infinity) }
-                    if model.ops.contains("ui.open") {
-                        card {
-                            nav(L.pluginInterfaces(), "puzzlepiece.extension", value: L.t("与桌面共用", "Shared with desktop"), divider: false) {
-                                hostUi = true
-                            }
-                        }
-                    } else {
-                        settingsMessage(L.t("更新桌面端手机连接插件后，可在此加载插件原有的 Web 界面。", "Update the Host phone-connection plugin to load installed plugin Web interfaces here."))
-                    }
                     if let selected {
                         bundleDetail(selected)
                     } else if moreOptional {
                         bundleGroup(official: true, expanded: true)
                     } else {
-                        settingsMessage(L.t("安装、启用和配置插件", "Install, enable and configure plugins"))
-                        if !namespaces.isEmpty {
-                            Text(L.t("插件配置", "Plugin settings")).font(.caption).foregroundStyle(T.text3).padding(.horizontal, 22)
+                        PluginPageIntro()
+                        let configurations = namespaces.filter { officialConfigurations.contains($0["ns"].str() ?? "") }
+                        if !configurations.isEmpty {
+                            Text(L.t("内置插件配置", "Built-in plugin settings")).font(.caption).foregroundStyle(T.text3).padding(.horizontal, 22)
                         }
                         if let configError { settingsMessage(configError, error: true) }
-                        ForEach(Array(namespaces.enumerated()), id: \.offset) { _, ns in
+                        ForEach(Array(configurations.sorted { officialConfigurations.firstIndex(of: $0["ns"].str() ?? "") ?? .max < officialConfigurations.firstIndex(of: $1["ns"].str() ?? "") ?? .max }.enumerated()), id: \.offset) { _, ns in
                             let nsId = ns["ns"].str() ?? ""
                             Button { config = ns } label: {
                                 HStack(spacing: 12) {
@@ -105,14 +105,18 @@ struct PluginsScreen: View {
         }
         .background(T.bg.ignoresSafeArea())
         .sheet(isPresented: $installOpen) { installSheet }
-        .confirmationDialog(L.t("卸载此插件？", "Uninstall this plugin?"), isPresented: Binding(get: { uninstall != nil }, set: { if !$0 { uninstall = nil } })) {
-            Button(L.delete(), role: .destructive) {
+        .confirmationDialog(L.t("卸载插件？", "Uninstall plugin?"), isPresented: Binding(get: { uninstall != nil }, set: { if !$0 { uninstall = nil } }), titleVisibility: .visible) {
+            Button(L.t("确认卸载", "Uninstall"), role: .destructive) {
                 if let name = uninstall?["name"].str() {
                     mutate { try await $0.pluginsUninstall(bundle: name) }
                 }
                 uninstall = nil
             }
             Button(L.cancel(), role: .cancel) { uninstall = nil }
+        } message: {
+            if let uninstall {
+                Text(pluginTitle(uninstall) + "\n" + L.t("将从当前主机 profile 移除，插件功能将不可用。", "Removes this package from the host profile. Its functionality will no longer be available."))
+            }
         }
         .task(id: "\(model.activeId ?? "")-\(model.pluginCatalogRevision)") {
             if model.isOnline { await refresh() }
@@ -130,10 +134,54 @@ struct PluginsScreen: View {
             }
             installing = false
         }
+        .onChange(of: detail) { _ in partsQuery = "" }
     }
 
     private var selected: JSONValue? {
         bundles.first { $0["name"].str() == detail }
+    }
+
+    private var creatorPresent: Bool {
+        model.presetRoster.contains { $0["id"].str() == "cordis" }
+    }
+
+    private var creatorDescription: String {
+        switch creatorState {
+        case "idle", "loading": return L.t("正在确认创造模式是否可用", "Checking whether Creator mode is available")
+        case "ready":
+            return creatorPresent
+                ? L.t("进入创造模式，制作属于你的 DSH 插件", "Enter Creator mode and make your own DSH plugin")
+                : L.t("当前配置未提供创造模式", "Creator mode is not included in this configuration")
+        default:
+            return L.t("暂时不可用，请重新打开菜单重试", "Temporarily unavailable. Reopen this menu to retry")
+        }
+    }
+
+    private func loadCreator() {
+        if creatorState == "loading" { return }
+        creatorState = "loading"
+        Task {
+            do {
+                guard let client = model.clientOrNull() else {
+                    creatorState = "unavailable"
+                    return
+                }
+                let operation: String
+                if model.ops.contains("presets.settings") { operation = "presets.settings" }
+                else if model.ops.contains("presets.list") { operation = "presets.list" }
+                else {
+                    creatorState = "unavailable"
+                    return
+                }
+                let result = try await client.call(operation)
+                model.presetRoster = PresetPolicy.parseRoster(result)
+                creatorState = "ready"
+            } catch is CancellationError {
+                return
+            } catch {
+                creatorState = "unavailable"
+            }
+        }
     }
 
     @ViewBuilder
@@ -143,95 +191,253 @@ struct PluginsScreen: View {
         if !all.isEmpty {
             HStack {
                 Text(official ? L.t("实验性插件", "Experimental plugins") : L.t("已安装插件", "Installed plugins"))
-                    .font(.caption).foregroundStyle(T.text3)
+                    .font(.system(size: 14, weight: .medium)).foregroundStyle(T.ink)
                 Spacer()
                 if official && !expanded {
                     Button(L.t("更多", "More")) { moreOptional = true }
                 }
             }
-            .padding(.horizontal, 22)
+            .padding(.horizontal, 20)
+            .padding(.top, 16)
             let group = all.filter { !official || pluginOptionalVisible(name: $0["name"].str(), expanded: expanded) }
                 .sorted { a, b in
                     official ? pluginOptionalRank(a["name"].str()) < pluginOptionalRank(b["name"].str()) : false
                 }
+            if group.isEmpty && loaded && !loading && error == nil {
+                settingsMessage(L.t("没有匹配的插件", "No matching plugins"))
+            }
             ForEach(Array(group.enumerated()), id: \.offset) { _, bundle in
-                Button { detail = bundle["name"].str() } label: {
-                    HStack {
-                        PluginMetadataArtwork(icon: bundle["meta"]["icon"].str())
-                        VStack(alignment: .leading) {
-                            Text(pluginTitle(bundle)).foregroundStyle(T.ink)
-                            Text(bundleState(bundle)).font(.caption).foregroundStyle(T.text3)
-                        }
-                        Spacer()
-                    }
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 8)
-                }
+                pluginCard(bundle)
             }
         }
     }
 
     @ViewBuilder
+    private func pluginCard(_ bundle: JSONValue) -> some View {
+        let name = bundle["name"].str() ?? ""
+        let reason = bundle["readOnlyReason"].str()
+        let missing = bundle["availability"].str() == "missing"
+        let switchAvailable = model.isOnline && !locked && reason == nil && model.ops.contains("plugins.setEnabled")
+            && (!missing || bundle["installTarget"]["spec"].str() != nil)
+        let summary = (bundle["rows"].arr()?.isEmpty == false) ? partsSummary(bundle["rows"].arr() ?? [], plugins: plugins) : nil
+        let status = [bundleState(bundle).nilIfBlank, summary].compactMap { $0 }.joined(separator: " · ")
+        HStack(alignment: .center, spacing: 12) {
+            Button { detail = name } label: {
+                HStack(alignment: .center, spacing: 12) {
+                    PluginMetadataArtwork(icon: bundle["meta"]["icon"].str())
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(pluginTitle(bundle)).font(.system(size: 14, weight: .medium)).foregroundStyle(T.ink)
+                        let description = pluginDescription(bundle)
+                        if !description.isEmpty {
+                            Text(description).font(.system(size: 12)).foregroundStyle(T.text3)
+                        }
+                        if !status.isEmpty {
+                            Text(status).font(.system(size: 11)).foregroundStyle(T.text3)
+                        }
+                        if let version = bundle["version"].str() {
+                            Text("v\(version)").font(.system(size: 11)).foregroundStyle(T.text3)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+            .buttonStyle(.plain)
+            Toggle("", isOn: Binding(
+                get: { bundle["enabled"].bool() == true },
+                set: { enabled in
+                    if enabled && missing {
+                        if let spec = bundle["installTarget"]["spec"].str() { openInstall(spec, true) }
+                    } else {
+                        mutate { try await $0.pluginsSetEnabled(enabled: enabled, bundle: name) }
+                    }
+                }
+            ))
+            .labelsHidden()
+            .disabled(!switchAvailable)
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 8)
+    }
+
+    @ViewBuilder
     private func bundleDetail(_ bundle: JSONValue) -> some View {
         let name = bundle["name"].str() ?? ""
+        let reason = bundle["readOnlyReason"].str()
         let rows = bundle["rows"].arr() ?? []
-        let counts = pluginParts(rows: rows, plugins: plugins)
-        Text(pluginTitle(bundle)).font(.headline).padding(.horizontal, 22)
-        Text("\(counts.total) · \(counts.running)").font(.caption).foregroundStyle(T.text3).padding(.horizontal, 22)
-        if let description = pluginLocalized(bundle["meta"]["description"], english: L.en) {
-            Text(description).foregroundStyle(T.text2).padding(.horizontal, 22)
-        }
-        let live = pluginLiveRow(bundle, plugins: plugins) ?? bundle
-        Toggle(L.t("启用", "Enable"), isOn: Binding(
-            get: { live["enabled"].bool() == true },
-            set: { enabled in
-                mutate { try await $0.pluginsSetEnabled(enabled: enabled, bundle: name) }
-            }
-        ))
-        .disabled(locked || !model.isOnline || !managementAvailable)
-        .padding(.horizontal, 22)
-        if model.ops.contains("plugins.uninstall"), bundle["official"].bool() != true {
-            Button(L.t("卸载", "Uninstall"), role: .destructive) { uninstall = bundle }
-                .padding(.horizontal, 22)
-        }
-        ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-            let liveRow = pluginLiveRow(row, plugins: plugins)
+        VStack(alignment: .leading, spacing: 10) {
+            Text(pluginDescription(bundle)).foregroundStyle(T.text3)
+            Text(name).font(.system(size: 12, design: .monospaced)).textSelection(.enabled)
             HStack {
-                Text(row["moduleName"].str() ?? row["rowId"].str() ?? "").foregroundStyle(T.ink)
+                Text(L.t("启用插件", "Enable plugin"))
                 Spacer()
-                Text(phaseText(liveRow)).font(.caption).foregroundStyle(T.text3)
+                Toggle("", isOn: Binding(
+                    get: { bundle["enabled"].bool() == true },
+                    set: { enabled in
+                        mutate { try await $0.pluginsSetEnabled(enabled: enabled, bundle: name) }
+                    }
+                ))
+                .labelsHidden()
+                .disabled(!(model.isOnline && !locked && reason == nil && bundle["availability"].str() != "missing" && model.ops.contains("plugins.setEnabled")))
             }
-            .padding(.horizontal, 22)
+            if let reason {
+                Text(pluginReadOnlyText(reason)).foregroundStyle(T.text3)
+            }
+            if !bundle["error"].isNull {
+                Text(pluginPretty(bundle["error"])).font(.system(size: 12)).foregroundStyle(T.err).textSelection(.enabled)
+            }
+            if let metaError = bundle["meta"]["error"].str() {
+                Text(L.t("包元信息错误：", "Package metadata error: ") + metaError).font(.system(size: 12)).foregroundStyle(T.err)
+            }
+            Text(L.t("来源：", "Source: ") + (bundle["source"].str() ?? (bundle["availability"].str() == "installation" ? L.t("内置", "Built-in") : name)))
+                .font(.system(size: 12))
+            if let version = bundle["version"].str() {
+                Text(L.t("当前版本：", "Version: ") + version).font(.system(size: 12))
+            }
+            let target = bundle["installTarget"]
+            if target["spec"].str() != nil && (bundle["availability"].str() == "missing" || target["version"].str() != bundle["version"].str()) {
+                Button(L.t("安装 / 更新至 ", "Install / update to ") + (target["version"].str() ?? "")) {
+                    openInstall(target["spec"].str() ?? "", bundle["enabled"].bool() == true || bundle["availability"].str() == "missing")
+                }
+                .disabled(!(model.isOnline && !locked))
+            }
+            if bundle["removable"].bool() == true && bundle["optional"].bool() != true && reason == nil && bundle["availability"].str() != "installation" {
+                Button(L.t("卸载", "Uninstall"), role: .destructive) { uninstall = bundle }
+                    .disabled(!(model.isOnline && !locked && model.ops.contains("plugins.uninstall")))
+            }
         }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(T.settingsCard, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.settingsCardStroke, lineWidth: 0.5))
+        .padding(.horizontal, 16)
+        Text(L.t("包含的组件", "Components")).font(.system(size: 14, weight: .medium)).padding(.horizontal, 20).padding(.top, 8)
+        if rows.isEmpty {
+            settingsMessage(L.t("这个插件包不包含任何组件。", "This bundle contains no components."))
+        }
+        if !rows.isEmpty {
+            settingsMessage(partsSummary(rows, plugins: plugins))
+        }
+        if rows.count > 10 {
+            TextField(L.t("筛选组件", "Filter components"), text: $partsQuery)
+                .textInputAutocapitalization(.never)
+                .padding(.horizontal, 18)
+        }
+        let shown = rows.filter { row in
+            let q = partsQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+            if q.isEmpty { return true }
+            return [pluginTitle(row), pluginDescription(row), row["rowId"].str() ?? "", row["moduleName"].str() ?? ""]
+                .contains { $0.localizedCaseInsensitiveContains(q) }
+        }
+        if !rows.isEmpty && shown.isEmpty {
+            settingsMessage(L.t("没有匹配的组件", "No matching components"))
+        }
+        ForEach(Array(shown.enumerated()), id: \.offset) { _, row in
+            componentCard(row)
+        }
+        if !model.ops.contains("ui.open") {
+            settingsMessage(L.t("更新桌面端手机连接插件后，可在此加载插件原有的 Web 界面。", "Update the Host phone-connection plugin to load installed plugin Web interfaces here."))
+        }
+    }
+
+    @ViewBuilder
+    private func componentCard(_ row: JSONValue) -> some View {
+        let live = pluginLiveRow(row, plugins: plugins)
+        let ns = namespaces.first { $0["ns"].str() == row["rowId"].str() }
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                PluginMetadataArtwork(icon: row["meta"]["icon"].str())
+                VStack(alignment: .leading) {
+                    Text(pluginTitle(row)).font(.system(size: 14, weight: .medium)).foregroundStyle(T.ink)
+                    Text(phaseText(live))
+                        .font(.system(size: 12))
+                        .foregroundStyle(live?["fiberPhase"].str() == "failed" ? T.err : T.text3)
+                }
+                Spacer()
+                Toggle("", isOn: Binding(
+                    get: { live?["enabled"].bool() == true },
+                    set: { enabled in
+                        mutate { try await $0.pluginsSetEnabled(enabled: enabled, id: row["entryId"].str()) }
+                    }
+                ))
+                .labelsHidden()
+                .disabled(!(model.isOnline && !locked && live != nil && live?["readOnlyReason"].str() == nil && model.ops.contains("plugins.setEnabled")))
+            }
+            if !pluginDescription(row).isEmpty {
+                Text(pluginDescription(row)).font(.system(size: 13)).foregroundStyle(T.text3)
+            }
+            if let rowId = row["rowId"].str(), rowId != pluginTitle(row) {
+                Text(rowId).font(.system(size: 11, design: .monospaced))
+            }
+            if let module = row["moduleName"].str(), module != pluginTitle(row), module != row["rowId"].str() {
+                Text(module).font(.system(size: 11, design: .monospaced))
+            }
+            if let metaError = row["meta"]["error"].str() {
+                Text(L.t("包元信息错误：", "Package metadata error: ") + metaError).font(.system(size: 12)).foregroundStyle(T.err)
+            }
+            if let reason = live?["readOnlyReason"].str() {
+                Text(pluginReadOnlyText(reason)).font(.system(size: 12))
+            }
+            if ns != nil {
+                Button(L.t("配置组件", "Configure component")) { config = ns }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(T.settingsCard, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.settingsCardStroke, lineWidth: 0.5))
+        .padding(.horizontal, 16)
+    }
+
+    private var catalogUpdate: Bool {
+        catalogSelection != nil
+            && inspection?["problem"].str() == "already-installed"
+            && bundles.contains {
+                $0["official"].bool() == true
+                    && $0["installed"].bool() == true
+                    && $0["availability"].str() != "installation"
+                    && $0["installTarget"]["spec"].str() == installSpec.trimmingCharacters(in: .whitespaces)
+            }
     }
 
     private var installSheet: some View {
         NavigationStack {
             Form {
-                TextField(L.t("插件 spec", "Plugin spec"), text: $installSpec)
+                Text(L.t("输入 npm 包名、Git 仓库、tarball 地址或主机目录路径。路径属于主机，不是手机。", "Enter an npm package, Git repository, tarball URL or host directory path. Paths refer to the host, not this phone."))
+                    .font(.system(size: 13))
+                Text(L.t("只安装可信插件：插件在主机以你的权限运行，可访问你的数据。", "Only install trusted plugins: they execute with your host permissions and can access your data."))
+                    .font(.system(size: 12))
+                    .foregroundStyle(T.err)
+                TextField(L.t("包名或地址", "Package or address"), text: $installSpec)
                     .textInputAutocapitalization(.never)
+                    .disabled(locked)
                 if !registries.isEmpty {
-                    Picker(L.t("来源库", "Registry"), selection: $registry) {
+                    Picker(L.t("安装源", "Registry"), selection: $registry) {
+                        Text(L.t("主机配置的默认安装源", "Host-configured default registry")).tag("")
                         ForEach(registries, id: \.self) { Text($0).tag($0) }
                     }
+                    .disabled(locked)
                 }
                 if let inspection {
                     Text(inspection["status"].str() ?? "").foregroundStyle(T.text2)
                     if let problem = inspection["problem"].str() { Text(problem).foregroundStyle(T.err) }
                 }
                 if let installError { Text(installError).foregroundStyle(T.err) }
-                if let installResult { Text(pluginChangeText(installResult, en: L.en)) }
+                if let installResult { PluginOutcome(installResult) }
                 if installing { ProgressView() }
                 Button(L.t("检视", "Inspect")) { inspect() }
-                    .disabled(installSpec.trimmingCharacters(in: .whitespaces).isEmpty || checking || !model.ops.contains("plugins.inspect"))
+                    .disabled(installSpec.trimmingCharacters(in: .whitespaces).isEmpty || checking || !model.ops.contains("plugins.inspect") || locked)
                 Button(L.t("安装", "Install")) { runInstall() }
-                    .disabled(installing || installRequest != nil || !model.ops.contains("plugins.install"))
+                    .disabled(!(model.isOnline && !locked && model.ops.contains("plugins.install") && (inspection?["status"].str() == "accepted" || catalogUpdate)))
                 if let installRequest, model.ops.contains("plugins.cancelInstall") {
                     Button(L.cancel()) { cancelInstall(installRequest) }.disabled(cancelling)
                 }
             }
             .navigationTitle(L.addPlugin())
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L.close()) { installOpen = false } } }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(installRequest != nil || installing ? L.t("收起", "Hide") : L.close()) { installOpen = false }
+                }
+            }
         }
     }
 
@@ -300,7 +506,14 @@ struct PluginsScreen: View {
         }
     }
 
-    private func openInstall() {
+    private func openInstall(_ spec: String = "", _ selection: Bool? = nil) {
+        if installRequest == nil && !installing && !spec.isEmpty {
+            installSpec = spec
+            inspection = nil
+            installResult = nil
+            installError = nil
+            catalogSelection = selection
+        }
         installOpen = true
         guard model.ops.contains("plugins.registries"), model.isOnline, let client = model.clientOrNull() else { return }
         Task {
@@ -333,7 +546,9 @@ struct PluginsScreen: View {
     }
 
     private func runInstall() {
+        let spec = installSpec.trimmingCharacters(in: .whitespaces)
         guard !locked, model.isOnline, let client = model.clientOrNull() else { return }
+        guard inspection?["status"].str() == "accepted" || catalogUpdate else { return }
         let request = UUID().uuidString
         installRequest = request
         installing = true
@@ -343,12 +558,15 @@ struct PluginsScreen: View {
             do {
                 var options: [String: JSONValue] = [
                     "requestId": .string(request),
-                    "enabled": .bool(false),
+                    "enabled": .bool(catalogSelection ?? false),
                 ]
+                if catalogSelection != nil && !spec.hasPrefix("link:") {
+                    options["saveExact"] = .bool(true)
+                }
                 if !registry.trimmingCharacters(in: .whitespaces).isEmpty {
                     options["registry"] = .string(registry.trimmingCharacters(in: .whitespaces))
                 }
-                installResult = try await client.pluginsInstall(spec: installSpec.trimmingCharacters(in: .whitespaces), options: .object(options))
+                installResult = try await client.pluginsInstall(spec: spec, options: jsonObjectKeeping(options))
                 installRequest = nil
                 await refresh()
             } catch {
@@ -484,6 +702,63 @@ private func pluginTitle(_ value: JSONValue) -> String {
     pluginLocalized(value["meta"]["title"], english: L.en) ?? value["name"].str() ?? value["rowId"].str() ?? value["moduleName"].str() ?? ""
 }
 
+private func pluginDescription(_ value: JSONValue) -> String {
+    pluginLocalized(value["meta"]["description"], english: L.en) ?? value["description"].str() ?? ""
+}
+
+private func pluginReadOnlyText(_ reason: String) -> String {
+    switch reason {
+    case "management-required": return L.t("管理界面依赖此组件，不能关闭或卸载。", "Required by plugin management; cannot disable or remove.")
+    case "unaddressable": return L.t("此组件不能通过当前 profile 修改。", "This component cannot be changed through this profile.")
+    default: return reason
+    }
+}
+
+private func partsSummary(_ rows: [JSONValue], plugins: [JSONValue]) -> String {
+    let counts = pluginParts(rows: rows, plugins: plugins)
+    var parts = [L.en ? "\(counts.total) components" : "\(counts.total) 个组件"]
+    if counts.running > 0 { parts.append(L.en ? "\(counts.running) running" : "\(counts.running) 个运行中") }
+    if counts.off > 0 { parts.append(L.en ? "\(counts.off) disabled" : "\(counts.off) 个已停用") }
+    if counts.failed > 0 { parts.append(L.en ? "\(counts.failed) failed" : "\(counts.failed) 个异常") }
+    return parts.joined(separator: " · ")
+}
+
+private func pluginPretty(_ value: JSONValue) -> String {
+    (try? value.encodeString()) ?? ""
+}
+
+private struct PluginOutcome: View {
+    let result: JSONValue
+    @State private var expanded = false
+
+    init(_ result: JSONValue) { self.result = result }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            settingsMessage(pluginChangeText(result, en: L.en), error: result["application"].str() == "failed")
+            if !result["error"].isNull {
+                settingsMessage(pluginPretty(result["error"]), error: true)
+            }
+            let warnings = (result["warnings"].arr() ?? []).compactMap { $0.str() }
+            if !warnings.isEmpty {
+                settingsMessage(warnings.joined(separator: "\n"))
+            }
+            if !result["packageResult"].isNull || !result["pendingBuilds"].isNull {
+                Button(expanded ? L.t("收起安装详情", "Hide installation details") : L.t("查看安装详情", "Show installation details")) {
+                    expanded.toggle()
+                }
+                .padding(.horizontal, 22)
+                if expanded {
+                    Text(pluginPretty(result))
+                        .font(.system(size: 11, design: .monospaced))
+                        .textSelection(.enabled)
+                        .padding(.horizontal, 18)
+                }
+            }
+        }
+    }
+}
+
 private func configurationTitle(_ ns: String, plugins: [JSONValue]) -> String {
     let runtime = plugins.first { $0["patchId"].str() == ns }
     switch ns {
@@ -530,4 +805,78 @@ private func setPath(_ root: JSONValue, _ path: [String], _ value: JSONValue) ->
     var object = root.obj() ?? [:]
     object[path[0]] = setPath(root[path[0]], Array(path.dropFirst()), value)
     return .object(object)
+}
+
+private struct PluginPageIntro: View {
+    @State private var tooltip = false
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 8) {
+            Text(L.t("安装、启用和配置插件", "Install, enable, and configure plugins"))
+                .font(.system(size: 13))
+                .foregroundStyle(T.text3)
+            Button { tooltip.toggle() } label: {
+                Image(systemName: "info.circle").font(.system(size: 11)).foregroundStyle(T.text3)
+            }
+            .accessibilityLabel(L.t("插件说明", "About plugins"))
+            .popover(isPresented: $tooltip) {
+                Text(L.t("在这里配置官方插件，安装和管理其他插件。内置插件列表及运行状态可在「设置 → 内置插件」中查看", "Configure official plugins and install or manage other plugins here. View the built-in plugin list and runtime status in Settings → Built-in plugins."))
+                    .font(.system(size: 13))
+                    .foregroundStyle(T.ink)
+                    .frame(maxWidth: 300)
+                    .padding(12)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 18)
+    }
+}
+
+private extension String {
+    var nilIfBlank: String? {
+        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : self
+    }
+}
+
+private struct PluginAddMenu: View {
+    let enabled: Bool
+    let creatorEnabled: Bool
+    let creatorDescription: String
+    var onOpen: () -> Void
+    var onInstall: () -> Void
+    var onCreatePlugin: () -> Void
+    @State private var expanded = false
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Button {
+                expanded = false
+                onInstall()
+            } label: {
+                Text(L.addPlugin()).font(.system(size: 13)).foregroundStyle(T.onPrimary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(T.primaryButton, in: RoundedRectangle(cornerRadius: 8))
+            }
+            .disabled(!enabled)
+            Button {
+                expanded = true
+                onOpen()
+            } label: {
+                Image(systemName: "chevron.down").font(.system(size: 12)).foregroundStyle(T.ink).frame(width: 32, height: 32)
+            }
+            .disabled(!enabled)
+            .accessibilityLabel(L.t("选择添加插件方式", "Choose how to add a plugin"))
+            .confirmationDialog(L.addPlugin(), isPresented: $expanded, titleVisibility: .hidden) {
+                Button(L.t("安装第三方插件", "Install a third-party plugin")) { onInstall() }
+                    .disabled(!enabled)
+                Button(L.t("让 Agent 创建插件", "Let the agent create a plugin")) { onCreatePlugin() }
+                    .disabled(!(enabled && creatorEnabled))
+                Button(L.cancel(), role: .cancel) {}
+            } message: {
+                Text(L.t("支持 npm 包、Git 仓库和本地目录", "Supports npm packages, Git repositories, and local directories") + "\n" + creatorDescription)
+            }
+        }
+    }
 }

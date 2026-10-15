@@ -17,12 +17,13 @@ struct ModelsSettingsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            header(L.modelsNav()) { if !busy { model.pop() } }
+            header(L.modelsNav()) { if !model.isOnline || !busy { model.pop() } }
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    settingsMessage(L.t("配置远程主机上的模型提供商与密钥。", "Configure model providers and API keys on the remote host."))
+                    settingsDisconnectedBanner(model)
+                    settingsMessage(L.modelsIntro())
                     if model.isOnline && !writable && !loading && error == nil {
-                        settingsMessage(L.t("远程主机配置为只读", "Remote host settings are read-only"))
+                        settingsMessage(L.hostSettingsReadOnly())
                     }
                     if let error { settingsMessage(error, error: true) }
                     if let message { settingsMessage(message) }
@@ -52,7 +53,7 @@ struct ModelsSettingsView: View {
                         .disabled(!canAdd)
                         .padding(.horizontal, 18)
                         if !loading && !addOptions.offered {
-                            settingsMessage(L.t("远程主机未提供可新增的模型提供商配置。", "The remote host has not exposed an add-provider configuration."))
+                            settingsMessage(L.t("主机未提供可新增的模型提供商配置。", "The Host has not exposed an add-provider configuration."))
                         } else if !loading && !addOptions.enabled(protocols: protocols) {
                             settingsMessage(L.t("当前没有可添加的目录提供商或自定义 API 协议。", "No catalog providers or custom API protocols are available to add."))
                         }
@@ -73,6 +74,23 @@ struct ModelsSettingsView: View {
                                 }
                             }
                         )
+                        .padding(.horizontal, 18)
+                    }
+                    if let namespace = namespaces.first(where: { $0["ns"].str() == "llm-qoder" }) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            QoderConnectionCard(
+                                namespace: namespace,
+                                online: model.isOnline,
+                                writable: writable,
+                                interactionEnabled: !busy && !loading && error == nil,
+                                model: model,
+                                onBusy: { busy = $0 },
+                                onChanged: reload
+                            )
+                        }
+                        .padding(14)
+                        .background(T.settingsCard, in: RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.settingsCardStroke, lineWidth: 0.5))
                         .padding(.horizontal, 18)
                     }
                 }
@@ -105,18 +123,25 @@ struct ModelsSettingsView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text(row["displayName"].str() ?? route).foregroundStyle(T.ink)
-                        if row["declared"].bool() == true {
-                            Text(L.t("自定义", "Custom")).font(.caption2).foregroundStyle(T.text2)
-                                .padding(.horizontal, 6).overlay(RoundedRectangle(cornerRadius: 4).stroke(T.border))
+                    if expanded {
+                        HStack(spacing: 8) {
+                            Text(providerDisplayName(row, route: route, english: L.en)).foregroundStyle(T.ink)
+                            Text(route).font(.system(size: 12)).foregroundStyle(T.text3).lineLimit(1)
                         }
-                        if route != "deepseek-account" {
-                            let credential = row["apiKeyEnv"].str() != nil ? row["credential"] : row["derivedCredential"]
-                            if credential["configured"].bool() == true {
-                                Circle().fill(T.ok).frame(width: 8, height: 8)
-                            } else if row["apiKeyEnv"].str() != nil {
-                                Circle().fill(T.err).frame(width: 8, height: 8)
+                    } else {
+                        HStack {
+                            Text(providerDisplayName(row, route: route, english: L.en)).foregroundStyle(T.ink)
+                            if row["declared"].bool() == true {
+                                Text(L.t("自定义", "Custom")).font(.caption2).foregroundStyle(T.text2)
+                                    .padding(.horizontal, 6).overlay(RoundedRectangle(cornerRadius: 4).stroke(T.border))
+                            }
+                            if route != "deepseek-account" {
+                                let credential = row["apiKeyEnv"].str() != nil ? row["credential"] : row["derivedCredential"]
+                                if credential["configured"].bool() == true {
+                                    Circle().fill(T.ok).frame(width: 8, height: 8)
+                                } else if row["apiKeyEnv"].str() != nil {
+                                    Circle().fill(T.err).frame(width: 8, height: 8)
+                                }
                             }
                         }
                     }
@@ -335,7 +360,7 @@ struct ProviderSettingsEditorView: View {
             if let err = initial?["provider"]["error"].str() { Text(err).foregroundStyle(T.err).font(.caption) }
             if let error { Text(error).foregroundStyle(T.err).font(.caption) }
             if !knownLayout {
-                Text(L.t("此提供商由远程主机配置管理。", "This provider is managed in remote host configuration.")).font(.caption).foregroundStyle(T.text3)
+                Text(L.t("此提供商由主机配置管理。", "This provider is managed in Host configuration.")).font(.caption).foregroundStyle(T.text3)
             }
             if initial == nil {
                 field(L.t("Provider ID", "Provider ID")) {

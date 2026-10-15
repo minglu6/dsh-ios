@@ -22,6 +22,7 @@ public protocol FrameTransport: AnyObject {
     func send(_ text: String) async throws
     func receive() async throws -> String
     func close()
+    func ping() async throws
 }
 
 public func isLoopbackHost(_ host: String) -> Bool {

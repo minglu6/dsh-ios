@@ -55,7 +55,7 @@ struct ScheduleScreen: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
                     if !model.isOnline {
-                        settingsMessage(L.t("远程主机未连接，连接恢复后可继续操作。", "Remote host disconnected. Reconnect to continue."))
+                        settingsMessage(L.t("主机未连接，连接恢复后可继续操作。", "Host disconnected. Reconnect to continue."))
                     }
                     HStack {
                         tab("all", L.t("全部", "All"))

@@ -122,6 +122,9 @@ enum L {
     static func unarchiveSession() -> String { en ? "Unarchive session" : "取消归档" }
     static func rename() -> String { en ? "Rename" : "重命名" }
     static func fork() -> String { en ? "Fork" : "Fork" }
+    static func forkSession() -> String { en ? "Fork session" : "分叉会话" }
+    static func savingEllipsis() -> String { en ? "Saving…" : "保存中…" }
+    static func moreActions() -> String { en ? "More actions" : "更多操作" }
     static func cancel() -> String { en ? "Cancel" : "取消" }
     static func save() -> String { en ? "Save" : "保存" }
     static func delete() -> String { en ? "Delete" : "删除" }
@@ -134,10 +137,24 @@ enum L {
     static func settings() -> String { en ? "Settings" : "设置" }
     static func generalNav() -> String { en ? "General" : "通用设置" }
     static func modelsNav() -> String { en ? "Models" : "模型" }
+    static func modelsIntro() -> String {
+        en
+            ? "Enter your API keys to use models from the following providers."
+            : "填入各提供商的 API 密钥即可使用其模型。"
+    }
     static func pluginsNav() -> String { en ? "Plugins" : "插件" }
     static func builtinPluginsNav() -> String { en ? "Built-in plugins" : "内置插件" }
     static func scheduleNav() -> String { en ? "Scheduled tasks" : "自动化任务" }
     static func phoneConnection() -> String { en ? "Phone connection" : "手机连接" }
+    static func mobileSection() -> String { en ? "Mobile" : "移动端" }
+    static func hostDisconnected() -> String {
+        en
+            ? "Host disconnected. Actions requiring a connection are unavailable."
+            : "远程主机未连接，需连接的操作暂不可用"
+    }
+    static func hostSettingsReadOnly() -> String {
+        en ? "Host settings are read-only" : "主机配置为只读"
+    }
     static func language() -> String { en ? "Language" : "语言" }
     static func appearance() -> String { en ? "Appearance" : "外观" }
     static func light() -> String { en ? "Light" : "浅色" }
@@ -229,6 +246,14 @@ enum L {
     }
     static func incompleteFile() -> String {
         en ? "Incomplete file response; cannot preview" : "文件未读取完整，无法预览"
+    }
+    static func pdfRendering() -> String { en ? "Rendering page…" : "正在绘制页面…" }
+    static func pdfFailed(_ message: String) -> String {
+        en ? "Cannot display PDF: \(message)" : "无法显示 PDF：\(message)"
+    }
+    static func pdfPage(_ page: Int) -> String { en ? "PDF page \(page)" : "PDF 第 \(page) 页" }
+    static func docErrorUnavailable(_ message: String) -> String {
+        en ? "Read failed: \(message)" : "读取失败：\(message)"
     }
     static func reset() -> String { en ? "Reset" : "重置" }
     static func close() -> String { en ? "Close" : "关闭" }

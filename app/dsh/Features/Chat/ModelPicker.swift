@@ -100,7 +100,7 @@ struct ModelPicker: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(groups) { group in
-                            Text(modelPickerProviderLabel(group.id, hostName: group.name))
+                            Text(modelPickerProviderLabel(group.id, hostName: group.name, english: L.en))
                                 .font(.caption)
                                 .foregroundStyle(T.text3)
                                 .padding(.horizontal, 12)

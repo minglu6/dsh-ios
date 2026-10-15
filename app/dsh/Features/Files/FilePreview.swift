@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import PDFKit
 import DSHProtocol
 
 private enum TextPreviewMode: Hashable { case preview, code, plain }
@@ -16,6 +17,7 @@ struct FilePreviewView: View {
     @State private var error: String?
     @State private var text: String?
     @State private var bytes: Data?
+    @State private var office: OfficePreviewDownload?
     @State private var refreshed: String?
     @State private var copied = false
     @State private var wrap = false
@@ -62,6 +64,9 @@ struct FilePreviewView: View {
         HStack {
             PreviewPathLabel(path: path)
             Spacer(minLength: 8)
+            if kind == .office, !loading, error == nil, let office {
+                OfficeFontWarning(fonts: office.missingFonts)
+            }
             if kind == .text, modes.count > 1 {
                 Menu {
                     ForEach(modes, id: \.self) { candidate in
@@ -100,7 +105,7 @@ struct FilePreviewView: View {
 
     @ViewBuilder
     private var bodyContent: some View {
-        if loading && (kind != .text || text == nil) {
+        if loading && (kind == .workbook ? bytes == nil : (kind != .text || text == nil)) {
             Spacer()
             ProgressView().tint(T.accent)
             Spacer()
@@ -116,6 +121,12 @@ struct FilePreviewView: View {
                 Button(L.viewOriginal()) { fullImage = true }.foregroundStyle(T.accent)
                 ImagePreviewBody(bytes: bytes)
             }
+        } else if kind == .pdf, let bytes {
+            PdfPreviewBody(data: bytes)
+        } else if kind == .office, let office {
+            PdfPreviewBody(url: office.fileURL)
+        } else if kind == .workbook, let bytes {
+            WorkbookPreviewBody(path: path, bytes: bytes)
         } else if let text {
             switch mode {
             case .preview where ["csv", "tsv"].contains(extensionName):
@@ -185,6 +196,32 @@ struct FilePreviewView: View {
                 }
                 refreshed = bytes.map { $0 == next ? L.fileUnchanged() : L.fileUpdated() }
                 bytes = next
+            case .office:
+                let cache = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+                try await model.withOfficePreview(sessionId: sessionId, path: path) { reader in
+                    let next = try await downloadOfficePreview(
+                        metadata: reader.metadata,
+                        cacheDirectory: cache,
+                        read: reader.read
+                    )
+                    if let previous = office {
+                        refreshed = previous.version == next.version && previous.generation == next.generation
+                            ? L.fileUnchanged() : L.fileUpdated()
+                        previous.close()
+                    }
+                    office = next
+                    loading = false
+                    while !Task.isCancelled {
+                        try await Task.sleep(nanoseconds: 60_000_000_000)
+                    }
+                }
+            case .workbook:
+                let next = try await readWorkbookChunks { offset, length in
+                    try await model.readFileBytes(sessionId: sessionId, path: path, offset: offset, length: length)
+                }
+                let unchanged = bytes == next
+                refreshed = bytes.map { _ in unchanged ? L.fileUnchanged() : L.fileUpdated() }
+                if !unchanged { bytes = next }
             case .text:
                 let next = try await model.readAllText(sessionId: sessionId, path: path)
                 refreshed = text.map { $0 == next ? L.fileUnchanged() : L.fileUpdated() }
@@ -193,11 +230,19 @@ struct FilePreviewView: View {
                 break
             }
         } catch is CancellationError {
+            office?.close()
+            office = nil
             return
         } catch {
-            self.error = error.localizedDescription
+            self.error = {
+                switch kind {
+                case .office: return officePreviewErrorMessage(error, english: L.en)
+                case .workbook: return workbookPreviewErrorMessage(error, english: L.en, unavailable: L.docErrorUnavailable)
+                default: return error.localizedDescription.isEmpty ? L.docErrorUnavailable(String(describing: error)) : error.localizedDescription
+                }
+            }()
         }
-        loading = false
+        if kind != .office || error != nil { loading = false }
     }
 }
 
@@ -354,6 +399,109 @@ private struct FullScreenImagePreview: View {
             }
         }
         .background(T.surface.ignoresSafeArea())
+    }
+}
+
+private struct OfficeFontWarning: View {
+    let fonts: [String]
+    @State private var expanded = false
+
+    var body: some View {
+        if fonts.isEmpty {
+            EmptyView()
+        } else {
+            Button {
+                expanded.toggle()
+            } label: {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: 14))
+                    .foregroundStyle(T.warnText)
+                    .frame(width: 32, height: 32)
+            }
+            .accessibilityLabel(L.t("缺失 \(fonts.count) 种字体，点击查看", "Missing fonts: \(fonts.count). Click to view."))
+            .popover(isPresented: $expanded) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text(L.t("缺失的字体", "Missing fonts")).font(.system(size: 14, weight: .semibold)).foregroundStyle(T.ink)
+                        Spacer()
+                        Button { expanded = false } label: {
+                            Image(systemName: "xmark").foregroundStyle(T.text2)
+                        }
+                        .accessibilityLabel(L.t("关闭字体详情", "Close font details"))
+                    }
+                    Text(L.t("本次预览无法使用以下字体，预览中的文字和排版可能与原文档不同。", "These fonts are unavailable for this preview. Text and layout may differ from the original document."))
+                        .font(.system(size: 13))
+                        .foregroundStyle(T.text2)
+                    Text(L.t("\(fonts.count) 种字体", "Fonts: \(fonts.count)")).font(.system(size: 12)).foregroundStyle(T.text3)
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(fonts, id: \.self) { font in
+                                Divider()
+                                Text(font).font(.system(size: 13)).foregroundStyle(T.ink).padding(.vertical, 8)
+                            }
+                        }
+                    }
+                    .frame(maxHeight: 300)
+                }
+                .padding(16)
+                .frame(maxWidth: 340)
+            }
+        }
+    }
+}
+
+private struct PdfPreviewBody: View {
+    var data: Data?
+    var url: URL?
+
+    var body: some View {
+        let document: PDFDocument? = {
+            if let data { return PDFDocument(data: data) }
+            if let url { return PDFDocument(url: url) }
+            return nil
+        }()
+        if let document {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 12) {
+                    ForEach(0..<document.pageCount, id: \.self) { index in
+                        Text("\(L.pdfPage(index + 1)) / \(document.pageCount)")
+                            .font(.system(size: 12))
+                            .foregroundStyle(T.text3)
+                        if let page = document.page(at: index) {
+                            PdfPageImage(page: page, label: L.pdfPage(index + 1))
+                        }
+                    }
+                }
+                .padding(12)
+            }
+            .background(T.documentPreviewBg)
+        } else {
+            Text(L.pdfFailed(L.t("无法打开文件", "Could not open file"))).foregroundStyle(T.err).padding(16)
+        }
+    }
+}
+
+private struct PdfPageImage: View {
+    let page: PDFPage
+    let label: String
+
+    var body: some View {
+        let bounds = page.bounds(for: .mediaBox)
+        let scale = min(3, max(1, 1024 / max(bounds.width, 1)))
+        let size = CGSize(width: bounds.width * scale, height: bounds.height * scale)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let image = renderer.image { ctx in
+            UIColor.white.setFill()
+            ctx.fill(CGRect(origin: .zero, size: size))
+            ctx.cgContext.translateBy(x: 0, y: size.height)
+            ctx.cgContext.scaleBy(x: scale, y: -scale)
+            page.draw(with: .mediaBox, to: ctx.cgContext)
+        }
+        Image(uiImage: image)
+            .resizable()
+            .scaledToFit()
+            .frame(maxWidth: .infinity)
+            .accessibilityLabel(label)
     }
 }
 
