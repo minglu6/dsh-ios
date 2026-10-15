@@ -5,10 +5,6 @@ public let hiddenProfileBundles: Set<String> = [
     "@deepseek-ai/dsh-sdk-app", "@deepseek-ai/dsh-acp-app", "@deepseek-ai/dsh-sdk-minimal",
 ]
 
-public let officialConfigurations = [
-    "subagent", "web-search-deepseek", "agent-loop", "bash-sandbox", "pwsh-sandbox",
-]
-
 public let primaryOptionalBundles = [
     "@deepseek-ai/dsh-experimental-agent-team-profile",
     "@deepseek-ai/dsh-experimental-voice-input-bundle",
@@ -37,6 +33,50 @@ public func pluginOptionalRank(_ name: String?) -> Int {
         return primaryOptionalBundles.count + 1 + index
     }
     return primaryOptionalBundles.count
+}
+
+public func pluginMarketVisible(_ bundle: JSONValue) -> Bool {
+    bundle["installed"].bool() == true || bundle["official"].bool() == true || !bundle["error"].isNull
+}
+
+public struct PluginMarketGroups: Equatable, Sendable {
+    public var official: [JSONValue]
+    public var installed: [JSONValue]
+}
+
+/// Desktop plugin manager: one 「官方 N」 catalog, then third-party installed rows. Host order is kept.
+public func pluginMarketGroups(_ bundles: [JSONValue]) -> PluginMarketGroups {
+    let visible = bundles.filter(pluginMarketVisible)
+    return PluginMarketGroups(
+        official: visible.filter { $0["official"].bool() == true },
+        installed: visible.filter { $0["official"].bool() != true }
+    )
+}
+
+public func pluginExperimental(_ bundle: JSONValue) -> Bool {
+    if bundle["official"].bool() == true { return true }
+    if bundle["optional"].bool() == true { return true }
+    guard let name = bundle["name"].str() else { return false }
+    if name.contains("experimental") { return true }
+    return primaryOptionalBundles.contains(name) || moreOptionalBundles.contains(name)
+}
+
+public func pluginTitle(_ value: JSONValue, english: Bool) -> String {
+    pluginLocalized(value["meta"]["title"], english: english)
+        ?? value["name"].str()
+        ?? value["rowId"].str()
+        ?? value["moduleName"].str()
+        ?? ""
+}
+
+public func pluginDescription(_ value: JSONValue, english: Bool) -> String {
+    pluginLocalized(value["meta"]["description"], english: english)
+        ?? value["description"].str()
+        ?? ""
+}
+
+public func pluginNeedsInstallToEnable(_ bundle: JSONValue) -> Bool {
+    bundle["availability"].str() == "missing" && bundle["installTarget"]["spec"].str() != nil
 }
 
 /// Bundle declarations are not runtime state: only the entryId join can authorize a row switch.

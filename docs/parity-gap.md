@@ -47,7 +47,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Permissions | `ui-permission` | `PermissionUi.kt` `permissions.catalog/get/set` + risk sheet | `PermissionUi.swift` + session picker + Settings defaults + `danger-full-access`/`auto` confirm |
 | Model picker | composer model menu | `ModelPicker.kt` + effort pane | `ModelPicker.swift` two-level picker; switching models clears effort |
 | Composer dock | `ui-chat` | UserQ / Approval / Todo / Goal / Queue / Composer / Stats | same stack in `ChatView` + `ChatDock.swift` |
-| Host UI | pocket `ui.open` | no embedded WebView; official message on bundle detail when `ui.open` missing (`PluginsScreen.kt`) | same message on bundle detail; no invented plugin WebView chrome |
+| Host UI | pocket `ui.open` | native plugin manager; no embedded WebView | same; desktop market has no `ui.open` banner |
 | Markdown | `ui-chat` primitives | `Markdown.kt` | `protocol/Markdown.swift` + `Features/Chat/MarkdownView.swift` |
 | Official icons | desktop `D.*` | Android vector set | `Design/Icons.swift` SF Symbol map |
 | Connection keep-alive | — | `ConnectionService` FGS | `ConnectionKeeper` `beginBackgroundTask` + ping + `BGAppRefreshTask` `dev.dsh.pocket.ios.refresh` + path monitor + local notify |
@@ -144,13 +144,13 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Item | Android | iOS | Tag | Batch |
 | --- | --- | --- | --- | --- |
 | Drawer 插件 (`plugins.list`) | `Screens.kt` | shown if op advertised | **present** | **D** |
-| Plugin manager (install / enable / inspect / uninstall / cancel / wait) | `PluginsScreen.kt` | `PluginsScreen` | **present** | **D** |
+| Plugin manager (official market + switch + add) | `PluginsScreen.kt` | desktop `ui-plugin-manager`: 「官方 N」 rows (icon / name / 实验性 / description / toggle), subtitle, refresh, 「+ 添加插件」; config namespaces are not the hub | **present** | **D** / P0 |
 | Registries + inspect | `PluginsScreen.kt` | `plugins.registries` / `plugins.inspect` | **present** | **D** |
-| Built-in plugin slots from Host describe | audit P1; no APK whitelist | `plugins.settingsDescribe` namespaces | **present** | **D** |
-| PluginArtwork (SF Symbol kinds + sanitized SVG) | `PluginArtwork.kt` | `PluginArtwork.swift` | **present** | **D** |
-| Settings 「内置插件」 inventory | `PluginInventory.kt` session/global groups | same grouping + preset picker | **present** | **D** / **H** |
-| Plugin add menu | `PluginAddMenu` 第三方 / 创造模式 | same two official entries | **partial** → **present** | **H** |
-| HostUi (`ui.open`) | Android shows the desktop-plugin message when `ui.open` is absent; does not embed a pocket WebView | same message on bundle detail; no extra “open plugin UI” chrome | **present** | **E** / **H** |
+| Built-in plugin slots from Host describe | audit P1; no APK whitelist | `plugins.settingsDescribe` on bundle detail 「配置组件」, not a market list | **present** | **D** / P0 |
+| PluginArtwork (desktop canvas kinds + sanitized SVG) | `PluginArtwork.kt` | `PluginArtwork.swift` official 36×36 paths; metadata SVG when Host provides it | **present** | **D** / P0 |
+| Settings 「内置插件」 inventory | `PluginInventory.kt` session/global groups | same grouping + preset picker + offline banner | **present** | **D** / **H** |
+| Plugin add menu | `PluginAddMenu` 第三方 / 创造模式 | same two entries on the official market header | **partial** → **present** | **H** |
+| HostUi (`ui.open`) | Android native manager; no pocket WebView chrome | no embedded plugin WebView; desktop market has no `ui.open` banner | **present** | **E** / **H** / P0 |
 | Drawer 自动化 (not a settings section) | `ScheduleScreen.kt` | drawer only; Settings 自动化 row removed | **present** | **D** |
 | Schedule catalog / edit / history | `ScheduleScreen.kt` | CAS update + delete + history; New → chat | **present** | **D** |
 | Agent presets | `AgentPresetSettingsScreen.kt` | Settings row + guide + Creator CTA when `presets.list`/`presets.settings` | **missing** → **present** | **G** |
@@ -199,7 +199,7 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 - Terminal / files / jobs: expose when the matching op is in `hello.ops` (same as Android).
 - Browser / Session Inspector: Start panel always (no ops gate), same as Android GuideBody.
 - WorkspaceChanges: chat cards when `showCodeWorkView` and `workspaceChanges.summary` is advertised; diff sheet needs `workspaceChanges.diff`.
-- Plugins: drawer when `plugins.list`; Settings 「内置插件」 when `plugins.inventory`; bundle detail shows the official `ui.open`-missing message. Do not embed a plugin WebView.
+- Plugins: drawer when `plugins.list`; market enable when `plugins.setEnabled`; add when `plugins.install`; Settings 「内置插件」 when `plugins.inventory`. Do not embed a plugin WebView (desktop market has none).
 - Schedule: **drawer only** (desktop sidebar). Do not add a Settings row.
 - Permissions / models / commands / attachments / queue / goals / presets / session search / export / session feedback / unarchive / Host reorder: expose when the matching op is advertised.
 - Appearance / fonts / language write to Host when the namespace is writable. Offline appearance is an in-memory override only.
@@ -211,7 +211,7 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 | 模块 | iOS | 对照的 Android 源码 | 对齐点 |
 | --- | --- | --- | --- |
 | 模型选择 | `ModelPicker.swift`、`ModelsSettingsView.swift`、`QoderConnectionCard.swift`、`ModelPickerPolicy.swift` | `ModelPicker.kt`、`ModelPickerPolicy.kt`、`ModelsSettingsScreen.kt`、`QoderConnectionCard.kt`、`ModelSettingsForms.kt` | 两级 picker；`DeepSeek 账号` / `DeepSeek Account`；展开卡显示 route slug；官方 intro / 只读句；提供商「由主机配置管理」；Qoder CN PAT 只写 + revision fence，排在提供商列表之后 |
-| 插件控件 | `PluginsScreen.swift`、`PluginInventoryView.swift`、`PluginPolicy.swift` | `PluginsScreen.kt`、`PluginInventory.kt`、`SettingsPages.kt` | 添加菜单仅「第三方 / 创造模式」；包详情（启用、来源、版本、安装/更新、卸载文案、组件筛选、配置组件）；`ui.open` 缺失时仅官方提示，不嵌入 WebView；内置插件分组 + 离线横幅 |
+| 插件控件 | `PluginsScreen.swift`、`PluginInventoryView.swift`、`PluginPolicy.swift` | `PluginsScreen.kt`、`PluginInventory.kt`、desktop `ui-plugin-manager` | 官方市场「官方 N」/已安装 + 实验性徽章 + 刷新；添加菜单仅「第三方 / 创造模式」；详情配置组件；不嵌入 WebView；内置插件分组 + 离线横幅 |
 | 命令菜单 | `ChatDock.swift` `CommandSheet`、`ChatView.swift` `commandLeading`、`CommandPolicy.swift` | `Sheets.kt` `CommandPopupSheet` / `commandMenuRows`、`Chat.kt` Plus/`/` 接线、`CommandMenuPolicyTest.kt` | `+` 与 `/` 共用同一菜单；空白 composer vs slash 前缀；`file`/`model` 客户端注入；无额外 plus 图片快捷入口；附件走系统文件选择（图片走 image、其余 upload） |
 | 工作区更新 | `FilesPanel.swift`、`WorkspaceDirectory.swift` | `FilesPanel.kt`、`WorkspaceDirectorySubscription.kt`、`WorkspaceDirectorySubscriptionTest.kt` | `files.follow` + `observeWorkspaceDirectory`；watch-unsupported 回退 list；同路径刷新不清空列表；前台（`scenePhase.active` / Android `RESUMED`）才订阅 |
 | 浏览器标签 | `BrowserPanel.swift`、`BrowserTabs.swift` | `BrowserPanel.kt`、`BrowserTabs.kt`、`BrowserTabsTest.kt` | 多标签、关闭/新建、地址栏后退前进刷新外开；checkpoint 仅 `{selected,pages:[{id,url,title}]}`；不恢复 WebView / 不自动联网 |

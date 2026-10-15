@@ -165,6 +165,39 @@ final class PluginPolicyTests: XCTestCase {
         XCTAssertEqual(pluginChangeText(jsonObject(["application": .string("restart-required")]), en: true), "Saved; takes effect after the host restarts")
         XCTAssertEqual(pluginChangeText(jsonObject(["application": .string("applied")]), en: true), "Change applied")
     }
+
+    func testMarketGroupsOfficialCatalogWithoutCollapsingOrConfigNamespaces() throws {
+        let official = try JSONValue.parse(
+            #"{"name":"@deepseek-ai/dsh-experimental-agent-team-profile","official":true,"optional":true,"enabled":false,"meta":{"title":{"zh":"智能体团队","en":"Agent team"},"description":{"zh":"启用团队协作。","en":"Enable team collaboration."}}}"#
+        )
+        let hidden = try JSONValue.parse(#"{"name":"@deepseek-ai/dsh-base","official":true}"#)
+        let third = try JSONValue.parse(#"{"name":"dsh-plugin-whale-pet","official":false,"installed":true,"enabled":true}"#)
+        let missing = try JSONValue.parse(#"{"name":"unused","official":false,"installed":false}"#)
+        let bundles = [hidden, official, third, missing].filter { name in
+            guard let name = name["name"].str() else { return true }
+            return !hiddenProfileBundles.contains(name)
+        }
+        let groups = pluginMarketGroups(bundles)
+        XCTAssertEqual(groups.official.map { $0["name"].str() }, ["@deepseek-ai/dsh-experimental-agent-team-profile"])
+        XCTAssertEqual(groups.installed.map { $0["name"].str() }, ["dsh-plugin-whale-pet"])
+        XCTAssertTrue(pluginExperimental(official))
+        XCTAssertTrue(pluginExperimental(try JSONValue.parse(#"{"name":"@deepseek-ai/dsh-catalog-plugin","official":true}"#)))
+        XCTAssertFalse(pluginExperimental(third))
+        XCTAssertEqual(pluginTitle(official, english: false), "智能体团队")
+        XCTAssertEqual(pluginDescription(official, english: false), "启用团队协作。")
+        XCTAssertEqual(pluginTitle(official, english: true), "Agent team")
+        XCTAssertTrue(pluginOptionalVisible(name: "@deepseek-ai/dsh-experimental-ralph-bundle", expanded: true))
+    }
+
+    func testNeedsInstallWhenOfficialPackageIsMissing() throws {
+        let missing = try JSONValue.parse(
+            #"{"name":"@deepseek-ai/dsh-experimental-terminal-bundle","official":true,"optional":true,"availability":"missing","installTarget":{"spec":"@deepseek-ai/dsh-experimental-terminal-bundle"}}"#
+        )
+        XCTAssertTrue(pluginNeedsInstallToEnable(missing))
+        XCTAssertTrue(pluginExperimental(missing))
+        let installed = try JSONValue.parse(#"{"name":"x","availability":"ok","installTarget":{"spec":"x"}}"#)
+        XCTAssertFalse(pluginNeedsInstallToEnable(installed))
+    }
 }
 
 final class SchedulePolicyTests: XCTestCase {
