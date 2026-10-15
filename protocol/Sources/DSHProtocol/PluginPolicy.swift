@@ -83,7 +83,9 @@ public func pluginSchemaFields(_ envelope: JSONValue?) -> [PluginSchemaField] {
     var seenPaths = Set<[String]>()
     func visit(_ raw: JSONValue?, path: [String], ancestors: Set<String>) {
         guard let node = resolve(raw) else { return }
-        let identity = (try? node.encodeString()) ?? UUID().uuidString
+        // Ref uids are the graph identity. encodeString() key order is not stable, so it
+        // cannot detect a cycle (Android compares JsonElement structurally).
+        let identity = raw?.refId() ?? node.refId() ?? schemaNodeIdentity(node)
         if ancestors.contains(identity) { return }
         let type = node["type"].str() ?? ""
         switch type {
@@ -112,6 +114,15 @@ public func pluginSchemaFields(_ envelope: JSONValue?) -> [PluginSchemaField] {
     }
     visit(envelope, path: [], ancestors: [])
     return fields
+}
+
+private func schemaNodeIdentity(_ node: JSONValue) -> String {
+    guard let object = try? node.nsObject(),
+          let data = try? JSONSerialization.data(withJSONObject: object, options: [.fragmentsAllowed, .sortedKeys]),
+          let text = String(data: data, encoding: .utf8) else {
+        return UUID().uuidString
+    }
+    return text
 }
 
 public func pluginLocalized(_ value: JSONValue?, english: Bool) -> String? {
