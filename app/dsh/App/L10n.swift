@@ -1,4 +1,5 @@
 import Foundation
+import DSHProtocol
 
 enum L {
     static var en: Bool { AppPrefs.language == .en }

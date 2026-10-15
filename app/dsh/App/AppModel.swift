@@ -2579,7 +2579,7 @@ final class AppModel: ObservableObject {
             let params = NWParameters.tcp
             let connection = NWConnection(host: NWEndpoint.Host(host), port: NWEndpoint.Port(rawValue: UInt16(port)) ?? 7690, using: params)
             let gate = ProbeGate()
-            func finish(_ value: Bool) {
+            @Sendable func finish(_ value: Bool) {
                 if gate.take() {
                     connection.cancel()
                     continuation.resume(returning: value)
