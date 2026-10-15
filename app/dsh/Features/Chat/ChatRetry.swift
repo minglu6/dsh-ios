@@ -89,7 +89,7 @@ struct RetryRow: View {
     }
 
     private func detail(_ label: String, _ value: String) -> some View {
-        (Text(label).foregroundStyle(T.text2) + Text(value).foregroundStyle(T.text3))
+        (Text(label).foregroundColor(T.text2) + Text(value).foregroundColor(T.text3))
             .font(.system(size: CGFloat(AppPrefs.fontSize - 1)))
     }
 }
@@ -104,7 +104,7 @@ struct TurnFailureRow: View {
         HStack(alignment: .top, spacing: 8) {
             Circle().fill(T.err).frame(width: 8, height: 8).padding(.top, 5)
             VStack(alignment: .leading, spacing: 2) {
-                (Text(title).foregroundStyle(T.err).fontWeight(.semibold) + Text("  ") + Text(chatFailureMessage(item.message, code: item.code, en: L.en)))
+                (Text(title).foregroundColor(T.err).fontWeight(.semibold) + Text("  ") + Text(chatFailureMessage(item.message, code: item.code, en: L.en)))
                     .font(.system(size: CGFloat(AppPrefs.fontSize - 1)))
                     .foregroundStyle(T.text2)
                 if let code = item.code {

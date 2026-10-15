@@ -298,7 +298,6 @@ enum L {
     static func sectionCommands() -> String { en ? "Commands" : "指令" }
     static func noOptions() -> String { en ? "No options" : "无选项" }
     static func file() -> String { en ? "File" : "文件" }
-    static func image() -> String { en ? "Image" : "图片" }
     static func pendingFiles() -> String { en ? "Pending files" : "待发送文件" }
     static func uploading() -> String { en ? "Uploading…" : "上传中…" }
     static func uploadFailed() -> String { en ? "Upload failed; tap to retry" : "上传失败，点击重试" }

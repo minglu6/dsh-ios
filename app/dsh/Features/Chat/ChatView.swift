@@ -157,7 +157,7 @@ struct ChatView: View {
             let items = photoItems
             guard !items.isEmpty else { return }
             photoItems = []
-            Task {
+            Task { @MainActor in
                 for item in items {
                     if let data = try? await item.loadTransferable(type: Data.self) {
                         model.attachImage(name: L.image(), mediaType: "image/jpeg", data: data)
