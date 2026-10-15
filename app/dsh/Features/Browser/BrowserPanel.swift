@@ -288,16 +288,21 @@ private final class BrowserTabsStore: ObservableObject {
             legacyURL: defaults.string(forKey: "\(key).url"),
             legacyTitle: defaults.string(forKey: "\(key).title")
         )
-        var built: [BrowserPageState] = []
-        func make(_ page: BrowserTabCheckpoint) -> BrowserPageState {
-            BrowserPageState(id: page.id, url: page.url, title: page.title, policy: policy) { [weak self] in
-                self?.checkpoint()
-            }
+        var built: [BrowserPageState] = checkpoint.pages.map { page in
+            BrowserPageState(id: page.id, url: page.url, title: page.title, policy: policy, onCheckpoint: {})
         }
-        for page in checkpoint.pages { built.append(make(page)) }
-        if built.isEmpty { built.append(make(BrowserTabCheckpoint(id: UUID().uuidString, url: "", title: ""))) }
+        if built.isEmpty {
+            built.append(BrowserPageState(id: UUID().uuidString, url: "", title: "", policy: policy, onCheckpoint: {}))
+        }
         pages = built
         selectedId = built.first { $0.id == checkpoint.selected }?.id ?? built[0].id
+        bindCheckpoints()
+    }
+
+    private func bindCheckpoints() {
+        for page in pages {
+            page.onCheckpoint = { [weak self] in self?.checkpoint() }
+        }
     }
 
     func updatePolicy(_ value: BrowserPolicy) {
@@ -379,7 +384,7 @@ private final class BrowserTabsStore: ObservableObject {
 private final class BrowserPageState: ObservableObject, Identifiable {
     let id: String
     var policy: BrowserPolicy
-    private let onCheckpoint: () -> Void
+    fileprivate var onCheckpoint: () -> Void
     weak var webView: WKWebView?
     fileprivate var coordinator: BrowserWebCoordinator?
 
