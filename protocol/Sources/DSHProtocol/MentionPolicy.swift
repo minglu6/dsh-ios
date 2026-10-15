@@ -44,7 +44,7 @@ private let referencePattern = try! NSRegularExpression(
     pattern: #"(?<!\S)@(?:\[((?:\\.|[^\\\]])*)\]\((dsh-session:[A-Za-z0-9_-]+)\)|"([^"\r\n]+)"|([^\s"\u0000-\u001f\u007f-\u009f]+))"#
 )
 
-/// Trigger only a token at the caret, never an email address or a slash inside a path.
+/// Trigger only a token at the caret, never an email address or a slash inside a path/scheme.
 public func composerTrigger(_ text: String, cursor: Int) -> ComposerTrigger? {
     let end = max(0, min(cursor, text.count))
     let prefix = substring(text, 0, end)
@@ -67,12 +67,40 @@ public func composerTrigger(_ text: String, cursor: Int) -> ComposerTrigger? {
     var start = end
     while start > 0 && !isWhitespace(text, start - 1) { start -= 1 }
     if start == end { return nil }
-    let kind = character(text, start)
-    if kind != Character("@") && kind != Character("/") { return nil }
-    if kind == Character("/") && !substring(text, 0, start).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return nil }
-    let rest = substring(text, start + 1, end)
-    if kind == Character("@") && (rest.hasPrefix("[") || rest.contains("\"")) { return nil }
-    return ComposerTrigger(kind: kind, start: start, end: end, query: rest)
+    if character(text, start) == Character("@") {
+        let rest = substring(text, start + 1, end)
+        if rest.hasPrefix("[") || rest.contains("\"") { return nil }
+        return ComposerTrigger(kind: Character("@"), start: start, end: end, query: rest)
+    }
+    if end - 1 >= start {
+        var index = end - 1
+        while index >= start {
+            if character(text, index) == Character("/") {
+                if index > 0 {
+                    let previous = character(text, index - 1)
+                    if previous.isLetter || previous.isNumber || previous == "_" || previous == "/" {
+                        if index == start { break }
+                        index -= 1
+                        continue
+                    }
+                    if previous == ":" && index >= 2 && !isWhitespace(text, index - 2) {
+                        if index == start { break }
+                        index -= 1
+                        continue
+                    }
+                }
+                return ComposerTrigger(
+                    kind: Character("/"),
+                    start: index,
+                    end: end,
+                    query: substring(text, index + 1, end)
+                )
+            }
+            if index == start { break }
+            index -= 1
+        }
+    }
+    return nil
 }
 
 public func replaceComposerToken(

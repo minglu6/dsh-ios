@@ -160,8 +160,9 @@ final class PluginPolicyTests: XCTestCase {
         XCTAssertNil(pluginMetadataSVG("https://evil.example/icon.svg"))
     }
 
-    func testChangeTextUsesRemoteHostCopy() {
-        XCTAssertEqual(pluginChangeText(jsonObject(["application": .string("restart-required")]), en: false), "更改已保存，将在远程主机下次启动生效")
+    func testChangeTextMatchesAndroidHostCopy() {
+        XCTAssertEqual(pluginChangeText(jsonObject(["application": .string("restart-required")]), en: false), "更改已保存，将在主机下次启动生效")
+        XCTAssertEqual(pluginChangeText(jsonObject(["application": .string("restart-required")]), en: true), "Saved; takes effect after the host restarts")
         XCTAssertEqual(pluginChangeText(jsonObject(["application": .string("applied")]), en: true), "Change applied")
     }
 

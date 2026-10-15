@@ -693,6 +693,7 @@ final class BatchEPolicyTests: XCTestCase {
         let filtered = modelPickerGroups(catalog.groups, query: "pro")
         XCTAssertEqual(filtered.flatMap(\.models).map(\.id), ["pro"])
         XCTAssertEqual(modelPickerProviderLabel("deepseek-account", hostName: "Account"), "DeepSeek 账号")
+        XCTAssertEqual(modelPickerProviderLabel("deepseek-account", hostName: "Account", english: true), "DeepSeek Account")
     }
 
     func testPermissionSelectionWireContract() throws {
@@ -704,7 +705,8 @@ final class BatchEPolicyTests: XCTestCase {
     func testComposerTriggerAndOfficialMentionTokens() {
         XCTAssertEqual(composerTrigger("hello @src", cursor: 10)?.query, "src")
         XCTAssertEqual(composerTrigger("/plan", cursor: 5)?.kind, Character("/"))
-        XCTAssertNil(composerTrigger("see /tmp", cursor: 8))
+        XCTAssertEqual(composerTrigger("see /tmp", cursor: 8)?.kind, Character("/"))
+        XCTAssertEqual(composerTrigger("see /tmp", cursor: 8)?.query, "tmp")
         XCTAssertNil(composerTrigger("user@host", cursor: 9))
         XCTAssertEqual(fileReferenceToken("src/app.swift", directory: false), "@src/app.swift")
         XCTAssertEqual(fileReferenceToken("my file.swift", directory: false), "@\"my file.swift\"")

@@ -1,6 +1,5 @@
 import SwiftUI
 import UIKit
-import PhotosUI
 import UniformTypeIdentifiers
 import DSHProtocol
 
@@ -21,11 +20,9 @@ struct ChatView: View {
     @State private var showPermission = false
     @State private var riskPermission: String?
     @State private var showCommands = false
+    @State private var commandFromSlash = false
     @State private var showGoal = false
-    @State private var showPlus = false
     @State private var questionDrafts: [String: QuestionDraft] = [:]
-    @State private var photoItems: [PhotosPickerItem] = []
-    @State private var showPhotoPicker = false
     @State private var showFileImporter = false
     @State private var showMore = false
     @State private var showSessionFeedback = false
@@ -152,15 +149,18 @@ struct ChatView: View {
         .sheet(isPresented: $showCommands) {
             CommandSheet(
                 model: model,
-                initialQuery: slashQuery,
+                initialQuery: commandFromSlash ? slashQuery : "",
+                leading: commandLeading,
+                consumeSlash: commandFromSlash,
                 onDismiss: { showCommands = false },
-                onFile: { showPlus = true },
+                onFile: { showFileImporter = true },
                 onGoal: { showGoal = true },
                 onPlan: { model.executeCommand("/plan") },
                 onFeedback: { showSessionFeedback = true },
                 onCompact: { model.executeCommand("/compact") },
-                onPerm: { showPermission = true },
-                onModel: { showModels = true }
+                onPerm: { if model.isOnline { showPermission = true } },
+                onModel: { if model.isOnline { showModels = true } },
+                onExport: { model.exportSession() }
             )
         }
         .sheet(isPresented: $showGoal) {
@@ -197,36 +197,17 @@ struct ChatView: View {
                 onPick: { model.draftPreset = $0 }
             )
         }
-        .confirmationDialog(L.sectionAdd(), isPresented: $showPlus, titleVisibility: .visible) {
-            Button(L.image()) { showPhotoPicker = true }
-            if model.ops.contains("attachments.upload") {
-                Button(L.file()) { showFileImporter = true }
-            }
-            Button(L.t("访问模式", "Access mode")) { showPermission = true }
-            Button(L.t("模型", "Model")) { showModels = true }
-            Button(L.t("目标", "Goal")) { showGoal = true }
-            Button(L.cancel(), role: .cancel) {}
-        }
-        .photosPicker(isPresented: $showPhotoPicker, selection: $photoItems, maxSelectionCount: 8, matching: .images)
         .fileImporter(isPresented: $showFileImporter, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
             if case .success(let urls) = result {
                 for url in urls {
                     _ = url.startAccessingSecurityScopedResource()
                     defer { url.stopAccessingSecurityScopedResource() }
-                    if let data = try? Data(contentsOf: url) {
-                        model.attachFile(name: url.lastPathComponent, mediaType: "application/octet-stream", data: data)
-                    }
-                }
-            }
-        }
-        .onChange(of: photoItems.count) { _ in
-            let items = photoItems
-            guard !items.isEmpty else { return }
-            photoItems = []
-            Task { @MainActor in
-                for item in items {
-                    if let data = try? await item.loadTransferable(type: Data.self) {
-                        model.attachImage(name: L.image(), mediaType: "image/jpeg", data: data)
+                    guard let data = try? Data(contentsOf: url) else { continue }
+                    let type = UTType(filenameExtension: url.pathExtension)
+                    if type?.conforms(to: .image) == true {
+                        model.attachImage(name: url.lastPathComponent, mediaType: type?.preferredMIMEType ?? "image/jpeg", data: data)
+                    } else {
+                        model.attachFile(name: url.lastPathComponent, mediaType: type?.preferredMIMEType ?? "application/octet-stream", data: data)
                     }
                 }
             }
@@ -281,7 +262,7 @@ struct ChatView: View {
                 Image(systemName: "safari").foregroundStyle(T.ink)
             }
             .accessibilityLabel(L.startPanel())
-            Button { showModels = true } label: {
+            Button { if model.isOnline { showModels = true } } label: {
                 Text(composerModelDisplayName(choiceName: model.modelChoice?.name, catalog: model.catalog) ?? L.modelsNav())
                     .font(.caption)
                     .foregroundStyle(T.accent)
@@ -289,6 +270,7 @@ struct ChatView: View {
                     .padding(.vertical, 4)
                     .background(T.tint, in: Capsule())
             }
+            .disabled(!model.isOnline)
             Button { showMore = true } label: {
                 Image(systemName: D.ellipsis).foregroundStyle(T.ink)
             }
@@ -347,6 +329,14 @@ struct ChatView: View {
         composerTrigger(model.composerText, cursor: model.composerText.count)?.kind == Character("/")
             ? (composerTrigger(model.composerText, cursor: model.composerText.count)?.query ?? "")
             : ""
+    }
+
+    private var commandLeading: Bool {
+        let text = model.composerText
+        if commandFromSlash, let trigger = composerTrigger(text, cursor: text.count), trigger.kind == Character("/") {
+            return text.prefix(trigger.start).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+        return text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     @ViewBuilder
@@ -519,10 +509,10 @@ struct ChatView: View {
     private var composer: some View {
         ComposerView(
             model: model,
-            onPlus: { showPlus = true },
+            onPlus: { commandFromSlash = false; showCommands = true },
             onPerm: { if model.isOnline { showPermission = true } },
             onModel: { if model.isOnline { showModels = true } },
-            onSlash: { showCommands = true }
+            onSlash: { commandFromSlash = true; showCommands = true }
         )
     }
 }
@@ -1048,7 +1038,9 @@ struct ComposerView: View {
                             else { Image(systemName: "chevron.down").font(.caption).foregroundStyle(T.text2) }
                         }
                         .frame(maxWidth: .infinity, minHeight: 48, alignment: .trailing)
+                        .opacity(model.isOnline ? 1 : 0.45)
                     }
+                    .buttonStyle(.plain)
                     .disabled(!model.isOnline)
                     if runningIdle {
                         Button(action: model.stopRun) {

@@ -28,6 +28,131 @@ public func builtinCommandName(_ definitionId: String?) -> String? {
     }
 }
 
+public let commandAddNames = ["file", "goal", "plan", "feedback"]
+public let commandOrderedNames = commandAddNames + ["compact", "permission", "model", "export"]
+
+public func commandMenuKind(_ command: JSONValue) -> String? {
+    command["client"].str() ?? builtinCommandName(command["definitionId"].str())
+}
+
+public func commandMenuLabel(_ command: JSONValue, english: Bool) -> String? {
+    switch commandMenuKind(command) {
+    case "file": return english ? "File" : "文件"
+    case "model": return english ? "Model" : "模型"
+    case "goal": return english ? "Goal" : "目标"
+    case "plan": return english ? "Plan" : "计划"
+    case "feedback": return english ? "Feedback" : "反馈"
+    case "compact": return english ? "Compact" : "压缩"
+    case "permission": return english ? "Permission" : "权限"
+    case "export": return english ? "Export" : "下载日志"
+    default: return nil
+    }
+}
+
+public func commandMenuDescription(_ command: JSONValue, english: Bool) -> String? {
+    switch commandMenuKind(command) {
+    case "model": return english ? "Select the model for this conversation" : "选择本会话使用的模型"
+    case "goal": return english ? "Set or view the goal for a long-running task" : "设置或查看长期任务目标"
+    case "plan": return english ? "Enter or leave plan mode" : "进入或退出计划模式"
+    case "feedback": return english ? "Record feedback about this session" : "发送关于当前会话的反馈"
+    case "compact": return english ? "Compact older conversation history" : "压缩以上对话内容"
+    case "permission": return english
+        ? "Switch the permission preset (sandbox mode + approval policy)"
+        : "切换权限预设（沙箱模式与审批策略）"
+    case "export": return english ? "Download this Session log as a ZIP archive" : "将当前会话内容导出为 ZIP"
+    default: return command["description"].str()
+    }
+}
+
+/// ui-commands sectionRows + ui-primitives rankByName; names, not builtin identities, set section order.
+public func commandMenuRows(_ commands: [JSONValue], query: String, leading: Bool, english: Bool = false) -> [JSONValue] {
+    let visible = commands.filter { leading || $0["input"]["hint"].str() == nil }
+    if query.isEmpty {
+        var byName: [String: JSONValue] = [:]
+        for row in visible {
+            if let name = row["name"].str() { byName[name] = row }
+        }
+        let ordered = commandOrderedNames.compactMap { byName[$0] }
+        let rest = visible.filter { row in
+            guard let name = row["name"].str() else { return true }
+            return !commandOrderedNames.contains(name)
+        }
+        return ordered + rest
+    }
+    let lowerQuery = query.lowercased()
+    struct Match {
+        var row: JSONValue
+        var index: Int
+        var prefix: Bool
+        var score: Int
+    }
+    var matches: [Match] = []
+    for (index, row) in visible.enumerated() {
+        var best: Int?
+        var prefix = false
+        for key in [row["name"].str(), commandMenuLabel(row, english: english)].compactMap({ $0 }) {
+            let name = key.lowercased()
+            guard let score = commandAlignmentScore(name, query: lowerQuery) else { continue }
+            prefix = prefix || name.hasPrefix(lowerQuery)
+            best = max(best ?? score, score)
+        }
+        if let best {
+            matches.append(Match(row: row, index: index, prefix: prefix, score: best))
+        }
+    }
+    return matches.sorted {
+        if $0.prefix != $1.prefix { return $0.prefix && !$1.prefix }
+        if $0.score != $1.score { return $0.score > $1.score }
+        return $0.index < $1.index
+    }.map(\.row)
+}
+
+public func commandAlignmentScore(_ name: String, query: String) -> Int? {
+    if query.count > name.count { return nil }
+    let none = Int.min
+    let nameChars = Array(name)
+    let queryChars = Array(query)
+    func boundary(_ index: Int) -> Int {
+        if index == 0 || nameChars[index - 1] == "-" || nameChars[index - 1] == "_" { return 8 }
+        return 0
+    }
+    var previous = (0..<nameChars.count).map { index in
+        nameChars[index] == queryChars[0] ? 1 + boundary(index) - index : none
+    }
+    var current = Array(repeating: none, count: nameChars.count)
+    if queryChars.count > 1 {
+        for queryIndex in 1..<queryChars.count {
+            current = Array(repeating: none, count: nameChars.count)
+            var left = none
+            var leftLeft = none
+            var bestGapped = none
+            for index in nameChars.indices {
+                let prior = previous[index]
+                if leftLeft != none { bestGapped = max(bestGapped, leftLeft + index - 2) }
+                if nameChars[index] == queryChars[queryIndex] {
+                    let bonus = 1 + boundary(index)
+                    var score = left == none ? none : left + bonus + 4
+                    if bestGapped != none { score = max(score, bestGapped + bonus + 1 - index) }
+                    current[index] = score
+                }
+                leftLeft = left
+                left = prior
+            }
+            swap(&previous, &current)
+        }
+    }
+    return previous.max().flatMap { $0 == none ? nil : $0 }
+}
+
+public func commandContributionCollision(_ commands: [JSONValue]) -> String? {
+    var counts: [String: Int] = [:]
+    for command in commands {
+        guard let name = command["name"].str() else { continue }
+        counts[name, default: 0] += 1
+    }
+    return counts.first { $0.value > 1 }?.key
+}
+
 public func todoProgressLabel(_ todos: [TodoItem], en: Bool) -> String {
     var done = 0
     var active = 0

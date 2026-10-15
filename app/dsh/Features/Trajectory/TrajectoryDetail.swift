@@ -174,12 +174,12 @@ private struct TrajOverview: View {
             if tabs.contains(.input) || tabs.contains(.code) {
                 let inputTab: TrajDetailTab = tabs.contains(.code) ? .code : .input
                 overviewSection(inputTab.label, onOpen: { onOpen(inputTab) }) {
-                    TrajCodeBlock(pretty(row.inputDetail) ?? TrajL.recordNoPayload)
+                    TrajectoryJsonValue(source: pretty(row.inputDetail) ?? TrajL.recordNoPayload)
                 }
             }
             if tabs.contains(.output) {
                 overviewSection(TrajL.tabResult, onOpen: { onOpen(.output) }) {
-                    TrajCodeBlock(row.outputDetail ?? TrajL.recordNoResult)
+                    TrajectoryJsonValue(source: row.outputDetail ?? TrajL.recordNoResult)
                 }
             }
             if tabs.contains(.schema) {
@@ -358,7 +358,7 @@ private struct TrajPayload: View {
     }
 
     var body: some View {
-        TrajCodeBlock(pretty(text) ?? text ?? missing, error: error || text == nil)
+        TrajectoryJsonValue(source: pretty(text) ?? text ?? missing, error: error || text == nil)
             .padding(.horizontal, 14)
     }
 }

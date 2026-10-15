@@ -26,6 +26,21 @@ public func providerAddOptions(rows: [JSONValue], namespaces: [JSONValue]) -> Pr
     )
 }
 
+public func providerDisplayName(_ row: JSONValue?, route: String, english: Bool) -> String {
+    let configuredName = row?["profile"]["displayName"].str()?.trimmingCharacters(in: .whitespacesAndNewlines)
+    let name = (configuredName?.isEmpty == false ? configuredName : nil) ?? row?["displayName"].str() ?? route
+    if route == "deepseek-account", configuredName == nil, row?["declared"].bool() != true,
+       name == route || name == "DeepSeek Account" {
+        return english ? "DeepSeek Account" : "DeepSeek 账号"
+    }
+    return name
+}
+
+public func providerOptionLabel(_ row: JSONValue?, route: String, english: Bool) -> String {
+    let name = providerDisplayName(row, route: route, english: english)
+    return name == route ? route : "\(name) (\(route))"
+}
+
 public func providerTakenRoutes(rows: [JSONValue], namespace: JSONValue?) -> Set<String> {
     var taken = Set(rows.compactMap { $0["provider"].str() })
     for layer in ["user", "value"] {
@@ -214,6 +229,6 @@ public func protocolLabel(_ protocolName: String) -> String {
     }
 }
 
-public func providerOptionLabel(row: JSONValue?, route: String) -> String {
-    row?["displayName"].str() ?? route
+public func providerOptionLabel(row: JSONValue?, route: String, english: Bool = false) -> String {
+    providerOptionLabel(row, route: route, english: english)
 }

@@ -10,7 +10,17 @@ struct SessionDrawer: View {
     @State private var addWorkspace = false
     @State private var overflow: [String: Int] = [:]
     @State private var restoreId: String?
+    @State private var renameSession: SessionSummary?
+    @State private var renameTitle = ""
+    @State private var renameBusy = false
     @State private var draggingSession: String?
+    @State private var lastOps: Set<String> = []
+
+    private var visibleOps: Set<String> { model.isOnline ? model.ops : lastOps }
+
+    private func rememberOps() {
+        if model.isOnline && !model.ops.isEmpty { lastOps = model.ops }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -46,7 +56,7 @@ struct SessionDrawer: View {
             .padding(.horizontal, 12)
             .padding(.bottom, 8)
 
-            if model.ops.contains("plugins.list") || model.ops.contains("schedule.catalog") {
+            if visibleOps.contains("plugins.list") || visibleOps.contains("schedule.catalog") {
                 drawerPanels.padding(.bottom, 4)
             }
 
@@ -59,7 +69,7 @@ struct SessionDrawer: View {
                     Image(systemName: D.sliders).foregroundStyle(T.text2)
                 }
                 .accessibilityLabel(L.viewOptions())
-                if model.ops.contains("workspace.create") {
+                if visibleOps.contains("workspace.create") {
                     Button { addWorkspace = true } label: {
                         Image(systemName: D.projectAdd).foregroundStyle(T.text2)
                     }
@@ -120,6 +130,9 @@ struct SessionDrawer: View {
         .onChange(of: orderedIds) { value in
             if model.sessionOrderBy == .manual { model.persistManualOrder(value) }
         }
+        .onAppear { rememberOps() }
+        .onChange(of: model.isOnline) { _ in rememberOps() }
+        .onChange(of: model.ops) { _ in rememberOps() }
         .confirmationDialog(L.viewOptions(), isPresented: $viewOptions, titleVisibility: .visible) {
             Button(L.groupByWorkspace()) { model.setSessionGroupBy(.workspace) }
             Button(L.groupByWorkspaceTree()) { model.setSessionGroupBy(.workspaceTree) }
@@ -133,6 +146,18 @@ struct SessionDrawer: View {
         }
         .sheet(isPresented: $addWorkspace) {
             WorkspaceDirectorySheet(model: model, onDismiss: { addWorkspace = false })
+        }
+        .alert(L.rename(), isPresented: Binding(get: { renameSession != nil }, set: { if !$0 && !renameBusy { renameSession = nil } })) {
+            TextField(L.rename(), text: $renameTitle)
+            Button(renameBusy ? L.savingEllipsis() : L.save()) {
+                guard let session = renameSession else { return }
+                renameBusy = true
+                model.rename(session.sessionId, title: renameTitle.trimmingCharacters(in: .whitespacesAndNewlines))
+                renameBusy = false
+                renameSession = nil
+            }
+            .disabled(!(model.isOnline && model.ops.contains("sessions.rename") && !renameTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !renameBusy))
+            Button(L.cancel(), role: .cancel) { renameSession = nil }
         }
         .alert(L.archived(), isPresented: Binding(get: { restoreId != nil }, set: { if !$0 { restoreId = nil } })) {
             Button(L.unarchiveSession()) {
@@ -279,14 +304,31 @@ struct SessionDrawer: View {
             dragging: $draggingSession
         ))
         .contextMenu {
-            if !archived {
+            if !archived, visibleOps.contains("workspace.pinSession") {
                 Button(model.pinnedIds.contains(session.sessionId) ? L.unpinSession() : L.pinSession()) {
                     model.pin(session)
                 }
+                .disabled(!model.isOnline)
+            }
+            if visibleOps.contains("sessions.rename") {
+                Button(L.rename()) {
+                    renameTitle = session.title ?? ""
+                    renameSession = session
+                }
+                .disabled(!model.isOnline)
+            }
+            if visibleOps.contains("sessions.fork") {
                 Button(L.fork()) { model.fork(session) }
-                Button(L.archiveSession()) { model.archive(session) }
-            } else {
-                Button(L.unarchiveSession()) { model.unarchive(session.sessionId) }
+                    .disabled(!model.isOnline)
+            }
+            if visibleOps.contains("workspace.archiveSession") {
+                if archived {
+                    Button(L.unarchiveSession()) { model.unarchive(session.sessionId) }
+                        .disabled(!model.isOnline)
+                } else {
+                    Button(L.archiveSession()) { model.archive(session) }
+                        .disabled(!model.isOnline)
+                }
             }
         }
     }
@@ -313,10 +355,10 @@ struct SessionDrawer: View {
     private var drawerPanels: some View {
         VStack(spacing: 0) {
             Divider().padding(.vertical, 8)
-            if model.ops.contains("plugins.list") {
+            if visibleOps.contains("plugins.list") {
                 panel(L.pluginsNav(), D.plugin, .plugins)
             }
-            if model.ops.contains("schedule.catalog") {
+            if visibleOps.contains("schedule.catalog") {
                 panel(L.scheduleNav(), D.clock, .schedule)
             }
         }
@@ -332,7 +374,9 @@ struct SessionDrawer: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
+                .opacity(model.isOnline ? 1 : 0.5)
         }
+        .disabled(!model.isOnline)
     }
 
     private var footer: some View {

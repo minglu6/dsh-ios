@@ -3,6 +3,8 @@ import DSHProtocol
 
 struct PluginsScreen: View {
     @ObservedObject var model: AppModel
+    var onCreatePlugin: () -> Void = {}
+    @State private var creatorState = "idle"
     @State private var bundles: [JSONValue] = []
     @State private var plugins: [JSONValue] = []
     @State private var namespaces: [JSONValue] = []
@@ -95,6 +97,49 @@ struct PluginsScreen: View {
         bundles.first { $0["name"].str() == detail }
     }
 
+    private var creatorPresent: Bool {
+        model.presetRoster.contains { $0["id"].str() == "cordis" }
+    }
+
+    private var creatorDescription: String {
+        switch creatorState {
+        case "idle", "loading": return L.t("正在确认创造模式是否可用", "Checking whether Creator mode is available")
+        case "ready":
+            return creatorPresent
+                ? L.t("进入创造模式，制作属于你的 DSH 插件", "Enter Creator mode and make your own DSH plugin")
+                : L.t("当前配置未提供创造模式", "Creator mode is not included in this configuration")
+        default:
+            return L.t("暂时不可用，请重新打开菜单重试", "Temporarily unavailable. Reopen this menu to retry")
+        }
+    }
+
+    private func loadCreator() {
+        if creatorState == "loading" { return }
+        creatorState = "loading"
+        Task {
+            do {
+                guard let client = model.clientOrNull() else {
+                    creatorState = "unavailable"
+                    return
+                }
+                let operation: String
+                if model.ops.contains("presets.settings") { operation = "presets.settings" }
+                else if model.ops.contains("presets.list") { operation = "presets.list" }
+                else {
+                    creatorState = "unavailable"
+                    return
+                }
+                let result = try await client.call(operation)
+                model.presetRoster = PresetPolicy.parseRoster(result)
+                creatorState = "ready"
+            } catch is CancellationError {
+                return
+            } catch {
+                creatorState = "unavailable"
+            }
+        }
+    }
+
     private func pluginsHeader(_ title: String) -> some View {
         HStack(spacing: 10) {
             Button(action: back) { Image(systemName: "chevron.left").foregroundStyle(T.ink) }
@@ -106,20 +151,14 @@ struct PluginsScreen: View {
             .accessibilityLabel(L.refresh())
             .disabled(!model.isOnline || locked)
             if selected == nil && ((managementAvailable && model.ops.contains("plugins.install")) || installRequest != nil) {
-                Button { openInstall() } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "plus")
-                        Text(installRequest != nil ? L.t("安装任务", "Installation") : L.addPlugin())
-                            .lineLimit(1)
-                    }
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(T.onPrimary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(T.primaryButton, in: RoundedRectangle(cornerRadius: 8))
-                }
-                .disabled(!(installRequest != nil || (model.isOnline && !locked)))
-                .accessibilityLabel(L.addPlugin())
+                PluginAddMenu(
+                    enabled: installRequest != nil || (model.isOnline && !locked),
+                    creatorEnabled: creatorState == "ready" && creatorPresent && model.ops.contains("sessions.create"),
+                    creatorDescription: creatorDescription,
+                    onOpen: loadCreator,
+                    onInstall: { openInstall() },
+                    onCreatePlugin: onCreatePlugin
+                )
             }
         }
         .padding(.horizontal, 16)
@@ -574,4 +613,46 @@ private func setPath(_ root: JSONValue, _ path: [String], _ value: JSONValue) ->
     var object = root.obj() ?? [:]
     object[path[0]] = setPath(root[path[0]], Array(path.dropFirst()), value)
     return .object(object)
+}
+
+private struct PluginAddMenu: View {
+    let enabled: Bool
+    let creatorEnabled: Bool
+    let creatorDescription: String
+    var onOpen: () -> Void
+    var onInstall: () -> Void
+    var onCreatePlugin: () -> Void
+    @State private var expanded = false
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Button {
+                expanded = false
+                onInstall()
+            } label: {
+                Text(L.addPlugin()).font(.system(size: 13)).foregroundStyle(T.onPrimary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(T.primaryButton, in: RoundedRectangle(cornerRadius: 8))
+            }
+            .disabled(!enabled)
+            Button {
+                expanded = true
+                onOpen()
+            } label: {
+                Image(systemName: "chevron.down").font(.system(size: 12)).foregroundStyle(T.ink).frame(width: 32, height: 32)
+            }
+            .disabled(!enabled)
+            .accessibilityLabel(L.t("选择添加插件方式", "Choose how to add a plugin"))
+            .confirmationDialog(L.addPlugin(), isPresented: $expanded, titleVisibility: .hidden) {
+                Button(L.t("安装第三方插件", "Install a third-party plugin")) { onInstall() }
+                    .disabled(!enabled)
+                Button(L.t("让 Agent 创建插件", "Let the agent create a plugin")) { onCreatePlugin() }
+                    .disabled(!(enabled && creatorEnabled))
+                Button(L.cancel(), role: .cancel) {}
+            } message: {
+                Text(L.t("支持 npm 包、Git 仓库和本地目录", "Supports npm packages, Git repositories, and local directories") + "\n" + creatorDescription)
+            }
+        }
+    }
 }

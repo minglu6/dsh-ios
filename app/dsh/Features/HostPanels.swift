@@ -14,7 +14,12 @@ struct HostPanelView: View {
                 header(title) { model.pop() }
             }
             switch panel {
-            case .plugins: PluginsScreen(model: model)
+            case .plugins: PluginsScreen(model: model, onCreatePlugin: {
+                model.pendingCreatorPreset = "cordis"
+                model.pop()
+                model.showDrawer = false
+                model.createAndOpenSession(preset: "cordis")
+            })
             case .schedule: ScheduleScreen(model: model)
             case .trajectory: TrajectoryView(model: model)
             case .files: FilesPanel(model: model)

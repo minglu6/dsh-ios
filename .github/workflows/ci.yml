@@ -40,6 +40,8 @@ jobs:
             build
           APP="derived/Build/Products/Release-iphoneos/dsh.app"
           test -d "$APP"
+          test -f "$APP/CodePreviewAssets/manifest.json"
+          test -f "$APP/WorkbookPreviewAssets/manifest.json"
           rm -rf Payload dsh-ios.ipa
           mkdir Payload
           ditto "$APP" Payload/dsh.app

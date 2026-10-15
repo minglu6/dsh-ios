@@ -156,7 +156,7 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertEqual(previewKindFor("notes.md"), .text)
         XCTAssertEqual(previewKindFor("photo.PNG"), .image)
         XCTAssertEqual(previewKindFor("report.PDF"), .pdf)
-        XCTAssertEqual(previewKindFor("report.DOCX"), .unsupported)
+        XCTAssertEqual(previewKindFor("report.DOCX"), .office)
         XCTAssertEqual(previewKindFor("archive.zip"), .unsupported)
         XCTAssertEqual(classifyFileType("/project/package.json"), "node")
         XCTAssertEqual(classifyFileType("Dockerfile.dev"), "docker")

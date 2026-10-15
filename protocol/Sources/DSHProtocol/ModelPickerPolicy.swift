@@ -26,8 +26,8 @@ public func modelPickerGroups(_ groups: [ModelGroup], query: String) -> [ModelGr
     }
 }
 
-public func modelPickerProviderLabel(_ id: String, hostName: String) -> String {
-    if id == "deepseek-account" { return "DeepSeek 账号" }
+public func modelPickerProviderLabel(_ id: String, hostName: String, english: Bool = false) -> String {
+    if id == "deepseek-account" { return english ? "DeepSeek Account" : "DeepSeek 账号" }
     return hostName
 }
 

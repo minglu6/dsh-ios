@@ -15,11 +15,15 @@ public final class PocketClient: @unchecked Sendable {
     private let mutex = Mutex()
     private var nextId: Int64 = 1
     private var pending: [Int64: CheckedContinuation<JSONValue, Error>] = [:]
-    private var transport: URLSessionFrameTransport?
+    private var transport: FrameTransport?
     private var generation: Int64 = 0
     private var pump: Task<Void, Never>?
     private var eventHandler: (@Sendable (JSONValue) -> Void)?
     private var stateHandler: (@Sendable (State) -> Void)?
+    private var eventTaps: [UUID: @Sendable (JSONValue) -> Void] = [:]
+    private var stateTaps: [UUID: @Sendable (State) -> Void] = [:]
+
+    var pendingRequestCount: Int { mutex.withLock { pending.count } }
 
     public init(appVersion: String = VersionCompatibility.minimumAppVersion) {
         self.appVersion = appVersion
@@ -48,7 +52,7 @@ public final class PocketClient: @unchecked Sendable {
         let attempt = beginConnect()
         do {
             var lastError: Error = PocketError(code: "transport", message: "all transports failed")
-            var opened: URLSessionFrameTransport?
+            var opened: FrameTransport?
             for (url, route) in urls {
                 do {
                     opened = try await TransportOpener.open(url: url, route: route, timeoutMs: timeoutMs)
@@ -58,15 +62,30 @@ public final class PocketClient: @unchecked Sendable {
                 }
             }
             guard let transport = opened else { throw lastError }
-            try attach(transport, attempt: attempt)
-            let pair = handshakePayload(auth)
-            let result = try await request(pair.op, args: pair.args, timeoutMs: timeoutMs, expectedGeneration: attempt)
-            try markOpen(attempt: attempt, transport: transport)
-            return HelloResult(raw: result, route: transport.route)
+            return try await handshake(transport: transport, auth: auth, timeoutMs: timeoutMs, attempt: attempt)
         } catch {
             fail(attempt, error.localizedDescription)
             throw error
         }
+    }
+
+    /// Inject a live transport (tests and non-WebSocket fixtures). Handshake still uses hello/pair.
+    public func connect(transport: FrameTransport, auth: Auth, timeoutMs: Int64 = 120_000) async throws -> HelloResult {
+        let attempt = beginConnect()
+        do {
+            return try await handshake(transport: transport, auth: auth, timeoutMs: timeoutMs, attempt: attempt)
+        } catch {
+            fail(attempt, error.localizedDescription)
+            throw error
+        }
+    }
+
+    private func handshake(transport: FrameTransport, auth: Auth, timeoutMs: Int64, attempt: Int64) async throws -> HelloResult {
+        try attach(transport, attempt: attempt)
+        let pair = handshakePayload(auth)
+        let result = try await request(pair.op, args: pair.args, timeoutMs: timeoutMs, expectedGeneration: attempt)
+        try markOpen(attempt: attempt, transport: transport)
+        return HelloResult(raw: result, route: transport.route)
     }
 
     public func call(_ op: String, args: JSONValue = .object([:]), timeoutMs: Int64 = 60_000) async throws -> JSONValue {
@@ -385,9 +404,8 @@ public final class PocketClient: @unchecked Sendable {
         try await call("queue.update", args: queueUpdateArgs(sessionId: sessionId, itemId: itemId, action: action))
     }
 
-    public func listCommands(sessionId: String) async throws -> [CommandEntry] {
-        (try await call("commands.list", args: jsonObject(["sessionId": .string(sessionId)]))["commands"].arr() ?? [])
-            .compactMap(CommandEntry.parse)
+    public func listCommands(sessionId: String) async throws -> [JSONValue] {
+        try await call("commands.list", args: jsonObject(["sessionId": .string(sessionId)]))["commands"].arr() ?? []
     }
 
     public func executeCommand(sessionId: String, line: String) async throws -> JSONValue {
@@ -466,11 +484,95 @@ public final class PocketClient: @unchecked Sendable {
         return try await call("files.read", args: jsonObject(args))
     }
 
-    public func readFileBytes(sessionId: String, path: String) async throws -> JSONValue {
-        try await call("files.readBytes", args: jsonObject([
+    public func readFileBytes(sessionId: String, path: String, offset: Int? = nil, length: Int? = nil) async throws -> JSONValue {
+        var args: [String: JSONValue?] = [
             "sessionId": .string(sessionId),
             "path": .string(path),
-        ]))
+        ]
+        if let offset, let length {
+            args["options"] = jsonObject([
+                "range": jsonObject([
+                    "offset": .number(Double(offset)),
+                    "length": .number(Double(length)),
+                ]),
+            ])
+        }
+        return try await call("files.readBytes", args: jsonObject(args))
+    }
+
+    /// A bounded invalidation stream, detached even if cancellation races its opening reply.
+    public func followFiles(sessionId: String, path: String = ".") -> AsyncThrowingStream<JSONValue, Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task { [weak self] in
+                guard let self else {
+                    continuation.finish()
+                    return
+                }
+                do {
+                    try await self.runFollowFiles(sessionId: sessionId, path: path, continuation: continuation)
+                    continuation.finish()
+                } catch is CancellationError {
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    /// One connection-bound Office lease. Cancellation releases even a render whose reply never arrived.
+    public func withOfficePreview<T>(
+        sessionId: String,
+        path: String,
+        _ block: (OfficePreviewReader) async throws -> T
+    ) async throws -> T {
+        let handle = "o-\(UUID().uuidString.lowercased())"
+        let attempt = mutex.withLock { generation }
+        do {
+            let metadata = try await request(
+                "office.render",
+                args: jsonObject([
+                    "sessionId": .string(sessionId),
+                    "path": .string(path),
+                    "subId": .string(handle),
+                ]),
+                timeoutMs: 610_000,
+                expectedGeneration: attempt
+            )
+            guard metadata["handle"].str() == handle else {
+                throw PocketError(code: "document-render/failed", message: "Invalid Office handle")
+            }
+            let reader = OfficePreviewReader(
+                sessionId: sessionId,
+                handle: handle,
+                attempt: attempt,
+                metadata: metadata
+            ) { [weak self] offset, length in
+                guard let self else {
+                    throw PocketError(code: "transport", message: "not connected")
+                }
+                return try await self.request(
+                    "office.read",
+                    args: jsonObject([
+                        "sessionId": .string(sessionId),
+                        "handle": .string(handle),
+                        "offset": .number(Double(offset)),
+                        "length": .number(Double(length)),
+                        "version": metadata["version"].str().map { .string($0) },
+                        "generation": metadata["generation"].str().map { .string($0) },
+                    ]),
+                    timeoutMs: 60_000,
+                    expectedGeneration: attempt
+                )
+            }
+            let result = try await block(reader)
+            await releaseOffice(sessionId: sessionId, handle: handle, attempt: attempt)
+            return result
+        } catch {
+            await releaseOffice(sessionId: sessionId, handle: handle, attempt: attempt)
+            throw error
+        }
     }
 
     public func listTerminals(sessionId: String) async throws -> JSONValue {
@@ -575,7 +677,7 @@ public final class PocketClient: @unchecked Sendable {
 
     /// WebSocket ping. Keeps a background socket from going idle during `beginBackgroundTask`.
     public func ping(timeoutMs: Int64 = BackgroundKeepAlivePolicy.pingTimeoutMs) async throws {
-        let transport: URLSessionFrameTransport = try mutex.withLock {
+        let transport: FrameTransport = try mutex.withLock {
             guard state == .open, let current = self.transport else {
                 throw PocketError(code: "transport", message: "not connected")
             }
@@ -617,7 +719,7 @@ public final class PocketClient: @unchecked Sendable {
         return generation
     }
 
-    private func attach(_ transport: URLSessionFrameTransport, attempt: Int64) throws {
+    private func attach(_ transport: FrameTransport, attempt: Int64) throws {
         try mutex.withLock {
             if attempt != generation {
                 transport.close()
@@ -631,7 +733,7 @@ public final class PocketClient: @unchecked Sendable {
         }
     }
 
-    private func markOpen(attempt: Int64, transport: URLSessionFrameTransport) throws {
+    private func markOpen(attempt: Int64, transport: FrameTransport) throws {
         try mutex.withLock {
             if attempt != generation || self.transport !== transport {
                 throw PocketError(code: "transport", message: closeReason ?? "connection superseded")
@@ -648,7 +750,7 @@ public final class PocketClient: @unchecked Sendable {
         timeoutMs: Int64,
         expectedGeneration: Int64?
     ) async throws -> JSONValue {
-        let prepared: (id: Int64, transport: URLSessionFrameTransport) = try mutex.withLock {
+        let prepared: (id: Int64, transport: FrameTransport) = try mutex.withLock {
             if let expectedGeneration, expectedGeneration != generation {
                 throw PocketError(code: "transport", message: "connection superseded")
             }
@@ -667,18 +769,23 @@ public final class PocketClient: @unchecked Sendable {
             "args": args,
         ])
         do {
-            let reply: JSONValue = try await withTimeout(ms: timeoutMs) {
-                try await withCheckedThrowingContinuation { continuation in
-                    self.mutex.withLock { self.pending[id] = continuation }
-                    Task {
-                        do {
-                            try await transport.send(try frame.encodeString())
-                        } catch {
-                            let waiter = self.mutex.withLock { self.pending.removeValue(forKey: id) }
-                            waiter?.resume(throwing: PocketError(code: "transport", message: error.localizedDescription))
+            let reply: JSONValue = try await withTaskCancellationHandler {
+                try await withTimeout(ms: timeoutMs) {
+                    try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<JSONValue, Error>) in
+                        self.mutex.withLock { self.pending[id] = continuation }
+                        Task {
+                            do {
+                                try await transport.send(try frame.encodeString())
+                            } catch {
+                                let waiter = self.mutex.withLock { self.pending.removeValue(forKey: id) }
+                                waiter?.resume(throwing: PocketError(code: "transport", message: error.localizedDescription))
+                            }
                         }
                     }
                 }
+            } onCancel: {
+                let waiter = self.mutex.withLock { self.pending.removeValue(forKey: id) }
+                waiter?.resume(throwing: CancellationError())
             }
             mutex.withLock { pending.removeValue(forKey: id) }
             if reply["ok"].bool() == true {
@@ -695,7 +802,7 @@ public final class PocketClient: @unchecked Sendable {
         }
     }
 
-    private func pumpIncoming(attempt: Int64, transport: URLSessionFrameTransport) async {
+    private func pumpIncoming(attempt: Int64, transport: FrameTransport) async {
         do {
             while !Task.isCancelled {
                 let text = try await transport.receive()
@@ -704,8 +811,12 @@ public final class PocketClient: @unchecked Sendable {
                     try? await transport.send(#"{"op":"pong"}"#)
                 }
                 if let event = outcome.event {
-                    let handler = mutex.withLock { eventHandler }
-                    handler?(event)
+                    let taps: [@Sendable (JSONValue) -> Void] = mutex.withLock {
+                        var handlers = Array(eventTaps.values)
+                        if let eventHandler { handlers.append(eventHandler) }
+                        return handlers
+                    }
+                    for tap in taps { tap(event) }
                 }
             }
         } catch {
@@ -773,7 +884,167 @@ public final class PocketClient: @unchecked Sendable {
     }
 
     private func notifyState(_ next: State) {
-        let handler = mutex.withLock { stateHandler }
-        handler?(next)
+        let taps: [@Sendable (State) -> Void] = mutex.withLock {
+            var handlers = Array(stateTaps.values)
+            if let stateHandler { handlers.append(stateHandler) }
+            return handlers
+        }
+        for tap in taps { tap(next) }
+    }
+
+    private func addEventTap(_ handler: @escaping @Sendable (JSONValue) -> Void) -> UUID {
+        let id = UUID()
+        mutex.withLock { eventTaps[id] = handler }
+        return id
+    }
+
+    private func removeEventTap(_ id: UUID) {
+        mutex.withLock { eventTaps.removeValue(forKey: id) }
+    }
+
+    private func addStateTap(_ handler: @escaping @Sendable (State) -> Void) -> UUID {
+        let id = UUID()
+        mutex.withLock { stateTaps[id] = handler }
+        return id
+    }
+
+    private func removeStateTap(_ id: UUID) {
+        mutex.withLock { stateTaps.removeValue(forKey: id) }
+    }
+
+    private func releaseOffice(sessionId: String, handle: String, attempt: Int64) async {
+        _ = try? await request(
+            "office.release",
+            args: jsonObject([
+                "sessionId": .string(sessionId),
+                "handle": .string(handle),
+            ]),
+            timeoutMs: 5_000,
+            expectedGeneration: attempt
+        )
+    }
+
+    private func runFollowFiles(
+        sessionId: String,
+        path: String,
+        continuation: AsyncThrowingStream<JSONValue, Error>.Continuation
+    ) async throws {
+        let subscription = "f-\(UUID().uuidString.lowercased())"
+        let attempt = mutex.withLock { generation }
+        let inbox = ConflatedInbox()
+        let eventTap = addEventTap { event in
+            if event["subId"].str() == subscription, event["ev"].str()?.hasPrefix("files") == true {
+                inbox.send(event)
+            }
+        }
+        let stateTap = addStateTap { [weak self] state in
+            if state == .closed {
+                inbox.fail(PocketError(code: "transport", message: self?.closeReason ?? "connection closed"))
+            }
+        }
+        defer {
+            removeEventTap(eventTap)
+            removeStateTap(stateTap)
+        }
+        do {
+            _ = try await request(
+                "files.follow",
+                args: jsonObject([
+                    "sessionId": .string(sessionId),
+                    "path": .string(path),
+                    "subId": .string(subscription),
+                ]),
+                timeoutMs: 60_000,
+                expectedGeneration: attempt
+            )
+            while let event = try await inbox.next() {
+                switch event["ev"].str() {
+                case "files":
+                    if let frame = event["frame"].obj() {
+                        continuation.yield(.object(frame))
+                    }
+                case "files.end":
+                    throw PocketError(code: "workspace-file/watch-ended", message: "directory watch ended")
+                case "files.error":
+                    throw PocketError(
+                        code: event["error"]["code"].str() ?? "internal",
+                        message: event["error"]["message"].str() ?? "directory watch failed"
+                    )
+                default:
+                    break
+                }
+            }
+        } catch {
+            _ = try? await request(
+                "unfollow",
+                args: jsonObject(["subId": .string(subscription)]),
+                timeoutMs: 5_000,
+                expectedGeneration: attempt
+            )
+            throw error
+        }
+        _ = try? await request(
+            "unfollow",
+            args: jsonObject(["subId": .string(subscription)]),
+            timeoutMs: 5_000,
+            expectedGeneration: attempt
+        )
+    }
+}
+
+private final class ConflatedInbox: @unchecked Sendable {
+    private let mutex = Mutex()
+    private var latest: JSONValue?
+    private var waiter: CheckedContinuation<JSONValue?, Error>?
+    private var failure: Error?
+    private var finished = false
+
+    func send(_ value: JSONValue) {
+        mutex.withLock {
+            if finished { return }
+            if let waiter {
+                self.waiter = nil
+                waiter.resume(returning: value)
+            } else {
+                latest = value
+            }
+        }
+    }
+
+    func fail(_ error: Error) {
+        mutex.withLock {
+            if finished { return }
+            finished = true
+            failure = error
+            latest = nil
+            if let waiter {
+                self.waiter = nil
+                waiter.resume(throwing: error)
+            }
+        }
+    }
+
+    func next() async throws -> JSONValue? {
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                mutex.withLock {
+                    if let failure {
+                        continuation.resume(throwing: failure)
+                    } else if let latest {
+                        self.latest = nil
+                        continuation.resume(returning: latest)
+                    } else if finished {
+                        continuation.resume(returning: nil)
+                    } else {
+                        waiter = continuation
+                    }
+                }
+            }
+        } onCancel: {
+            mutex.withLock {
+                waiter?.resume(throwing: CancellationError())
+                waiter = nil
+            }
+        }
     }
 }

@@ -16,6 +16,8 @@ struct DswColors {
     let buttonPrimaryFill: Color
     let interactiveBgHover: Color
     let interactiveBgHoverSolid: Color
+    let interactiveBgActive: Color
+    let tooltipBg: Color
     let labelCaption: Color
     let labelPrimary: Color
     let labelPrimaryBluish: Color
@@ -54,6 +56,8 @@ struct DswColors {
         buttonPrimaryFill: Color(hex: 0xFF0F1115),
         interactiveBgHover: Color(hex: 0x0F263148),
         interactiveBgHoverSolid: Color(hex: 0xFFF1F3F5),
+        interactiveBgActive: Color(hex: 0x1A263148),
+        tooltipBg: Color(hex: 0xFF2C2C2E),
         labelCaption: Color(hex: 0xFFADB2B8),
         labelPrimary: Color(hex: 0xFF0F1115),
         labelPrimaryBluish: Color(hex: 0xFF0E3074),
@@ -93,6 +97,8 @@ struct DswColors {
         buttonPrimaryFill: Color(hex: 0xFFF9FAFB),
         interactiveBgHover: Color(hex: 0x14FFFFFF),
         interactiveBgHoverSolid: Color(hex: 0xFF353638),
+        interactiveBgActive: Color(hex: 0x24FFFFFF),
+        tooltipBg: Color(hex: 0xFF43454A),
         labelCaption: Color(hex: 0xFF81858C),
         labelPrimary: Color(hex: 0xFFF9FAFB),
         labelPrimaryBluish: Color(hex: 0xFFF9FAFB),

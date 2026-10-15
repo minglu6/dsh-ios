@@ -3,6 +3,7 @@ import DSHProtocol
 
 struct SettingsView: View {
     @ObservedObject var model: AppModel
+    @State private var lastOps: Set<String> = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -12,12 +13,12 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     card {
                         nav(L.generalNav(), D.sliders) { model.push(.general) }
-                        nav(L.modelsNav(), "cpu", divider: hasPresets || hasPluginSettings) { model.push(.models) }
+                        nav(L.modelsNav(), "cpu", divider: hasPresets || hasPluginSettings, enabled: model.isOnline) { model.push(.models) }
                         if hasPresets {
-                            nav(L.agentPresets(), D.agentPreset, divider: hasPluginSettings) { model.push(.presets) }
+                            nav(L.agentPresets(), D.agentPreset, divider: hasPluginSettings, enabled: model.isOnline) { model.push(.presets) }
                         }
                         if hasPluginSettings {
-                            nav(L.builtinPluginsNav(), D.plugin, divider: false) { model.push(.builtinPlugins) }
+                            nav(L.builtinPluginsNav(), D.plugin, divider: false, enabled: model.isOnline) { model.push(.builtinPlugins) }
                         }
                     }
                     Text(L.phoneConnection())
@@ -35,10 +36,18 @@ struct SettingsView: View {
             .background(T.bg)
         }
         .background(T.bg.ignoresSafeArea())
+        .onAppear { rememberOps() }
+        .onChange(of: model.isOnline) { _ in rememberOps() }
+        .onChange(of: model.ops) { _ in rememberOps() }
     }
 
-    private var hasPluginSettings: Bool { model.ops.contains("plugins.inventory") }
-    private var hasPresets: Bool { model.ops.contains("presets.list") || model.ops.contains("presets.settings") }
+    private var visibleOps: Set<String> { model.isOnline ? model.ops : lastOps }
+    private var hasPluginSettings: Bool { visibleOps.contains("plugins.inventory") }
+    private var hasPresets: Bool { visibleOps.contains("presets.list") || visibleOps.contains("presets.settings") }
+
+    private func rememberOps() {
+        if model.isOnline && !model.ops.isEmpty { lastOps = model.ops }
+    }
 }
 
 struct GeneralSettingsView: View {
@@ -380,7 +389,7 @@ func card<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         .padding(.horizontal, 16)
 }
 
-func nav(_ title: String, _ system: String, value: String? = nil, divider: Bool = true, action: @escaping () -> Void) -> some View {
+func nav(_ title: String, _ system: String, value: String? = nil, divider: Bool = true, enabled: Bool = true, action: @escaping () -> Void) -> some View {
     VStack(spacing: 0) {
         Button(action: action) {
             HStack {
@@ -394,7 +403,9 @@ func nav(_ title: String, _ system: String, value: String? = nil, divider: Bool 
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
+            .opacity(enabled ? 1 : 0.5)
         }
+        .disabled(!enabled)
         if divider { Divider().padding(.leading, 16) }
     }
 }
@@ -403,6 +414,7 @@ func picker<Selection: Hashable, Content: View>(
     _ title: String,
     selection: Binding<Selection>,
     divider: Bool = true,
+    enabled: Bool = true,
     @ViewBuilder content: () -> Content
 ) -> some View {
     VStack(spacing: 0) {
@@ -412,9 +424,11 @@ func picker<Selection: Hashable, Content: View>(
             Picker("", selection: selection, content: content)
                 .labelsHidden()
                 .tint(T.accent)
+                .disabled(!enabled)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
+        .opacity(enabled ? 1 : 0.5)
         if divider { Divider().padding(.leading, 16) }
     }
 }
