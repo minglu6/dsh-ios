@@ -147,11 +147,6 @@ enum L {
     static func scheduleNav() -> String { en ? "Scheduled tasks" : "自动化任务" }
     static func phoneConnection() -> String { en ? "Phone connection" : "手机连接" }
     static func mobileSection() -> String { en ? "Mobile" : "移动端" }
-    static func hostDisconnected() -> String {
-        en
-            ? "Host disconnected. Actions requiring a connection are unavailable."
-            : "远程主机未连接，需连接的操作暂不可用"
-    }
     static func hostSettingsReadOnly() -> String {
         en ? "Host settings are read-only" : "主机配置为只读"
     }

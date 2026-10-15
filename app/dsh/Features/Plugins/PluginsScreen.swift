@@ -46,7 +46,6 @@ struct PluginsScreen: View {
             pluginsHeader(selected.map { pluginTitle($0, english: L.en) } ?? L.pluginsNav())
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    settingsDisconnectedBanner(model)
                     if let error { settingsMessage(error, error: true) }
                     if let outcome { Text(pluginChangeText(outcome, en: L.en)).foregroundStyle(T.text2).padding(.horizontal, 22) }
                     if loading || busy { ProgressView().frame(maxWidth: .infinity) }

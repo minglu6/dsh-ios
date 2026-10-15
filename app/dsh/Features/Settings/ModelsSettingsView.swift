@@ -20,7 +20,6 @@ struct ModelsSettingsView: View {
             header(L.modelsNav()) { if !model.isOnline || !busy { model.pop() } }
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    settingsDisconnectedBanner(model)
                     settingsMessage(L.modelsIntro())
                     if model.isOnline && !writable && !loading && error == nil {
                         settingsMessage(L.hostSettingsReadOnly())

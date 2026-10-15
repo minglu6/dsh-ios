@@ -10,7 +10,6 @@ struct SettingsView: View {
             header(L.settings()) { model.pop() }
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    settingsDisconnectedBanner(model)
                     card {
                         nav(L.generalNav(), D.sliders) { model.push(.general) }
                         nav(L.modelsNav(), "cpu", enabled: model.isOnline) { model.push(.models) }
@@ -63,7 +62,6 @@ struct GeneralSettingsView: View {
             header(L.generalNav()) { model.pop() }
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    settingsDisconnectedBanner(model)
                     if shared.saving {
                         settingsMessage(L.saving())
                     } else if shared.loading {
@@ -370,15 +368,6 @@ func collapseText(_ mode: CollapseTiming) -> String {
     switch mode {
     case .completion: return L.t("本轮完成后", "After the turn completes")
     case .nextInput: return L.t("下次发送后", "After the next send")
-    }
-}
-
-@MainActor
-func settingsDisconnectedBanner(_ model: AppModel) -> some View {
-    Group {
-        if !model.isOnline {
-            settingsMessage(L.hostDisconnected())
-        }
     }
 }
 

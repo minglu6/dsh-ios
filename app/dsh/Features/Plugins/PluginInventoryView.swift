@@ -30,7 +30,6 @@ struct PluginInventoryView: View {
             .background(T.surface)
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    settingsDisconnectedBanner(model)
                     settingsMessage(L.t("查看内置部署的插件列表", "View plugins in the built-in deployment"))
                     if model.isOnline && !model.ops.contains("plugins.inventory") {
                         settingsMessage(L.t("主机未提供内置插件目录，请检查主机插件是否已加载。", "The host does not provide a built-in plugin inventory. Check that its plugin is loaded."), error: true)
