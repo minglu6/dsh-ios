@@ -1,15 +1,13 @@
 import SwiftUI
 import DSHProtocol
 
-/// Header chip. Polls only while this conversation is visible and the scene is active.
+/// Header chip. Retains the shared jobs poll for this conversation; scenePhase is not part of the task id.
 struct JobsAction: View {
     @ObservedObject var model: AppModel
     let sessionId: String
     var onClick: () -> Void
-    @Environment(\.scenePhase) private var scenePhase
 
     private var available: Bool { model.canShowJobs }
-    private var watching: Bool { available && scenePhase == .active }
 
     var body: some View {
         Group {
@@ -29,8 +27,8 @@ struct JobsAction: View {
                 .accessibilityLabel(JobsActionLabel.text(chip, en: L.en))
             }
         }
-        .task(id: "\(model.activeId ?? "")-\(sessionId)-\(watching)") {
-            await model.watchJobs(hostId: model.activeId, sessionId: sessionId, available: watching)
+        .task(id: "\(model.activeId ?? "")-\(sessionId)-\(available)") {
+            await model.retainJobsWatch(hostId: model.activeId, sessionId: sessionId, available: available)
         }
     }
 }
@@ -46,41 +44,24 @@ struct JobsPanel: View {
     private var canKill: Bool { online && !killing && model.ops.contains("jobs.kill") }
 
     var body: some View {
-        VStack(spacing: 0) {
-            if let detail = model.jobDetail, let job = currentJob(detail.jobId) ?? fallback(detail) {
-                detailView(detail, job: job)
-            } else {
-                roster
+        ZStack {
+            VStack(spacing: 0) {
+                if let detail = model.jobDetail, let job = currentJob(detail.jobId) ?? fallback(detail) {
+                    detailView(detail, job: job)
+                } else {
+                    roster
+                }
+            }
+            if let job = stopping {
+                killOverlay(job)
             }
         }
         .background(T.bg.ignoresSafeArea())
-        .onDisappear { model.clearJobSelection() }
-        .confirmationDialog(
-            L.killBackgroundJobTitle(),
-            isPresented: Binding(
-                get: { stopping != nil },
-                set: { if !$0 && !killing { stopping = nil } }
-            ),
-            titleVisibility: .visible
-        ) {
-            Button(L.killJob(), role: .destructive) {
-                guard let job = stopping else { return }
-                killing = true
-                model.killJob(jobId: job.id) { success in
-                    killing = false
-                    stopping = nil
-                    if !success {
-                        model.errorMessage = L.killJobFailed()
-                    }
-                }
-            }
-            .disabled(!canKill)
-            Button(L.cancel(), role: .cancel) {
-                if !killing { stopping = nil }
-            }
-        } message: {
-            Text(stopping?.title ?? "")
+        .task(id: "panel-\(model.activeId ?? "")-\(sessionId ?? "")-\(model.canShowJobs)") {
+            guard let sessionId else { return }
+            await model.retainJobsWatch(hostId: model.activeId, sessionId: sessionId, available: model.canShowJobs)
         }
+        .onDisappear { model.clearJobSelection() }
     }
 
     private var roster: some View {
@@ -99,14 +80,14 @@ struct JobsPanel: View {
             if model.jobs == nil && !model.jobsFailed {
                 ProgressView().frame(maxWidth: .infinity).padding()
             }
-            if model.jobsFailed {
-                Text(model.errorMessage ?? L.jobLoadFailed())
+            if let err = model.jobsPanelError {
+                Text(err)
                     .foregroundStyle(T.err)
                     .padding(22)
             }
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    if let jobs = model.jobs, jobs.isEmpty, !model.jobsFailed {
+                    if let jobs = model.jobs, jobs.isEmpty, !model.jobsFailed, model.jobsPanelError == nil {
                         Text(L.jobsZero()).foregroundStyle(T.text3).padding(22)
                     }
                     ForEach(model.jobs ?? []) { job in
@@ -140,19 +121,31 @@ struct JobsPanel: View {
         }
     }
 
+    /// Android JobsSheet detail: 「返回后台任务」+ title. No extra header close.
     private func detailView(_ detail: JobDetailState, job: JobRow) -> some View {
         VStack(spacing: 0) {
-            header(job.title) { model.clearJobSelection() }
             HStack {
                 Button(L.backToJobs()) { model.clearJobSelection() }
                     .foregroundStyle(T.accent)
                 Spacer()
-                if !detail.status.isEmpty {
-                    Text(detail.status).font(.caption).foregroundStyle(T.text3)
-                }
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            .padding(.top, 12)
+            .padding(.bottom, 4)
+            Text(job.title)
+                .font(.headline)
+                .foregroundStyle(T.ink)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
+            if !detail.status.isEmpty {
+                Text(detail.status)
+                    .font(.caption)
+                    .foregroundStyle(T.text3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
+            }
             if let extra = job.detail, !extra.isEmpty {
                 Text(extra)
                     .font(.system(.footnote, design: .monospaced))
@@ -185,6 +178,44 @@ struct JobsPanel: View {
                     .padding(.vertical, 8)
                 }
             }
+        }
+    }
+
+    private func killOverlay(_ job: JobRow) -> some View {
+        ZStack {
+            T.scrim.ignoresSafeArea()
+                .onTapGesture { if !killing { stopping = nil } }
+            VStack(alignment: .leading, spacing: 14) {
+                Text(L.killBackgroundJobTitle())
+                    .font(.headline)
+                    .foregroundStyle(T.ink)
+                Text(job.title)
+                    .foregroundStyle(T.text2)
+                if let err = model.jobsPanelError {
+                    Text(err).foregroundStyle(T.err)
+                }
+                HStack {
+                    Button(L.cancel()) {
+                        if !killing { stopping = nil }
+                    }
+                    .disabled(killing)
+                    .foregroundStyle(T.text2)
+                    Spacer()
+                    Button(L.killJob()) {
+                        killing = true
+                        model.killJob(jobId: job.id) { success in
+                            killing = false
+                            if success { stopping = nil }
+                        }
+                    }
+                    .disabled(!canKill)
+                    .foregroundStyle(canKill ? T.err : T.caption)
+                }
+            }
+            .padding(20)
+            .frame(maxWidth: 320)
+            .background(T.surface, in: RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(T.border, lineWidth: 0.5))
         }
     }
 

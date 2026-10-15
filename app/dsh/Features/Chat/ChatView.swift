@@ -4,11 +4,18 @@ import DSHProtocol
 
 struct ChatView: View {
     @ObservedObject var model: AppModel
+    @Environment(\.scenePhase) private var scenePhase
     @State private var showModels = false
     @State private var tab = 0
     @State private var feedbackDraft: FeedbackDraft?
     @State private var showStart = false
     @State private var showJobs = false
+
+    /// Android: Screen.Chat + drawer closed + focused + RESUMED. Otherwise completion.view gets null.
+    private var desiredViewedSession: String? {
+        guard scenePhase == .active, !model.showDrawer, let id = model.chat?.sessionId else { return nil }
+        return id
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -42,7 +49,14 @@ struct ChatView: View {
                 }
             )
         }
-        .onChange(of: model.chat?.sessionId) { _ in tab = 0 }
+        .onAppear { model.setViewedSession(desiredViewedSession) }
+        .onDisappear { model.setViewedSession(nil) }
+        .onChange(of: scenePhase) { _ in model.setViewedSession(desiredViewedSession) }
+        .onChange(of: model.showDrawer) { _ in model.setViewedSession(desiredViewedSession) }
+        .onChange(of: model.chat?.sessionId) { _ in
+            tab = 0
+            model.setViewedSession(desiredViewedSession)
+        }
     }
 
     private func openFeedback(messageId: String, rating: String) {

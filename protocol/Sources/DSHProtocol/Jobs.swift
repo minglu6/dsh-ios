@@ -106,6 +106,27 @@ public enum JobFollowRequest {
     }
 }
 
+/// First assigned `subId` wins. A concurrent follow for the same job must unfollow the extra subscription.
+public enum JobFollowClaim {
+    public static func assign(current: inout [String: String], jobId: String, subId: String) -> String? {
+        if let existing = current[jobId] {
+            return existing == subId ? nil : subId
+        }
+        current[jobId] = subId
+        return nil
+    }
+
+    /// One in-flight `jobs.follow` per job. Returns false when already assigned or already starting.
+    public static func begin(inFlight: inout Set<String>, assigned: [String: String], jobId: String) -> Bool {
+        if assigned[jobId] != nil { return false }
+        return inFlight.insert(jobId).inserted
+    }
+
+    public static func end(inFlight: inout Set<String>, jobId: String) {
+        inFlight.remove(jobId)
+    }
+}
+
 /// Android `JobsSheet.appendOutput`: split on `\n` and extend the last line.
 public func appendJobOutput(_ lines: inout [String], text: String) {
     if text.isEmpty { return }

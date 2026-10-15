@@ -54,6 +54,30 @@ final class JobsTests: XCTestCase {
         XCTAssertEqual(JobsActionLabel.text(.retained(3), en: true), "3 background jobs")
     }
 
+    func testFollowClaimUnfollowsDuplicateSubId() {
+        var assigned: [String: String] = [:]
+        XCTAssertNil(JobFollowClaim.assign(current: &assigned, jobId: "j1", subId: "s1"))
+        XCTAssertEqual(assigned["j1"], "s1")
+        XCTAssertEqual(JobFollowClaim.assign(current: &assigned, jobId: "j1", subId: "s2"), "s2")
+        XCTAssertEqual(assigned["j1"], "s1")
+        XCTAssertNil(JobFollowClaim.assign(current: &assigned, jobId: "j1", subId: "s1"))
+        XCTAssertNil(JobFollowClaim.assign(current: &assigned, jobId: "j2", subId: "s3"))
+        XCTAssertEqual(assigned["j2"], "s3")
+    }
+
+    func testFollowClaimBeginRejectsAssignedOrInFlight() {
+        var assigned: [String: String] = ["j1": "s1"]
+        var inFlight: Set<String> = []
+        XCTAssertFalse(JobFollowClaim.begin(inFlight: &inFlight, assigned: assigned, jobId: "j1"))
+        XCTAssertTrue(inFlight.isEmpty)
+        XCTAssertTrue(JobFollowClaim.begin(inFlight: &inFlight, assigned: assigned, jobId: "j2"))
+        XCTAssertEqual(inFlight, ["j2"])
+        XCTAssertFalse(JobFollowClaim.begin(inFlight: &inFlight, assigned: assigned, jobId: "j2"))
+        JobFollowClaim.end(inFlight: &inFlight, jobId: "j2")
+        XCTAssertTrue(inFlight.isEmpty)
+        XCTAssertTrue(JobFollowClaim.begin(inFlight: &inFlight, assigned: assigned, jobId: "j2"))
+    }
+
     func testFollowRequestOmitsNullFrom() throws {
         let args = JobFollowRequest.args(sessionId: "S", jobId: "J")
         XCTAssertEqual(args["sessionId"].str(), "S")
@@ -150,5 +174,21 @@ final class CompletionRemindersTests: XCTestCase {
         let viewed = CompletionViewRequest.args(sessionId: "S")
         XCTAssertEqual(viewed["sessionId"].str(), "S")
         XCTAssertFalse(try viewed.encodeString().contains("null"))
+    }
+
+    func testViewedSessionRequiresDesiredChatAndReady() {
+        XCTAssertEqual(CompletionViewed.sessionId(desired: "S", chat: "S", ready: "S"), "S")
+        XCTAssertNil(CompletionViewed.sessionId(desired: nil, chat: "S", ready: "S"))
+        XCTAssertNil(CompletionViewed.sessionId(desired: "S", chat: "T", ready: "S"))
+        XCTAssertNil(CompletionViewed.sessionId(desired: "S", chat: "S", ready: nil))
+        XCTAssertNil(CompletionViewed.sessionId(desired: "S", chat: nil, ready: "S"))
+    }
+
+    func testViewedSessionDedupeSkipsSameClientAndSession() {
+        XCTAssertFalse(CompletionViewed.shouldSkip(sameClient: false, lastSession: nil, nextSession: nil))
+        XCTAssertTrue(CompletionViewed.shouldSkip(sameClient: true, lastSession: nil, nextSession: nil))
+        XCTAssertTrue(CompletionViewed.shouldSkip(sameClient: true, lastSession: "S", nextSession: "S"))
+        XCTAssertFalse(CompletionViewed.shouldSkip(sameClient: true, lastSession: "S", nextSession: nil))
+        XCTAssertFalse(CompletionViewed.shouldSkip(sameClient: false, lastSession: "S", nextSession: "S"))
     }
 }

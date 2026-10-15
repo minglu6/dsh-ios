@@ -38,6 +38,19 @@ public enum CompletionViewRequest {
     }
 }
 
+/// Android `desiredViewedSession?.takeIf { it == chat && it == completionReadySession }`.
+public enum CompletionViewed {
+    public static func sessionId(desired: String?, chat: String?, ready: String?) -> String? {
+        guard let desired, desired == chat, desired == ready else { return nil }
+        return desired
+    }
+
+    /// Same client already reported this viewed value, including explicit null after the first send.
+    public static func shouldSkip(sameClient: Bool, lastSession: String?, nextSession: String?) -> Bool {
+        sameClient && lastSession == nextSession
+    }
+}
+
 private extension String {
     var nilIfBlank: String? {
         let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
