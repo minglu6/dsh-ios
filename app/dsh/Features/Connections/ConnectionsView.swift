@@ -63,6 +63,12 @@ struct ConnectionsView: View {
             )
             .ignoresSafeArea()
         }
+        .task {
+            while !Task.isCancelled {
+                model.refreshPairedStatus()
+                try? await Task.sleep(nanoseconds: 10_000_000_000)
+            }
+        }
         .onAppear {
             if let pending = model.pendingPair {
                 address = "\(pending.host):\(pending.port)"
@@ -81,7 +87,7 @@ struct ConnectionsView: View {
             Menu {
                 Button(L.diagnosticsCopy()) { Task { _ = await model.copyDiagnostics() } }
             } label: {
-                Image(systemName: "ellipsis").foregroundStyle(T.ink).padding(8)
+                Image(systemName: D.ellipsis).foregroundStyle(T.ink).padding(8)
             }
         }
         .padding(.horizontal, 16)

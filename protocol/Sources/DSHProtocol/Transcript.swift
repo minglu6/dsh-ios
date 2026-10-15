@@ -3,6 +3,11 @@ import Foundation
 public struct ImageRef: Sendable, Equatable {
     public var attachmentId: String
     public var mediaType: String?
+
+    public init(attachmentId: String, mediaType: String? = nil) {
+        self.attachmentId = attachmentId
+        self.mediaType = mediaType
+    }
 }
 
 public struct DeliverableFile: Sendable, Equatable {
@@ -1387,6 +1392,7 @@ public final class TranscriptReducer {
         let blocks = msg["content"].arr() ?? []
         let text = blocks.filter { $0["type"].str() == "text" }.map { $0["text"].str() ?? "" }.joined(separator: "\n")
         let imageRefs = blocks.compactMap { block -> ImageRef? in
+            guard block["type"].str() == "image" else { return nil }
             let att = block["attachment"]
             let id = att["attachmentId"].str() ?? block["attachmentId"].str()
             guard let id else { return nil }

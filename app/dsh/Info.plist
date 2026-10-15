@@ -27,7 +27,16 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Scan the desktop pairing QR code.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Find and connect to the dsh Host pocket plugin on the local network.</string>
+	<string>Find and connect to the dsh remote-host pocket plugin on the local network.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>processing</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>dev.dsh.pocket.ios.refresh</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

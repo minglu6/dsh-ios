@@ -2,7 +2,7 @@ import Foundation
 import Network
 import DSHProtocol
 
-/// Bonjour browser for `_dshpocket._tcp`.
+/// Bonjour browser for `_dshpocket._tcp`. TXT must be protocol 1 + 64-hex instanceId.
 final class LanDiscovery {
     var onHosts: (([DiscoveredHost]) -> Void)?
     private var browser: NWBrowser?
@@ -12,7 +12,7 @@ final class LanDiscovery {
     func start() {
         let params = NWParameters()
         params.includePeerToPeer = true
-        let browser = NWBrowser(for: .bonjourWithTXTRecord(type: "_dshpocket._tcp", domain: "local."), using: params)
+        let browser = NWBrowser(for: .bonjourWithTXTRecord(type: LanDiscoveryPolicy.serviceType, domain: "local."), using: params)
         browser.browseResultsChangedHandler = { [weak self] results, _ in
             self?.handle(results)
         }
@@ -35,20 +35,28 @@ final class LanDiscovery {
         for result in results {
             guard case .service(_, _, _, _) = result.endpoint else { continue }
             var host = ""
-            var port = 0
+            var port: Int?
             var instanceId = ""
-            var deviceName = result.endpoint.debugDescription
+            var deviceName: String?
+            var protocolValue: Int?
             if case .bonjour(let record) = result.metadata {
                 host = record["host"] ?? ""
-                port = Int(record["port"] ?? "") ?? 0
+                port = Int(record["port"] ?? "")
                 instanceId = record["instanceId"] ?? ""
-                if let name = record["deviceName"], !name.isEmpty { deviceName = name }
+                deviceName = record["deviceName"]
+                protocolValue = Int(record["protocol"] ?? "")
             }
-            if host.isEmpty || !(1...65535).contains(port) { continue }
-            let discovered = DiscoveredHost(instanceId: instanceId, host: host, port: port, deviceName: deviceName)
-            next[discovered.id] = discovered
+            if let discovered = LanDiscoveryPolicy.parseTxt(
+                deviceName: deviceName,
+                host: host,
+                port: port,
+                protocolValue: protocolValue,
+                instanceId: instanceId
+            ) {
+                next[discovered.id] = discovered
+            }
         }
         found = next
-        onHosts?(Array(next.values))
+        onHosts?(LanDiscoveryPolicy.mergeByInstance(Array(next.values)))
     }
 }

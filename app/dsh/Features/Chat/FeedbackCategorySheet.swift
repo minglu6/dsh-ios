@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Android `FeedbackCategorySheet` / desktop `feedback.dialog`: optional category + note.
 struct FeedbackCategorySheet: View {
+    var hint: String = L.feedbackHint()
     let onDismiss: () -> Void
     let onSubmit: (_ category: String?, _ note: String, _ complete: @escaping (Bool) -> Void) -> Void
 
@@ -49,7 +50,7 @@ struct FeedbackCategorySheet: View {
                         .font(.caption)
                         .foregroundStyle(T.text3)
                         .padding(.horizontal, 22)
-                    TextField(L.feedbackHint(), text: $note, axis: .vertical)
+                    TextField(hint, text: $note, axis: .vertical)
                         .lineLimit(3...8)
                         .disabled(busy)
                         .padding(12)

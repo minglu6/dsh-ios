@@ -1,4 +1,5 @@
 import Foundation
+import DSHProtocol
 
 enum L {
     static var en: Bool { AppPrefs.language == .en }
@@ -44,6 +45,73 @@ enum L {
     static func newSession() -> String { en ? "New session" : "新会话" }
     static func search() -> String { en ? "Search" : "搜索" }
     static func searchSessions() -> String { en ? "Search session names" : "搜索会话名称" }
+    static func searchSessionsAria() -> String { en ? "Search sessions" : "搜索会话" }
+    static func searchingSessions() -> String { en ? "Searching session history…" : "正在搜索会话历史…" }
+    static func noMatchingSessions() -> String { en ? "No matching sessions" : "无匹配会话" }
+    static func clearSearch() -> String { en ? "Clear search" : "清除搜索" }
+    static func emptyArchivedSessions() -> String { en ? "No archived sessions yet" : "暂无已归档会话" }
+    static func archived() -> String { en ? "Archived" : "已归档" }
+    static func restoreArchivedBody() -> String {
+        en ? "Restore this archived session before opening it." : "已归档会话需先恢复才能打开。"
+    }
+    static func archivedToast() -> String { en ? "Session archived; you can " : "会话已归档，可" }
+    static func orderByLabel() -> String { en ? "Order by" : "排序方式" }
+    static func orderByManual() -> String { en ? "Manual" : "手动排序" }
+    static func orderByUpdated() -> String { en ? "Last updated" : "最近更新" }
+    static func filterByLabel() -> String { en ? "Filter sessions" : "筛选会话" }
+    static func hideArchived() -> String { en ? "Hide archived" : "隐藏已归档" }
+    static func showArchived() -> String { en ? "All conversations (show archived)" : "全部对话（显示已归档）" }
+    static func onlyArchived() -> String { en ? "Archived only" : "仅显示已归档" }
+    static func downloadSessionLog() -> String { "下载 Session 日志" }
+    static func sessionFeedback() -> String { en ? "Feedback" : "反馈" }
+    static func sessionFeedbackHint() -> String {
+        en
+            ? "Add details to help us improve. Your submission will include the current conversation log."
+            : "填写详情以帮助我们改进体验，提交内容会包括当前对话的日志"
+    }
+    static func imageLoading() -> String { en ? "Loading image…" : "图片加载中…" }
+    static func imageLoadFailed() -> String { en ? "Failed to load image; click to retry" : "图片加载失败，点击重试" }
+    static func agentPresets() -> String { en ? "Agent presets" : "Agent 预设" }
+    static func presetOnboarding() -> String {
+        en
+            ? "Choose the agent’s tools and how it works. Use Standard mode for everyday tasks, or Creator mode to add capabilities to DSH."
+            : "选择 Agent 的工具和工作方式。日常任务用「标准模式」，扩展 DSH 的能力用「创造模式」。"
+    }
+    static func presetReadOnly() -> String {
+        en ? "This remote host allows viewing presets only; the default is read-only" : "当前远程主机仅支持查看预设，默认设置为只读"
+    }
+    static func presetLocked() -> String { en ? "Preset is fixed when the session is created" : "预设在创建会话时确定" }
+    static func letAgentCreatePreset() -> String { en ? "Let the agent help me create a preset" : "让 Agent 帮我创建预设模式" }
+    static func builtIn() -> String { en ? "Built-in" : "内置" }
+    static func custom() -> String { en ? "Custom" : "自定义" }
+    static func newTaskDefault() -> String { en ? "New task default" : "新任务默认" }
+    static func setAsNewTaskDefault() -> String { en ? "Set as new task default: " : "设为新任务默认：" }
+    static func newTaskDefaultPrefix() -> String { en ? "New task default: " : "新任务默认：" }
+    static func loadFailed() -> String { en ? "Failed to load" : "加载失败" }
+    static func noDescription() -> String { en ? "No description." : "暂无描述。" }
+    static func modeExplanation() -> String { en ? "Mode explanation" : "模式说明" }
+    static func howToUse() -> String { en ? "How to use" : "如何使用" }
+    static func viewConfiguration() -> String { en ? "View configuration" : "查看配置" }
+    static func hostDidNotReturnPreset() -> String {
+        en ? "The remote host did not return the preset composition" : "远程主机未返回预设组成"
+    }
+    static func defaultUnchanged() -> String {
+        en
+            ? "Saved, but the remote host default is unchanged; a higher-priority override may be active"
+            : "已保存，但远程主机当前默认值未改变，可能存在更高优先级覆盖"
+    }
+    static func sessionStats() -> String { en ? "Session statistics" : "会话统计" }
+    static func loadedHistoryStats() -> String { en ? "Loaded history statistics" : "已加载历史统计" }
+    static func noHostStats() -> String { en ? "The remote host did not provide statistics" : "远程主机未提供统计数据" }
+    static func renameSession() -> String { en ? "Rename session" : "重命名会话" }
+    static func forkFromPrefix() -> String { en ? "Create a branch from the current session prefix" : "从当前会话前缀创建分支" }
+    static func connectToViewSessions() -> String { en ? "Connect to view sessions" : "连接后显示会话" }
+    static func closeSearch() -> String { en ? "Close search" : "关闭搜索" }
+    static func approvalNotify(_ tool: String) -> String { ApprovalNotifyTexts.title(toolName: tool, english: en) }
+    static func allowOnceAction() -> String { en ? "Allow once" : "允许一次" }
+    static func rejectAction() -> String { en ? "Reject" : "拒绝" }
+    static func connectedNamed(_ name: String) -> String { en ? "Connected to \(name)" : "已连接 \(name)" }
+    static func offlineReconnecting() -> String { en ? "Offline, reconnecting" : "离线，重连中" }
     static func emptySessions() -> String { en ? "No sessions yet" : "暂无会话" }
     static func sectionSessions() -> String { en ? "Sessions" : "会话" }
     static func sectionWorkspaces() -> String { en ? "Workspaces" : "工作区" }

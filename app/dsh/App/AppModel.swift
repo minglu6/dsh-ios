@@ -1,4 +1,5 @@
 import Foundation
+import Network
 import SwiftUI
 import UIKit
 import DSHProtocol
@@ -27,6 +28,7 @@ struct ChatState {
     var turnTokenUsage: [Int: TurnTokenUsage] = [:]
     var inspectorRecords: [JSONValue] = []
     var goal: JSONValue?
+    var agentPreset: String?
 }
 
 enum AttachStatus: String, Equatable {
@@ -89,6 +91,7 @@ enum AppRoute: Equatable {
     case general
     case models
     case builtinPlugins
+    case presets
     case diagnostics
     case panel(DrawerPanel)
 }
@@ -165,6 +168,13 @@ final class AppModel: ObservableObject {
     @Published var filePreview: FilePreviewRef?
     @Published var exportShare: ExportShare?
     @Published var filesRevision: Int64 = 0
+    @Published var presetRoster: [JSONValue] = []
+    @Published var draftPreset = ""
+    @Published var pendingCreatorPreset: String?
+    @Published var searchHits: [SessionSummary] = []
+    @Published var searching = false
+    @Published var searchError: String?
+    @Published var lastArchivedId: String?
 
     let terminal = AnsiTerminal()
     let hostSettings = HostSettings()
@@ -213,8 +223,12 @@ final class AppModel: ObservableObject {
     private var permissionProjectionSeq: Int64 = -1
     private var goalProjectionSeq: Int64 = -1
     private var modelProjectionSeq: Int64 = -1
+    private var presetProjectionSeq: Int64 = -1
     private var goalActivationEpoch: Int64 = 0
     private var attachmentCache: [String: Data] = [:]
+    private var restoreGeneration: Int64 = 0
+    private var probeTask: Task<Void, Never>?
+    private var searchGeneration: Int64 = 0
 
     var activeProfile: Profile? { profiles.first { $0.id == activeId } }
     var currentDot: Dot? { activeId.flatMap { status[$0] } }
@@ -227,6 +241,7 @@ final class AppModel: ObservableObject {
             Task { @MainActor in self?.applyDiscovery(hosts) }
         }
         lan.start()
+        ConnectionKeeper.shared.start()
         if let id = activeId { collapsedWorkspaces = AppPrefs.collapsedWorkspaces(hostId: id) }
     }
 
@@ -266,6 +281,8 @@ final class AppModel: ObservableObject {
         pendingAttaches = []
         commandEntries = []
         ops = []
+        presetRoster = []
+        searchHits = []
         catalog = nil
         catalogError = nil
         modelPending = nil
@@ -326,6 +343,7 @@ final class AppModel: ObservableObject {
     }
 
     func openSession(_ sessionId: String) {
+        if isArchived(sessionId) { return }
         initializeChat(sessionId)
         showDrawer = false
         loadSessionPermission(sessionId)
@@ -347,11 +365,13 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func createAndOpenSession(workspaceId: String? = nil) {
+    func createAndOpenSession(workspaceId: String? = nil, preset: String? = nil) {
         Task {
             guard let client else { return }
             do {
-                let id = try await client.createSession(workspaceId: workspaceId)
+                let chosen = preset ?? pendingCreatorPreset ?? draftPreset.nilIfBlank
+                let id = try await client.createSession(agentPreset: chosen, workspaceId: workspaceId)
+                pendingCreatorPreset = nil
                 openSession(id)
             } catch {
                 emit(error.localizedDescription)
@@ -448,10 +468,55 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func archive(_ session: SessionSummary) {
+    func archive(_ session: SessionSummary, stopActivity: Bool = false) {
         Task {
             guard let client else { return }
-            do { try await client.archiveSession(session.sessionId) }
+            do {
+                try await client.archiveSession(session.sessionId, stopActivity: stopActivity)
+                lastArchivedId = session.sessionId
+                if let state = try? await client.call("workspace.state") { applyWorkspaceState(state) }
+                toast = L.archivedToast() + L.unarchiveSession()
+            } catch {
+                if let pocket = error as? PocketError, pocket.code == "workspace/session-active" {
+                    emit(archiveActivityDescription(pocket.details, english: L.en))
+                } else {
+                    emit(error.localizedDescription)
+                }
+            }
+        }
+    }
+
+    func unarchive(_ sessionId: String, thenOpen: Bool = false, onResult: ((Bool) -> Void)? = nil) {
+        Task {
+            guard let client else {
+                onResult?(false)
+                return
+            }
+            guard ops.contains("workspace.unarchiveSession") else {
+                emit(L.t("远程主机未提供取消归档", "This remote host cannot unarchive sessions"))
+                onResult?(false)
+                return
+            }
+            do {
+                _ = try await client.unarchiveSession(sessionId)
+                if let state = try? await client.call("workspace.state") { applyWorkspaceState(state) }
+                if thenOpen { openSession(sessionId) }
+                onResult?(true)
+            } catch {
+                emit(error.localizedDescription)
+                onResult?(false)
+            }
+        }
+    }
+
+    func isArchived(_ sessionId: String) -> Bool {
+        archivedIds.contains(sessionId) || sessions.first { $0.sessionId == sessionId }?.archived == true
+    }
+
+    func rename(_ sessionId: String, title: String) {
+        Task {
+            guard let client, !title.isEmpty else { return }
+            do { try await client.renameSession(sessionId: sessionId, title: title) }
             catch { emit(error.localizedDescription) }
         }
     }
@@ -805,6 +870,147 @@ final class AppModel: ObservableObject {
                 }
             }
         }
+    }
+
+    func recordSessionFeedback(category: String?, note: String, onResult: @escaping (Bool) -> Void) {
+        Task {
+            guard let client, let sessionId = chat?.sessionId else {
+                onResult(false)
+                return
+            }
+            do {
+                let receipt = try await client.recordSessionFeedback(sessionId: sessionId, category: category, note: note)
+                try SessionFeedbackRequest.recorded(receipt)
+                toast = L.thanksFeedback()
+                onResult(true)
+            } catch {
+                emit(error.localizedDescription)
+                onResult(false)
+            }
+        }
+    }
+
+    func searchSessions(_ query: String) {
+        searchGeneration += 1
+        let generation = searchGeneration
+        searchError = nil
+        if !SessionSearch.shouldSearchHost(query: query, ops: ops) {
+            searchHits = []
+            searching = false
+            return
+        }
+        searching = true
+        Task {
+            try? await Task.sleep(nanoseconds: UInt64(SessionSearch.debounceMs) * 1_000_000)
+            guard searchGeneration == generation else { return }
+            do {
+                guard let client else { throw PocketError(code: "transport", message: L.t("未连接到远程主机", "Not connected to the remote host")) }
+                let hits = SessionSearch.parseHits(try await client.searchSessions(query: query))
+                guard searchGeneration == generation else { return }
+                searchHits = hits
+                searchError = nil
+            } catch {
+                guard searchGeneration == generation else { return }
+                searchHits = []
+                searchError = error.localizedDescription
+            }
+            if searchGeneration == generation { searching = false }
+        }
+    }
+
+    func loadAttachmentBytes(sessionId: String, attachmentId: String) async -> Data? {
+        if let cached = attachmentCache[attachmentId] { return cached }
+        guard let client, ops.contains("session.attachment") else { return nil }
+        do {
+            let result = try await client.sessionAttachment(sessionId: sessionId, attachmentId: attachmentId)
+            guard let data = SessionAttachment.decodeBytes(result) else { return nil }
+            attachmentCache[attachmentId] = data
+            return data
+        } catch {
+            return nil
+        }
+    }
+
+    func moveWorkspace(id: String, beforeId: String?) {
+        Task {
+            guard let client, ops.contains("workspace.insertBefore") else { return }
+            do {
+                _ = try await client.insertWorkspaceBefore(workspaceId: id, beforeWorkspaceId: beforeId)
+                if let state = try? await client.call("workspace.state") { applyWorkspaceState(state) }
+            } catch { emit(error.localizedDescription) }
+        }
+    }
+
+    func moveWorkspaceSession(workspaceId: String, sessionId: String, beforeSessionId: String?) {
+        Task {
+            guard let client, ops.contains("workspace.insertSessionBefore") else { return }
+            do {
+                _ = try await client.insertSessionBefore(
+                    workspaceId: workspaceId,
+                    sessionId: sessionId,
+                    beforeSessionId: beforeSessionId
+                )
+                if let state = try? await client.call("workspace.state") { applyWorkspaceState(state) }
+            } catch { emit(error.localizedDescription) }
+        }
+    }
+
+    func persistManualOrder(_ order: [String]) {
+        guard let id = activeId else { return }
+        AppPrefs.setManualSessionOrder(hostId: id, value: order)
+    }
+
+    func manualOrder() -> [String] {
+        guard let id = activeId else { return [] }
+        return AppPrefs.manualSessionOrder(hostId: id)
+    }
+
+    func readPresetRoster() async throws -> JSONValue {
+        guard let client else { throw PocketError(code: "transport", message: L.unavailable()) }
+        if ops.contains("presets.settings") { return try await client.presetsSettings() }
+        guard ops.contains("presets.list") else { throw PocketError(code: "unsupported", message: L.unavailable()) }
+        let roster = try await client.presetsList()
+        return .object([
+            "presets": roster["presets"],
+            "writable": .bool(false),
+        ])
+    }
+
+    func readPresetContent(id: String) async throws -> String {
+        guard let client else { throw PocketError(code: "transport", message: L.unavailable()) }
+        guard let content = try await client.readPreset(id: id)["content"].str() else {
+            throw PocketError(code: "bad-reply", message: L.hostDidNotReturnPreset())
+        }
+        return content
+    }
+
+    func onNetworkRestored() {
+        guard let id = activeId else { return }
+        let dot = status[id].map(ConnectionDot.init(dot:))
+        guard ConnectionRestorePolicy.shouldReconnect(dot) else { return }
+        restoreGeneration += 1
+        let generation = restoreGeneration
+        backoffMs = ReconnectBackoffPolicy.reset()
+        reconnectWake = true
+        if status[id] == .connecting, restoreGeneration == generation {
+            client?.close()
+        }
+    }
+
+    func refreshPairedStatus() {
+        probeTask?.cancel()
+        probeTask = Task { await probePairedDevices() }
+    }
+
+    func identity(of profile: Profile) -> PairedDeviceIdentity {
+        PairedDeviceIdentity(
+            id: profile.id,
+            host: profile.host,
+            port: profile.port,
+            instanceId: profile.instanceId,
+            deviceId: profile.deviceId,
+            needsRepair: profile.needsRepair
+        )
     }
 
     func exportSession() {
@@ -1337,6 +1543,7 @@ final class AppModel: ObservableObject {
                 if ops.contains("permissions.catalog") {
                     reloadPermissionCatalog()
                 }
+                ConnectionKeeper.shared.requestNotifications()
                 try await refreshAll(client)
                 while !Task.isCancelled && client.state == .open {
                     try await Task.sleep(nanoseconds: 250_000_000)
@@ -1406,6 +1613,12 @@ final class AppModel: ObservableObject {
         if ops.contains("workspace.state"), let state = try? await client.call("workspace.state") {
             applyWorkspaceState(state)
         }
+        if ops.contains("presets.list") || ops.contains("presets.settings") {
+            if let roster = try? await readPresetRoster() {
+                presetRoster = PresetPolicy.parseRoster(roster)
+            }
+            modelSettingsRevision += 1
+        }
         if let sessionId = chat?.sessionId {
             try await refollow(client, sessionId: sessionId, afterSeq: reducer.cursor >= 0 ? reducer.cursor : nil)
         }
@@ -1434,6 +1647,7 @@ final class AppModel: ObservableObject {
         goalProjectionSeq = -1
         permissionProjectionSeq = -1
         modelProjectionSeq = -1
+        presetProjectionSeq = -1
         sessionPermission = nil
         mentionQuery = nil
         fileMentions = []
@@ -1630,6 +1844,13 @@ final class AppModel: ObservableObject {
                 chat?.goal = raw.isNull ? nil : raw
             }
         }
+        if type == "snapshot" || values?.obj()?.keys.contains("agentPreset") == true || frame["key"].str() == "agentPreset" {
+            if seq >= presetProjectionSeq {
+                presetProjectionSeq = seq
+                let raw = values.flatMap { $0.obj()?["agentPreset"] } ?? frame["value"]
+                chat?.agentPreset = raw.str()
+            }
+        }
     }
 
     private func applyModelProjection(_ seq: Int64, _ value: JSONValue) {
@@ -1718,8 +1939,14 @@ final class AppModel: ObservableObject {
         case "approval":
             let a = Approval.parse(m)
             approvals = approvals.filter { $0.approvalId != a.approvalId } + [a]
+            ConnectionKeeper.shared.notifyApproval(a)
         case "approval.closed":
             approvals.removeAll { $0.approvalId == m["approvalId"].str() }
+        case "task":
+            if let event = TaskEvent.parse(m) {
+                let title = sessions.first { $0.sessionId == event.sessionId }?.title
+                ConnectionKeeper.shared.notifyTask(event, sessionTitle: title)
+            }
         case "user-question":
             if let q = UserQuestion.parse(m) {
                 userQuestions = userQuestions.filter { $0.questionId != q.questionId } + [q]
@@ -1740,15 +1967,26 @@ final class AppModel: ObservableObject {
         case "plugins.changed":
             pluginCatalogRevision += 1
             modelSettingsRevision += 1
-        case "models.changed", "credentials.changed":
+        case "models.changed", "credentials.changed", "presets.changed":
             modelSettingsRevision += 1
+            if ops.contains("presets.list") || ops.contains("presets.settings") {
+                Task {
+                    if let roster = try? await readPresetRoster() {
+                        presetRoster = PresetPolicy.parseRoster(roster)
+                    }
+                }
+            }
         case "schedule.changed":
             scheduleCatalogRevision += 1
         case "settings.changed":
             hostSettings.refresh()
             applyHostMirroredPrefs()
         case "completion":
+            let previous = unreadIds
             applyCompletion(m)
+            for id in unreadIds.subtracting(previous) {
+                ConnectionKeeper.shared.notifyCompletion(sessionId: id)
+            }
         case "job", "job.end", "job.error":
             handleJobEvent(m)
         case "terminal", "terminal.end", "terminal.error":
@@ -2277,22 +2515,86 @@ final class AppModel: ObservableObject {
     }
 
     private func applyDiscovery(_ hosts: [DiscoveredHost]) {
-        nearby = unpairedNearby(hosts)
-        for host in hosts {
+        let merged = LanDiscoveryPolicy.mergeByInstance(hosts)
+        nearby = LanDiscoveryPolicy.unpairedNearby(
+            found: merged,
+            paired: profiles.map { ($0.instanceId, $0.host, $0.port, $0.needsRepair) }
+        )
+        var activeChanged = false
+        for host in merged {
             if let index = profiles.firstIndex(where: { !$0.instanceId.isEmpty && $0.instanceId == host.instanceId }) {
-                if profiles[index].host != host.host || profiles[index].port != host.port {
-                    profiles[index].host = host.host
-                    profiles[index].port = host.port
+                if let updated = LanDiscoveryPolicy.applyAddressUpdate(
+                    instanceId: profiles[index].instanceId,
+                    host: profiles[index].host,
+                    port: profiles[index].port,
+                    discovered: host
+                ) {
+                    profiles[index].host = updated.host
+                    profiles[index].port = updated.port
                     ProfileStore.save(profiles)
+                    if profiles[index].id == activeId { activeChanged = true }
                 }
+            }
+        }
+        if activeChanged, let id = activeId { connect(profileId: id) }
+    }
+
+    private func probePairedDevices() async {
+        let targets = profiles.filter { $0.id != activeId && !$0.needsRepair }
+        await withTaskGroup(of: Void.self) { group in
+            var inflight = 0
+            for profile in targets {
+                if inflight >= 2 {
+                    await group.next()
+                    inflight -= 1
+                }
+                inflight += 1
+                group.addTask { await self.probeOne(profile) }
             }
         }
     }
 
-    private func unpairedNearby(_ found: [DiscoveredHost]) -> [DiscoveredHost] {
-        found.filter { disc in
-            profiles.allSatisfy { p in
-                !((!p.instanceId.isEmpty && p.instanceId == disc.instanceId) || (!p.needsRepair && p.host == disc.host && p.port == disc.port))
+    private func probeOne(_ profile: Profile) async {
+        let requested = identity(of: profile)
+        if status[profile.id] != .online && status[profile.id] != .unauthorized {
+            status[profile.id] = Dot(PairedDeviceStatusPolicy.beginCheck(current: status[profile.id].map(ConnectionDot.init(dot:))))
+        }
+        let reachable = await tcpReachable(host: profile.host, port: profile.port, timeoutMs: 2_500)
+        let revoked = TokenStore.get(profileId: profile.id) == nil
+        guard let current = profiles.first(where: { $0.id == profile.id }) else { return }
+        let next = PairedDeviceStatusPolicy.applyProbe(
+            currentDot: status[profile.id].map(ConnectionDot.init(dot:)),
+            current: identity(of: current),
+            requested: requested,
+            reachable: reachable,
+            revoked: revoked
+        )
+        if profile.id != activeId || status[profile.id] != .online {
+            status[profile.id] = Dot(next)
+        }
+    }
+
+    private func tcpReachable(host: String, port: Int, timeoutMs: Int) async -> Bool {
+        await withCheckedContinuation { continuation in
+            let params = NWParameters.tcp
+            let connection = NWConnection(host: NWEndpoint.Host(host), port: NWEndpoint.Port(rawValue: UInt16(port)) ?? 7690, using: params)
+            let gate = ProbeGate()
+            @Sendable func finish(_ value: Bool) {
+                if gate.take() {
+                    connection.cancel()
+                    continuation.resume(returning: value)
+                }
+            }
+            connection.stateUpdateHandler = { state in
+                switch state {
+                case .ready: finish(true)
+                case .failed, .cancelled: finish(false)
+                default: break
+                }
+            }
+            connection.start(queue: .global())
+            DispatchQueue.global().asyncAfter(deadline: .now() + .milliseconds(timeoutMs)) {
+                finish(false)
             }
         }
     }
@@ -2312,6 +2614,48 @@ final class AppModel: ObservableObject {
         case .pluginTooOld: return PocketError(code: "compat", message: L.pluginTooOld(issue.requiredVersion))
         case .protocolUnsupported: return PocketError(code: "compat", message: L.protocolUnsupported())
         }
+    }
+}
+
+extension ConnectionDot {
+    init(dot: Dot) {
+        switch dot {
+        case .online: self = .online
+        case .connecting: self = .connecting
+        case .offline: self = .offline
+        case .unauthorized: self = .unauthorized
+        }
+    }
+}
+
+extension Dot {
+    init(_ dot: ConnectionDot) {
+        switch dot {
+        case .online: self = .online
+        case .connecting: self = .connecting
+        case .offline: self = .offline
+        case .unauthorized: self = .unauthorized
+        }
+    }
+}
+
+private extension String {
+    var nilIfBlank: String? {
+        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : self
+    }
+}
+
+private final class ProbeGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var finished = false
+
+    func take() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if finished { return false }
+        finished = true
+        return true
     }
 }
 

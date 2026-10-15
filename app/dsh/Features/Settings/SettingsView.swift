@@ -10,10 +10,13 @@ struct SettingsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     card {
-                        nav(L.generalNav(), "slider.horizontal.3") { model.push(.general) }
-                        nav(L.modelsNav(), "cpu", divider: hasPluginSettings) { model.push(.models) }
+                        nav(L.generalNav(), D.sliders) { model.push(.general) }
+                        nav(L.modelsNav(), "cpu", divider: hasPresets || hasPluginSettings) { model.push(.models) }
+                        if hasPresets {
+                            nav(L.agentPresets(), D.agentPreset, divider: hasPluginSettings) { model.push(.presets) }
+                        }
                         if hasPluginSettings {
-                            nav(L.builtinPluginsNav(), "puzzlepiece.extension", divider: false) { model.push(.builtinPlugins) }
+                            nav(L.builtinPluginsNav(), D.plugin, divider: false) { model.push(.builtinPlugins) }
                         }
                     }
                     Text(L.phoneConnection())
@@ -34,6 +37,7 @@ struct SettingsView: View {
     }
 
     private var hasPluginSettings: Bool { model.ops.contains("plugins.inventory") }
+    private var hasPresets: Bool { model.ops.contains("presets.list") || model.ops.contains("presets.settings") }
 }
 
 struct GeneralSettingsView: View {

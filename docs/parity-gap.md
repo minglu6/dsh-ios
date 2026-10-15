@@ -22,8 +22,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | C | Live jobs panel + completion unread green-dot sync | done (#5) |
 | D | Plugin manager + schedule + remaining official settings + chat polish | done (#6) |
 | E | Permissions + ModelPicker + questions/commands/attachments/queue/goals + Todo/stats/retry + mention/approval/HostUi close | done (#7) |
-| F | WorkspaceChanges + TrajectoryRequest leftover + Session Inspector + Browser + CodePreview + transcript publisher | this PR |
-| G | session search/export, Agent presets, NSD, notifications | queued |
+| F | WorkspaceChanges + TrajectoryRequest leftover + Session Inspector + Browser + CodePreview + transcript publisher | done (#8) |
+| G | session search/export, Agent presets, NSD, notifications, unarchive, drag reorder, NavigationPolicy | this PR |
 
 ---
 
@@ -48,6 +48,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Composer dock | `ui-chat` | UserQ / Approval / Todo / Goal / Queue / Composer / Stats | same stack in `ChatView` + `ChatDock.swift` |
 | Host UI | pocket `ui.open` | `HostUiScreen.kt` (`ui.close` on dismiss) | `HostUiView` ticket POST + `ui.close` on dismiss |
 | Markdown | `ui-chat` primitives | `Markdown.kt` | `protocol/Markdown.swift` + `Features/Chat/MarkdownView.swift` |
+| Official icons | desktop `D.*` | Android vector set | `Design/Icons.swift` SF Symbol map |
+| Connection keep-alive | — | `ConnectionService` FGS | `ConnectionKeeper` background task + path monitor + local notify |
 
 ---
 
@@ -69,6 +71,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Composer queue / steer | busyEnter + `queue.update` | `busySend` + `PromptQueue` edit/remove/steer | **partial** → **present** | **E** |
 | `@` mentions | `MentionMenu.kt` official `@path` / `@"path"` / `@[title](dsh-session:…)` | same tokens + chip row + mention panel | **partial** → **present** | **E** |
 | `/` commands | `CommandPopupSheet` `commands.list/execute` | `CommandSheet` + builtin `goal/plan/feedback/compact/permission/export` (`session.export` share sheet) | **missing** → **present** | **E** |
+| Header ⋯ export / session feedback | `MoreSheet` `session.export` + `sessionFeedback.record` | same; export always listed, feedback ops-gated | **missing** → **present** | **G** |
+| Session image bubbles | `session.attachment` + ImageBubble | same cache + retry + original preview | **missing** → **present** | **G** |
 | Attachments | `attachments.upload` | image picker + file importer + receipts | **missing** → **present** | **E** |
 | User questions | `UserQuestionCard` `userQuestions.answer` | same card / plan-review / skip+submit | **missing** → **present** | **E** |
 | Approvals | official `ApprovalCard` takes composer | official card; `accepted` callback clears busy, success drops the row | **partial** → **present** | **E** |
@@ -111,6 +115,10 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Preview (md / text / image) | `FilePreview.kt` | md / text / image; code uses shiki language table + isolated WebView; PDF/Office stay unsupported | **partial** → **present** | **B** / **F** |
 | Workspace entities / tree | `WorkspaceNavigation.kt` | entity groups / tree / rename / delete / new session | **present** | **B** |
 | Add workspace browse | `WorkspaceDirectoryPicker.kt` | `WorkspaceDirectorySheet` when `workspace.create` | **present** | **B** |
+| Session search | `sessions.search` + local title/path merge | same debounce 250ms + snippets; unbounded while searching | **missing** → **present** | **G** |
+| Unarchive / archived not openable | restore dialog; `workspace.unarchiveSession` | same; archived rows do not `openSession` | **missing** → **present** | **G** |
+| Workspace / session reorder | Host `insertBefore` / `insertSessionBefore` (Android UI is local Manual) | drag/drop calls Host ops when advertised; Manual order still local | **missing** → **present** | **G** |
+| NavigationPolicy | `workspaceDisplayTitle` / `visibleDrawerSession` / `reconcileSessionOrder` / `workspaceBranches` / `archiveActivityDescription` | same Swift ports in `Workspace.swift` | **partial** → **present** | **G** |
 | Open-in-desktop-editor | desktop only | — | **hide** | — |
 | WorkspaceChanges cards | `WorkspaceChanges.kt` | chat cards + review sheet (`workspaceChanges.summary/diff`); attached to last answer when `showCodeWorkView` | **missing** → **present** | **F** |
 | File tree on `workspace.changed` | entity follow; tree still cwd/generation | bump `filesRevision` so the listing reloads | **partial** → **present** | **F** |
@@ -125,6 +133,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Failed refresh → 「任务状态不可用」 (not 0) | `JobsAction.kt:62-64` | same copy, stale running count discarded | **present** | **C** |
 | `jobs.list` / `follow` / `kill` | `Pocket.kt` | `PocketClient` + `JobsPanel`; list+live follow share one roster | **present** | **C** |
 | Unread green dot | `CompletionReminders` epoch+revision | epoch+revision; leading slot only | **present** | **C** |
+| Task / approval local notifications | `ConnectionService` + `TaskNotifyTexts` | UNUserNotificationCenter; same titles/tags; no ForegroundService | **missing** → **present** | **G** |
 | `completion.view` failure does not drop WS | `Pocket.kt` | `syncCompletionView` retry | **present** | — |
 | `follow` without `maxMessages` | `PocketFollowTest` | `FollowRequest.args` | **present** | — |
 
@@ -141,7 +150,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | HostUi (`ui.open`) | `HostUi.kt` + `ui.close` on dismiss | ticket exchange + WKWebView + `ui.close` | **partial** → **present** | **E** |
 | Drawer 自动化 (not a settings section) | `ScheduleScreen.kt` | drawer only; Settings 自动化 row removed | **present** | **D** |
 | Schedule catalog / edit / history | `ScheduleScreen.kt` | CAS update + delete + history; New → chat | **present** | **D** |
-| Agent presets | `AgentPresetSettingsScreen.kt` | hidden (no stub) | **missing** | leftover (see Deferred) |
+| Agent presets | `AgentPresetSettingsScreen.kt` | Settings row + guide + Creator CTA when `presets.list`/`presets.settings` | **missing** → **present** | **G** |
 | General: fonts, transcript, collapse, busy, performance, log upload, link opening | `GeneralSettingsScreen` | present; appearance/fonts **local only** | **present** | **D** |
 | Permission defaults | `PermissionPickerSheet(forDefaults)` + risk | same; `auto` cannot be a default | **partial** → **present** | **E** |
 | Models provider editor + keys | `ModelsSettingsScreen.kt` | `models.providers*` + `credentials.*` | **present** | **D** |
@@ -149,6 +158,11 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Version only on General | audit S3 | General only | **present** | — |
 | Account / shortcuts / open config file | desktop-local | — | **hide** | — |
 | Phone connection + 复制诊断报告 | connections | connections overflow | **present** | — |
+| LAN / NSD discovery | `_dshpocket._tcp` protocol=1 + 64-hex instanceId | same TXT gate; unpaired filter; address bind | **partial** → **present** | **G** |
+| Paired-device online poll | TCP probe, 10s, max 2 | same policy (`PairedDeviceStatusPolicy`) | **missing** → **present** | **G** |
+| Reconnect restore gate | `ConnectionRestorePolicy` Offline/Connecting only | same; `NWPathMonitor` wakes the loop | **partial** → **present** | **G** |
+| Background keep-alive | Android ForegroundService | iOS background task only while scene is active / short background; **not** FGS | **present** (platform) | **G** |
+| Official `D.*` icons | Android vector set | `Design/Icons.swift` SF Symbol map for search / more / archive / preset / download | **partial** → **present** | **G** |
 
 ---
 
@@ -167,8 +181,9 @@ Port as the matching batch needs them (same JSON, no second protocol):
 | `BrowserPolicy` / `CodePreview*` / `SessionInspector*` / `TrajectoryRequest` | Browser + preview + inspector + request leftover | **F done** |
 | `PermissionModels.kt` | Permission pickers | **D done** (`PermissionModels.swift`) |
 | `HostUi.kt` | Plugin/settings slots | **D done** (`HostUi.swift`); **E** adds `ui.close` |
+| Session search / feedback / attachment / restore / presets / NSD / notify / reconnect | drawer + header ⋯ + connection | **G done** (`SessionSearch` / `SessionFeedback` / `SessionAttachment` / `PresetPolicy` / `LanDiscoveryPolicy` / `PairedDeviceStatus` / `ConnectionRestore` / `TaskNotify`) |
 
-Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, commands.list/execute, attachments.upload, userQuestions.answer, goals.get/edit/pause/resume/clear, references.files/sessions, session.export, ui.close. Approval `accepted` is required (same as Android `Pocket.answer`).
+Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, commands.list/execute, attachments.upload, userQuestions.answer, goals.get/edit/pause/resume/clear, references.files/sessions, session.export, session.attachment, sessions.search, sessionFeedback.record, workspace.unarchiveSession / insertBefore / insertSessionBefore, presets.list/read/settings, ui.close. Approval `accepted` is required (same as Android `Pocket.answer`).
 
 ---
 
@@ -180,13 +195,15 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 - WorkspaceChanges: chat cards when `showCodeWorkView` and `workspaceChanges.summary` is advertised; diff sheet needs `workspaceChanges.diff`.
 - Plugins: drawer when `plugins.list`; Settings 「内置插件」 when `plugins.inventory`; HostUi when `ui.open`.
 - Schedule: **drawer only** (desktop sidebar). Do not add a Settings row.
-- Permissions / models / commands / attachments / queue / goals: expose when the matching op is advertised.
+- Permissions / models / commands / attachments / queue / goals / presets / session search / export / session feedback / unarchive / Host reorder: expose when the matching op is advertised.
 - Appearance and fonts stay on the phone; they must not be written to the remote host.
 - Do not show a row that opens an empty TODO page.
 
-## Deferred
+## Deferred / hide leftovers
 
-- Batch **G**: session search/export entry finishing, Agent presets, NSD, notifications.
-- **Agent presets**.
+- Account / shortcuts / open config file / open-in-desktop-editor: desktop-local — **hide**.
+- Keyboard shortcut settings: desktop-local — **hide**.
+- Android ForegroundService persistent “已连接” notification: iOS has no equivalent; `ConnectionKeeper` uses `beginBackgroundTask` + `NWPathMonitor`. The WS is not guaranteed after the system expires the background task.
+- Nearby Wi-Fi (`NEARBY_WIFI_DEVICES`) is Android 13+; iOS uses Local Network + Bonjour (`NSLocalNetworkUsageDescription`).
 - iOS CodePreview has no Meslo font file (CSS falls back to monospace). WKWebView cannot intercept `https://`; assets load over `dsh-code-preview://` mapped to the same Android `https://code-preview.invalid` policy used in tests.
 - Embedded browser cannot intercept every subresource the way Android `shouldInterceptRequest` does; main-frame / navigation policy still uses `BrowserPolicy`.

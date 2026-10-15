@@ -1,5 +1,6 @@
 import SwiftUI
 import DSHProtocol
+import UniformTypeIdentifiers
 
 struct SessionDrawer: View {
     @ObservedObject var model: AppModel
@@ -8,6 +9,8 @@ struct SessionDrawer: View {
     @State private var viewOptions = false
     @State private var addWorkspace = false
     @State private var overflow: [String: Int] = [:]
+    @State private var restoreId: String?
+    @State private var draggingSession: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -15,10 +18,10 @@ struct SessionDrawer: View {
                 Text("dsh").font(.title3.weight(.semibold)).foregroundStyle(T.ink)
                 Spacer()
                 Button { model.createAndOpenSession() } label: {
-                    Image(systemName: "square.and.pencil").foregroundStyle(T.ink)
+                    Image(systemName: D.newChat).foregroundStyle(T.ink)
                 }
                 Button { model.push(.settings); model.showDrawer = false } label: {
-                    Image(systemName: "gearshape").foregroundStyle(T.ink)
+                    Image(systemName: D.gear).foregroundStyle(T.ink)
                 }
             }
             .padding(.horizontal, 16)
@@ -26,9 +29,16 @@ struct SessionDrawer: View {
             .padding(.bottom, 8)
 
             HStack {
-                Image(systemName: "magnifyingglass").foregroundStyle(T.text3)
+                Image(systemName: D.search).foregroundStyle(T.text3)
+                    .accessibilityLabel(L.searchSessionsAria())
                 TextField(L.searchSessions(), text: $query)
                     .textInputAutocapitalization(.never)
+                    .accessibilityIdentifier("sessionSearch")
+                if !query.isEmpty {
+                    Button(L.clearSearch()) { query = ""; model.searchHits = [] }
+                        .font(.caption)
+                        .foregroundStyle(T.text3)
+                }
             }
             .padding(10)
             .background(T.fill, in: RoundedRectangle(cornerRadius: 10))
@@ -45,12 +55,12 @@ struct SessionDrawer: View {
                     .foregroundStyle(T.text3)
                 Spacer()
                 Button { viewOptions = true } label: {
-                    Image(systemName: "slider.horizontal.3").foregroundStyle(T.text2)
+                    Image(systemName: D.sliders).foregroundStyle(T.text2)
                 }
                 .accessibilityLabel(L.viewOptions())
                 if model.ops.contains("workspace.create") {
                     Button { addWorkspace = true } label: {
-                        Image(systemName: "plus").foregroundStyle(T.text2)
+                        Image(systemName: D.projectAdd).foregroundStyle(T.text2)
                     }
                     .accessibilityLabel(L.addWorkspace())
                 }
@@ -60,27 +70,39 @@ struct SessionDrawer: View {
 
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    if pinnedRows.isEmpty && rest.isEmpty && model.workspaces.isEmpty {
-                        Text(L.emptySessions()).foregroundStyle(T.text3).padding(24)
-                    }
-                    if !pinnedRows.isEmpty {
-                        Text(L.pinned())
-                            .font(.system(size: 12))
-                            .foregroundStyle(T.text3)
-                            .padding(.horizontal, 22)
-                            .padding(.vertical, 4)
-                        sessionRows(pinnedRows, groupKey: nil)
-                    }
-                    if model.sessionGroupBy == .flat {
-                        sessionRows(rest, groupKey: "flat")
+                    if searching {
+                        if model.searching { Text(L.searchingSessions()).foregroundStyle(T.text3).padding(16) }
+                        if let error = model.searchError { Text(error).foregroundStyle(T.err).padding(16) }
+                        if hits.isEmpty && !model.searching && model.searchError == nil {
+                            Text(L.noMatchingSessions()).foregroundStyle(T.text3).padding(16)
+                        }
+                        sessionRows(hits, groupKey: nil, cap: false)
                     } else {
-                        WorkspaceNavigationGroups(
-                            model: model,
-                            workspaces: model.workspaces,
-                            sessions: rest,
-                            tree: model.sessionGroupBy == .workspaceTree
-                        ) { key, rows in
-                            sessionRows(rows, groupKey: key)
+                        if pinnedRows.isEmpty && rest.isEmpty && model.workspaces.isEmpty {
+                            Text(emptyCopy).foregroundStyle(T.text3).padding(24)
+                        }
+                        if !pinnedRows.isEmpty {
+                            Text(L.pinned())
+                                .font(.system(size: 12))
+                                .foregroundStyle(T.text3)
+                                .padding(.horizontal, 22)
+                                .padding(.vertical, 4)
+                            sessionRows(pinnedRows, groupKey: nil)
+                        }
+                        if model.sessionGroupBy == .flat {
+                            sessionRows(rest, groupKey: "flat")
+                        } else {
+                            WorkspaceNavigationGroups(
+                                model: model,
+                                workspaces: orderedWorkspaces,
+                                sessions: rest,
+                                tree: model.sessionGroupBy == .workspaceTree,
+                                onMoveWorkspace: canDragWorkspaces ? { from, before in
+                                    model.moveWorkspace(id: from, beforeId: before)
+                                } : nil
+                            ) { key, rows in
+                                sessionRows(rows, groupKey: key)
+                            }
                         }
                     }
                 }
@@ -91,31 +113,74 @@ struct SessionDrawer: View {
         .onReceive(Timer.publish(every: 30, on: .main, in: .common).autoconnect()) { _ in
             now = Int64(Date().timeIntervalSince1970 * 1000)
         }
+        .onChange(of: query) { value in
+            model.searchSessions(value)
+        }
+        .onChange(of: orderedIds) { value in
+            if model.sessionOrderBy == .manual { model.persistManualOrder(value) }
+        }
         .confirmationDialog(L.viewOptions(), isPresented: $viewOptions, titleVisibility: .visible) {
             Button(L.groupByWorkspace()) { model.setSessionGroupBy(.workspace) }
             Button(L.groupByWorkspaceTree()) { model.setSessionGroupBy(.workspaceTree) }
             Button(L.groupByFlat()) { model.setSessionGroupBy(.flat) }
+            Button(L.orderByManual()) { model.setSessionOrderBy(.manual) }
+            Button(L.orderByUpdated()) { model.setSessionOrderBy(.updated) }
+            Button(L.hideArchived()) { model.setArchivedFilter(.hide) }
+            Button(L.showArchived()) { model.setArchivedFilter(.show) }
+            Button(L.onlyArchived()) { model.setArchivedFilter(.only) }
             Button(L.cancel(), role: .cancel) {}
         }
         .sheet(isPresented: $addWorkspace) {
             WorkspaceDirectorySheet(model: model, onDismiss: { addWorkspace = false })
         }
+        .alert(L.archived(), isPresented: Binding(get: { restoreId != nil }, set: { if !$0 { restoreId = nil } })) {
+            Button(L.unarchiveSession()) {
+                if let id = restoreId {
+                    model.unarchive(id, thenOpen: true)
+                    restoreId = nil
+                }
+            }
+            .disabled(!(model.isOnline && model.ops.contains("workspace.unarchiveSession")))
+            Button(L.cancel(), role: .cancel) { restoreId = nil }
+        } message: {
+            Text(L.restoreArchivedBody())
+        }
+    }
+
+    private var searching: Bool { !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+
+    private var filter: WorkspaceArchivedFilter {
+        switch model.archivedFilter {
+        case .hide: return .hide
+        case .show: return .show
+        case .only: return .only
+        }
     }
 
     private var visibleSessions: [SessionSummary] {
-        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let filter: WorkspaceArchivedFilter
-        switch model.archivedFilter {
-        case .hide: filter = .hide
-        case .show: filter = .show
-        case .only: filter = .only
+        ordered.filter {
+            visibleDrawerSession($0, current: model.chat?.sessionId, archived: model.archivedIds, filter: filter)
         }
-        return model.sessions.filter { session in
-            guard visibleDrawerSession(session, current: model.chat?.sessionId, archived: model.archivedIds, filter: filter) else {
-                return false
-            }
-            if q.isEmpty { return true }
-            return (session.title ?? "").lowercased().contains(q)
+    }
+
+    private var ordered: [SessionSummary] {
+        let members = Dictionary(uniqueKeysWithValues: model.sessions.map { ($0.sessionId, $0) })
+        if model.sessionOrderBy == .manual {
+            let ids = reconcileSessionOrder(sessions: model.sessions, saved: model.manualOrder())
+            return ids.compactMap { members[$0] }
+        }
+        return model.sessions.sorted { $0.updatedAt > $1.updatedAt }
+    }
+
+    private var orderedIds: [String] { ordered.map(\.sessionId) }
+
+    private var orderedWorkspaces: [WorkspaceView] { model.workspaces }
+
+    private var hits: [SessionSummary] {
+        let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let local = SessionSearch.localMatches(sessions: model.sessions, workspaces: model.workspaces, query: needle)
+        return SessionSearch.merge(hits: model.searchHits, local: local).filter {
+            visibleDrawerSession($0, current: model.chat?.sessionId, archived: model.archivedIds, filter: filter)
         }
     }
 
@@ -127,17 +192,31 @@ struct SessionDrawer: View {
         visibleSessions.filter { !model.pinnedIds.contains($0.sessionId) || model.archivedIds.contains($0.sessionId) }
     }
 
+    private var emptyCopy: String {
+        if model.currentDot != .online { return L.connectToViewSessions() }
+        if model.archivedFilter == .only { return L.emptyArchivedSessions() }
+        return L.emptySessions()
+    }
+
+    private var canDragWorkspaces: Bool {
+        model.isOnline && model.ops.contains("workspace.insertBefore")
+    }
+
+    private var canDragSessions: Bool {
+        model.isOnline && model.ops.contains("workspace.insertSessionBefore")
+    }
+
     @ViewBuilder
-    private func sessionRows(_ rows: [SessionSummary], groupKey: String?) -> some View {
-        let slice = projectSessions(rows, groupKey: groupKey)
-        ForEach(slice.rows) { session in
-            sessionRow(session)
+    private func sessionRows(_ rows: [SessionSummary], groupKey: String?, cap: Bool = true) -> some View {
+        let slice = cap ? projectSessions(rows, groupKey: groupKey) : (rows, 0, 0, Int.max)
+        ForEach(slice.0) { session in
+            sessionRow(session, groupKey: groupKey)
         }
-        if let groupKey, slice.idle > 5 {
+        if cap, let groupKey, slice.1 > 5 {
             Button {
-                overflow[groupKey] = slice.hidden == 0 ? 5 : (slice.hidden <= 5 ? Int.max : slice.limit + 5)
+                overflow[groupKey] = slice.2 == 0 ? 5 : (slice.2 <= 5 ? Int.max : slice.3 + 5)
             } label: {
-                Text(slice.hidden == 0 ? L.showLess() : L.showMoreSessions(slice.hidden))
+                Text(slice.2 == 0 ? L.showLess() : L.showMoreSessions(slice.2))
                     .font(.system(size: 13))
                     .foregroundStyle(T.text3)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -147,7 +226,7 @@ struct SessionDrawer: View {
         }
     }
 
-    private func projectSessions(_ rows: [SessionSummary], groupKey: String?) -> (rows: [SessionSummary], idle: Int, hidden: Int, limit: Int) {
+    private func projectSessions(_ rows: [SessionSummary], groupKey: String?) -> ([SessionSummary], Int, Int, Int) {
         let limit = groupKey == nil ? Int.max : (overflow[groupKey!] ?? 5)
         var idle = 0
         let projected = rows.filter { session in
@@ -158,20 +237,26 @@ struct SessionDrawer: View {
         return (projected, idle, rows.count - projected.count, limit)
     }
 
-    private func sessionRow(_ session: SessionSummary) -> some View {
+    private func sessionRow(_ session: SessionSummary, groupKey: String?) -> some View {
         let selected = model.chat?.sessionId == session.sessionId
+        let archived = model.isArchived(session.sessionId)
         return Button {
-            model.openSession(session.sessionId)
+            if archived { restoreId = session.sessionId }
+            else { model.openSession(session.sessionId) }
         } label: {
             HStack(spacing: 10) {
                 leading(session)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(session.title?.isEmpty == false ? session.title! : L.newSession())
-                        .foregroundStyle(T.ink)
+                        .foregroundStyle(archived ? T.text3 : T.ink)
                         .lineLimit(1)
-                    Text(formatSessionTime(at: session.updatedAt, now: now, language: model.language))
-                        .font(.caption)
-                        .foregroundStyle(T.text3)
+                    if let snippet = session.searchSnippet, searching {
+                        Text(snippet).font(.caption).foregroundStyle(T.accent).lineLimit(2)
+                    } else {
+                        Text(formatSessionTime(at: session.updatedAt, now: now, language: model.language))
+                            .font(.caption)
+                            .foregroundStyle(T.text3)
+                    }
                 }
                 Spacer()
             }
@@ -181,12 +266,27 @@ struct SessionDrawer: View {
             .contentShape(Rectangle())
         }
         .padding(.horizontal, 8)
+        .onDrag {
+            draggingSession = session.sessionId
+            return NSItemProvider(object: session.sessionId as NSString)
+        }
+        .onDrop(of: [.text], delegate: SessionDropDelegate(
+            target: session,
+            groupKey: groupKey,
+            model: model,
+            canDrag: canDragSessions,
+            dragging: $draggingSession
+        ))
         .contextMenu {
-            Button(model.pinnedIds.contains(session.sessionId) ? L.unpinSession() : L.pinSession()) {
-                model.pin(session)
+            if !archived {
+                Button(model.pinnedIds.contains(session.sessionId) ? L.unpinSession() : L.pinSession()) {
+                    model.pin(session)
+                }
+                Button(L.fork()) { model.fork(session) }
+                Button(L.archiveSession()) { model.archive(session) }
+            } else {
+                Button(L.unarchiveSession()) { model.unarchive(session.sessionId) }
             }
-            Button(L.fork()) { model.fork(session) }
-            Button(L.archiveSession()) { model.archive(session) }
         }
     }
 
@@ -195,7 +295,9 @@ struct SessionDrawer: View {
         let archived = model.archivedIds.contains(session.sessionId)
         if session.running {
             ProgressView().controlSize(.mini)
-        } else if !archived && model.unreadIds.contains(session.sessionId) {
+        } else if archived {
+            Image(systemName: D.archive).foregroundStyle(T.text3).font(.caption)
+        } else if model.unreadIds.contains(session.sessionId) {
             Circle()
                 .fill(T.ok)
                 .frame(width: 8, height: 8)
@@ -211,10 +313,10 @@ struct SessionDrawer: View {
         VStack(spacing: 0) {
             Divider().padding(.vertical, 8)
             if model.ops.contains("plugins.list") {
-                panel(L.pluginsNav(), "puzzlepiece.extension", .plugins)
+                panel(L.pluginsNav(), D.plugin, .plugins)
             }
             if model.ops.contains("schedule.catalog") {
-                panel(L.scheduleNav(), "calendar", .schedule)
+                panel(L.scheduleNav(), D.clock, .schedule)
             }
         }
     }
@@ -265,5 +367,24 @@ struct SessionDrawer: View {
         default: return L.offline()
         }
     }
+}
 
+private struct SessionDropDelegate: DropDelegate {
+    let target: SessionSummary
+    let groupKey: String?
+    let model: AppModel
+    let canDrag: Bool
+    @Binding var dragging: String?
+
+    func performDrop(info: DropInfo) -> Bool {
+        guard canDrag, let source = dragging, source != target.sessionId else { return false }
+        let workspaceId = model.workspaces.first { $0.sessionIds.contains(target.sessionId) }?.workspaceId
+            ?? groupKey.flatMap { key in
+                key.hasPrefix("workspace:") ? String(key.dropFirst("workspace:".count)) : nil
+            }
+        guard let workspaceId else { return false }
+        model.moveWorkspaceSession(workspaceId: workspaceId, sessionId: source, beforeSessionId: target.sessionId)
+        dragging = nil
+        return true
+    }
 }
