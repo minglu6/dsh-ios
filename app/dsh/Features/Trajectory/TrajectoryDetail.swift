@@ -4,6 +4,9 @@ import DSHProtocol
 struct TrajectoryDetailSheet: View {
     let row: TrajRow
     let turnIndex: Int
+    var parentRequest: TrajectoryRequest? = nil
+    var onOpenRequest: (TrajectoryRequest) -> Void = { _ in }
+    var onOpenRequestTiming: (TrajectoryRequest) -> Void = { _ in }
     var toolCalls: [TrajRow] = []
     var onOpenTool: (TrajRow) -> Void = { _ in }
     @Environment(\.dismiss) private var dismiss
@@ -74,7 +77,15 @@ struct TrajectoryDetailSheet: View {
     private var tabBody: some View {
         switch activeTab {
         case .overview:
-            TrajOverview(row: row, tabs: tabs, toolCalls: toolCalls, onOpenTool: onOpenTool) { tab = $0 }
+            TrajOverview(
+                row: row,
+                tabs: tabs,
+                parentRequest: parentRequest,
+                onOpenRequest: onOpenRequest,
+                onOpenRequestTiming: onOpenRequestTiming,
+                toolCalls: toolCalls,
+                onOpenTool: onOpenTool
+            ) { tab = $0 }
         case .input, .code:
             Group {
                 let program = codeProgram(toolName: row.toolName, inputDetail: row.inputDetail, schemaDetail: row.schemaDetail)
@@ -124,6 +135,9 @@ struct TrajectoryDetailSheet: View {
 private struct TrajOverview: View {
     let row: TrajRow
     let tabs: [TrajDetailTab]
+    var parentRequest: TrajectoryRequest? = nil
+    var onOpenRequest: (TrajectoryRequest) -> Void = { _ in }
+    var onOpenRequestTiming: (TrajectoryRequest) -> Void = { _ in }
     let toolCalls: [TrajRow]
     var onOpenTool: (TrajRow) -> Void = { _ in }
     var onOpen: (TrajDetailTab) -> Void
@@ -131,7 +145,14 @@ private struct TrajOverview: View {
     var body: some View {
         let state = trajRowState(row)
         VStack(alignment: .leading, spacing: 0) {
-            if row.kind == TrajL.kindTool || row.kind == TrajL.kindSubtool {
+            if let parentRequest {
+                overviewLine(
+                    row.kind == TrajL.kindAssistant ? TrajL.detailsSource : TrajL.detailsHierarchy,
+                    requestLabel(parentRequest),
+                    valueColor: T.text2,
+                    onClick: { onOpenRequest(parentRequest) }
+                )
+            } else if row.kind == TrajL.kindTool || row.kind == TrajL.kindSubtool {
                 overviewLine(TrajL.detailsHierarchy, TrajL.detailsAssistantMessage)
             }
             overviewLine(TrajL.detailsStatus, trajectoryStatusLabel(state), valueColor: state == .error ? T.err : T.ink)
@@ -168,7 +189,7 @@ private struct TrajOverview: View {
             }
             if row.kind == TrajL.kindAssistant {
                 Spacer().frame(height: 12)
-                overviewSection(TrajL.timingRequest, onOpen: nil) {
+                overviewSection(TrajL.timingRequest, onOpen: parentRequest.map { req in { onOpenRequestTiming(req) } }) {
                     AssistantTimingRows(row: row)
                 }
             } else if tabs.contains(.timing) {
@@ -186,13 +207,19 @@ private struct TrajOverview: View {
         .padding(.horizontal, 14)
     }
 
-    private func overviewLine(_ label: String, _ value: String, valueColor: Color = T.text2) -> some View {
-        HStack(alignment: .top) {
-            Text(label).font(.caption).foregroundStyle(T.text3).frame(width: 88, alignment: .leading)
-            Text(value).font(.caption).foregroundStyle(valueColor)
-            Spacer()
+    private func overviewLine(_ label: String, _ value: String, valueColor: Color = T.text2, onClick: (() -> Void)? = nil) -> some View {
+        Button {
+            onClick?()
+        } label: {
+            HStack(alignment: .top) {
+                Text(label).font(.caption).foregroundStyle(T.text3).frame(width: 88, alignment: .leading)
+                Text(value).font(.caption).foregroundStyle(valueColor)
+                Spacer()
+            }
+            .padding(.vertical, 4)
         }
-        .padding(.vertical, 4)
+        .buttonStyle(.plain)
+        .disabled(onClick == nil)
     }
 
     private func overviewSection<Content: View>(
@@ -218,7 +245,7 @@ private struct TrajOverview: View {
     }
 }
 
-private struct AssistantTimingRows: View {
+struct AssistantTimingRows: View {
     let row: TrajRow
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {

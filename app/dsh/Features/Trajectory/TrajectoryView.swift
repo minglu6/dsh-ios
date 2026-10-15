@@ -4,6 +4,8 @@ import DSHProtocol
 struct TrajectoryView: View {
     @ObservedObject var model: AppModel
     @State private var selected: TrajRow?
+    @State private var selectedRequest: TrajectoryRequest?
+    @State private var requestTab: TrajRequestTab = .overview
     @State private var selectedTurn = 0
     @State private var actualDuration = false
     @State private var turnsCollapsed = false
@@ -12,6 +14,20 @@ struct TrajectoryView: View {
 
     private var turns: [TrajTurn] {
         buildTrajectory(model.chat?.items ?? [], steps: model.chat?.steps ?? [])
+    }
+
+    private var requests: [TrajectoryRequest] {
+        buildTrajectoryRequests(items: model.chat?.items ?? [], steps: model.chat?.steps ?? [])
+    }
+
+    private var boundaryByRow: [String: TrajectoryRequest] {
+        var map: [String: TrajectoryRequest] = [:]
+        for request in requests {
+            if let key = requestBoundaryRowKey(request, turns: turns) {
+                map[key] = request
+            }
+        }
+        return map
     }
 
     var body: some View {
@@ -80,13 +96,20 @@ struct TrajectoryView: View {
                             }
                         } else {
                             ForEach(Array(visible.enumerated()), id: \.element.key) { index, row in
+                                let boundary = boundaryByRow[row.key]
                                 TrajRowView(
                                     row: row,
                                     highlighted: selected?.key == row.key,
-                                    turnStart: index == 0 ? turn.index : nil
+                                    turnStart: index == 0 ? turn.index : nil,
+                                    requestBoundary: boundary,
+                                    requestSelected: selectedRequest != nil && selectedRequest?.identity == boundary?.identity
                                 ) {
                                     selected = row
                                     selectedTurn = turn.index
+                                } onRequestClick: { req in
+                                    selected = nil
+                                    requestTab = .overview
+                                    selectedRequest = req
                                 }
                             }
                         }
@@ -98,6 +121,17 @@ struct TrajectoryView: View {
             TrajectoryDetailSheet(
                 row: row,
                 turnIndex: selectedTurn,
+                parentRequest: requestForRow(row, requests: requests),
+                onOpenRequest: { req in
+                    selected = nil
+                    requestTab = .overview
+                    selectedRequest = req
+                },
+                onOpenRequestTiming: { req in
+                    selected = nil
+                    requestTab = .timing
+                    selectedRequest = req
+                },
                 toolCalls: toolCalls(for: row)
             ) { call in
                 selected = call
@@ -105,6 +139,26 @@ struct TrajectoryView: View {
                     selectedTurn = turn.index
                 }
             }
+        }
+        .sheet(item: $selectedRequest) { req in
+            TrajectoryRequestSheet(
+                request: req,
+                onOpenResult: { key in
+                    selectedRequest = nil
+                    for turn in turns {
+                        if let row = turn.rows.first(where: { $0.key == key }) {
+                            selected = row
+                            selectedTurn = turn.index
+                            return
+                        }
+                    }
+                },
+                initialTab: requestTab,
+                assistantRow: req.resultKey.flatMap { key in
+                    turns.flatMap(\.rows).first { $0.key == key && $0.kind == TrajL.kindAssistant }
+                },
+                onDismiss: { selectedRequest = nil }
+            )
         }
     }
 
@@ -178,54 +232,71 @@ private struct TrajRowView: View {
     let row: TrajRow
     let highlighted: Bool
     let turnStart: Int?
+    var requestBoundary: TrajectoryRequest? = nil
+    var requestSelected = false
     let onClick: () -> Void
+    var onRequestClick: (TrajectoryRequest) -> Void = { _ in }
 
     var body: some View {
-        Button(action: onClick) {
-            ZStack(alignment: .topLeading) {
-                HStack(spacing: 7) {
-                    if row.kind == TrajL.kindSubtool {
-                        Color.clear.frame(width: 14)
-                    }
-                    KindBadge(kind: row.kind)
-                    HStack(spacing: 0) {
-                        Text(displayTitle)
-                            .font(isTool ? .system(size: 12, design: .monospaced) : .system(size: 12))
-                            .foregroundStyle(row.toolCallOnly ? T.text3 : T.ink)
-                            .lineLimit(1)
-                        if let preview = row.resultPreview {
-                            Text(" → ")
-                                .font(.system(size: 12, design: .monospaced))
-                                .foregroundStyle(T.caption)
-                            Text(preview)
-                                .font(.system(size: 12, design: .monospaced))
-                                .foregroundStyle(row.isError ? T.err : T.text2)
-                                .lineLimit(1)
+        HStack(spacing: 0) {
+            Button(action: onClick) {
+                ZStack(alignment: .topLeading) {
+                    HStack(spacing: 7) {
+                        if row.kind == TrajL.kindSubtool {
+                            Color.clear.frame(width: 14)
                         }
+                        KindBadge(kind: row.kind)
+                        HStack(spacing: 0) {
+                            Text(displayTitle)
+                                .font(isTool ? .system(size: 12, design: .monospaced) : .system(size: 12))
+                                .foregroundStyle(row.toolCallOnly ? T.text3 : T.ink)
+                                .lineLimit(1)
+                            if let preview = row.resultPreview {
+                                Text(" → ")
+                                    .font(.system(size: 12, design: .monospaced))
+                                    .foregroundStyle(T.caption)
+                                Text(preview)
+                                    .font(.system(size: 12, design: .monospaced))
+                                    .foregroundStyle(row.isError ? T.err : T.text2)
+                                    .lineLimit(1)
+                            }
+                        }
+                        Spacer(minLength: 0)
                     }
-                    Spacer(minLength: 0)
-                }
-                .padding(.leading, 28)
-                .padding(.trailing, 8)
-                if let turnStart {
-                    Text("\(turnStart)")
-                        .font(.system(size: 8))
-                        .foregroundStyle(T.text3)
-                        .padding(.horizontal, 3)
-                        .background(T.fill)
-                }
-            }
-            .frame(maxWidth: .infinity, minHeight: 30, maxHeight: 30, alignment: .leading)
-            .background(highlighted ? T.fill : Color.clear)
-            .overlay(alignment: .leading) {
-                if highlighted {
-                    T.accent.frame(width: 3)
+                    .padding(.leading, 28)
+                    .padding(.trailing, 8)
+                    if let turnStart {
+                        Text("\(turnStart)")
+                            .font(.system(size: 8))
+                            .foregroundStyle(T.text3)
+                            .padding(.horizontal, 3)
+                            .background(T.fill)
+                    }
                 }
             }
-            .overlay(alignment: .bottom) { Divider() }
-        }
-        .buttonStyle(.plain)
+            .buttonStyle(.plain)
             .accessibilityLabel("\(TrajL.kindLabel(row.kind)) \(row.title)")
+            if let requestBoundary {
+                Button {
+                    onRequestClick(requestBoundary)
+                } label: {
+                    Circle()
+                        .fill(requestSelected ? T.accent : (row.isError ? T.err : T.caption))
+                        .frame(width: 5, height: 5)
+                        .frame(width: 24, height: 30)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(TrajL.requestLabel(requestBoundary.number))
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 30, maxHeight: 30, alignment: .leading)
+        .background(highlighted ? T.fill : Color.clear)
+        .overlay(alignment: .leading) {
+            if highlighted {
+                T.accent.frame(width: 3)
+            }
+        }
+        .overlay(alignment: .bottom) { Divider() }
     }
 
     private var isTool: Bool {

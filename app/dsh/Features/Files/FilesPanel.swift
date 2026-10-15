@@ -54,7 +54,7 @@ struct FilesPanel: View {
         .onAppear {
             load(requestedPath)
         }
-        .task(id: "\(sessionId ?? "")-\(generation)-\(cwd ?? "")") {
+        .task(id: "\(sessionId ?? "")-\(generation)-\(cwd ?? "")-\(model.filesRevision)") {
             await fetch()
         }
     }

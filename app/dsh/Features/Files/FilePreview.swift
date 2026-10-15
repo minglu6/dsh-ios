@@ -28,10 +28,11 @@ struct FilePreviewView: View {
         return ""
     }
     private var richText: Bool { ["md", "markdown", "html", "htm", "csv", "tsv"].contains(extensionName) }
+    private var language: String? { previewCodeLanguage(path) }
     private var modes: [TextPreviewMode] {
         var list: [TextPreviewMode] = []
         if richText { list.append(.preview) }
-        if richText || classifyFileType(path) == "code" || classifyFileType(path) == "markdown" { list.append(.code) }
+        if richText || language != nil { list.append(.code) }
         list.append(.plain)
         return list
     }
@@ -51,7 +52,10 @@ struct FilePreviewView: View {
         .fullScreenCover(isPresented: $fullImage) {
             if let bytes { FullScreenImagePreview(bytes: bytes) { fullImage = false } }
         }
-        .onAppear { mode = modes.first ?? .plain }
+        .onAppear {
+            wrap = model.codeWordWrap
+            mode = modes.first ?? .plain
+        }
     }
 
     private var toolbar: some View {
@@ -128,7 +132,7 @@ struct FilePreviewView: View {
                 VStack(spacing: 0) {
                     if mode == .code {
                         HStack {
-                            Text(classifyFileType(path) == "other" ? L.code() : classifyFileType(path))
+                            Text(language ?? L.code())
                                 .font(.system(size: 12, design: .monospaced))
                                 .foregroundStyle(T.text2)
                             Spacer()
@@ -147,13 +151,8 @@ struct FilePreviewView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 4)
                     }
-                    ScrollView(wrap ? Axis.Set.vertical : [.vertical, .horizontal]) {
-                        Text(text)
-                            .font(.system(size: 13, design: .monospaced))
-                            .foregroundStyle(T.ink)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(16)
-                    }
+                    CodePreviewBody(path: path, text: text, wrap: wrap, plain: mode == .plain)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
         } else {
