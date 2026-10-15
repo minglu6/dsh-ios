@@ -444,9 +444,9 @@ public func foldChatItems(
             defaultOpen: false,
             members: members,
             steps: processSteps(members),
+            canCollapse: grouped,
             turn: pendingTurn,
             grouped: grouped,
-            canCollapse: grouped,
             activityKind: closed ? (ranked.first ?? "thinking") : (running.map { toolActivityKind($0.name) } ?? "thinking"),
             detail: (!closed && policy.liveProcessDetail) ? processDetail(tool: running, reasoning: reasoning) : nil
         )))

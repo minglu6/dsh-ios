@@ -108,7 +108,7 @@ public func providerCreationBaseline(_ listed: JSONValue, ns: String) throws -> 
     return ProviderCreationBaseline(
         namespace: namespace,
         revision: revision,
-        taken: providerTakenRoutes(listed["rows"].arr() ?? [], namespace: namespace)
+        taken: providerTakenRoutes(rows: listed["rows"].arr() ?? [], namespace: namespace)
     )
 }
 

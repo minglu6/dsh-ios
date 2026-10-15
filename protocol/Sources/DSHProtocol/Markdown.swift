@@ -406,7 +406,7 @@ private func tableCells(_ line: String) -> [String] {
     var raw = line.trimmingCharacters(in: .whitespaces)
     if raw.hasPrefix("|") { raw.removeFirst() }
     if raw.hasSuffix("|") { raw.removeLast() }
-    return raw.split(separator: "|", omittingEmptySubsequences: false).map { $0.trimmingCharacters(in: .whitespaces) }.map(String.init)
+    return raw.split(separator: "|", omittingEmptySubsequences: false).map { String($0.trimmingCharacters(in: .whitespaces)) }
 }
 
 func parseInline(_ text: String) -> [MdSpan] {
@@ -454,7 +454,7 @@ func parseInline(_ text: String) -> [MdSpan] {
                 let destStart = text.index(text.index(after: close), offsetBy: 1)
                 let dest = String(text[destStart..<destEnd])
                 if let file = parseFileLink(dest) {
-                    let chipLabel = label.isEmpty ? (file.split(whereSeparator: { $0 == "/" || $0 == "\\" }).last).map(String.init) ?? file : label
+                    let chipLabel = label.isEmpty ? file.split(whereSeparator: { $0 == "/" || $0 == "\\" }).last.map { String($0) } ?? file : label
                     spans.append(.fileChip(path: file, label: chipLabel))
                 } else {
                     spans.append(.link(text: label.isEmpty ? dest : label, dest: dest))
