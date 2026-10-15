@@ -8,6 +8,7 @@ struct ChatView: View {
     @State private var tab = 0
     @State private var feedbackDraft: FeedbackDraft?
     @State private var showStart = false
+    @State private var showJobs = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -24,6 +25,9 @@ struct ChatView: View {
         .background(T.bg.ignoresSafeArea())
         .sheet(isPresented: $showModels) { ModelPickerSheet(model: model) }
         .sheet(isPresented: $showStart) { StartPanel(model: model) { showStart = false } }
+        .sheet(isPresented: $showJobs) {
+            JobsPanel(model: model) { showJobs = false }
+        }
         .sheet(item: $feedbackDraft) { draft in
             FeedbackCategorySheet(
                 onDismiss: { feedbackDraft = nil },
@@ -83,6 +87,9 @@ struct ChatView: View {
             tabChip(0, L.chatTab())
             tabChip(1, TrajL.viewTrajectory)
             Spacer()
+            if let sessionId = model.chat?.sessionId {
+                JobsAction(model: model, sessionId: sessionId) { showJobs = true }
+            }
         }
         .padding(.horizontal, 14)
         .padding(.bottom, 6)

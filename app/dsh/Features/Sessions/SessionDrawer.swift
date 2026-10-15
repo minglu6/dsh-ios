@@ -174,9 +174,6 @@ struct SessionDrawer: View {
                         .foregroundStyle(T.text3)
                 }
                 Spacer()
-                if model.unreadIds.contains(session.sessionId) {
-                    Circle().fill(T.ok).frame(width: 8, height: 8)
-                }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
@@ -195,8 +192,14 @@ struct SessionDrawer: View {
 
     @ViewBuilder
     private func leading(_ session: SessionSummary) -> some View {
+        let archived = model.archivedIds.contains(session.sessionId)
         if session.running {
             ProgressView().controlSize(.mini)
+        } else if !archived && model.unreadIds.contains(session.sessionId) {
+            Circle()
+                .fill(T.ok)
+                .frame(width: 8, height: 8)
+                .accessibilityLabel(L.completedUnread())
         } else if model.approvals.contains(where: { $0.sessionId == session.sessionId }) {
             Image(systemName: "hand.raised.fill").foregroundStyle(T.warnText).font(.caption)
         } else {

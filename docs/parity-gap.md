@@ -18,8 +18,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Batch | Scope | Status |
 | --- | --- | --- |
 | A | Trajectory ledger + inspector; chat message actions (copy / like / dislike / branch) | done (#3) |
-| B | Host PTY terminal + workspace file tree | this PR (#4) |
-| C | Live jobs panel + completion unread green-dot sync | queued |
+| B | Host PTY terminal + workspace file tree | done (#4) |
+| C | Live jobs panel + completion unread green-dot sync | this PR |
 | D | Plugin manager + schedule + remaining official settings | queued |
 
 ---
@@ -33,10 +33,10 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Trajectory | `ui-trajectory` | `Trajectory.kt` + Detail/Inspector/Request/Locales; `protocol/TrajectoryTimeline.kt` | hidden; no builder → `Features/Trajectory/` + `protocol/Trajectory.swift` |
 | Terminal | Host `terminalController` | `TerminalPanel.kt`, `TerminalView.kt`, `TerminalEmulator.kt` | `Features/Terminal/` + `protocol/TerminalEmulator.swift` |
 | Files | `workspaceFiles` | `FilesPanel.kt` | `Features/Files/` + workspace tree / browse |
-| Jobs | `job-controller` | `JobsAction.kt`, jobs follow in `Pocket.kt` | hidden |
+| Jobs | `job-controller` | `JobsAction.kt`, jobs follow in `Pocket.kt` | hidden → header chip + `JobsPanel` (`jobs.list` / `follow` / `kill`) |
 | Plugins | `ui-plugin-manager`, `ui-settings-plugins` | `PluginsScreen.kt`, `PluginInventory.kt` | thin `plugins.list` when advertised |
 | Schedule | `ui-schedule` (sidebar, not settings) | `ScheduleScreen.kt`; drawer row | thin list when advertised |
-| Completion unread | `StateDot` `done` | `CompletionReminders.kt`, `Pocket.kt` `completion.view` | `unreadIds` set, no epoch/revision |
+| Completion unread | `StateDot` `done` | `CompletionReminders.kt`, `Pocket.kt` `completion.view` | `unreadIds` overwrite → `CompletionReminders` epoch+revision |
 | Settings general | `ui-settings-general` | `Screens.kt` `GeneralSettingsScreen`, `HostSettings.kt` | appearance + language + version only |
 | Settings models | `ui-settings-models` | `ModelsSettingsScreen.kt` | catalog list, no provider editor |
 | Connections | pocket `settings.section` `pocket` | `Screens.kt` connections | pairing / diagnostics copy |
@@ -102,10 +102,10 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 
 | Item | Android | iOS | Tag | Batch |
 | --- | --- | --- | --- | --- |
-| Header jobs chip | `JobsAction.kt` | hidden | **missing** | **C** |
-| Failed refresh → 「任务状态不可用」 (not 0) | `JobsAction.kt:62-64` | none | **missing** | **C** |
-| `jobs.list` / `follow` / `kill` | `Pocket.kt` | none | **missing** | **C** |
-| Unread green dot | `CompletionReminders` epoch+revision | `unreadIds` overwrite | **partial** | **C** |
+| Header jobs chip | `JobsAction.kt` | hidden → tabs-row chip (`jobs.list` advertised + non-empty / failed) | **missing** → **present** | **C** |
+| Failed refresh → 「任务状态不可用」 (not 0) | `JobsAction.kt:62-64` | none → same copy, stale running count discarded | **missing** → **present** | **C** |
+| `jobs.list` / `follow` / `kill` | `Pocket.kt` | none → `PocketClient` + `JobsPanel`; list+live follow share one roster | **missing** → **present** | **C** |
+| Unread green dot | `CompletionReminders` epoch+revision | `unreadIds` overwrite → epoch+revision; leading slot only | **partial** → **present** | **C** |
 | `completion.view` failure does not drop WS | `Pocket.kt` | `syncCompletionView` retry | **present** | — |
 | `follow` without `maxMessages` | `PocketFollowTest` | `FollowRequest.args` | **present** | — |
 
@@ -142,7 +142,7 @@ Port as the matching batch needs them (same JSON, no second protocol):
 | `PermissionModels.kt` | Permission pickers | D |
 | `HostUi.kt` | Plugin/settings slots | D |
 
-Existing iOS `DSHProtocol` already covers hello/pair, follow/history, prompt/cancel, models.catalog/select, approvals, workspace pin/archive, `plugins.list` / `setEnabled`, `schedule.list`.
+Existing iOS `DSHProtocol` already covers hello/pair, follow/history, prompt/cancel, models.catalog/select, approvals, workspace pin/archive, `plugins.list` / `setEnabled`, `schedule.list`, `jobs.list` / `follow` / `kill`, `completion.state` / `view`.
 
 ---
 

@@ -126,6 +126,7 @@ enum L {
         en ? "Too many entries, showing only some of them." : "条目太多，只显示了一部分。"
     }
     static func reload() -> String { en ? "Reload" : "重新读取" }
+    static func refresh() -> String { en ? "Refresh" : "刷新" }
     static func notFileOrDirectory() -> String {
         en ? "Not a file or a directory, so it cannot be opened." : "这不是文件或目录，没法打开。"
     }
@@ -255,6 +256,21 @@ enum L {
     static func presentFiles() -> String { en ? "Present files" : "交付文件" }
     static func trajectory() -> String { en ? "Trajectory" : "轨迹" }
     static func jobs() -> String { en ? "Jobs" : "任务" }
+    static func backgroundJobs() -> String { en ? "Background jobs" : "后台任务" }
+    static func jobsUnavailable() -> String { en ? "Job status unavailable" : "任务状态不可用" }
+    static func jobsZero() -> String { en ? "0 background jobs" : "0 个后台任务" }
+    static func jobsLiveCount(_ n: Int) -> String { JobsActionLabel.text(.live(n), en: en) }
+    static func jobsRetainedCount(_ n: Int) -> String { JobsActionLabel.text(.retained(n), en: en) }
+    static func killJob() -> String { en ? "Stop" : "终止" }
+    static func killBackgroundJobTitle() -> String { en ? "Stop background job?" : "终止后台任务？" }
+    static func killJobFailed() -> String { en ? "Stop failed, retry" : "终止失败，请重试" }
+    static func backToJobs() -> String { en ? "Back to background jobs" : "返回后台任务" }
+    static func waitingJobOutput() -> String { en ? "Waiting for job output…" : "等待任务输出…" }
+    static func jobOutputExpired() -> String { en ? "[Older output expired]" : "[部分历史输出已过期]" }
+    static func jobOutputMissing() -> String { en ? "[Output missing here]" : "[此处输出存在缺失]" }
+    static func jobOutputFailed() -> String { en ? "Unable to read output" : "输出读取失败" }
+    static func jobLoadFailed() -> String { en ? "Unable to load jobs" : "任务加载失败" }
+    static func completedUnread() -> String { en ? "Completed, unread" : "已完成，未查看" }
     static func reasoning() -> String { en ? "Reasoning" : "思考" }
     static func tool() -> String { en ? "Tool" : "工具" }
     static func composerPlaceholder() -> String { en ? "Message" : "消息" }
