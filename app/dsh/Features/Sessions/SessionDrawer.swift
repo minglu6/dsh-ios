@@ -34,9 +34,6 @@ struct SessionDrawer: View {
                 Button { model.createAndOpenSession() } label: {
                     Image(systemName: D.newChat).foregroundStyle(T.ink)
                 }
-                Button { model.push(.settings); model.showDrawer = false } label: {
-                    Image(systemName: D.gear).foregroundStyle(T.ink)
-                }
             }
             .padding(.horizontal, 16)
             .padding(.top, 14)
@@ -321,7 +318,7 @@ struct SessionDrawer: View {
                 .disabled(!model.isOnline)
             }
             if visibleOps.contains("sessions.fork") {
-                Button(L.forkSession()) { model.fork(session) }
+                Button(L.fork()) { model.fork(session) }
                     .disabled(!model.isOnline)
             }
             if visibleOps.contains("workspace.archiveSession") {
@@ -383,17 +380,30 @@ struct SessionDrawer: View {
     }
 
     private var footer: some View {
-        Button { model.push(.connections) } label: {
-            HStack {
-                Circle().fill(dotColor).frame(width: 8, height: 8)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(model.activeProfile?.name ?? L.notConnected()).foregroundStyle(T.ink)
-                    Text(footerSubtitle).font(.caption).foregroundStyle(T.text3)
-                }
-                Spacer()
-                Image(systemName: "chevron.right").font(.caption).foregroundStyle(T.text3)
+        VStack(spacing: 0) {
+            Button {
+                model.push(.settings)
+                model.showDrawer = false
+            } label: {
+                Label(L.settings(), systemImage: D.gear)
+                    .foregroundStyle(T.ink)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
             }
-            .padding(12)
+            .accessibilityIdentifier("drawerSettingsRow")
+            Button { model.push(.connections) } label: {
+                HStack {
+                    Circle().fill(dotColor).frame(width: 8, height: 8)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(model.activeProfile?.name ?? L.notConnected()).foregroundStyle(T.ink)
+                        Text(footerSubtitle).font(.caption).foregroundStyle(T.text3)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(T.text3)
+                }
+                .padding(12)
+            }
         }
         .background(T.surface)
     }

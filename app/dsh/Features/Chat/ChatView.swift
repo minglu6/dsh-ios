@@ -10,7 +10,6 @@ struct ChatView: View {
     @State private var tab = 0
     @State private var feedbackDraft: FeedbackDraft?
     @State private var showStart = false
-    @State private var showBrowser = false
     @State private var showInspector = false
     @State private var highlightedRow: String?
     @ObservedObject private var inspectorNav = InspectorNavigation.shared
@@ -78,22 +77,7 @@ struct ChatView: View {
                     model.push(.panel(.terminal))
                     showStart = false
                 },
-                onBrowser: {
-                    showStart = false
-                    showBrowser = true
-                },
-                onInspector: {
-                    showStart = false
-                    showInspector = true
-                },
                 onDismiss: { showStart = false }
-            )
-        }
-        .sheet(isPresented: $showBrowser) {
-            BrowserPanel(
-                model: model,
-                sessionKey: "\(model.activeId ?? ""):\(model.chat?.sessionId ?? "")",
-                onDismiss: { showBrowser = false }
             )
         }
         .sheet(isPresented: $showInspector) {
@@ -186,10 +170,14 @@ struct ChatView: View {
             ShareSheet(items: [item.url])
         }
         .sheet(isPresented: $showMore) {
-            MoreSheet(model: model, onDismiss: { showMore = false }, onFeedback: {
-                showMore = false
-                showSessionFeedback = true
-            })
+            MoreSheet(
+                model: model,
+                onDismiss: { showMore = false },
+                onFeedback: {
+                    showMore = false
+                    showSessionFeedback = true
+                }
+            )
         }
         .sheet(isPresented: $showSessionFeedback) {
             FeedbackCategorySheet(
@@ -275,7 +263,7 @@ struct ChatView: View {
             }
             .accessibilityLabel(L.startPanel())
             Button { if model.isOnline { showModels = true } } label: {
-                Text(model.modelChoice?.name ?? L.modelsNav())
+                Text(composerModelDisplayName(choiceName: model.modelChoice?.name, catalog: model.catalog) ?? L.modelsNav())
                     .font(.caption)
                     .foregroundStyle(T.accent)
                     .padding(.horizontal, 8)
@@ -782,10 +770,7 @@ struct MessageRow: View {
                 MessageActions(
                     text: user.text,
                     timeMs: user.at,
-                    clock: .start,
-                    branchEnabled: false,
-                    branchUnavailable: false,
-                    onBranch: nil
+                    clock: .start
                 )
             }
         case .text(let text):
@@ -839,10 +824,6 @@ struct MessageRow: View {
 
     private func assistantActions(_ text: Item.Text) -> some View {
         let turn = text.turn
-        let turnRecord = (model.chat?.turns ?? []).first { $0.turn == turn }
-        let canFork = model.chat != nil && model.firstPrompt == nil && model.ops.contains("sessions.fork")
-        let branchSeq = turnRecord?.endSeq
-        let branchHere = canFork && branchSeq != nil
         let mid = text.messageId
         let rating = mid.flatMap { model.feedback[$0]?.rating }
         let canFeedback = mid != nil && model.ops.contains("feedback.set")
@@ -851,9 +832,7 @@ struct MessageRow: View {
             text: text.text,
             timeMs: text.at,
             clock: .end,
-            branchEnabled: branchHere,
-            branchUnavailable: canFork && !branchHere,
-            onBranch: canFork ? { if let branchSeq { model.forkCurrent(atSeq: branchSeq) } } : nil,
+            shareEnabled: MessageActionPolicy.assistantRow.contains(.share),
             messageId: mid,
             rating: rating,
             onLike: canFeedback ? {
@@ -874,20 +853,19 @@ struct MessageRow: View {
 
 private enum MessageClock { case start, end }
 
-/// Desktop MessageIconActions: copy → like/dislike → branch. Clock at start (user) or end (assistant).
+/// Desktop MessageIconActions: copy → like/dislike → share. Branch stays on session ⋯.
 private struct MessageActions: View {
     let text: String
     let timeMs: Int64?
     let clock: MessageClock
-    let branchEnabled: Bool
-    let branchUnavailable: Bool
-    let onBranch: (() -> Void)?
+    var shareEnabled = false
     var messageId: String? = nil
     var rating: String? = nil
     var onLike: (() -> Void)? = nil
     var onDislike: (() -> Void)? = nil
     var usageAction: (() -> TurnUsageAction)? = nil
     @State private var copied = false
+    @State private var sharing = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -921,14 +899,10 @@ private struct MessageActions: View {
                     action: onDislike
                 )
             }
-            if let onBranch {
-                iconButton(
-                    system: "arrow.triangle.branch",
-                    label: branchUnavailable ? L.branchUnavailable() : L.branch(),
-                    enabled: branchEnabled,
-                    dimmed: branchUnavailable,
-                    action: onBranch
-                )
+            if shareEnabled {
+                iconButton(system: D.share, label: L.share(), enabled: !text.isEmpty) {
+                    sharing = true
+                }
             }
             if let usageAction {
                 usageAction()
@@ -944,19 +918,21 @@ private struct MessageActions: View {
         .frame(height: 48)
         .frame(maxWidth: .infinity, alignment: clock == .start ? .trailing : .leading)
         .padding(.top, 4)
+        .sheet(isPresented: $sharing) {
+            ShareSheet(items: [text])
+        }
     }
 
     private func iconButton(
         system: String,
         label: String,
         enabled: Bool = true,
-        dimmed: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
             Image(systemName: system)
                 .font(.system(size: 15))
-                .foregroundStyle(T.text3.opacity(dimmed ? 0.4 : 1))
+                .foregroundStyle(T.text3)
                 .frame(width: 36, height: 48)
         }
         .buttonStyle(.plain)
@@ -1030,19 +1006,31 @@ struct ComposerView: View {
                     .background(T.fill, in: Circle())
                     if let perm = model.sessionPermission, !perm.isEmpty {
                         Button(action: onPerm) {
-                            Image(systemName: permissionIcon(perm))
-                                .foregroundStyle(perm == "danger-full-access" ? T.warnText : T.text2)
-                                .frame(width: 48, height: 48)
+                            HStack(spacing: 4) {
+                                Image(systemName: permissionIcon(perm))
+                                Text(permissionLabel(value: perm, option: model.permissionCatalog?.find(perm)))
+                                    .lineLimit(1)
+                                Text("⌄")
+                                    .font(.subheadline.weight(.semibold))
+                                    .accessibilityHidden(true)
+                            }
+                            .font(.subheadline)
+                            .foregroundStyle(perm == "danger-full-access" ? T.warnText : T.text2)
+                            .padding(.horizontal, 10)
+                            .frame(minHeight: 36)
+                            .background(T.fill, in: Capsule())
                         }
                         .disabled(!model.isOnline)
                         .accessibilityLabel(permissionLabel(value: perm, option: model.permissionCatalog?.find(perm)))
                     }
                     Button(action: onModel) {
                         HStack(spacing: 4) {
-                            Text(model.modelChoice?.name ?? L.t("选择模型", "Select model"))
-                                .font(.subheadline)
-                                .foregroundStyle(T.text2)
-                                .lineLimit(1)
+                            if let name = composerModelDisplayName(choiceName: model.modelChoice?.name, catalog: model.catalog) {
+                                Text(name)
+                                    .font(.subheadline)
+                                    .foregroundStyle(T.text2)
+                                    .lineLimit(1)
+                            }
                             if let effort = modelEffortLabel(catalog: model.catalog, provider: model.modelChoice?.provider, model: model.modelChoice?.model, effort: model.modelChoice?.effort) {
                                 Text(effort).font(.caption).foregroundStyle(T.caption).lineLimit(1)
                             }

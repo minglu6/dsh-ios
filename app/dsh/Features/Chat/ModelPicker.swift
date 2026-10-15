@@ -62,7 +62,7 @@ struct ModelPicker: View {
                 Text(selectionError).font(.footnote).foregroundStyle(T.err).padding(12)
             }
             if pane == .root {
-                cell(L.t("模型", "Model"), loading && catalog == nil ? L.loading() : (selectedModel?.name ?? L.t("选择模型", "Select model"))) {
+                cell(L.t("模型", "Model"), loading && catalog == nil ? L.loading() : (composerModelDisplayName(choiceName: current?.name ?? selectedModel?.name, catalog: catalog) ?? current?.model ?? "")) {
                     pane = .models
                 }
                 if selectedModel?.hasReasoning == true {

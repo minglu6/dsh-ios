@@ -62,7 +62,10 @@ enum L {
     static func hideArchived() -> String { en ? "Hide archived" : "隐藏已归档" }
     static func showArchived() -> String { en ? "All conversations (show archived)" : "全部对话（显示已归档）" }
     static func onlyArchived() -> String { en ? "Archived only" : "仅显示已归档" }
-    static func downloadSessionLog() -> String { "下载 Session 日志" }
+    static func downloadSessionLog() -> String { downloadSessionLogLabel(english: en) }
+    static func share() -> String { en ? "Share" : "分享" }
+    static func pairingCode() -> String { pairingCodeFieldLabel(english: en) }
+    static func sessionInspector() -> String { en ? "Session diagnostics" : "会话数据诊断" }
     static func sessionFeedback() -> String { en ? "Feedback" : "反馈" }
     static func sessionFeedbackHint() -> String {
         en
@@ -121,10 +124,8 @@ enum L {
     static func archiveSession() -> String { en ? "Archive session" : "归档会话" }
     static func unarchiveSession() -> String { en ? "Unarchive session" : "取消归档" }
     static func rename() -> String { en ? "Rename" : "重命名" }
-    static func fork() -> String { en ? "Fork" : "Fork" }
-    static func forkSession() -> String { en ? "Fork session" : "分叉会话" }
+    static func fork() -> String { en ? "Fork" : "分支" }
     static func savingEllipsis() -> String { en ? "Saving…" : "保存中…" }
-    static func moreActions() -> String { en ? "More" : "更多" }
     static func cancel() -> String { en ? "Cancel" : "取消" }
     static func save() -> String { en ? "Save" : "保存" }
     static func delete() -> String { en ? "Delete" : "删除" }
@@ -257,7 +258,7 @@ enum L {
 
     static func terminal() -> String { en ? "Terminal" : "终端" }
     static func terminalHint() -> String {
-        en ? "Run commands in the Session workspace" : "在会话工作区运行命令"
+        en ? "Run commands in the session workspace" : "在会话工作区运行命令"
     }
     static func terminalSessions() -> String { en ? "Terminal sessions" : "终端会话" }
     static func terminalSessionsActions() -> String { en ? "Terminal sessions and actions" : "终端会话与操作" }
@@ -300,9 +301,9 @@ enum L {
     static func terminalOutputHint() -> String {
         en ? "Terminal output; long press to select text" : "终端输出，长按选择文本"
     }
-    static func showKeyboard() -> String { en ? "Show keyboard" : "Show keyboard" }
-    static func hideKeyboard() -> String { en ? "Hide keyboard" : "Hide keyboard" }
-    static func terminalDone() -> String { en ? "Done" : "Done" }
+    static func showKeyboard() -> String { en ? "Show keyboard" : "显示键盘" }
+    static func hideKeyboard() -> String { en ? "Hide keyboard" : "隐藏键盘" }
+    static func terminalDone() -> String { en ? "Done" : "完成" }
     static func cannotLoadTerminalSessions() -> String {
         en ? "Unable to load terminal sessions" : "无法读取终端会话"
     }
@@ -332,12 +333,13 @@ enum L {
     static func defaultWorkspace() -> String { en ? "Default workspace" : "默认工作区" }
     static func viewOptions() -> String { en ? "View options" : "视图选项" }
     static func groupByLabel() -> String { en ? "Group by" : "分组方式" }
-    static func groupByWorkspace() -> String { en ? "WorkSpace" : "按工作区" }
+    static func groupByWorkspace() -> String { en ? "Workspace" : "按工作区" }
     static func groupByWorkspaceTree() -> String { en ? "Workspace Tree" : "按工作区树" }
     static func groupByFlat() -> String { en ? "In one list" : "单列表" }
     static func pinned() -> String { en ? "Pinned" : "已置顶" }
     static func expand() -> String { en ? "Expand" : "展开" }
     static func collapse() -> String { en ? "Collapse" : "收起" }
+    static func moreActions() -> String { en ? "More" : "更多" }
     static func showMoreSessions(_ n: Int) -> String {
         en ? "Show \(n) more sessions" : "展开其余 \(n) 个会话"
     }

@@ -24,6 +24,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | E | Permissions + ModelPicker + questions/commands/attachments/queue/goals + Todo/stats/retry + mention/approval/HostUi close | done (#7) |
 | F | WorkspaceChanges + TrajectoryRequest leftover + Session Inspector + Browser + CodePreview + transcript publisher | done (#8) |
 | G | session search/export, Agent presets, NSD, notifications, unarchive, drag reorder, NavigationPolicy | done (#9) |
+| P0 | Brand wordmark + official plugin market | done (#12) |
+| P1 | Chat share row, composer model/permission chips, Start IA, settings shell | done (#13) |
 | H | Android `d1d7ef8…729ef2e`: Qoder / command menu / files.follow / browser tabs / Office·PDF·XLS / offline gray-out / archived rename·fork | this PR |
 
 ---
@@ -33,11 +35,11 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Surface | Official package | Android | iOS now |
 | --- | --- | --- | --- |
 | Transcript fold | `ui-chat` / `ui-conversation` | `protocol/Transcript.kt`, `Chat.kt`, `ChatProcess.kt` | `protocol/…/Transcript.swift`, `ChatProcess.swift`, `Features/Chat/ChatView.swift` |
-| Message actions | `ui-chat` `MessageIconActions` | `Chat.kt` `MessageActions` | `ChatView` `MessageActions` (copy / like / dislike / branch + turn usage) |
+| Message actions | `ui-chat` `MessageIconActions` | `Chat.kt` `MessageActions` | `ChatView` `MessageActions` (copy / like / dislike / share + turn usage; branch on session ⋯) |
 | Trajectory | `ui-trajectory` | `Trajectory.kt` + Detail/Inspector/Request/Locales; `protocol/TrajectoryTimeline.kt` | `Features/Trajectory/` + `protocol/Trajectory.swift` / `TrajectoryRequest.swift` |
 | WorkspaceChanges | Host `workspaceChanges.summary/diff` | `WorkspaceChanges.kt` | `Features/Chat/WorkspaceChanges.swift` + `protocol/WorkspaceChanges.swift` |
-| Session Inspector | desktop session-inspector | `SessionInspectorPanel.kt` / Log / Model / Navigation | `Features/Inspector/` + `protocol/SessionInspectorLog.swift` / `SessionInspectorModel.swift` |
-| Browser | local HTTP(S) panel | `BrowserPanel.kt` + `BrowserPolicy.kt` | `Features/Browser/BrowserPanel.swift` + `protocol/BrowserPolicy.swift` |
+| Session Inspector | desktop session-inspector | `SessionInspectorPanel.kt` / Log / Model / Navigation | implemented, unexposed (desktop Start / ⋯ have no entry) |
+| Browser | local HTTP(S) panel | `BrowserPanel.kt` + `BrowserPolicy.kt` | implemented, unexposed (desktop Start / ⋯ have no entry) |
 | Code preview | shiki offline preview | `CodePreview.kt` | `Features/Files/CodePreview.swift` + `CodePreviewAssets/` |
 | Terminal | Host `terminalController` | `TerminalPanel.kt`, `TerminalView.kt`, `TerminalEmulator.kt` | `Features/Terminal/` + `protocol/TerminalEmulator.swift`; default fg/bg follow appearance, Tokyo Night ANSI unchanged |
 | Files | `workspaceFiles` | `FilesPanel.kt` | `Features/Files/` + workspace tree / browse |
@@ -66,7 +68,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Notices (stopped / max-tokens / account) | reducer + official `message.*` | reducer emits; `.notice` / `RetryRow` / `TurnFailureRow` | **present** | **E** |
 | Deliverables | `Item.Deliverable` | tap opens workspace file preview | **present** | **B** |
 | Markdown / code block / tables | `Markdown.kt` | AST + GFM tables / code / file chips | **present** | **D** |
-| Copy / like / dislike / branch | `MessageActions` + `FeedbackCategory` | same; `canFork` needs `firstPrompt == nil` | **present** | **A** |
+| Copy / like / dislike / share | `MessageActions` + `FeedbackCategory` | desktop row is share (not branch); branch stays on session ⋯ | **present** | **A** / **P1** |
 | Turn usage pill | `ComposerStats.kt` `TurnUsageAction` | same; only `PerformanceUsage.Detailed` | **missing** → **present** | **E** |
 | Composer statistics | Activity / Usage / Context pills | `ComposerStats` + Host projections | **missing** → **present** | **E** |
 | Composer queue / steer | busyEnter + `queue.update` | `busySend` + `PromptQueue` edit/remove/steer | **partial** → **present** | **E** |
@@ -105,7 +107,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | `terminal.list/create/follow/write/resize/close` | `PocketClient` + `TerminalPanel.kt` | `PocketClient` + `TerminalPanel` (shown when ops advertised) | **present** | **B** |
 | Tokyo Night PTY emulator | `TerminalEmulator.kt` | `AnsiTerminal` | **present** | **B** |
 | Default fg/bg follow appearance | canvas tokens | `T.ink` / `T.bg`; Tokyo Night ANSI palette unchanged | **present** | **D** |
-| Top shortcut row; Tab → `\t` | `TerminalView.kt` | same two-row English keycaps; Tab sends `\t` | **present** | **B** |
+| Top shortcut row; Tab → `\t` | `TerminalView.kt` | same two-row English keycaps; Tab sends `\t`. Desktop live buffer **not captured** this round — no invented recolor | **present** | **B** / **P1** |
 | Tap cursor / long-press select | `TerminalView.kt` | tap / long-press + drag | **present** | **B** |
 | Resume saved PTY identities | `Pocket.kt` | `TerminalStore` + `selectTerminal` | **present** | **B** |
 
@@ -113,7 +115,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 
 | Item | Android | iOS | Tag | Batch |
 | --- | --- | --- | --- | --- |
-| `files.list/read` listing | `FilesPanel.kt` | `FilesPanel` (shown when `files.list` advertised) | **present** | **B** |
+| `files.list/read` listing | `FilesPanel.kt` | `FilesPanel` (shown when `files.list` advertised). Desktop tree **not captured** — no invented columns/colors | **present** | **B** / **P1** |
 | Preview (md / text / image / PDF / Office / XLS) | `FilePreview.kt` + `OfficePreview.kt` + `WorkbookPreview.kt` | same kinds; PDFKit pages; `office.*` lease → PDF; XLS FortuneSheet over `dsh-workbook-preview://` | **partial** → **present** | **B** / **F** / **H** |
 | Workspace entities / tree | `WorkspaceNavigation.kt` | entity groups / tree / rename / delete / new session | **present** | **B** |
 | Add workspace browse | `WorkspaceDirectoryPicker.kt` | `WorkspaceDirectorySheet` when `workspace.create` | **present** | **B** |
@@ -124,8 +126,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Open-in-desktop-editor | desktop only | — | **hide** | — |
 | WorkspaceChanges cards | `WorkspaceChanges.kt` | chat cards + review sheet (`workspaceChanges.summary/diff`); attached to last answer when `showCodeWorkView` | **missing** → **present** | **F** |
 | File tree live updates | `files.follow` + `observeWorkspaceDirectory` | same; watch-unsupported falls back to list | **partial** → **present** | **F** / **H** |
-| Browser | `BrowserPanel.kt` + `BrowserTabs.kt` HTTP(S)-only, addresses-only checkpoints | Start panel (no ops gate); multi-tab `{selected, pages:[{id,url,title}]}` | **missing** → **present** | **F** / **H** |
-| Session Inspector | `SessionInspectorPanel` raw/grouped + pick | Start panel (no ops gate); pick overlay returns to inspector | **missing** → **present** | **F** |
+| Browser | `BrowserPanel.kt` + `BrowserTabs.kt` HTTP(S)-only, addresses-only checkpoints | implemented (multi-tab `{selected, pages:[{id,url,title}]}`); unexposed — desktop Start / ⋯ have no entry | **hide** | **P1** / **H** |
+| Session Inspector | `SessionInspectorPanel` raw/grouped + pick | implemented, unexposed — desktop Start / ⋯ have no entry | **hide** | **P1** |
 
 ## 5. Jobs + unread
 
@@ -154,10 +156,10 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Drawer 自动化 (not a settings section) | `ScheduleScreen.kt` | drawer only; Settings 自动化 row removed | **present** | **D** |
 | Schedule catalog / edit / history | `ScheduleScreen.kt` | CAS update + delete + history; New → chat | **present** | **D** |
 | Agent presets | `AgentPresetSettingsScreen.kt` | Settings row + guide + Creator CTA when `presets.list`/`presets.settings` | **missing** → **present** | **G** |
-| General: fonts, transcript, collapse, busy, performance, log upload, link opening | `GeneralHostSettings.kt` Host-mirrored; appearance override when offline | same; `HostSettings` writes `ui-theme` / `locale`; appearance in-memory when Host offline | **present** | **D** / **H** |
+| General: fonts, transcript, collapse, busy, performance, log upload, link opening | `GeneralSettingsScreen` | appearance 3 cards + `14 px` menu; fonts **local only**; drawer 设置 row + gear | **present** | **D** / **P1** |
 | Offline gray-out (no unofficial banner) | Android `SettingsScaffold` invents 「远程主机未连接，需连接的操作暂不可用」; desktop has no such chrome | **desktop-first:** no top banner / no extra copy; status 「未连接」; Models / 内置插件 / Agent 预设 / drawer 插件·自动化 gray + unclickable; `lastOps` keeps rows | **missing** → **present** | **H** |
 | Qoder CN card | `QoderConnectionCard.kt` last in `llm-qoder` | same PAT write-only + revision fence | **missing** → **present** | **H** |
-| Models intro | `L.modelsIntro()` | same official sentence | **partial** → **present** | **H** |
+| Models intro | `modelsSettingsIntro` | 「填入各提供商的 API 密钥即可使用其模型。」 | **partial** → **present** | **P1** / **H** |
 | Permission defaults | `PermissionPickerSheet(forDefaults)` + risk | same; `auto` cannot be a default | **partial** → **present** | **E** |
 | Models provider editor + keys | `ModelsSettingsScreen.kt` | `models.providers*` + `credentials.*` | **present** | **D** |
 | 「移动端」 group / 代码自动换行 | Android still has these (audit S2/S5) | wrap is local; no extra mobile group copied | **present** | — |
@@ -197,12 +199,12 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 
 - Trajectory: session header / more menu — data is the current follow transcript (no extra Host op). Hidden when coding view is off.
 - Terminal / files / jobs: expose when the matching op is in `hello.ops` (same as Android).
-- Browser / Session Inspector: Start panel always (no ops gate), same as Android GuideBody.
+- Browser / Session Inspector: desktop Start and session ⋯ do not list them. Do not invent an entry; implementations stay unexposed.
 - WorkspaceChanges: chat cards when `showCodeWorkView` and `workspaceChanges.summary` is advertised; diff sheet needs `workspaceChanges.diff`.
 - Plugins: drawer when `plugins.list`; market enable when `plugins.setEnabled`; add when `plugins.install`; Settings 「内置插件」 when `plugins.inventory`. Do not embed a plugin WebView (desktop market has none).
 - Schedule: **drawer only** (desktop sidebar). Do not add a Settings row.
 - Permissions / models / commands / attachments / queue / goals / presets / session search / export / session feedback / unarchive / Host reorder: expose when the matching op is advertised.
-- Appearance / fonts / language write to Host when the namespace is writable. Offline appearance is an in-memory override only.
+- Appearance and fonts stay on the phone; they must not be written to the remote host.
 - Do not show a row that opens an empty TODO page.
 - Do not invent banners, buttons, or copy that desktop does not have. Android `SettingsScaffold` / schedule offline banners are **not** official desktop chrome — iOS omits them.
 
@@ -214,7 +216,7 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 | 插件控件 | `PluginsScreen.swift`、`PluginInventoryView.swift`、`PluginPolicy.swift` | `PluginsScreen.kt`、`PluginInventory.kt`、desktop `ui-plugin-manager` | 官方市场「官方 N」/已安装 + 实验性徽章 + 刷新；添加菜单仅「第三方 / 创造模式」；详情配置组件；不嵌入 WebView；内置插件分组；离线不加顶栏横幅 |
 | 命令菜单 | `ChatDock.swift` `CommandSheet`、`ChatView.swift` `commandLeading`、`CommandPolicy.swift` | `Sheets.kt` `CommandPopupSheet` / `commandMenuRows`、`Chat.kt` Plus/`/` 接线、`CommandMenuPolicyTest.kt` | `+` 与 `/` 共用同一菜单；空白 composer vs slash 前缀；`file`/`model` 客户端注入；无额外 plus 图片快捷入口；附件走系统文件选择（图片走 image、其余 upload） |
 | 工作区更新 | `FilesPanel.swift`、`WorkspaceDirectory.swift` | `FilesPanel.kt`、`WorkspaceDirectorySubscription.kt`、`WorkspaceDirectorySubscriptionTest.kt` | `files.follow` + `observeWorkspaceDirectory`；watch-unsupported 回退 list；同路径刷新不清空列表；前台（`scenePhase.active` / Android `RESUMED`）才订阅 |
-| 浏览器标签 | `BrowserPanel.swift`、`BrowserTabs.swift` | `BrowserPanel.kt`、`BrowserTabs.kt`、`BrowserTabsTest.kt` | 多标签、关闭/新建、地址栏后退前进刷新外开；checkpoint 仅 `{selected,pages:[{id,url,title}]}`；不恢复 WebView / 不自动联网 |
+| 浏览器标签 | `BrowserPanel.swift`、`BrowserTabs.swift` | `BrowserPanel.kt`、`BrowserTabs.kt`、`BrowserTabsTest.kt` | 实现保留：多标签 checkpoint 仅地址；**不**挂开始面板 / 会话⋯（桌面无入口） |
 | Office / PDF / XLS | `FilePreview.swift`、`WorkbookPreview.swift`、`OfficePreview.swift`、`WorkbookPreview.swift`（protocol） | `FilePreview.kt`、`OfficePreview.kt`、`WorkbookPreview.kt` | `office.render/read/release` 租约；PDFKit 分页；缺失字体 popover 官方文案；XLS/XLSX FortuneSheet，资源走 `dsh-workbook-preview://` ↔ `https://workbook-preview.invalid`；错误原因仅官方句 |
 | 离线灰态 | `SettingsView.swift`、`SessionDrawer.swift`、`ScheduleScreen.swift`、`PluginsScreen.swift` | desktop settings/plugin-manager (no banner); Android `SettingsPages.kt` `SettingsScaffold` banner is **not** copied | 状态处「未连接」（连接行 / 抽屉无 profile 名 / 空会话）；不设顶部横幅、不设说明文案；模型/内置插件/预设/抽屉插件·自动化灰显不可点；离线仍用 `lastOps` 显示入口；归档会话 rename/fork 有 ops 即显示，`enabled=online`（不因 archived 隐藏） |
 | JSON 树 | `TrajectoryJsonView.swift`、`TrajectoryJson.swift` | `TrajectoryJson.kt`、`TrajectoryJsonTest.kt` | 展开/收起、可选中文本、点击复制 / 长按多模式；成功文案「复制成功」 |

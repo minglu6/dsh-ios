@@ -1,4 +1,5 @@
 import SwiftUI
+import DSHProtocol
 
 /// Host surfaces that share official desktop semantics.
 /// Trajectory is the Chat / 轨迹 tab; this panel is only reached if something
@@ -55,13 +56,12 @@ struct HostPanelView: View {
 
 }
 
-/// Official GuideBody: compass watermark and a centered column of entry capsules.
+/// Desktop Start / Guide body: compass + workspace files + new terminal.
+/// Browser and session inspector are not on this panel.
 struct StartPanel: View {
     @ObservedObject var model: AppModel
     var onFiles: () -> Void
     var onTerminal: () -> Void
-    var onBrowser: () -> Void
-    var onInspector: () -> Void
     var onDismiss: () -> Void
 
     var body: some View {
@@ -73,19 +73,30 @@ struct StartPanel: View {
                         .font(.system(size: 40))
                         .foregroundStyle(T.caption)
                         .padding(.bottom, 16)
-                    if model.canShowFiles {
-                        guideEntry(L.workspaceFiles(), L.workspaceFilesHint(), "folder", action: onFiles)
+                    ForEach(StartPanelPolicy.entries(files: model.canShowFiles, terminal: model.canShowTerminal), id: \.self) { entry in
+                        switch entry {
+                        case .workspaceFiles:
+                            guideEntry(
+                                L.workspaceFiles(),
+                                L.workspaceFilesHint(),
+                                D.folderFill,
+                                tint: Color(hex: 0xFFF5B942),
+                                shortcut: StartPanelPolicy.shortcut(entry),
+                                chevron: StartPanelPolicy.showsChevron(entry),
+                                action: onFiles
+                            )
+                        case .newTerminal:
+                            guideEntry(
+                                L.newTerminal(),
+                                L.terminalHint(),
+                                D.terminal,
+                                tint: T.accent,
+                                shortcut: StartPanelPolicy.shortcut(entry),
+                                chevron: StartPanelPolicy.showsChevron(entry),
+                                action: onTerminal
+                            )
+                        }
                     }
-                    if model.canShowTerminal {
-                        guideEntry(L.terminal(), L.terminalHint(), "terminal", action: onTerminal)
-                    }
-                    guideEntry(L.t("浏览器", "Browser"), L.t("浏览网页", "Browse web pages"), "globe", action: onBrowser)
-                    guideEntry(
-                        L.t("会话数据诊断", "Session Log"),
-                        L.t("在侧边栏分析当前会话原始日志和聊天分组数据", "Analyze raw logs and grouped chat messages for the current session in the sidebar."),
-                        "viewfinder",
-                        action: onInspector
-                    )
                 }
                 .padding(.horizontal, 24)
                 .padding(.vertical, 24)
@@ -96,15 +107,36 @@ struct StartPanel: View {
         .background(T.bg.ignoresSafeArea())
     }
 
-    private func guideEntry(_ title: String, _ description: String, _ system: String, action: @escaping () -> Void) -> some View {
+    private func guideEntry(
+        _ title: String,
+        _ description: String,
+        _ system: String,
+        tint: Color,
+        shortcut: String?,
+        chevron: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
             HStack(spacing: 14) {
-                Image(systemName: system).font(.system(size: 22)).foregroundStyle(T.text2).frame(width: 26)
+                Image(systemName: system)
+                    .font(.system(size: 22))
+                    .foregroundStyle(tint)
+                    .frame(width: 26)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title).font(.system(size: 14)).foregroundStyle(T.ink).lineLimit(1)
                     Text(description).font(.system(size: 11)).foregroundStyle(T.text3).lineLimit(1)
                 }
                 Spacer()
+                if let shortcut {
+                    Text(shortcut)
+                        .font(.system(size: 12).weight(.medium))
+                        .foregroundStyle(T.caption)
+                }
+                if chevron {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 11).weight(.semibold))
+                        .foregroundStyle(T.caption)
+                }
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 14)
@@ -113,5 +145,7 @@ struct StartPanel: View {
             .overlay(RoundedRectangle(cornerRadius: 20).stroke(T.border, lineWidth: 0.5))
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityHint(description)
     }
 }

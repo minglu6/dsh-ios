@@ -17,10 +17,11 @@ struct ModelsSettingsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            header(L.modelsNav()) { if !model.isOnline || !busy { model.pop() } }
+            header(L.modelsNav()) { if !busy { model.pop() } }
+                .accessibilityIdentifier("modelsSettings")
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    settingsMessage(L.modelsIntro())
+                    settingsMessage(modelsSettingsIntro(english: L.en))
                     if model.isOnline && !writable && !loading && error == nil {
                         settingsMessage(L.hostSettingsReadOnly())
                     }
