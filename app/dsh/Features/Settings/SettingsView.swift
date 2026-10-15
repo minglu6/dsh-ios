@@ -211,6 +211,7 @@ struct GeneralSettingsView: View {
         fontFamilyField(L.t("终端字体", "Terminal font"), L.t("用于侧栏终端。多个字体用逗号分隔，留空使用默认字体", "Sidebar terminal. Separate fonts with commas; leave empty for defaults."), model.terminalFontFamily, model.setTerminalFontFamily)
     }
 
+    @ViewBuilder
     private func fontFamilyField(_ title: String, _ hint: String, _ value: String, _ set: @escaping (String) -> Void) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title).foregroundStyle(T.ink)
@@ -225,6 +226,7 @@ struct GeneralSettingsView: View {
         Divider().padding(.leading, 16)
     }
 
+    @ViewBuilder
     private func sliderRow(_ title: String, _ value: Int, _ range: ClosedRange<Int>, _ set: @escaping (Int) -> Void) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {

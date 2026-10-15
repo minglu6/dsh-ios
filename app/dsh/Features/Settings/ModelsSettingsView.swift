@@ -403,6 +403,14 @@ struct ProviderSettingsEditorView: View {
         }
     }
 
+    @ViewBuilder
+    private func field<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title).foregroundStyle(T.ink)
+            content()
+        }
+    }
+
     private var row: JSONValue? { initial?["provider"] }
     private var ns: String { namespace?["ns"].str() ?? row?["settingsNs"].str() ?? "" }
     private var account: Bool { route == "deepseek-account" }

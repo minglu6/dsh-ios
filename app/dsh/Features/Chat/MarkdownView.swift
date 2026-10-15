@@ -11,7 +11,7 @@ struct MarkdownView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             ForEach(Array(parseMarkdown(source, streaming: streaming).enumerated()), id: \.offset) { _, block in
-                blockView(block)
+                MdBlockView(block: block, wrapCode: wrapCode, bodyColor: bodyColor)
             }
         }
         .environment(\.openURL, OpenURLAction { url in
@@ -23,9 +23,14 @@ struct MarkdownView: View {
             return .handled
         })
     }
+}
 
-    @ViewBuilder
-    private func blockView(_ block: MdBlock) -> some View {
+private struct MdBlockView: View {
+    let block: MdBlock
+    let wrapCode: Bool
+    let bodyColor: Color
+
+    var body: some View {
         switch block {
         case .paragraph(let spans):
             wraps(spans)
@@ -36,9 +41,7 @@ struct MarkdownView: View {
                 ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                     HStack(alignment: .top, spacing: 6) {
                         Text("•").foregroundStyle(T.text3)
-                        VStack(alignment: .leading, spacing: 4) {
-                            ForEach(Array(item.enumerated()), id: \.offset) { _, child in blockView(child) }
-                        }
+                        nested(item)
                     }
                 }
             }
@@ -47,18 +50,14 @@ struct MarkdownView: View {
                 ForEach(Array(items.enumerated()), id: \.offset) { index, item in
                     HStack(alignment: .top, spacing: 6) {
                         Text("\(start + index).").foregroundStyle(T.text3)
-                        VStack(alignment: .leading, spacing: 4) {
-                            ForEach(Array(item.enumerated()), id: \.offset) { _, child in blockView(child) }
-                        }
+                        nested(item)
                     }
                 }
             }
         case .quote(let children):
             HStack(alignment: .top, spacing: 8) {
                 T.border.frame(width: 3)
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(Array(children.enumerated()), id: \.offset) { _, child in blockView(child) }
-                }
+                nested(children)
             }
         case .code(let language, let literal, let incomplete):
             VStack(alignment: .leading, spacing: 4) {
@@ -108,6 +107,14 @@ struct MarkdownView: View {
             }
         case .rule:
             Divider()
+        }
+    }
+
+    private func nested(_ children: [MdBlock]) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(Array(children.enumerated()), id: \.offset) { _, child in
+                MdBlockView(block: child, wrapCode: wrapCode, bodyColor: bodyColor)
+            }
         }
     }
 

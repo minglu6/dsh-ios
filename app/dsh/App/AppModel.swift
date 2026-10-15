@@ -888,7 +888,7 @@ final class AppModel: ObservableObject {
         }
         Task {
             do {
-                permissionCatalog = try PermissionCatalog.parse(try call("permissions.catalog"))
+                permissionCatalog = try PermissionCatalog.parse(try await call("permissions.catalog"))
                 permissionCatalogError = nil
             } catch {
                 permissionCatalogError = error.localizedDescription
