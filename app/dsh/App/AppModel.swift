@@ -50,6 +50,13 @@ struct FilePreviewRef: Equatable, Identifiable {
     var id: String { "\(sessionId)\n\(path)" }
 }
 
+struct JobDetailState: Equatable {
+    var jobId: String
+    var status: String
+    var output: [String]
+    var error: String?
+}
+
 enum AppRoute: Equatable {
     case sessions
     case chat
@@ -76,6 +83,10 @@ final class AppModel: ObservableObject {
     @Published var archivedIds: Set<String> = []
     @Published var pinnedIds: Set<String> = []
     @Published var unreadIds: Set<String> = []
+    @Published var jobs: [JobRow]?
+    @Published var jobsFailed = false
+    @Published var jobsPanelError: String?
+    @Published var jobDetail: JobDetailState?
     @Published var chat: ChatState?
     @Published var approvals: [Approval] = []
     @Published var userQuestions: [UserQuestion] = []
@@ -126,6 +137,26 @@ final class AppModel: ObservableObject {
     private var terminalStray: [String: [JSONValue]] = [:]
     private var terminalRosterRevision: [String: Int64] = [:]
     private var terminalAttachTask: Task<Void, Never>?
+    private let completionReminders = CompletionReminders()
+    private var completionReadySession: String?
+    private var desiredViewedSession: String?
+    private var completionViewClient: PocketClient?
+    private var completionViewSession: String?
+    private var completionViewBusy = false
+    private var completionViewPending = false
+    private var jobsWatchers = 0
+    private var jobsLoop: Task<Void, Never>?
+    private var jobsWatchHostId: String?
+    private var jobsWatchSessionId: String?
+    private var jobsLoopGeneration: Int64 = 0
+    private var jobFollows: [String: String] = [:]
+    private var jobFollowEnded: Set<String> = []
+    private var jobFollowInFlight: Set<String> = []
+    private var jobStray: [String: [JSONValue]] = [:]
+    private var jobsReconcileBusy = false
+    private var jobsReconcilePending = false
+    private var jobsPanelKillError = false
+    private var selectedJobId: String?
 
     var activeProfile: Profile? { profiles.first { $0.id == activeId } }
     var currentDot: Dot? { activeId.flatMap { status[$0] } }
@@ -158,6 +189,8 @@ final class AppModel: ObservableObject {
         followEpoch += 1
         detachFollow()
         resetTerminalAttachment(keepScreen: false)
+        resetCompletion()
+        resetJobs(unfollow: false)
         activeId = profileId
         ProfileStore.activeId = profileId
         collapsedWorkspaces = AppPrefs.collapsedWorkspaces(hostId: profileId)
@@ -589,6 +622,92 @@ final class AppModel: ObservableObject {
 
     var canShowFiles: Bool { ops.contains("files.list") }
 
+    var canShowJobs: Bool { isOnline && ops.contains("jobs.list") }
+
+    /// Chip and panel each retain the same poll loop. Leaving the last retainer unfollows but keeps the roster.
+    func retainJobsWatch(hostId: String?, sessionId: String, available: Bool) async {
+        guard available, let hostId else { return }
+        let token = attachJobsWatch(hostId: hostId, sessionId: sessionId)
+        defer { detachJobsWatch(token) }
+        while !Task.isCancelled {
+            try? await Task.sleep(nanoseconds: 3_600_000_000_000)
+        }
+    }
+
+    func refreshJobs() {
+        jobsPanelKillError = false
+        Task { await refreshJobsOnce(clearKillError: true) }
+    }
+
+    func selectJob(_ job: JobRow) {
+        selectedJobId = job.id
+        jobFollowEnded.remove(job.id)
+        jobDetail = JobDetailState(jobId: job.id, status: job.status, output: [], error: nil)
+        Task {
+            guard let client else { return }
+            if let sub = jobFollows.removeValue(forKey: job.id) {
+                try? await client.unfollow(sub)
+            }
+            await runJobReconcile()
+        }
+    }
+
+    func clearJobSelection() {
+        selectedJobId = nil
+        jobDetail = nil
+        Task { await runJobReconcile() }
+    }
+
+    func retryJobFollow() {
+        guard let jobId = selectedJobId else { return }
+        let status = jobDetail?.status ?? jobs?.first { $0.id == jobId }?.status ?? ""
+        jobDetail = JobDetailState(jobId: jobId, status: status, output: [], error: nil)
+        jobFollowEnded.remove(jobId)
+        Task {
+            guard let client else { return }
+            if let sub = jobFollows.removeValue(forKey: jobId) {
+                try? await client.unfollow(sub)
+            }
+            await runJobReconcile()
+        }
+    }
+
+    func killJob(jobId: String, onResult: @escaping (Bool) -> Void) {
+        Task {
+            guard let client, let sessionId = jobsWatchSessionId ?? chat?.sessionId else {
+                onResult(false)
+                return
+            }
+            do {
+                _ = try await client.killJob(sessionId: sessionId, jobId: jobId)
+                let next = parseJobRoster(try await client.listJobs(sessionId: sessionId))
+                jobs = next
+                jobsFailed = false
+                jobsPanelKillError = false
+                jobsPanelError = nil
+                if let updated = next.first(where: { $0.id == jobId }), selectedJobId == jobId {
+                    jobDetail?.status = updated.status
+                }
+                await runJobReconcile()
+                onResult(true)
+            } catch is CancellationError {
+                onResult(false)
+            } catch {
+                jobsPanelKillError = true
+                jobsPanelError = L.killJobFailed()
+                onResult(false)
+            }
+        }
+    }
+
+    /// Foreground ChatView only. Background, drawer, or any other route must pass null.
+    func setViewedSession(_ sessionId: String?) {
+        desiredViewedSession = sessionId
+        if let client {
+            Task { await syncCompletionView(client) }
+        }
+    }
+
     func openTerminal(sessionId: String, forceNew: Bool = false, terminalId: String? = nil) {
         terminalAttachTask?.cancel()
         terminalAttachTask = Task { await attachTerminal(sessionId: sessionId, forceNew: forceNew, terminalId: terminalId) }
@@ -751,6 +870,8 @@ final class AppModel: ObservableObject {
             followEpoch += 1
             detachFollow()
             resetTerminalAttachment(keepScreen: true)
+            resetCompletion()
+            resetJobs(unfollow: false)
             ops = []
             let reason = client.closeReason ?? ""
             if reason.contains("4401") || reason.contains("4403") || reason.contains("auth/") {
@@ -777,6 +898,7 @@ final class AppModel: ObservableObject {
             if let snapshot = try? await client.call("completion.state") {
                 applyCompletion(snapshot)
             }
+            await syncCompletionView(client)
         }
         if let list = try? await client.listSessions() {
             sessions = list.sorted { $0.updatedAt > $1.updatedAt }
@@ -809,11 +931,15 @@ final class AppModel: ObservableObject {
             running: reducer.running
         )
         feedback = [:]
-        unreadIds.remove(sessionId)
+        completionReadySession = nil
     }
 
     private func detachFollow() {
         subId = nil
+        completionReadySession = nil
+        if let client {
+            Task { await syncCompletionView(client) }
+        }
     }
 
     private func refollow(_ client: PocketClient, sessionId: String, afterSeq: Int64?) async throws {
@@ -833,7 +959,6 @@ final class AppModel: ObservableObject {
         subId = sid
         chat?.loaded = true
         await loadFeedback(client, sessionId: sessionId)
-        await syncCompletionView(client, sessionId: sessionId)
     }
 
     private func loadFeedback(_ client: PocketClient, sessionId: String) async {
@@ -850,21 +975,59 @@ final class AppModel: ObservableObject {
     }
 
     /// View confirmation is not connectivity. Failures must not close the WebSocket.
-    private func syncCompletionView(_ client: PocketClient, sessionId: String) async {
-        guard ops.contains("completion.view") else { return }
-        let args = jsonObject(["sessionId": .string(sessionId)])
-        do {
-            applyCompletion(try await client.call("completion.view", args: args))
-        } catch is CancellationError {
+    /// `sessionId` is explicit JSON null when this conversation is not ready — jsonObject would drop it.
+    private func syncCompletionView(_ client: PocketClient) async {
+        if completionViewBusy {
+            completionViewPending = true
             return
-        } catch {
-            emit(error.localizedDescription)
+        }
+        completionViewBusy = true
+        defer {
+            completionViewBusy = false
+            if completionViewPending {
+                completionViewPending = false
+                if let next = self.client {
+                    Task { await syncCompletionView(next) }
+                }
+            }
+        }
+        guard ops.contains("completion.view") else { return }
+        let viewed = CompletionViewed.sessionId(
+            desired: desiredViewedSession,
+            chat: chat?.sessionId,
+            ready: completionReadySession
+        )
+        if CompletionViewed.shouldSkip(
+            sameClient: completionViewClient === client,
+            lastSession: completionViewSession,
+            nextSession: viewed
+        ) {
+            return
+        }
+        let args = CompletionViewRequest.args(sessionId: viewed)
+        do {
+            let snapshot: JSONValue
             do {
-                applyCompletion(try await client.call("completion.view", args: args))
+                snapshot = try await client.call("completion.view", args: args)
             } catch is CancellationError {
                 return
             } catch {
+                if self.client !== client { return }
                 emit(error.localizedDescription)
+                snapshot = try await client.call("completion.view", args: args)
+            }
+            if self.client === client {
+                completionViewClient = client
+                completionViewSession = viewed
+                applyCompletion(snapshot)
+            }
+        } catch is CancellationError {
+            return
+        } catch {
+            if self.client === client {
+                emit(error.localizedDescription)
+                completionViewClient = nil
+                completionViewSession = nil
             }
         }
     }
@@ -890,8 +1053,16 @@ final class AppModel: ObservableObject {
             ops = Set((m["ops"].arr() ?? []).compactMap { $0.str() })
         case "follow":
             if m["subId"].str() == subId {
-                _ = reducer.apply(m["frame"])
+                let frame = m["frame"]
+                _ = reducer.apply(frame)
                 publishChat()
+                if frame["type"].str() == "snapshot" || frame["type"].str() == "resume",
+                   let sessionId = chat?.sessionId {
+                    completionReadySession = sessionId
+                    if let client {
+                        Task { await syncCompletionView(client) }
+                    }
+                }
             }
         case "follow.end":
             if m["subId"].str() == subId, let client, let sessionId = chat?.sessionId {
@@ -949,6 +1120,8 @@ final class AppModel: ObservableObject {
             hostSettings.refresh()
         case "completion":
             applyCompletion(m)
+        case "job", "job.end", "job.error":
+            handleJobEvent(m)
         case "terminal", "terminal.end", "terminal.error":
             handleTerminalEvent(m)
         default:
@@ -1206,7 +1379,240 @@ final class AppModel: ObservableObject {
     }
 
     private func applyCompletion(_ snapshot: JSONValue) {
-        unreadIds = Set((snapshot["unreadIds"].arr() ?? []).compactMap { $0.str() })
+        completionReminders.accept(snapshot)
+        unreadIds = completionReminders.unreadIds
+    }
+
+    private func resetCompletion() {
+        completionReminders.reset()
+        unreadIds = []
+        completionReadySession = nil
+        desiredViewedSession = nil
+        completionViewClient = nil
+        completionViewSession = nil
+        completionViewBusy = false
+        completionViewPending = false
+    }
+
+    private func resetJobs(unfollow: Bool) {
+        jobsWatchers = 0
+        resetJobsWatchState(unfollow: unfollow, clearSnapshot: true)
+    }
+
+    private struct JobsWatchToken {
+        let hostId: String
+        let sessionId: String
+    }
+
+    private func attachJobsWatch(hostId: String, sessionId: String) -> JobsWatchToken {
+        if jobsWatchHostId != hostId || jobsWatchSessionId != sessionId {
+            resetJobsWatchState(unfollow: true, clearSnapshot: true)
+            jobsWatchHostId = hostId
+            jobsWatchSessionId = sessionId
+        }
+        jobsWatchers += 1
+        ensureJobsLoop()
+        return JobsWatchToken(hostId: hostId, sessionId: sessionId)
+    }
+
+    private func detachJobsWatch(_ token: JobsWatchToken) {
+        guard jobsWatchHostId == token.hostId, jobsWatchSessionId == token.sessionId else { return }
+        if jobsWatchers == 0 {
+            preconditionFailure("jobs watch retain count underflow")
+        }
+        jobsWatchers -= 1
+        if jobsWatchers == 0 {
+            resetJobsWatchState(unfollow: true, clearSnapshot: false)
+        }
+    }
+
+    private func resetJobsWatchState(unfollow: Bool, clearSnapshot: Bool) {
+        jobsLoopGeneration += 1
+        jobsLoop?.cancel()
+        jobsLoop = nil
+        let leftover = jobFollows
+        jobFollows = [:]
+        jobFollowEnded = []
+        jobFollowInFlight = []
+        jobStray = [:]
+        jobsReconcileBusy = false
+        jobsReconcilePending = false
+        if clearSnapshot {
+            jobs = nil
+            jobsFailed = false
+            jobsPanelError = nil
+            jobsPanelKillError = false
+            selectedJobId = nil
+            jobDetail = nil
+            jobsWatchHostId = nil
+            jobsWatchSessionId = nil
+            jobsWatchers = 0
+        }
+        if unfollow, !leftover.isEmpty, let client {
+            Task {
+                for sub in leftover.values { try? await client.unfollow(sub) }
+            }
+        }
+    }
+
+    private func ensureJobsLoop() {
+        guard jobsLoop == nil, let hostId = jobsWatchHostId, let sessionId = jobsWatchSessionId else { return }
+        let generation = jobsLoopGeneration
+        jobsLoop = Task { await pollJobs(generation: generation, hostId: hostId, sessionId: sessionId) }
+    }
+
+    private func pollJobs(generation: Int64, hostId: String, sessionId: String) async {
+        while !Task.isCancelled {
+            guard jobsLoopGeneration == generation, activeId == hostId, jobsWatchers > 0 else { return }
+            await refreshJobsOnce(clearKillError: false)
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+        }
+    }
+
+    private func refreshJobsOnce(clearKillError: Bool) async {
+        let generation = jobsLoopGeneration
+        guard let client, let sessionId = jobsWatchSessionId ?? chat?.sessionId else { return }
+        do {
+            let next = parseJobRoster(try await client.listJobs(sessionId: sessionId))
+            guard jobsLoopGeneration == generation else { return }
+            if jobs != next { jobs = next }
+            jobsFailed = false
+            if clearKillError || !jobsPanelKillError {
+                jobsPanelKillError = false
+                jobsPanelError = nil
+            }
+            await runJobReconcile()
+        } catch is CancellationError {
+            return
+        } catch {
+            guard jobsLoopGeneration == generation else { return }
+            if jobs != nil { jobs = nil }
+            jobsFailed = true
+            jobsPanelKillError = false
+            jobsPanelError = L.jobLoadFailed()
+            await detachJobFollows(client: client)
+        }
+    }
+
+    private func runJobReconcile() async {
+        if jobsReconcileBusy {
+            jobsReconcilePending = true
+            return
+        }
+        jobsReconcileBusy = true
+        defer {
+            jobsReconcileBusy = false
+            if jobsReconcilePending {
+                jobsReconcilePending = false
+                Task { await runJobReconcile() }
+            }
+        }
+        guard jobsWatchers > 0, let client, let sessionId = jobsWatchSessionId ?? chat?.sessionId else { return }
+        await reconcileJobFollows(client: client, sessionId: sessionId)
+    }
+
+    private func reconcileJobFollows(client: PocketClient, sessionId: String) async {
+        let generation = jobsLoopGeneration
+        var wanted = Set((jobs ?? []).filter(\.isLive).map(\.id))
+        if let selectedJobId { wanted.insert(selectedJobId) }
+        for id in Set(jobFollows.keys).subtracting(wanted) {
+            if let sub = jobFollows.removeValue(forKey: id) {
+                try? await client.unfollow(sub)
+            }
+        }
+        for id in wanted.subtracting(Set(jobFollows.keys)) {
+            if jobFollowEnded.contains(id) { continue }
+            guard JobFollowClaim.begin(inFlight: &jobFollowInFlight, assigned: jobFollows, jobId: id) else { continue }
+            guard jobsLoopGeneration == generation, self.client === client else {
+                JobFollowClaim.end(inFlight: &jobFollowInFlight, jobId: id)
+                return
+            }
+            do {
+                let sub = try await client.followJob(sessionId: sessionId, jobId: id)
+                JobFollowClaim.end(inFlight: &jobFollowInFlight, jobId: id)
+                if jobsLoopGeneration != generation || self.client !== client {
+                    try? await client.unfollow(sub)
+                    return
+                }
+                if let extra = JobFollowClaim.assign(current: &jobFollows, jobId: id, subId: sub) {
+                    try? await client.unfollow(extra)
+                } else {
+                    let buffered = jobStray.removeValue(forKey: sub) ?? []
+                    for event in buffered { handleJobEvent(event) }
+                }
+            } catch is CancellationError {
+                JobFollowClaim.end(inFlight: &jobFollowInFlight, jobId: id)
+                return
+            } catch {
+                JobFollowClaim.end(inFlight: &jobFollowInFlight, jobId: id)
+                if selectedJobId == id {
+                    jobDetail?.error = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func detachJobFollows(client: PocketClient) async {
+        let leftover = jobFollows
+        jobFollows = [:]
+        jobFollowInFlight = []
+        jobStray = [:]
+        for sub in leftover.values { try? await client.unfollow(sub) }
+    }
+
+    private func handleJobEvent(_ m: JSONValue) {
+        guard let subId = m["subId"].str() else { return }
+        if let jobId = jobFollows.first(where: { $0.value == subId })?.key {
+            applyFollowedJobEvent(jobId: jobId, m)
+            return
+        }
+        if !jobFollowInFlight.isEmpty {
+            jobStray[subId, default: []].append(m)
+        }
+    }
+
+    private func applyFollowedJobEvent(jobId: String, _ m: JSONValue) {
+        switch m["ev"].str() {
+        case "job":
+            applyJobFrame(jobId: jobId, frame: m["frame"])
+        case "job.end":
+            jobFollows[jobId] = nil
+            jobFollowEnded.insert(jobId)
+        case "job.error":
+            jobFollows[jobId] = nil
+            jobFollowEnded.insert(jobId)
+            let message = m["error"]["message"].str() ?? L.jobOutputFailed()
+            if selectedJobId == jobId {
+                jobDetail?.error = message
+            }
+        default:
+            break
+        }
+    }
+
+    private func applyJobFrame(jobId: String, frame: JSONValue) {
+        switch JobFollowFrame.parse(frame) {
+        case .opened(let status), .status(let status):
+            if let index = jobs?.firstIndex(where: { $0.id == jobId }) {
+                jobs?[index].status = status
+            }
+            if selectedJobId == jobId {
+                jobDetail?.status = status
+            }
+        case .output(let lossy, let chunks):
+            guard selectedJobId == jobId else { return }
+            var lines = jobDetail?.output ?? []
+            applyJobOutputFrames(
+                to: &lines,
+                lossy: lossy,
+                chunks: chunks,
+                expiredNotice: L.jobOutputExpired(),
+                missingNotice: L.jobOutputMissing()
+            )
+            jobDetail?.output = lines
+        case .other:
+            break
+        }
     }
 
     private func publishChat() {

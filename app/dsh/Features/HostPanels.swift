@@ -19,7 +19,8 @@ struct HostPanelView: View {
             case .trajectory: TrajectoryView(model: model)
             case .files: FilesPanel(model: model)
             case .terminal: TerminalPanel(model: model)
-            case .jobs, .settings:
+            case .jobs: JobsPanel(model: model) { model.pop() }
+            case .settings:
                 Color.clear
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(T.bg)
@@ -31,7 +32,7 @@ struct HostPanelView: View {
 
     private var showsSharedHeader: Bool {
         switch panel {
-        case .files, .terminal: return false
+        case .files, .terminal, .jobs: return false
         default: return true
         }
     }

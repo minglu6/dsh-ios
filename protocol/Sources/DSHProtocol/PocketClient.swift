@@ -300,6 +300,25 @@ public final class PocketClient: @unchecked Sendable {
         ]))
     }
 
+    public func listJobs(sessionId: String) async throws -> JSONValue {
+        try await call("jobs.list", args: jsonObject(["sessionId": .string(sessionId)]))
+    }
+
+    public func killJob(sessionId: String, jobId: String) async throws -> JSONValue {
+        try await call("jobs.kill", args: jsonObject([
+            "sessionId": .string(sessionId),
+            "jobId": .string(jobId),
+        ]))
+    }
+
+    public func followJob(sessionId: String, jobId: String, from: Int64? = nil) async throws -> String {
+        let result = try await call("jobs.follow", args: JobFollowRequest.args(sessionId: sessionId, jobId: jobId, from: from))
+        guard let subId = result["subId"].str(), !subId.isEmpty else {
+            throw PocketError(code: "bad-reply", message: "missing job subscription")
+        }
+        return subId
+    }
+
     public func createWorkspace(path: String) async throws -> JSONValue {
         try await call("workspace.create", args: jsonObject(["path": .string(path)]))
     }
