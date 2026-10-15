@@ -285,7 +285,28 @@ enum L {
     static func newAutomation() -> String { en ? "New automation task" : "新建自动化任务" }
     static func automation() -> String { en ? "Scheduled tasks" : "自动化任务" }
     static func tool() -> String { en ? "Tool" : "工具" }
-    static func composerPlaceholder() -> String { en ? "Message" : "消息" }
+    static func composerPlaceholder() -> String {
+        en ? "Send a message or create a task, / for commands, @ for files or chats" : "发消息或创建任务, / 调用指令, @ 文件或对话"
+    }
+    static func planReview() -> String { en ? "Plan review" : "计划待审" }
+    static func approvePlan() -> String { en ? "Approve" : "同意执行" }
+    static func typeYourAnswer() -> String { en ? "Type your answer" : "输入你的答案" }
+    static func skip() -> String { en ? "Skip" : "跳过" }
+    static func nextQuestion() -> String { en ? "Next" : "下一题" }
+    static func completeQuestionFirst() -> String { en ? "Please complete this question first." : "请先完成这道问题。" }
+    static func sectionAdd() -> String { en ? "Add" : "添加" }
+    static func sectionCommands() -> String { en ? "Commands" : "指令" }
+    static func noOptions() -> String { en ? "No options" : "无选项" }
+    static func file() -> String { en ? "File" : "文件" }
+    static func image() -> String { en ? "Image" : "图片" }
+    static func pendingFiles() -> String { en ? "Pending files" : "待发送文件" }
+    static func uploading() -> String { en ? "Uploading…" : "上传中…" }
+    static func uploadFailed() -> String { en ? "Upload failed; tap to retry" : "上传失败，点击重试" }
+    static func removeFile(_ name: String) -> String { en ? "Remove file \(name)" : "移除文件 \(name)" }
+    static func filesAndFolders() -> String { en ? "Files & folders" : "文件与文件夹" }
+    static func planChip() -> String { en ? "Plan" : "计划" }
+    static func planModeOn() -> String { en ? "Plan mode on — tap to turn off" : "计划模式已开启 — 点击关闭" }
+    static func reopenQuestion() -> String { en ? "Question waiting · Reopen" : "问题等待回答 · 重新打开" }
     static func notConnected() -> String { en ? "Not connected" : "未连接" }
     static func disconnected() -> String { en ? "Disconnected" : "已断开" }
 

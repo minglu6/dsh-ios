@@ -41,6 +41,7 @@ struct GeneralSettingsView: View {
     @ObservedObject private var shared: HostSettings
     @State private var fontsExpanded = false
     @State private var sheet: String?
+    @State private var riskPermission: String?
 
     init(model: AppModel) {
         self.model = model
@@ -69,7 +70,7 @@ struct GeneralSettingsView: View {
                     }
                     card {
                         if model.ops.contains("permissions.catalog") {
-                            nav(L.t("权限", "Permission"), "hand.raised", value: permissionLabel, divider: true) {
+                            nav(L.t("权限", "Permission"), "hand.raised", value: defaultPermissionLabel, divider: true) {
                                 sheet = "perm"
                             }
                             .disabled(!model.isOnline || !shared.writable(.permission))
@@ -172,8 +173,43 @@ struct GeneralSettingsView: View {
             .background(T.bg)
         }
         .background(T.bg.ignoresSafeArea())
-        .sheet(isPresented: Binding(get: { sheet != nil }, set: { if !$0 { sheet = nil } })) {
+        .sheet(isPresented: Binding(get: { sheet != nil && sheet != "perm" && riskPermission == nil }, set: { if !$0 { sheet = nil } })) {
             optionSheet
+        }
+        .sheet(isPresented: Binding(get: { sheet == "perm" && riskPermission == nil }, set: { if !$0 { sheet = nil } })) {
+            PermissionPickerSheet(
+                current: model.defaultPermission,
+                catalog: model.permissionCatalog,
+                loading: model.permissionCatalogLoading,
+                error: model.permissionCatalogError,
+                enabled: model.isOnline && shared.writable(.permission),
+                forDefaults: true,
+                onRefresh: { model.reloadPermissionCatalog() },
+                onDismiss: { sheet = nil },
+                onPick: { value in
+                    if value == "danger-full-access" {
+                        riskPermission = value
+                    } else if model.permissionCatalog?.allowsDefault(value) == true {
+                        shared.write(.permission, value: .string(value)) { sheet = nil }
+                    }
+                }
+            )
+        }
+        .sheet(isPresented: Binding(get: { riskPermission != nil }, set: { if !$0 { riskPermission = nil } })) {
+            if let value = riskPermission {
+                PermissionRiskSheet(
+                    preset: value,
+                    enabled: model.isOnline && shared.writable(.permission) && model.permissionCatalog?.allowsDefault(value) == true,
+                    forDefaults: true,
+                    onDismiss: { riskPermission = nil; sheet = nil },
+                    onConfirm: {
+                        shared.write(.permission, value: .string(value)) {
+                            riskPermission = nil
+                            sheet = nil
+                        }
+                    }
+                )
+            }
         }
         .onAppear { if model.ops.contains("permissions.catalog") { model.reloadPermissionCatalog() } }
     }
@@ -245,8 +281,9 @@ struct GeneralSettingsView: View {
         Divider().padding(.leading, 16)
     }
 
-    private var permissionLabel: String {
-        model.permissionCatalog?.find(model.defaultPermission)?.name ?? model.defaultPermission
+    private var defaultPermissionLabel: String {
+        let value = model.defaultPermission
+        return permissionLabel(value: value, option: model.permissionCatalog?.find(value))
     }
 
     @ViewBuilder
@@ -277,13 +314,7 @@ struct GeneralSettingsView: View {
                         }
                     }
                 case "perm":
-                    ForEach(model.permissionCatalog?.defaultOptions ?? [], id: \.value) { option in
-                        Button(option.name) {
-                            if model.permissionCatalog?.allowsDefault(option.value) == true {
-                                shared.write(.permission, value: .string(option.value)) { sheet = nil }
-                            }
-                        }
-                    }
+                    EmptyView()
                 case "links":
                     let current = shared.value(.linkOpening)?.str()
                     ForEach(["in-app", "system"], id: \.self) { value in

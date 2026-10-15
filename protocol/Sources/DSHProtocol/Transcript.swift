@@ -356,6 +356,8 @@ public enum Item: Sendable, Equatable, Identifiable {
             self.step = step
             self.attempts = attempts
         }
+
+        var identity: RetryIdentity { RetryIdentity(id: retryId, turn: turn, step: step) }
     }
 
     public struct TurnFailure: Sendable, Equatable {
@@ -427,26 +429,34 @@ public struct StepRecord: Sendable, Equatable {
     public var usage: StepUsage
     public var provider: String?
     public var model: String?
-    public var toolCallIds: [String]
-    public var interrupted: Bool
-    public var requestConfigJson: String?
+        public var toolCallIds: [String]
+        public var interrupted: Bool
+        public var requestConfigJson: String?
+        public var retry: Int?
+        public var maxRetries: Int?
+        public var retryDelayMs: Int64?
+        public var lastAttemptError: String?
 
-    public init(
-        seq: Int64,
-        turn: Int,
-        step: Int,
-        stepStartTime: Int64? = nil,
-        messageTime: Int64? = nil,
-        firstTokenTime: Int64? = nil,
-        replyText: String = "",
-        reasoningText: String = "",
-        usage: StepUsage = StepUsage(),
-        provider: String? = nil,
-        model: String? = nil,
-        toolCallIds: [String] = [],
-        interrupted: Bool = false,
-        requestConfigJson: String? = nil
-    ) {
+        public init(
+            seq: Int64,
+            turn: Int,
+            step: Int,
+            stepStartTime: Int64? = nil,
+            messageTime: Int64? = nil,
+            firstTokenTime: Int64? = nil,
+            replyText: String = "",
+            reasoningText: String = "",
+            usage: StepUsage = StepUsage(),
+            provider: String? = nil,
+            model: String? = nil,
+            toolCallIds: [String] = [],
+            interrupted: Bool = false,
+            requestConfigJson: String? = nil,
+            retry: Int? = nil,
+            maxRetries: Int? = nil,
+            retryDelayMs: Int64? = nil,
+            lastAttemptError: String? = nil
+        ) {
         self.seq = seq
         self.turn = turn
         self.step = step
@@ -461,6 +471,10 @@ public struct StepRecord: Sendable, Equatable {
         self.toolCallIds = toolCallIds
         self.interrupted = interrupted
         self.requestConfigJson = requestConfigJson
+        self.retry = retry
+        self.maxRetries = maxRetries
+        self.retryDelayMs = retryDelayMs
+        self.lastAttemptError = lastAttemptError
     }
 }
 
@@ -535,6 +549,16 @@ public final class TranscriptReducer {
     private var compactIndex: [String: Int] = [:]
     private var systemPromptSeen = false
     private var lastSystemPromptText: String?
+    private var retryIndex: [RetryIdentity: Int] = [:]
+    private var retryStarts: [RetryIdentity: [Int: Int64]] = [:]
+    private var closedSteps: [StepIdentity: Int64] = [:]
+    private var openRetry: Int?
+    private var openMaxRetries: Int?
+    private var openRetryDelayMs: Int64?
+    private var openLastAttemptError: String?
+    private var toolTimings: [String: ToolCallTiming] = [:]
+    private let turnUsageLedger = TurnUsageLedger()
+    private let composerProjections = ComposerProjectionStore()
 
     public private(set) var needsResync = false
     public private(set) var cursor: Int64 = -1
@@ -547,9 +571,12 @@ public final class TranscriptReducer {
     public var title: String? { titleValue }
     public var usage: Usage { Usage(turns: turns, steps: steps, inputTokens: inputTokens, cacheReadTokens: cacheRead, outputTokens: outputTokens) }
     public var planMode: Bool { planActive }
+    public var composerMetrics: ComposerMetrics { composerProjections.metrics(steps: settledSteps, toolTimings: Array(toolTimings.values)) }
     public func todosSnapshot() -> [TodoItem] { todos }
     public func turnRecords() -> [TurnRecord] { turnFacts.values.sorted { $0.turn < $1.turn } }
     public func stepRecords() -> [StepRecord] { settledSteps }
+    public func turnTokenUsage() -> [Int: TurnTokenUsage] { turnUsageLedger.snapshot() }
+    public func clearComposerProjections() { composerProjections.clear() }
 
     public func items() -> [Item] {
         var result: [Item] = []
@@ -624,7 +651,7 @@ public final class TranscriptReducer {
                 return true
             }
             if key == "inbox" { return readInbox(frame["value"], seq: seq) }
-            return false
+            return composerProjections.apply(key: key, value: frame["value"], seq: seq)
         case "assistant-stream":
             return stream(frame["frame"])
         default:
@@ -651,16 +678,66 @@ public final class TranscriptReducer {
             "projections": .object([String: JSONValue]()),
         ])
         _ = prior.apply(snapshot)
-        let older = prior.items()
+        let olderTurnUsage = turnUsageLedger.prepend(prior.turnUsageLedger)
+        for (turn, earlier) in prior.turnFacts {
+            turnFacts[turn] = turnFacts[turn].map { later in
+                TurnRecord(
+                    turn: turn,
+                    startSeq: later.startSeq ?? earlier.startSeq,
+                    endSeq: later.endSeq ?? earlier.endSeq,
+                    startedAt: later.startedAt ?? earlier.startedAt,
+                    endedAt: later.endedAt ?? earlier.endedAt,
+                    endReason: later.endReason ?? earlier.endReason
+                )
+            } ?? earlier
+        }
+        for (id, earlier) in prior.toolTimings {
+            if let later = toolTimings[id] {
+                later.callStartedAt = later.callStartedAt ?? earlier.callStartedAt
+                later.resultAt = earlier.resultAt ?? later.resultAt
+            } else {
+                toolTimings[id] = earlier
+            }
+        }
+        for (identity, starts) in prior.retryStarts {
+            var known = retryStarts[identity] ?? [:]
+            for (retry, seq) in starts {
+                known[retry] = max(known[retry] ?? -1, seq)
+            }
+            retryStarts[identity] = known
+        }
+        for (step, seq) in prior.closedSteps {
+            closedSteps[step] = max(closedSteps[step] ?? -1, seq)
+        }
+        var mergedRetries = Set<RetryIdentity>()
+        let older = prior.items().map { item -> Item in
+            guard case .retry(let retry) = item else { return item }
+            let identity = retry.identity
+            guard let laterIndex = retryIndex[identity], case .retry(let later) = committed[laterIndex] else { return item }
+            mergedRetries.insert(identity)
+            var attempts = retry.attempts + later.attempts
+            var seen = Set<Int64>()
+            attempts = attempts.filter { seen.insert($0.seq).inserted }.sorted { $0.seq < $1.seq }
+            return .retry(Item.Retry(key: retry.key, retryId: retry.retryId, turn: retry.turn, step: retry.step, attempts: attempts))
+        }
+        let olderSteps = prior.stepRecords()
         if !older.isEmpty {
+            committed.removeAll { item in
+                if case .retry(let retry) = item { return mergedRetries.contains(retry.identity) }
+                return false
+            }
             committed.insert(contentsOf: older, at: 0)
-            settledSteps.insert(contentsOf: prior.stepRecords(), at: 0)
             rebuildIndexes()
+        }
+        refreshRetries()
+        if !olderSteps.isEmpty {
+            settledSteps.insert(contentsOf: olderSteps, at: 0)
         }
         if let min = filtered.compactMap({ $0["event"]["seq"].long() }).min() {
             firstSeq = firstSeq < 0 ? min : Swift.min(firstSeq, min)
         }
-        return !older.isEmpty
+        return !older.isEmpty || !olderSteps.isEmpty || !prior.toolTimings.isEmpty || !prior.turnFacts.isEmpty
+            || olderTurnUsage || !prior.retryStarts.isEmpty || !prior.closedSteps.isEmpty
     }
 
     public func echo(text: String, requestId: String = UUID().uuidString, mode: String = "queue", images: Int = 0, files: Int = 0) {
@@ -726,6 +803,16 @@ public final class TranscriptReducer {
         compactIndex.removeAll()
         systemPromptSeen = false
         lastSystemPromptText = nil
+        retryIndex.removeAll()
+        retryStarts.removeAll()
+        closedSteps.removeAll()
+        openRetry = nil
+        openMaxRetries = nil
+        openRetryDelayMs = nil
+        openLastAttemptError = nil
+        toolTimings.removeAll()
+        turnUsageLedger.clear()
+        composerProjections.clear()
     }
 
     private func rebuildIndexes() {
@@ -742,6 +829,8 @@ public final class TranscriptReducer {
                 if let messageId = user.messageId { userByMessage[messageId] = index }
             case .compacted(let compacted):
                 compactIndex[compacted.compactionId] = index
+            case .retry(let retry):
+                retryIndex[retry.identity] = index
             default:
                 break
             }
@@ -759,6 +848,7 @@ public final class TranscriptReducer {
     }
 
     private func readProjections(_ p: JSONValue, atSeq: Int64) {
+        composerProjections.baseline(p, fallbackSeq: atSeq)
         if let title = p["values"]["title"].str() { titleValue = title }
         if !p["values"]["inbox"].isNull {
             _ = readInbox(p["values"]["inbox"], seq: p["asOfSeq"].long() ?? atSeq, baseline: true)
@@ -824,6 +914,7 @@ public final class TranscriptReducer {
         if e.isNull || e["ignorable"].bool() == true { return false }
         guard let seq = e["seq"].long(), seq > cursor else { return false }
         cursor = seq
+        turnUsageLedger.apply(e)
         let data = e["data"]
         switch e["type"].str() {
         case "turn/start":
@@ -854,15 +945,17 @@ public final class TranscriptReducer {
                 fact.endReason = reason["kind"].str()
                 turnFacts[turn] = fact
             }
+            refreshRetries()
             if endsCurrent {
                 openTurn = nil
                 openStep = nil
             }
             switch reason["kind"].str() {
             case "error":
-                committed.append(.notice(Item.Notice(
+                committed.append(.turnFailure(Item.TurnFailure(
                     key: "te\(seq)",
-                    text: reason["error"]["message"].str() ?? "",
+                    message: reason["error"]["message"].str() ?? "",
+                    code: reason["error"]["code"].str(),
                     turn: turn
                 )))
             case "aborted":
@@ -890,10 +983,38 @@ public final class TranscriptReducer {
         case "step/start":
             openTurn = data["turn"].int() ?? openTurn
             openStep = data["step"].int() ?? (steps + 1)
+            openRetry = nil
+            openMaxRetries = nil
+            openRetryDelayMs = nil
+            openLastAttemptError = nil
             if let turn = openTurn, let step = openStep, let time = e["time"].long() {
                 stepStartTimes["\(turn):\(step)"] = time
             }
             if let turn = openTurn, turnFacts[turn] == nil { turnFacts[turn] = TurnRecord(turn: turn) }
+        case "step/end":
+            if let turn = data["turn"].int() ?? openTurn, let step = data["step"].int() ?? openStep {
+                closedSteps[StepIdentity(turn: turn, step: step)] = seq
+            }
+            refreshRetries()
+        case "llm/retry":
+            openRetry = data["retry"].int() ?? ((openRetry ?? 0) + 1)
+            openMaxRetries = data["maxRetries"].int() ?? data["maximum"].int() ?? openMaxRetries
+            openRetryDelayMs = data["delayMs"].long() ?? data["retryDelayMs"].long() ?? openRetryDelayMs
+            openLastAttemptError = data["failure"]["message"].str()
+                ?? data["error"]["message"].str()
+                ?? data["error"]["reason"].str()
+                ?? data["error"].str()
+                ?? openLastAttemptError
+            scheduleRetry(data, seq: seq)
+        case "llm/retry-started":
+            if let identity = retryIdentity(data), let retry = data["retry"].int() {
+                var starts = retryStarts[identity] ?? [:]
+                starts[retry] = seq
+                retryStarts[identity] = starts
+                if let index = retryIndex[identity], case .retry(let item) = committed[index] {
+                    committed[index] = .retry(projectRetry(item))
+                }
+            }
         case "user/message":
             let msg = data["content"].isNull ? data["message"] : data
             retireMessage(msg)
@@ -913,6 +1034,7 @@ public final class TranscriptReducer {
             settleAttempt(e)
             let messageTime = e["time"].long()
             if let ownerTurn, turnFacts[ownerTurn] == nil { turnFacts[ownerTurn] = TurnRecord(turn: ownerTurn) }
+            let firstTokenTime = matching?.firstTokenTime ?? assistantStreamFirstTokenTime(data["stream"])
             let messageId = data["message"]["id"].str()
             var replyParts: [String] = []
             var reasoningParts: [String] = []
@@ -981,15 +1103,23 @@ public final class TranscriptReducer {
                 step: step,
                 stepStartTime: stepStartTime,
                 messageTime: messageTime,
-                firstTokenTime: matching?.firstTokenTime,
+                firstTokenTime: firstTokenTime,
                 replyText: replyParts.joined(separator: "\n\n"),
                 reasoningText: reasoningParts.joined(separator: "\n\n"),
                 usage: stepUsage,
                 provider: source["provider"].str(),
                 model: source["model"].str(),
                 toolCallIds: toolCallIds,
-                interrupted: interrupted
+                interrupted: interrupted,
+                retry: openRetry,
+                maxRetries: openMaxRetries,
+                retryDelayMs: openRetryDelayMs,
+                lastAttemptError: openLastAttemptError
             ))
+            openRetry = nil
+            openMaxRetries = nil
+            openRetryDelayMs = nil
+            openLastAttemptError = nil
             if interrupted {
                 committed.append(.notice(Item.Notice(key: "i\(seq)", text: "已停止", turn: ownerTurn)))
             }
@@ -1005,11 +1135,13 @@ public final class TranscriptReducer {
             settleAttempt(e)
         case "tool/call":
             let id = data["callId"].str() ?? "c\(seq)"
+            let time = e["time"].long()
+            toolTimings[id, default: ToolCallTiming()].callStartedAt = time
             upsertTool(
                 id: id,
                 name: data["name"].str() ?? "",
                 args: data["arguments"].str() ?? "",
-                time: e["time"].long(),
+                time: time,
                 turn: data["turn"].int() ?? openTurn,
                 step: data["step"].int() ?? openStep
             )
@@ -1022,6 +1154,9 @@ public final class TranscriptReducer {
                 .joined(separator: "\n")
             let err = data["error"]
             let isErr = !err.isNull || data["message"]["isError"].bool() == true
+            let timing = toolTimings[id] ?? ToolCallTiming()
+            timing.resultAt = timing.resultAt ?? e["time"].long()
+            toolTimings[id] = timing
             updateTool(id) { tool in
                 var next = tool
                 next.status = isErr ? .error : .ok
@@ -1030,6 +1165,10 @@ public final class TranscriptReducer {
                 next.endedAt = e["time"].long()
                 return next
             }
+        case "tool/ptc-dispatch-start":
+            upsertPtcDispatch(data, time: e["time"].long(), settled: false)
+        case "tool/ptc-dispatch":
+            upsertPtcDispatch(data, time: e["time"].long(), settled: true)
         case "approval/asked":
             if let id = data["callId"].str() {
                 if let approvalId = data["id"].str() { approvalCall[approvalId] = id }
@@ -1217,7 +1356,7 @@ public final class TranscriptReducer {
         )))
     }
 
-    private func upsertTool(id: String, name: String, args: String, time: Int64?, turn: Int?, step: Int?, status: ToolStatus = .running) {
+    private func upsertTool(id: String, name: String, args: String, time: Int64?, turn: Int?, step: Int?, status: ToolStatus = .running, parentCallId: String? = nil) {
         if let i = toolIndex[id], case .tool(var tool) = committed[i] {
             tool.name = name.isEmpty ? tool.name : name
             tool.arguments = args.isEmpty ? tool.arguments : args
@@ -1225,12 +1364,13 @@ public final class TranscriptReducer {
             if tool.status == .preparing && status == .running { tool.startedAt = time }
             tool.turn = turn ?? tool.turn
             tool.step = step ?? tool.step
+            tool.parentCallId = parentCallId ?? tool.parentCallId
             committed[i] = .tool(tool)
         } else {
             toolIndex[id] = committed.count
             committed.append(.tool(Item.Tool(
                 key: "k\(id)", callId: id, name: name, arguments: args, status: status,
-                result: nil, error: nil, startedAt: time, endedAt: nil, turn: turn, step: step, parentCallId: nil, schemaJson: nil
+                result: nil, error: nil, startedAt: time, endedAt: nil, turn: turn, step: step, parentCallId: parentCallId, schemaJson: nil
             )))
         }
     }
@@ -1348,6 +1488,139 @@ public final class TranscriptReducer {
         }
         _ = index
     }
+
+    private func assistantStreamFirstTokenTime(_ stream: JSONValue) -> Int64? {
+        var earliest: Int64?
+        for record in stream.arr() ?? [] {
+            guard let type = record["type"].str() else { continue }
+            if type == "reasoning-chunks" || type == "reasoning-delta" { continue }
+            let time: Int64?
+            switch type {
+            case "text-chunks", "tool-call-chunks": time = record["time0"].long() ?? record["time"].long()
+            case "chunk": time = record["time"].long()
+            default: time = record["time"].long() ?? record["time0"].long()
+            }
+            guard let time else { continue }
+            earliest = earliest.map { min($0, time) } ?? time
+        }
+        return earliest
+    }
+
+    private func retryIdentity(_ data: JSONValue) -> RetryIdentity? {
+        guard let id = data["retryId"].str(), !id.isEmpty else { return nil }
+        return RetryIdentity(id: id, turn: data["turn"].int(), step: data["step"].int())
+    }
+
+    private func scheduleRetry(_ data: JSONValue, seq: Int64) {
+        guard let identity = retryIdentity(data), let retry = data["retry"].int() else { return }
+        let attempt = RetryAttempt(
+            seq: seq,
+            retry: retry,
+            maxRetries: data["maxRetries"].int(),
+            mode: data["mode"].str() ?? "",
+            delayMs: data["delayMs"].long() ?? 0,
+            message: data["failure"]["message"].str() ?? "",
+            code: data["failure"]["code"].str(),
+            state: .scheduled
+        )
+        if let index = retryIndex[identity], case .retry(let previous) = committed[index] {
+            committed[index] = .retry(projectRetry(Item.Retry(
+                key: previous.key, retryId: previous.retryId, turn: previous.turn, step: previous.step,
+                attempts: previous.attempts + [attempt]
+            )))
+        } else {
+            let item = Item.Retry(
+                key: "retry:\(identity.turn.map(String.init) ?? "nil"):\(identity.step.map(String.init) ?? "nil"):\(identity.id)",
+                retryId: identity.id, turn: identity.turn, step: identity.step, attempts: [attempt]
+            )
+            retryIndex[identity] = committed.count
+            committed.append(.retry(projectRetry(item)))
+        }
+    }
+
+    private func projectRetry(_ item: Item.Retry) -> Item.Retry {
+        let starts = retryStarts[item.identity]
+        let closedAt = max(
+            item.turn.flatMap { turnFacts[$0]?.endSeq } ?? -1,
+            (item.turn != nil && item.step != nil) ? (closedSteps[StepIdentity(turn: item.turn!, step: item.step!)] ?? -1) : -1
+        )
+        var updated = item.attempts
+        var changed = false
+        for index in updated.indices {
+            let attempt = updated[index]
+            let state: RetryState
+            if attempt.state == .started || (starts?[attempt.retry] ?? -1) > attempt.seq {
+                state = .started
+            } else if index == updated.count - 1 && closedAt > attempt.seq {
+                state = .cancelled
+            } else {
+                state = attempt.state
+            }
+            if state != attempt.state {
+                var next = attempt
+                next.state = state
+                updated[index] = next
+                changed = true
+            }
+        }
+        return changed ? Item.Retry(key: item.key, retryId: item.retryId, turn: item.turn, step: item.step, attempts: updated) : item
+    }
+
+    private func refreshRetries() {
+        for index in retryIndex.values {
+            if case .retry(let item) = committed[index] {
+                committed[index] = .retry(projectRetry(item))
+            }
+        }
+    }
+
+    private func upsertPtcDispatch(_ data: JSONValue, time: Int64?, settled: Bool) {
+        guard let subCallId = data["subCallId"].str(), let parentCallId = data["parentCallId"].str() else { return }
+        let args: String
+        if let text = data["arguments"].str() {
+            args = text
+        } else if data["arguments"].obj() != nil || data["arguments"].arr() != nil {
+            args = data["arguments"].prettyString() ?? "{}"
+        } else {
+            args = "{}"
+        }
+        upsertTool(
+            id: subCallId,
+            name: data["name"].str() ?? "",
+            args: args,
+            time: time,
+            turn: openTurn,
+            step: openStep,
+            parentCallId: parentCallId
+        )
+        if !settled { return }
+        let text = (data["content"].arr() ?? [])
+            .filter { $0["type"].str() == "text" }
+            .map { $0["text"].str() ?? "" }
+            .joined(separator: "\n")
+        let err = data["error"]
+        let isErr = data["isError"].bool() == true || !err.isNull
+        updateTool(subCallId) { tool in
+            var next = tool
+            next.status = isErr ? .error : .ok
+            next.result = text.isEmpty ? nil : text
+            next.error = err.isNull ? nil : (err["reason"].str() ?? err["code"].str())
+            next.endedAt = time
+            next.parentCallId = parentCallId
+            return next
+        }
+    }
+}
+
+struct RetryIdentity: Hashable {
+    var id: String
+    var turn: Int?
+    var step: Int?
+}
+
+private struct StepIdentity: Hashable {
+    var turn: Int
+    var step: Int
 }
 
 private final class LiveAttempt {

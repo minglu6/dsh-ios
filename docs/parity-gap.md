@@ -1,6 +1,6 @@
 # iOS ↔ Android / desktop parity gap
 
-Phone is a controller. Layout may change for a narrow portrait screen. Features, copy, icons, colors, states, and interactions follow the official desktop UI (`@deepseek-ai/dsh@0.2.1-alpha.2`, git `d743267`) as already ported by [dsh-android](https://github.com/minglu6/dsh-android) `main` @ `03ebc36`.
+Phone is a controller. Layout may change for a narrow portrait screen. Features, copy, icons, colors, states, and interactions follow the official desktop UI (`@deepseek-ai/dsh@0.2.1-alpha.2`, git `d743267`) as already ported by [dsh-android](https://github.com/minglu6/dsh-android) `main`.
 
 **Do not invent** settings groups, credential pages, extra security, or placeholder shells. Hide only what desktop itself hides (local OS editor, keyboard shortcuts).
 
@@ -20,8 +20,9 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | A | Trajectory ledger + inspector; chat message actions (copy / like / dislike / branch) | done (#3) |
 | B | Host PTY terminal + workspace file tree | done (#4) |
 | C | Live jobs panel + completion unread green-dot sync | done (#5) |
-| D | Plugin manager + schedule + remaining official settings + chat polish | this PR |
-| E / F / G | later surfaces (see Deferred) | queued |
+| D | Plugin manager + schedule + remaining official settings + chat polish | done (#6) |
+| E | Permissions + ModelPicker + questions/commands/attachments/queue/goals + Todo/stats/retry + mention/approval/HostUi close | this PR |
+| F / G | later surfaces (see Deferred) | queued |
 
 ---
 
@@ -30,20 +31,18 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Surface | Official package | Android | iOS now |
 | --- | --- | --- | --- |
 | Transcript fold | `ui-chat` / `ui-conversation` | `protocol/Transcript.kt`, `Chat.kt`, `ChatProcess.kt` | `protocol/…/Transcript.swift`, `ChatProcess.swift`, `Features/Chat/ChatView.swift` |
-| Message actions | `ui-chat` `MessageIconActions` | `Chat.kt` `MessageActions` | `ChatView` `MessageActions` (copy / like / dislike / branch) |
+| Message actions | `ui-chat` `MessageIconActions` | `Chat.kt` `MessageActions` | `ChatView` `MessageActions` (copy / like / dislike / branch + turn usage) |
 | Trajectory | `ui-trajectory` | `Trajectory.kt` + Detail/Inspector/Request/Locales; `protocol/TrajectoryTimeline.kt` | `Features/Trajectory/` + `protocol/Trajectory.swift` (request inspector leftover) |
 | Terminal | Host `terminalController` | `TerminalPanel.kt`, `TerminalView.kt`, `TerminalEmulator.kt` | `Features/Terminal/` + `protocol/TerminalEmulator.swift`; default fg/bg follow appearance, Tokyo Night ANSI unchanged |
 | Files | `workspaceFiles` | `FilesPanel.kt` | `Features/Files/` + workspace tree / browse |
 | Jobs | `job-controller` | `JobsAction.kt`, jobs follow in `Pocket.kt` | header chip + `JobsPanel` (`jobs.list` / `follow` / `kill`) |
-| Plugins | `ui-plugin-manager`, `ui-settings-plugins` | `PluginsScreen.kt`, `PluginInventory.kt` | `Features/Plugins/` + `PluginPolicy.swift` (install/uninstall/cancel/wait, registries, inspect, settingsDescribe/Mutate, PluginArtwork, inventory, HostUi) |
-| Schedule | `ui-schedule` (sidebar, not settings) | `ScheduleScreen.kt`; drawer row | `Features/Schedule/ScheduleScreen.swift` + `SchedulePolicy.swift`; drawer only |
-| Completion unread | `StateDot` `done` | `CompletionReminders.kt`, `Pocket.kt` `completion.view` | `CompletionReminders` epoch+revision |
-| Settings general | `ui-settings-general` | `Screens.kt` `GeneralSettingsScreen`, `HostSettings.kt` | fonts / collapse / performance / permission / session log / link opening; **appearance + fonts stay local** (do not write the remote host) |
-| Settings models | `ui-settings-models` | `ModelsSettingsScreen.kt` | `ModelsSettingsView` provider editor + `credentials.*` |
-| Connections | pocket `settings.section` `pocket` | `Screens.kt` connections | pairing / diagnostics copy |
-| Workspace drawer | `ui-workspace` | `WorkspaceNavigation.kt`, `Screens.kt` | entity groups / tree / rename / delete / add-workspace browse |
+| Plugins | `ui-plugin-manager`, `ui-settings-plugins` | `PluginsScreen.kt`, `PluginInventory.kt` | `Features/Plugins/` + `PluginPolicy.swift` |
+| Schedule | `ui-schedule` (sidebar, not settings) | `ScheduleScreen.kt`; drawer row | `Features/Schedule/ScheduleScreen.swift`; drawer only |
+| Permissions | `ui-permission` | `PermissionUi.kt` `permissions.catalog/get/set` + risk sheet | `PermissionUi.swift` + session picker + Settings defaults + `danger-full-access`/`auto` confirm |
+| Model picker | composer model menu | `ModelPicker.kt` + effort pane | `ModelPicker.swift` two-level picker; switching models clears effort |
+| Composer dock | `ui-chat` | UserQ / Approval / Todo / Goal / Queue / Composer / Stats | same stack in `ChatView` + `ChatDock.swift` |
+| Host UI | pocket `ui.open` | `HostUiScreen.kt` (`ui.close` on dismiss) | `HostUiView` ticket POST + `ui.close` on dismiss |
 | Markdown | `ui-chat` primitives | `Markdown.kt` | `protocol/Markdown.swift` + `Features/Chat/MarkdownView.swift` |
-| Host UI | pocket `ui.open` | `HostUi.kt` | `protocol/HostUi.swift` + `HostUiView` (ticket POST, 303, HttpOnly host-only cookie; never put bearer/ticket in the WebView URL) |
 
 ---
 
@@ -53,18 +52,26 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | --- | --- | --- | --- | --- |
 | User bubble, pending echo | `Chat.kt` | `MessageRow` `.user` | **present** | — |
 | Assistant text stream | follow reducer | `.text` live/committed | **present** | — |
-| Reasoning disclosure | Think icon + preview | official Think / 思考 + preview; Markdown body | **partial** → **present** | **D** |
-| Tool row → inspector | `Chat.kt` tool card | `ToolProcessSummary` title/icon/receipt + inspect sheet | **partial** → **present** | **D** |
-| Process group fold | `ChatProcess.kt` | `foldChatItems` / `visibleChatRows` + `ProcessGroupView` | **missing** → **present** | **D** |
-| Notices (stopped / max-tokens / account) | reducer + official `message.*` | reducer emits; `.notice` / retry / turnFailure | **partial** | A leftover |
+| Reasoning disclosure | Think icon + preview | official Think / 思考 + preview; Markdown body | **present** | **D** |
+| Tool row → inspector | `Chat.kt` tool card | `ToolProcessSummary` title/icon/receipt + inspect sheet | **present** | **D** |
+| Process group fold | `ChatProcess.kt` | `foldChatItems` / `visibleChatRows` + `ProcessGroupView` | **present** | **D** |
+| Notices (stopped / max-tokens / account) | reducer + official `message.*` | reducer emits; `.notice` / `RetryRow` / `TurnFailureRow` | **present** | **E** |
 | Deliverables | `Item.Deliverable` | tap opens workspace file preview | **present** | **B** |
-| Markdown / code block / tables | `Markdown.kt` | AST + GFM tables / code / file chips | **partial** → **present** | **D** |
-| Copy / like / dislike / branch | `MessageActions` + `FeedbackCategory` + `feedback.set` + `sessions.fork` | copy / like / dislike / branch; `canFork` needs `firstPrompt == nil` | **present** | **A** |
-| Turn usage pill | `ComposerStats.kt` `TurnUsageAction` | missing (needs `TurnTokenUsage` + `PerformanceUsage.Detailed`) | **missing** | **E** leftover |
-| Composer queue / steer | busyEnter | `busySend` | **present** | — |
-| `@` mentions | `MentionMenu.kt` | `ComposerView` mention panel | **partial** | **E** leftover |
+| Markdown / code block / tables | `Markdown.kt` | AST + GFM tables / code / file chips | **present** | **D** |
+| Copy / like / dislike / branch | `MessageActions` + `FeedbackCategory` | same; `canFork` needs `firstPrompt == nil` | **present** | **A** |
+| Turn usage pill | `ComposerStats.kt` `TurnUsageAction` | same; only `PerformanceUsage.Detailed` | **missing** → **present** | **E** |
+| Composer statistics | Activity / Usage / Context pills | `ComposerStats` + Host projections | **missing** → **present** | **E** |
+| Composer queue / steer | busyEnter + `queue.update` | `busySend` + `PromptQueue` edit/remove/steer | **partial** → **present** | **E** |
+| `@` mentions | `MentionMenu.kt` official `@path` / `@"path"` / `@[title](dsh-session:…)` | same tokens + chip row + mention panel | **partial** → **present** | **E** |
+| `/` commands | `CommandPopupSheet` `commands.list/execute` | `CommandSheet` + builtin `goal/plan/feedback/compact/permission` | **missing** → **present** | **E** |
+| Attachments | `attachments.upload` | image picker + file importer + receipts | **missing** → **present** | **E** |
+| User questions | `UserQuestionCard` `userQuestions.answer` | same card / plan-review / skip+submit | **missing** → **present** | **E** |
+| Approvals | official `ApprovalCard` takes composer | official card; no leftover inline row | **partial** → **present** | **E** |
+| TodoPanel | dock card above composer | `TodoPanel` expand in place | **missing** → **present** | **E** |
+| Goal bar | `goals.get` / `goal.activation` CAS | `GoalBar` + `GoalSheet` pause/resume/clear/edit | **missing** → **present** | **E** |
+| Permission mode | catalog/get/set + risk sheet | session picker + Settings defaults (`auto` not a default) | **partial** → **present** | **E** |
+| Model + effort | two-level picker | `ModelPicker` root / models / effort | **partial** → **present** | **E** |
 | No “scroll to bottom” FAB | `followBottom` | auto-scroll only | **present** | — |
-| Approvals | `Chat.kt` permission sheet | inline allow/reject | **partial** | **E** leftover |
 
 ## 2. Trajectory
 
@@ -118,17 +125,18 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Item | Android | iOS | Tag | Batch |
 | --- | --- | --- | --- | --- |
 | Drawer 插件 (`plugins.list`) | `Screens.kt` | shown if op advertised | **present** | **D** |
-| Plugin manager (install / enable / inspect / uninstall / cancel / wait) | `PluginsScreen.kt` | `PluginsScreen` | **missing** → **present** | **D** |
-| Registries + inspect | `PluginsScreen.kt` | `plugins.registries` / `plugins.inspect` | **missing** → **present** | **D** |
-| Built-in plugin slots from Host describe | audit P1; no APK whitelist | `plugins.settingsDescribe` namespaces (not an officialConfigurations whitelist) | **missing** → **present** | **D** |
-| PluginArtwork (SF Symbol kinds + sanitized SVG) | `PluginArtwork.kt` | `PluginArtwork.swift` | **missing** → **present** | **D** |
-| Settings 「内置插件」 inventory | `PluginInventory.kt` | `PluginInventoryView` when `plugins.inventory` | **partial** → **present** | **D** |
-| HostUi (`ui.open`) | `HostUi.kt` | ticket exchange + WKWebView; gated by `hello.ops` | **missing** → **present** | **D** |
-| Drawer 自动化 (not a settings section) | `ScheduleScreen.kt` | drawer only; Settings 自动化 row removed | **partial** → **present** | **D** |
-| Schedule catalog / edit / history | `ScheduleScreen.kt` | CAS update + delete + history; New → chat | **missing** → **present** | **D** |
-| Agent presets | `AgentPresetSettingsScreen.kt` | hidden (no stub) | **missing** | **E** leftover |
-| General: fonts, transcript, collapse, busy, performance, log upload, link opening | `GeneralSettingsScreen` | present; appearance/fonts **local only** | **partial** → **present** | **D** |
-| Models provider editor + keys | `ModelsSettingsScreen.kt` | `models.providers*` + `credentials.*` | **partial** → **present** | **D** |
+| Plugin manager (install / enable / inspect / uninstall / cancel / wait) | `PluginsScreen.kt` | `PluginsScreen` | **present** | **D** |
+| Registries + inspect | `PluginsScreen.kt` | `plugins.registries` / `plugins.inspect` | **present** | **D** |
+| Built-in plugin slots from Host describe | audit P1; no APK whitelist | `plugins.settingsDescribe` namespaces | **present** | **D** |
+| PluginArtwork (SF Symbol kinds + sanitized SVG) | `PluginArtwork.kt` | `PluginArtwork.swift` | **present** | **D** |
+| Settings 「内置插件」 inventory | `PluginInventory.kt` | `PluginInventoryView` when `plugins.inventory` | **present** | **D** |
+| HostUi (`ui.open`) | `HostUi.kt` + `ui.close` on dismiss | ticket exchange + WKWebView + `ui.close` | **partial** → **present** | **E** |
+| Drawer 自动化 (not a settings section) | `ScheduleScreen.kt` | drawer only; Settings 自动化 row removed | **present** | **D** |
+| Schedule catalog / edit / history | `ScheduleScreen.kt` | CAS update + delete + history; New → chat | **present** | **D** |
+| Agent presets | `AgentPresetSettingsScreen.kt` | hidden (no stub) | **missing** | leftover (see Deferred) |
+| General: fonts, transcript, collapse, busy, performance, log upload, link opening | `GeneralSettingsScreen` | present; appearance/fonts **local only** | **present** | **D** |
+| Permission defaults | `PermissionPickerSheet(forDefaults)` + risk | same; `auto` cannot be a default | **partial** → **present** | **E** |
+| Models provider editor + keys | `ModelsSettingsScreen.kt` | `models.providers*` + `credentials.*` | **present** | **D** |
 | 「移动端」 group / 代码自动换行 | Android still has these (audit S2/S5) | wrap is local; no extra mobile group copied | **present** | — |
 | Version only on General | audit S3 | General only | **present** | — |
 | Account / shortcuts / open config file | desktop-local | — | **hide** | — |
@@ -143,13 +151,14 @@ Port as the matching batch needs them (same JSON, no second protocol):
 | Android `app/core/protocol` | Used by | Batch |
 | --- | --- | --- |
 | `TrajectoryTimeline.kt` | Trajectory swimlane | **A done** (`TrajectoryTimeline.swift`) |
-| `Transcript.kt` extra items (`System`, `Compacted`, `Retry`, `TurnFailure`, `Changes`; System/Compacted folded, Retry/TurnFailure rendered, Changes still unused in chat) | Chat + trajectory | A / D; Changes → leftover |
-| `TurnTokenUsage.kt` | Inspector + usage | **E** leftover |
+| `Transcript.kt` extra items (`System`, `Compacted`, `Retry`, `TurnFailure`, `Changes`; System/Compacted folded, Retry/TurnFailure rendered, Changes still unused in chat) | Chat + trajectory | A / D / **E**; Changes → leftover |
+| `TurnTokenUsage.kt` | Inspector + usage | **E done** (`TurnTokenUsage.swift`) |
+| `ComposerMetrics.kt` | Composer statistics | **E done** (`ComposerMetrics.swift`) |
 | `WorkspaceChanges.kt` | Changed-file cards | leftover (see Deferred) |
 | `PermissionModels.kt` | Permission pickers | **D done** (`PermissionModels.swift`) |
-| `HostUi.kt` | Plugin/settings slots | **D done** (`HostUi.swift`) |
+| `HostUi.kt` | Plugin/settings slots | **D done** (`HostUi.swift`); **E** adds `ui.close` |
 
-Existing iOS `DSHProtocol` already covers hello/pair, follow/history, prompt/cancel, models.catalog/select, models.providers*/settingsMutate/discover, approvals, workspace pin/archive, plugins.list / setEnabled / inventory / install / inspect / registries / uninstall / cancelInstall / waitForInstall / settingsDescribe / settingsMutate, schedule.catalog / create / update / delete / history, credentials.describe / set / unset, ui.open, permissions.catalog, jobs.list / follow / kill, completion.state / view.
+Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, commands.list/execute, attachments.upload, userQuestions.answer, goals.get/edit/pause/resume/clear, references.files/sessions, ui.close.
 
 ---
 
@@ -159,12 +168,14 @@ Existing iOS `DSHProtocol` already covers hello/pair, follow/history, prompt/can
 - Terminal / files / jobs: expose when the matching op is in `hello.ops` (same as Android).
 - Plugins: drawer when `plugins.list`; Settings 「内置插件」 when `plugins.inventory`; HostUi when `ui.open`.
 - Schedule: **drawer only** (desktop sidebar). Do not add a Settings row.
+- Permissions / models / commands / attachments / queue / goals: expose when the matching op is advertised.
 - Appearance and fonts stay on the phone; they must not be written to the remote host.
 - Do not show a row that opens an empty TODO page.
 
 ## Deferred
 
-- Batches **E / F / G**.
+- Batches **F / G**.
 - Trajectory **request inspector**.
-- Chat **WorkspaceChanges** cards (can be a follow-up PR).
-- Turn usage pill, `@` mention polish, approval sheet chrome, Agent presets.
+- Chat **WorkspaceChanges** cards.
+- **Agent presets**.
+- Session Inspector / browser surfaces.

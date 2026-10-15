@@ -23,6 +23,23 @@ struct ChatState {
     var turns: [TurnRecord] = []
     /// Last committed assistant text key per turn; filled in `publishChat`.
     var lastAnswerKeys: [Int: String] = [:]
+    var composerMetrics = ComposerMetrics()
+    var turnTokenUsage: [Int: TurnTokenUsage] = [:]
+    var goal: JSONValue?
+}
+
+enum AttachStatus: String, Equatable {
+    case pending, uploading, ready, failed
+}
+
+struct PendingAttach: Equatable, Identifiable {
+    var id = UUID()
+    var name: String
+    var isImage: Bool
+    var mediaType: String
+    var data: Data
+    var receiptId: String?
+    var status: AttachStatus
 }
 
 /// Android `FirstPrompt`: first send creating a session. iOS has no that path yet; kept for canFork.
@@ -112,6 +129,16 @@ final class AppModel: ObservableObject {
     @Published var modelSettingsRevision: Int64 = 0
     @Published var permissionCatalog: PermissionCatalog?
     @Published var permissionCatalogError: String?
+    @Published var permissionCatalogLoading = false
+    @Published var sessionPermission: String?
+    @Published var permissionChanging = false
+    @Published var modelPending: ModelChoice?
+    @Published var catalogLoading = false
+    @Published var catalogError: String?
+    @Published var goalActivation: String?
+    @Published var pendingAttaches: [PendingAttach] = []
+    @Published var commandEntries: [CommandEntry] = []
+    @Published var hiddenQuestionId: String?
     @Published var nearby: [DiscoveredHost] = []
     @Published var composerText = ""
     @Published var mentionQuery: String?
@@ -170,7 +197,12 @@ final class AppModel: ObservableObject {
     private var jobsReconcileBusy = false
     private var jobsReconcilePending = false
     private var jobsPanelKillError = false
-    private var selectedJobId: String?
+    private var selectedJobId: String? = nil
+    private var permissionProjectionSeq: Int64 = -1
+    private var goalProjectionSeq: Int64 = -1
+    private var modelProjectionSeq: Int64 = -1
+    private var goalActivationEpoch: Int64 = 0
+    private var attachmentCache: [String: Data] = [:]
 
     var activeProfile: Profile? { profiles.first { $0.id == activeId } }
     var currentDot: Dot? { activeId.flatMap { status[$0] } }
@@ -214,8 +246,15 @@ final class AppModel: ObservableObject {
         firstPrompt = nil
         approvals = []
         userQuestions = []
+        hiddenQuestionId = nil
+        sessionPermission = nil
+        goalActivation = nil
+        pendingAttaches = []
+        commandEntries = []
         ops = []
         catalog = nil
+        catalogError = nil
+        modelPending = nil
         routes[profileId] = nil
         connectTask = Task { await runConnection(profileId) }
     }
@@ -275,9 +314,14 @@ final class AppModel: ObservableObject {
     func openSession(_ sessionId: String) {
         initializeChat(sessionId)
         showDrawer = false
+        loadSessionPermission(sessionId)
+        refreshGoal()
         Task {
             guard let client else { return }
             do {
+                if ops.contains("commands.list") {
+                    commandEntries = (try? await client.listCommands(sessionId: sessionId)) ?? []
+                }
                 try await refollow(client, sessionId: sessionId, afterSeq: nil)
             } catch is CancellationError {
             } catch {
@@ -303,9 +347,18 @@ final class AppModel: ObservableObject {
 
     func sendCurrent() {
         let text = composerText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, let chat, let client else { return }
+        let images = pendingAttaches.compactMap { attach -> PromptImage? in
+            guard attach.isImage, attach.status == .ready || attach.status == .pending else { return nil }
+            return PromptImage(mediaType: attach.mediaType, data: attach.data.base64EncodedString(), name: attach.name)
+        }
+        let files = pendingAttaches.compactMap { attach -> PromptFile? in
+            guard !attach.isImage, attach.status == .ready, let receipt = attach.receiptId else { return nil }
+            return PromptFile(receiptId: receipt)
+        }
+        guard (!text.isEmpty || !images.isEmpty || !files.isEmpty), let chat, let client else { return }
         composerText = ""
-        Task { await sendPrompt(client, chat: chat, text: text) }
+        pendingAttaches = []
+        Task { await sendPrompt(client, chat: chat, text: text, images: images, files: files) }
     }
 
     func stopRun() {
@@ -435,15 +488,259 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func selectModel(_ info: ModelInfo, effort: String?) {
+    func selectModel(_ info: ModelInfo, effort: String?, onComplete: ((Bool) -> Void)? = nil) {
+        selectModel(
+            ModelChoice(provider: info.provider, model: info.id, name: info.name, effort: effort),
+            onComplete: onComplete
+        )
+    }
+
+    func selectModel(_ choice: ModelChoice, onComplete: ((Bool) -> Void)? = nil) {
         Task {
-            guard let client, let sessionId = chat?.sessionId else { return }
+            guard let client, let sessionId = chat?.sessionId, modelPending == nil else {
+                onComplete?(false)
+                return
+            }
+            modelPending = choice
             do {
-                try await client.selectModel(sessionId: sessionId, provider: info.provider, model: info.id, effort: effort)
-                modelChoice = ModelChoice(provider: info.provider, model: info.id, name: info.name, effort: effort)
+                let response = try await client.selectModel(
+                    sessionId: sessionId,
+                    provider: choice.provider,
+                    model: choice.model,
+                    effort: choice.effort
+                )
+                if let selected = modelChoice(from: response["selected"]) {
+                    modelChoice = selected
+                } else {
+                    modelChoice = choice
+                }
+                onComplete?(true)
+            } catch {
+                emit(error.localizedDescription)
+                onComplete?(false)
+            }
+            if modelPending == choice { modelPending = nil }
+        }
+    }
+
+    func setPermission(_ name: String, onComplete: ((Bool) -> Void)? = nil) {
+        Task {
+            guard let client, let sessionId = chat?.sessionId, !permissionChanging, !permissionCatalogLoading else {
+                onComplete?(false)
+                return
+            }
+            guard permissionCatalog?.options.contains(where: { $0.value == name }) == true else {
+                emit(L.t("权限目录已变化，请重新选择访问模式", "The permission catalog changed. Choose an access mode again."))
+                onComplete?(false)
+                return
+            }
+            permissionChanging = true
+            do {
+                let selected = try await client.setPermission(sessionId: sessionId, name: name)
+                sessionPermission = selected
+                if selected != name {
+                    emit(L.t("远程主机未应用所选权限，当前模式为 \(selected)", "The remote host did not apply the selected permission. Current mode is \(selected)"))
+                }
+                onComplete?(selected == name)
+            } catch {
+                emit(error.localizedDescription)
+                onComplete?(false)
+            }
+            permissionChanging = false
+        }
+    }
+
+    func updateQueuedPrompt(itemId: String, action: QueueAction, onComplete: @escaping (Bool) -> Void) {
+        Task {
+            guard let client, let sessionId = chat?.sessionId else {
+                onComplete(false)
+                return
+            }
+            do {
+                guard isOnline else { throw PocketError(code: "transport", message: L.t("未连接到远程主机", "Not connected to the remote host")) }
+                guard ops.contains("queue.update") else {
+                    throw PocketError(code: "unsupported", message: L.t("远程主机不支持修改排队消息", "This remote host cannot edit queued messages"))
+                }
+                guard let row = reducer.queueMessages().first(where: { $0.id == itemId }) else {
+                    throw PocketError(code: "session/queue-item-not-found", message: L.t("排队消息已变化", "Queued message changed"))
+                }
+                if row.sending { throw PocketError(code: "busy", message: L.t("消息仍在发送中", "The message is still sending")) }
+                switch action {
+                case .edit(let text):
+                    if !row.editable {
+                        throw PocketError(code: "invalid", message: L.t("含附件的排队消息不能编辑", "Queued messages with attachments cannot be edited"))
+                    }
+                    if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        throw PocketError(code: "invalid", message: L.t("消息不能为空", "Message cannot be empty"))
+                    }
+                case .steer:
+                    if chat?.running != true {
+                        throw PocketError(code: "invalid", message: L.t("当前没有运行中的轮次", "There is no running turn"))
+                    }
+                case .remove:
+                    break
+                }
+                _ = try await client.updateQueuedPrompt(sessionId: sessionId, itemId: itemId, action: action)
+                onComplete(true)
+            } catch {
+                let converged: Bool
+                if case .steer = action, let pocket = error as? PocketError,
+                   pocket.code == "session/steer-unavailable" || pocket.code == "session/queue-item-not-found" {
+                    converged = true
+                } else {
+                    converged = false
+                }
+                if !converged { emit(error.localizedDescription) }
+                onComplete(converged)
+            }
+        }
+    }
+
+    func executeCommand(_ line: String, onResult: ((Bool) -> Void)? = nil) {
+        Task {
+            guard let client, let sessionId = chat?.sessionId else {
+                onResult?(false)
+                return
+            }
+            do {
+                let result = try await client.executeCommand(sessionId: sessionId, line: line)
+                if result["result"]["kind"].str() == "error" {
+                    emit(result["result"]["text"].str() ?? L.t("指令失败", "Command failed"))
+                    onResult?(false)
+                } else {
+                    if let text = result["result"]["text"].str(), !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        toast = text
+                    }
+                    onResult?(true)
+                }
+            } catch {
+                emit(error.localizedDescription)
+                onResult?(false)
+            }
+        }
+    }
+
+    func commandCatalog(sessionId: String) async throws -> [CommandEntry] {
+        guard let client else { throw PocketError(code: "transport", message: L.t("未连接", "Not connected")) }
+        let entries = try await client.listCommands(sessionId: sessionId)
+        if chat?.sessionId == sessionId { commandEntries = entries }
+        return entries
+    }
+
+    func attachImage(name: String, mediaType: String, data: Data) {
+        pendingAttaches.append(PendingAttach(
+            name: name,
+            isImage: true,
+            mediaType: mediaType,
+            data: data,
+            receiptId: nil,
+            status: .ready
+        ))
+    }
+
+    func attachFile(name: String, mediaType: String, data: Data) {
+        guard chat?.sessionId != nil else { return }
+        let attach = PendingAttach(
+            name: name,
+            isImage: false,
+            mediaType: mediaType,
+            data: data,
+            receiptId: nil,
+            status: .uploading
+        )
+        pendingAttaches.append(attach)
+        Task { await uploadAttach(attach.id) }
+    }
+
+    func retryAttach(_ id: UUID) {
+        Task { await uploadAttach(id) }
+    }
+
+    func removeAttach(_ id: UUID) {
+        pendingAttaches.removeAll { $0.id == id }
+    }
+
+    func answerUserQuestion(callId: String, answers: [JSONValue], onResult: @escaping (Bool) -> Void) {
+        Task {
+            guard let client, let sessionId = chat?.sessionId else {
+                onResult(false)
+                return
+            }
+            do {
+                let result = try await client.answerUserQuestion(sessionId: sessionId, callId: callId, answers: answers)
+                guard result["accepted"].bool() == true else {
+                    throw PocketError(code: "rejected", message: L.t("提问已变化或答案未被接受", "The question changed or the answers were not accepted"))
+                }
+                userQuestions.removeAll { $0.callId == callId || $0.questionId == callId }
+                if hiddenQuestionId == callId { hiddenQuestionId = nil }
+                onResult(true)
+            } catch {
+                emit(error.localizedDescription)
+                onResult(false)
+            }
+        }
+    }
+
+    func refreshGoal() {
+        Task {
+            guard let client, let sessionId = chat?.sessionId, ops.contains("goals.get") else { return }
+            let epoch = goalActivationEpoch
+            do {
+                let result = try await client.getGoal(sessionId: sessionId)
+                if chat?.sessionId == sessionId && goalActivationEpoch == epoch {
+                    goalActivation = result["goal"]["activation"].str()
+                    chat?.goal = result["goal"].isNull ? nil : result["goal"]
+                }
             } catch {
                 emit(error.localizedDescription)
             }
+        }
+    }
+
+    func mutateGoal(action: String, objective: String?, onComplete: @escaping (Bool) -> Void) {
+        Task {
+            guard let client, let sessionId = chat?.sessionId, let goal = chat?.goal else {
+                onComplete(false)
+                return
+            }
+            let epoch = goalActivationEpoch
+            let ref = jsonObject(["id": goal["id"], "revision": goal["revision"]])
+            do {
+                let response = try await client.mutateGoal(sessionId: sessionId, action: action, ref: ref, objective: objective)
+                if chat?.sessionId == sessionId && goalActivationEpoch == epoch {
+                    goalActivation = response["goal"]["activation"].str()
+                    chat?.goal = response["goal"].isNull ? nil : response["goal"]
+                }
+                onComplete(true)
+            } catch {
+                emit(error.localizedDescription)
+                onComplete(false)
+            }
+        }
+    }
+
+    func insertComposer(_ token: String) {
+        let next = replaceComposerToken(composerText, cursor: composerText.count, token: token)
+        composerText = next.text
+        mentionQuery = nil
+    }
+
+    func consumeComposerSlash() {
+        let next = replaceComposerToken(composerText, cursor: composerText.count, token: "")
+        composerText = next.text
+    }
+
+    func reloadModelCatalog() {
+        Task {
+            guard let client else { return }
+            catalogLoading = true
+            do {
+                catalog = try await client.modelCatalog()
+                catalogError = nil
+            } catch {
+                catalogError = error.localizedDescription
+            }
+            catalogLoading = false
         }
     }
 
@@ -884,15 +1181,21 @@ final class AppModel: ObservableObject {
     func reloadPermissionCatalog() {
         guard ops.contains("permissions.catalog") else {
             permissionCatalog = nil
+            permissionCatalogLoading = false
+            permissionCatalogError = nil
             return
         }
+        permissionCatalogLoading = true
+        permissionCatalogError = nil
         Task {
             do {
-                permissionCatalog = try PermissionCatalog.parse(try await call("permissions.catalog"))
+                guard let client else { throw PocketError(code: "transport", message: L.t("未连接到远程主机", "Not connected to the remote host")) }
+                permissionCatalog = try await client.permissionsCatalog()
                 permissionCatalogError = nil
             } catch {
                 permissionCatalogError = error.localizedDescription
             }
+            permissionCatalogLoading = false
         }
     }
 
@@ -974,6 +1277,11 @@ final class AppModel: ObservableObject {
             hostSettings.onChange = nil
             hostSettings.clear()
             permissionCatalog = nil
+            permissionCatalogLoading = false
+            permissionChanging = false
+            modelPending = nil
+            commandEntries = []
+            pendingAttaches = []
             followEpoch += 1
             detachFollow()
             resetTerminalAttachment(keepScreen: true)
@@ -1039,6 +1347,18 @@ final class AppModel: ObservableObject {
         )
         feedback = [:]
         completionReadySession = nil
+        pendingAttaches = []
+        commandEntries = []
+        hiddenQuestionId = nil
+        goalActivation = nil
+        goalActivationEpoch += 1
+        goalProjectionSeq = -1
+        permissionProjectionSeq = -1
+        modelProjectionSeq = -1
+        sessionPermission = nil
+        mentionQuery = nil
+        fileMentions = []
+        sessionMentions = []
     }
 
     private func detachFollow() {
@@ -1139,18 +1459,117 @@ final class AppModel: ObservableObject {
         }
     }
 
-    private func sendPrompt(_ client: PocketClient, chat: ChatState, text: String) async {
+    private func sendPrompt(
+        _ client: PocketClient,
+        chat: ChatState,
+        text: String,
+        images: [PromptImage] = [],
+        files: [PromptFile] = []
+    ) async {
         let target = reducer
         let requestId = UUID().uuidString
         let mode = chat.running ? busySend.mode : "queue"
-        target.echo(text: text, requestId: requestId, mode: mode)
+        target.echo(text: text, requestId: requestId, mode: mode, images: images.count, files: files.count)
         publishChat()
         do {
-            _ = try await client.prompt(sessionId: chat.sessionId, text: text, mode: mode, requestId: requestId)
+            _ = try await client.prompt(
+                sessionId: chat.sessionId,
+                text: text,
+                mode: mode,
+                images: images,
+                files: files,
+                requestId: requestId
+            )
         } catch {
             target.discardEcho(requestId)
             publishChat()
             emit(error.localizedDescription)
+        }
+    }
+
+    private func uploadAttach(_ id: UUID) async {
+        guard let client, let sessionId = chat?.sessionId, ops.contains("attachments.upload") else { return }
+        guard let index = pendingAttaches.firstIndex(where: { $0.id == id }) else { return }
+        pendingAttaches[index].status = .uploading
+        let payload = pendingAttaches[index].data
+        let filename = pendingAttaches[index].name
+        do {
+            guard let receipt = UploadReceipt.parse(try await client.uploadAttachment(
+                sessionId: sessionId,
+                data: payload.base64EncodedString(),
+                name: filename
+            )) else {
+                throw PocketError(code: "bad-reply", message: L.t("未返回附件回执", "Attachment receipt missing"))
+            }
+            if let next = pendingAttaches.firstIndex(where: { $0.id == id }) {
+                pendingAttaches[next].receiptId = receipt.receiptId
+                pendingAttaches[next].status = .ready
+            }
+        } catch {
+            if let next = pendingAttaches.firstIndex(where: { $0.id == id }) {
+                pendingAttaches[next].status = .failed
+            }
+            emit(error.localizedDescription)
+        }
+    }
+
+    private func modelChoice(from value: JSONValue) -> ModelChoice? {
+        guard let provider = value["provider"].str(), let model = value["model"].str() else { return nil }
+        return ModelChoice(
+            provider: provider,
+            model: model,
+            name: catalog?.find(provider: provider, model: model)?.name ?? value["name"].str() ?? model,
+            effort: value["effort"].str()
+        )
+    }
+
+    private func applyFollowProjections(_ frame: JSONValue) {
+        let type = frame["type"].str()
+        let projection = (type == "snapshot" || type == "resume") ? frame["projections"] : nil
+        let values = projection?["values"]
+        let seq = projection?["asOfSeq"].long() ?? frame["seq"].long() ?? frame["cursor"].long() ?? -1
+        if values?.obj()?.keys.contains("modelSelection") == true || type == "snapshot" {
+            applyModelProjection(seq, values?["modelSelection"] ?? .null)
+        }
+        if type == "projection" && frame["key"].str() == "modelSelection" {
+            applyModelProjection(frame["seq"].long() ?? -1, frame["value"])
+        }
+        if let values, values.obj()?.keys.contains("permissions") == true, seq >= permissionProjectionSeq {
+            permissionProjectionSeq = seq
+            sessionPermission = values["permissions"]["currentValue"].str()
+        } else if type == "projection", frame["key"].str() == "permissions" {
+            let next = frame["seq"].long() ?? -1
+            if next >= permissionProjectionSeq {
+                permissionProjectionSeq = next
+                sessionPermission = frame["value"]["currentValue"].str()
+            }
+        }
+        if type == "snapshot" || values?.obj()?.keys.contains("goal") == true || frame["key"].str() == "goal" {
+            if seq >= goalProjectionSeq {
+                goalProjectionSeq = seq
+                let raw = (values.flatMap { $0.obj()?["goal"] } ?? frame["value"])["goal"]
+                chat?.goal = raw.isNull ? nil : raw
+            }
+        }
+    }
+
+    private func applyModelProjection(_ seq: Int64, _ value: JSONValue) {
+        guard seq >= modelProjectionSeq else { return }
+        modelProjectionSeq = seq
+        if let next = modelChoice(from: value) {
+            modelChoice = next
+        }
+    }
+
+    private func loadSessionPermission(_ sessionId: String) {
+        Task {
+            guard let client, ops.contains("permissions.get") else { return }
+            do {
+                let current = try await client.permission(sessionId: sessionId)
+                if chat?.sessionId == sessionId { sessionPermission = current }
+            } catch {
+                // Permission is decorative until the user opens the picker.
+            }
         }
     }
 
@@ -1162,6 +1581,7 @@ final class AppModel: ObservableObject {
             if m["subId"].str() == subId {
                 let frame = m["frame"]
                 _ = reducer.apply(frame)
+                applyFollowProjections(frame)
                 publishChat()
                 if frame["type"].str() == "snapshot" || frame["type"].str() == "resume",
                    let sessionId = chat?.sessionId {
@@ -1221,6 +1641,14 @@ final class AppModel: ObservableObject {
             }
         case "user-question.closed":
             userQuestions.removeAll { $0.questionId == m["questionId"].str() }
+            if hiddenQuestionId == m["questionId"].str() { hiddenQuestionId = nil }
+        case "goal.activation":
+            if m["sessionId"].str() == chat?.sessionId {
+                goalActivationEpoch += 1
+                goalActivation = m["goal"]["activation"].str()
+            }
+        case "permission-presets/catalog-changed":
+            reloadPermissionCatalog()
         case "workspace.changed":
             applyWorkspaceFrame(m["frame"])
         case "plugins.changed":
@@ -1743,6 +2171,8 @@ final class AppModel: ObservableObject {
         state.steps = reducer.stepRecords()
         state.turns = reducer.turnRecords()
         state.lastAnswerKeys = ChatActionKeys.lastCommittedAnswerKeys(state.items)
+        state.composerMetrics = reducer.composerMetrics
+        state.turnTokenUsage = reducer.turnTokenUsage()
         state.loaded = true
         chat = state
         if let title = state.title {

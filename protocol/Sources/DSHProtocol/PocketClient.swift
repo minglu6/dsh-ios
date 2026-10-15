@@ -154,8 +154,8 @@ public final class PocketClient: @unchecked Sendable {
         ModelCatalog.parse(try await call("models.catalog"))
     }
 
-    public func selectModel(sessionId: String, provider: String, model: String, effort: String?) async throws {
-        _ = try await call("models.select", args: jsonObject([
+    public func selectModel(sessionId: String, provider: String, model: String, effort: String?) async throws -> JSONValue {
+        try await call("models.select", args: jsonObject([
             "sessionId": .string(sessionId),
             "provider": .string(provider),
             "model": .string(model),
@@ -310,7 +310,83 @@ public final class PocketClient: @unchecked Sendable {
         try await call("ui.open", args: jsonObject(["section": section.map { .string($0) }]))
     }
 
-    public func permissionsCatalog() async throws -> JSONValue { try await call("permissions.catalog") }
+    public func uiClose(ticket: String) async throws -> JSONValue {
+        try await call("ui.close", args: jsonObject(["ticket": .string(ticket)]), timeoutMs: 5_000)
+    }
+
+    public func permissionsCatalog() async throws -> PermissionCatalog {
+        try PermissionCatalog.parse(try await call("permissions.catalog"))
+    }
+
+    public func permission(sessionId: String) async throws -> String {
+        try PermissionSelection.parse(try await call("permissions.get", args: jsonObject([
+            "sessionId": .string(sessionId),
+        ]))).currentValue
+    }
+
+    public func setPermission(sessionId: String, name: String) async throws -> String {
+        try PermissionSelection.parse(try await call("permissions.set", args: jsonObject([
+            "sessionId": .string(sessionId),
+            "name": .string(name),
+        ]))).currentValue
+    }
+
+    public func updateQueuedPrompt(sessionId: String, itemId: String, action: QueueAction) async throws -> JSONValue {
+        try await call("queue.update", args: queueUpdateArgs(sessionId: sessionId, itemId: itemId, action: action))
+    }
+
+    public func listCommands(sessionId: String) async throws -> [CommandEntry] {
+        (try await call("commands.list", args: jsonObject(["sessionId": .string(sessionId)]))["commands"].arr() ?? [])
+            .compactMap(CommandEntry.parse)
+    }
+
+    public func executeCommand(sessionId: String, line: String) async throws -> JSONValue {
+        try await call("commands.execute", args: jsonObject([
+            "sessionId": .string(sessionId),
+            "line": .string(line),
+        ]))
+    }
+
+    public func uploadAttachment(sessionId: String, data: String, name: String? = nil) async throws -> JSONValue {
+        try await call("attachments.upload", args: jsonObject([
+            "sessionId": .string(sessionId),
+            "data": .string(data),
+            "name": name.map { .string($0) },
+        ]))
+    }
+
+    public func sessionAttachment(sessionId: String, attachmentId: String) async throws -> JSONValue {
+        try await call("session.attachment", args: jsonObject([
+            "sessionId": .string(sessionId),
+            "attachmentId": .string(attachmentId),
+        ]))
+    }
+
+    public func answerUserQuestion(sessionId: String, callId: String, answers: [JSONValue]) async throws -> JSONValue {
+        try await call("userQuestions.answer", args: userQuestionAnswerArgs(sessionId: sessionId, callId: callId, answers: answers))
+    }
+
+    public func getGoal(sessionId: String) async throws -> JSONValue {
+        try await call("goals.get", args: jsonObject(["sessionId": .string(sessionId)]))
+    }
+
+    public func mutateGoal(sessionId: String, action: String, ref: JSONValue, objective: String? = nil) async throws -> JSONValue {
+        try await call("goals.\(action)", args: goalMutationArgs(sessionId: sessionId, ref: ref, objective: objective))
+    }
+
+    public func referenceFiles(sessionId: String, query: String = "") async throws -> JSONValue {
+        try await call("references.files", args: jsonObject([
+            "sessionId": .string(sessionId),
+            "query": .string(query),
+        ]))
+    }
+
+    public func referenceSessions(sessionId: String, query: String = "") async throws -> JSONValue {
+        try await call("references.sessions", args: jsonObject([
+            "sessionId": .string(sessionId),
+            "query": .string(query),
+        ]))
+    }
 
     public func listFiles(sessionId: String, path: String = ".") async throws -> JSONValue {
         try await call("files.list", args: jsonObject([

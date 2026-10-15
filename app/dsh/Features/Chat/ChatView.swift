@@ -1,5 +1,7 @@
 import SwiftUI
 import UIKit
+import PhotosUI
+import UniformTypeIdentifiers
 import DSHProtocol
 
 struct ChatView: View {
@@ -13,6 +15,15 @@ struct ChatView: View {
     @State private var openTurns: [String: Bool] = [:]
     @State private var openProcesses: [String: Bool] = [:]
     @State private var inspectTool: Item.Tool?
+    @State private var showPermission = false
+    @State private var riskPermission: String?
+    @State private var showCommands = false
+    @State private var showGoal = false
+    @State private var showPlus = false
+    @State private var questionDrafts: [String: QuestionDraft] = [:]
+    @State private var photoItems: [PhotosPickerItem] = []
+    @State private var showPhotoPicker = false
+    @State private var showFileImporter = false
 
     /// Android: Screen.Chat + drawer closed + focused + RESUMED. Otherwise completion.view gets null.
     private var desiredViewedSession: String? {
@@ -24,16 +35,34 @@ struct ChatView: View {
         VStack(spacing: 0) {
             header
             tabs
-            approvals
             if tab == 0 {
                 transcript
-                composer
+                dock
+                if !questionVisible && sessionApproval == nil {
+                    composer
+                }
+                if let metrics = model.chat?.composerMetrics {
+                    ComposerStats(metrics: metrics)
+                }
             } else {
                 TrajectoryView(model: model)
             }
         }
         .background(T.bg.ignoresSafeArea())
-        .sheet(isPresented: $showModels) { ModelPickerSheet(model: model) }
+        .sheet(isPresented: $showModels) {
+            ModelPicker(
+                catalog: model.catalog,
+                current: model.modelChoice,
+                loading: model.catalogLoading,
+                error: model.catalogError,
+                pending: model.modelPending,
+                enabled: model.isOnline,
+                onReload: { model.reloadModelCatalog() },
+                onDismiss: { showModels = false },
+                onPick: { choice, done in model.selectModel(choice, onComplete: done) }
+            )
+            .padding()
+        }
         .sheet(isPresented: $showStart) { StartPanel(model: model) { showStart = false } }
         .sheet(isPresented: $showJobs) {
             JobsPanel(model: model) { showJobs = false }
@@ -51,6 +80,90 @@ struct ChatView: View {
                     )
                 }
             )
+        }
+        .sheet(isPresented: $showPermission) {
+            PermissionPickerSheet(
+                current: model.sessionPermission ?? "",
+                catalog: model.permissionCatalog,
+                loading: model.permissionCatalogLoading,
+                error: model.permissionCatalogError,
+                enabled: model.isOnline,
+                busy: model.permissionChanging,
+                onRefresh: { model.reloadPermissionCatalog() },
+                onDismiss: { showPermission = false },
+                onPick: { value in
+                    if value == "danger-full-access" || value == "auto" {
+                        riskPermission = value
+                        showPermission = false
+                    } else {
+                        model.setPermission(value) { _ in showPermission = false }
+                    }
+                }
+            )
+            .onAppear { model.reloadPermissionCatalog() }
+        }
+        .sheet(isPresented: Binding(get: { riskPermission != nil }, set: { if !$0 { riskPermission = nil } })) {
+            if let value = riskPermission {
+                PermissionRiskSheet(
+                    preset: value,
+                    enabled: model.isOnline && !model.permissionChanging && model.permissionCatalog?.find(value) != nil,
+                    onDismiss: { riskPermission = nil },
+                    onConfirm: {
+                        model.setPermission(value) { _ in riskPermission = nil }
+                    }
+                )
+            }
+        }
+        .sheet(isPresented: $showCommands) {
+            CommandSheet(
+                model: model,
+                initialQuery: slashQuery,
+                onDismiss: { showCommands = false },
+                onFile: { showPlus = true },
+                onGoal: { showGoal = true },
+                onPlan: { model.executeCommand("/plan") },
+                onFeedback: {},
+                onCompact: { model.executeCommand("/compact") },
+                onPerm: { showPermission = true },
+                onModel: { showModels = true }
+            )
+        }
+        .sheet(isPresented: $showGoal) {
+            GoalSheet(model: model) { showGoal = false }
+        }
+        .confirmationDialog(L.sectionAdd(), isPresented: $showPlus, titleVisibility: .visible) {
+            Button(L.image()) { showPhotoPicker = true }
+            if model.ops.contains("attachments.upload") {
+                Button(L.file()) { showFileImporter = true }
+            }
+            Button(L.t("访问模式", "Access mode")) { showPermission = true }
+            Button(L.t("模型", "Model")) { showModels = true }
+            Button(L.t("目标", "Goal")) { showGoal = true }
+            Button(L.cancel(), role: .cancel) {}
+        }
+        .photosPicker(isPresented: $showPhotoPicker, selection: $photoItems, maxSelectionCount: 8, matching: .images)
+        .fileImporter(isPresented: $showFileImporter, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
+            if case .success(let urls) = result {
+                for url in urls {
+                    _ = url.startAccessingSecurityScopedResource()
+                    defer { url.stopAccessingSecurityScopedResource() }
+                    if let data = try? Data(contentsOf: url) {
+                        model.attachFile(name: url.lastPathComponent, mediaType: "application/octet-stream", data: data)
+                    }
+                }
+            }
+        }
+        .onChange(of: photoItems.count) { _ in
+            let items = photoItems
+            guard !items.isEmpty else { return }
+            photoItems = []
+            Task {
+                for item in items {
+                    if let data = try? await item.loadTransferable(type: Data.self) {
+                        model.attachImage(name: L.image(), mediaType: "image/jpeg", data: data)
+                    }
+                }
+            }
         }
         .onAppear { model.setViewedSession(desiredViewedSession) }
         .onDisappear { model.setViewedSession(nil) }
@@ -130,33 +243,65 @@ struct ChatView: View {
         .accessibilityAddTraits(tab == index ? [.isSelected] : [])
     }
 
+    private var sessionQuestion: UserQuestion? {
+        model.userQuestions.first { model.chat != nil && ($0.sessionId == nil || $0.sessionId == model.chat?.sessionId) }
+    }
+
+    private var sessionApproval: Approval? {
+        model.approvals.first { model.chat != nil && ($0.sessionId == nil || $0.sessionId == model.chat?.sessionId) }
+    }
+
+    private var questionVisible: Bool {
+        guard let question = sessionQuestion else { return false }
+        return !question.questions.isEmpty && model.hiddenQuestionId != question.questionId
+    }
+
+    private var slashQuery: String {
+        composerTrigger(model.composerText, cursor: model.composerText.count)?.kind == Character("/")
+            ? (composerTrigger(model.composerText, cursor: model.composerText.count)?.query ?? "")
+            : ""
+    }
+
     @ViewBuilder
-    private var approvals: some View {
-        let pending = model.approvals.filter { $0.sessionId == nil || $0.sessionId == model.chat?.sessionId }
-        if !pending.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(pending) { approval in
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(L.approval()).font(.caption).foregroundStyle(T.warnText)
-                        Text(approval.reason ?? approval.toolName).foregroundStyle(T.ink)
-                        HStack {
-                            Button(L.reject()) { model.answer(approval, outcome: "rejected") }
-                                .foregroundStyle(T.err)
-                            Spacer()
-                            Button(L.allowOnce()) { model.answer(approval, outcome: "allowed-once") }
-                                .foregroundStyle(T.onPrimary)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(T.primaryButton, in: Capsule())
-                        }
+    private var dock: some View {
+        if questionVisible, let question = sessionQuestion {
+            UserQuestionCard(
+                question: question,
+                drafts: Binding(
+                    get: { questionDrafts },
+                    set: { questionDrafts = $0 }
+                ),
+                enabled: model.isOnline,
+                onDismiss: { model.hiddenQuestionId = question.questionId },
+                onAnswer: { callId, answers, done in model.answerUserQuestion(callId: callId, answers: answers, onResult: done) }
+            )
+        } else if let approval = sessionApproval {
+            ApprovalCard(
+                approval: approval,
+                items: model.chat?.items ?? [],
+                enabled: model.isOnline,
+                onAnswer: { approval, outcome in model.answer(approval, outcome: outcome) }
+            )
+        }
+        if sessionQuestion != nil && !questionVisible {
+            Button(L.reopenQuestion()) { model.hiddenQuestionId = nil }
+                .frame(maxWidth: .infinity)
+        }
+        if let chat = model.chat {
+            TodoPanel(sessionKey: "\(model.activeId ?? ""):\(chat.sessionId)", todos: chat.todos)
+            if let goal = chat.goal {
+                GoalBar(goal: goal, activation: model.goalActivation) { showGoal = true }
+                    .task(id: "\(chat.sessionId)-\(goal["revision"].description)-\(chat.running)-\(model.isOnline)") {
+                        if model.isOnline { model.refreshGoal() }
                     }
-                    .padding(12)
-                    .background(T.warnTint, in: RoundedRectangle(cornerRadius: 12))
-                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.warnBorder, lineWidth: 0.5))
-                }
             }
-            .padding(.horizontal, 12)
-            .padding(.top, 8)
+            PromptQueue(
+                sessionId: chat.sessionId,
+                prompts: chat.queuedPrompts,
+                running: chat.running,
+                enabled: model.isOnline && chat.loaded && model.ops.contains("queue.update"),
+                onAction: { id, action, done in model.updateQueuedPrompt(itemId: id, action: action, onComplete: done) }
+            )
         }
     }
 
@@ -213,7 +358,13 @@ struct ChatView: View {
     }
 
     private var composer: some View {
-        ComposerView(model: model)
+        ComposerView(
+            model: model,
+            onPlus: { showPlus = true },
+            onPerm: { if model.isOnline { showPermission = true } },
+            onModel: { if model.isOnline { showModels = true } },
+            onSlash: { showCommands = true }
+        )
     }
 }
 
@@ -275,9 +426,9 @@ struct ChatRowView: View {
         case .deliverable(let deliverable):
             MessageRow(item: .deliverable(deliverable), model: model, onOpenFeedback: onOpenFeedback)
         case .retry(let retry):
-            Text(retry.attempts.last?.message ?? L.t("正在重试", "Retrying")).font(.footnote).foregroundStyle(T.warnText)
+            RetryRow(item: retry)
         case .turnFailure(let failure):
-            Text(chatFailureMessage(failure.message, code: failure.code, en: L.en)).font(.footnote).foregroundStyle(T.err)
+            TurnFailureRow(item: failure)
         case .tool(let tool):
             ToolCard(tool: tool, onTap: { onTool(tool) })
         case .reasoning(let reasoning):
@@ -507,6 +658,7 @@ struct MessageRow: View {
         let mid = text.messageId
         let rating = mid.flatMap { model.feedback[$0]?.rating }
         let canFeedback = mid != nil && model.ops.contains("feedback.set")
+        let usage = (model.performanceUsage == .detailed ? turn.flatMap { model.chat?.turnTokenUsage[$0] } : nil)
         return MessageActions(
             text: text.text,
             timeMs: text.at,
@@ -523,7 +675,11 @@ struct MessageRow: View {
             onDislike: canFeedback ? {
                 if rating == "negative" { model.setMessageFeedback(messageId: mid!, rating: nil) }
                 else { onOpenFeedback(mid!, "negative") }
-            } : nil
+            } : nil,
+            usageAction: {
+                if let usage, let turn { return { TurnUsageAction(turn: turn, usage: usage) } }
+                return nil
+            }()
         )
     }
 }
@@ -542,6 +698,7 @@ private struct MessageActions: View {
     var rating: String? = nil
     var onLike: (() -> Void)? = nil
     var onDislike: (() -> Void)? = nil
+    var usageAction: (() -> TurnUsageAction)? = nil
     @State private var copied = false
 
     var body: some View {
@@ -585,6 +742,9 @@ private struct MessageActions: View {
                     action: onBranch
                 )
             }
+            if let usageAction {
+                usageAction()
+            }
             Spacer(minLength: 0)
             if clock == .end, let timeMs {
                 Text(formatMessageClock(timeMs))
@@ -619,115 +779,200 @@ private struct MessageActions: View {
 
 struct ComposerView: View {
     @ObservedObject var model: AppModel
+    var onPlus: () -> Void = {}
+    var onPerm: () -> Void = {}
+    var onModel: () -> Void = {}
+    var onSlash: () -> Void = {}
     @FocusState private var focused: Bool
+
+    private var trigger: ComposerTrigger? {
+        composerTrigger(model.composerText, cursor: model.composerText.count)
+    }
+
+    private var references: [ComposerReference] { composerReferences(model.composerText) }
+    private var filesReady: Bool {
+        model.pendingAttaches.allSatisfy { $0.status != .uploading && $0.status != .failed && $0.status != .pending }
+    }
+    private var hasPending: Bool { !model.pendingAttaches.isEmpty }
+    private var canSend: Bool {
+        model.isOnline && filesReady && (!model.composerText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || hasPending)
+    }
+    private var runningIdle: Bool {
+        model.chat?.running == true && model.composerText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !hasPending
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             mentionPanel
-            HStack(alignment: .bottom, spacing: 8) {
+            VStack(alignment: .leading, spacing: 8) {
+                if hasPending { attachList }
+                if !references.isEmpty { mentionChips }
+                if model.chat?.planMode == true {
+                    Button {
+                        model.executeCommand("/plan off")
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "checklist").foregroundStyle(T.accent)
+                            Text(L.planChip()).foregroundStyle(T.accent)
+                            Text(L.t("退出", "Exit")).font(.caption).foregroundStyle(T.text3)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .frame(minHeight: 48)
+                }
                 TextField(L.composerPlaceholder(), text: $model.composerText, axis: .vertical)
                     .lineLimit(1...6)
                     .focused($focused)
-                    .padding(10)
-                    .background(T.inputMajor, in: RoundedRectangle(cornerRadius: 16))
-                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(T.border, lineWidth: 0.5))
                     .onChange(of: model.composerText) { value in
-                        if let at = value.lastIndex(of: "@") {
-                            let q = String(value[value.index(after: at)...])
-                            if !q.contains(" ") {
-                                model.mentionQuery = q
-                                model.fetchMentions(query: q)
-                                return
+                        if let trigger = composerTrigger(value, cursor: value.count) {
+                            if trigger.kind == Character("@") {
+                                model.mentionQuery = trigger.query
+                                model.fetchMentions(query: trigger.query)
+                            } else if trigger.kind == Character("/") {
+                                onSlash()
                             }
+                        } else {
+                            model.mentionQuery = nil
                         }
-                        model.mentionQuery = nil
                     }
-                if model.chat?.running == true {
-                    Button(action: model.stopRun) {
-                        Image(systemName: "stop.fill").foregroundStyle(T.onPrimary).padding(10)
+                HStack(spacing: 8) {
+                    Button(action: onPlus) {
+                        Image(systemName: "plus").foregroundStyle(T.ink).frame(width: 48, height: 48)
                     }
-                    .background(T.err, in: Circle())
+                    .background(T.fill, in: Circle())
+                    if let perm = model.sessionPermission, !perm.isEmpty {
+                        Button(action: onPerm) {
+                            Image(systemName: permissionIcon(perm))
+                                .foregroundStyle(perm == "danger-full-access" ? T.warnText : T.text2)
+                                .frame(width: 48, height: 48)
+                        }
+                        .accessibilityLabel(permissionLabel(value: perm, option: model.permissionCatalog?.find(perm)))
+                    }
+                    Button(action: onModel) {
+                        HStack(spacing: 4) {
+                            Text(model.modelChoice?.name ?? L.t("选择模型", "Select model"))
+                                .font(.subheadline)
+                                .foregroundStyle(T.text2)
+                                .lineLimit(1)
+                            if let effort = modelEffortLabel(catalog: model.catalog, provider: model.modelChoice?.provider, model: model.modelChoice?.model, effort: model.modelChoice?.effort) {
+                                Text(effort).font(.caption).foregroundStyle(T.caption).lineLimit(1)
+                            }
+                            if model.modelPending != nil { ProgressView().controlSize(.mini) }
+                            else { Image(systemName: "chevron.down").font(.caption).foregroundStyle(T.text2) }
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 48, alignment: .trailing)
+                    }
+                    .disabled(!model.isOnline)
+                    if runningIdle {
+                        Button(action: model.stopRun) {
+                            RoundedRectangle(cornerRadius: 3).fill(Color.white).frame(width: 10, height: 10)
+                                .frame(width: 48, height: 48)
+                        }
+                        .background(T.accent, in: Circle())
+                        .accessibilityLabel(L.stop())
+                    } else {
+                        Button(action: model.sendCurrent) {
+                            Image(systemName: "arrow.up").foregroundStyle(Color.white).frame(width: 48, height: 48)
+                        }
+                        .background(T.accent.opacity(canSend ? 1 : 0.4), in: Circle())
+                        .disabled(!canSend)
+                        .accessibilityLabel(L.busySendLabel(running: model.chat?.running == true, busy: model.busySend))
+                    }
                 }
-                Button(action: model.sendCurrent) {
-                    Text(L.busySendLabel(running: model.chat?.running == true, busy: model.busySend))
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(T.onPrimary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
-                }
-                .background(T.primaryButton, in: Capsule())
-                .disabled(model.composerText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !model.isOnline)
             }
-            .padding(10)
+            .padding(14)
+            .overlay(RoundedRectangle(cornerRadius: 20).stroke(T.border, lineWidth: 1))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 4)
         }
         .background(T.surface)
     }
 
     @ViewBuilder
-    private var mentionPanel: some View {
-        if model.mentionQuery != nil, !(model.fileMentions.isEmpty && model.sessionMentions.isEmpty) {
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(model.fileMentions.prefix(8)) { file in
-                    Button {
-                        insert(file.path)
-                    } label: {
-                        Label(file.path, systemImage: "doc").foregroundStyle(T.ink).padding(8)
-                    }
-                }
-                ForEach(model.sessionMentions.prefix(8)) { session in
-                    Button {
-                        insert(session.mention)
-                    } label: {
-                        Label(session.title ?? session.mention, systemImage: "bubble.left").foregroundStyle(T.ink).padding(8)
-                    }
+    private var attachList: some View {
+        Text(L.pendingFiles()).font(.caption).foregroundStyle(T.text3)
+        ForEach(model.pendingAttaches) { attach in
+            HStack {
+                Text(attach.name).font(.subheadline).foregroundStyle(T.ink).lineLimit(1)
+                Spacer()
+                switch attach.status {
+                case .uploading, .pending:
+                    Text(L.uploading()).font(.caption).foregroundStyle(T.caption)
+                case .failed:
+                    Button(L.uploadFailed()) { model.retryAttach(attach.id) }.font(.caption).foregroundStyle(T.err)
+                case .ready:
+                    Button(L.removeFile(attach.name)) { model.removeAttach(attach.id) }.font(.caption).foregroundStyle(T.text3)
                 }
             }
-            .background(T.settingsCard)
-            .overlay(Rectangle().stroke(T.border, lineWidth: 0.5))
         }
     }
 
-    private func insert(_ mention: String) {
-        if let at = model.composerText.lastIndex(of: "@") {
-            model.composerText = String(model.composerText[..<at]) + mention + " "
+    @ViewBuilder
+    private var mentionChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(Array(references.enumerated()), id: \.offset) { _, ref in
+                    HStack(spacing: 4) {
+                        Image(systemName: ref.kind == .session ? "bubble.left" : (ref.kind == .directory ? "folder" : "doc"))
+                            .font(.caption2)
+                        Text(ref.label).font(.caption)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .foregroundStyle(T.ink)
+                    .background(T.fill2, in: Capsule())
+                    .overlay(Capsule().stroke(T.border, lineWidth: 0.5))
+                }
+            }
         }
-        model.mentionQuery = nil
     }
-}
 
-struct ModelPickerSheet: View {
-    @ObservedObject var model: AppModel
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            List {
-                ForEach(model.catalog?.groups ?? []) { group in
-                    Section(group.name) {
-                        ForEach(group.models) { info in
-                            Button {
-                                model.selectModel(info, effort: info.defaultEffort)
-                                dismiss()
-                            } label: {
-                                HStack {
-                                    VStack(alignment: .leading) {
-                                        Text(info.name).foregroundStyle(T.ink)
-                                        if let description = info.description {
-                                            Text(description).font(.caption).foregroundStyle(T.text3)
-                                        }
-                                    }
-                                    Spacer()
-                                    if model.modelChoice?.provider == info.provider && model.modelChoice?.model == info.id {
-                                        Image(systemName: "checkmark").foregroundStyle(T.accent)
-                                    }
-                                }
+    @ViewBuilder
+    private var mentionPanel: some View {
+        if trigger?.kind == Character("@"), !(model.fileMentions.isEmpty && model.sessionMentions.isEmpty) {
+            VStack(alignment: .leading, spacing: 0) {
+                Text(L.filesAndFolders()).font(.caption).foregroundStyle(T.text3).padding(.horizontal, 8).padding(.top, 6)
+                ForEach(model.fileMentions.prefix(8)) { file in
+                    let directory = file.kind == "directory" || file.kind == "folder"
+                    if let token = fileReferenceToken(file.path, directory: directory, preserveQuote: trigger?.quoted == true) {
+                        Button {
+                            insert(token)
+                        } label: {
+                            HStack {
+                                Image(systemName: directory ? "folder" : "doc").foregroundStyle(T.text3)
+                                Text(mentionFileRowLabel(file.path, directory: directory)).foregroundStyle(T.ink)
+                                Spacer()
+                                Text(file.path).font(.caption).foregroundStyle(T.text3).lineLimit(1)
                             }
+                            .padding(8)
+                        }
+                    }
+                }
+                if trigger?.quoted != true && !model.sessionMentions.isEmpty {
+                    Text(L.t("对话", "Sessions")).font(.caption).foregroundStyle(T.text3).padding(.horizontal, 8).padding(.top, 6)
+                    ForEach(model.sessionMentions.prefix(8)) { session in
+                        Button {
+                            insert(session.mention)
+                        } label: {
+                            HStack {
+                                Image(systemName: "bubble.left").foregroundStyle(T.text3)
+                                Text(session.title ?? session.mention).foregroundStyle(T.ink)
+                                Spacer()
+                            }
+                            .padding(8)
                         }
                     }
                 }
             }
-            .navigationTitle(L.modelsNav())
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L.cancel()) { dismiss() } } }
+            .background(T.settingsCard)
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 0.5))
+            .padding(.horizontal, 14)
         }
+    }
+
+    private func insert(_ token: String) {
+        let next = replaceComposerToken(model.composerText, cursor: model.composerText.count, token: token)
+        model.composerText = next.text
+        model.mentionQuery = nil
     }
 }
