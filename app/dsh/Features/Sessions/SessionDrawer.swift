@@ -15,8 +15,12 @@ struct SessionDrawer: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("dsh").font(.title3.weight(.semibold)).foregroundStyle(T.ink)
-                Spacer()
+                ViewThatFits(in: .horizontal) {
+                    BrandWordmark(height: 22)
+                    BrandWordmark(height: 18)
+                    BrandWordmark(height: 16)
+                }
+                Spacer(minLength: 8)
                 Button { model.createAndOpenSession() } label: {
                     Image(systemName: D.newChat).foregroundStyle(T.ink)
                 }
