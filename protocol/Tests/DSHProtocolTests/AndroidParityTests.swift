@@ -235,10 +235,20 @@ final class AndroidParityTests: XCTestCase {
     func testTrajectoryJsonInvalidRetainsSource() {
         for source in ["HTTP 500: connection failed\nretry later", "Error", "01", "{broken", "[true,]"] {
             let document = trajectoryJsonDocument(source)
-            XCTAssertNil(document.root)
+            XCTAssertNil(document.root, source)
             XCTAssertEqual(document.source, source)
             XCTAssertFalse(document.depthLimited)
         }
+    }
+
+    func testJSONValueParseRejectsTrailingCommaAndLeadingZeros() {
+        for source in ["[true,]", "{ \"a\": 1, }", "01", "{broken", "Error"] {
+            XCTAssertThrowsError(try JSONValue.parse(source), source)
+        }
+        XCTAssertEqual(try JSONValue.parse("true"), .bool(true))
+        XCTAssertEqual(try JSONValue.parse("[true]"), .array([.bool(true)]))
+        XCTAssertEqual(try JSONValue.parse("0"), .number(0))
+        XCTAssertEqual(try JSONValue.parse("{\"a\":1}"), .object(["a": .number(1)]))
     }
 
     func testTrajectoryJsonDepthLimit() {

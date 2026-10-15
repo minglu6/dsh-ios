@@ -274,7 +274,7 @@ struct ChatView: View {
                 Image(systemName: "safari").foregroundStyle(T.ink)
             }
             .accessibilityLabel(L.startPanel())
-            Button { showModels = true } label: {
+            Button { if model.isOnline { showModels = true } } label: {
                 Text(model.modelChoice?.name ?? L.modelsNav())
                     .font(.caption)
                     .foregroundStyle(T.accent)
@@ -282,6 +282,7 @@ struct ChatView: View {
                     .padding(.vertical, 4)
                     .background(T.tint, in: Capsule())
             }
+            .disabled(!model.isOnline)
             Button { showMore = true } label: {
                 Image(systemName: D.ellipsis).foregroundStyle(T.ink)
             }
@@ -1049,7 +1050,9 @@ struct ComposerView: View {
                             else { Image(systemName: "chevron.down").font(.caption).foregroundStyle(T.text2) }
                         }
                         .frame(maxWidth: .infinity, minHeight: 48, alignment: .trailing)
+                        .opacity(model.isOnline ? 1 : 0.45)
                     }
+                    .buttonStyle(.plain)
                     .disabled(!model.isOnline)
                     if runningIdle {
                         Button(action: model.stopRun) {
