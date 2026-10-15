@@ -217,8 +217,50 @@ public final class PocketClient: @unchecked Sendable {
         _ = try await call("workspace.unpinSession", args: jsonObject(["sessionId": .string(sessionId)]))
     }
 
-    public func archiveSession(_ sessionId: String) async throws {
-        _ = try await call("workspace.archiveSession", args: jsonObject(["sessionId": .string(sessionId)]))
+    public func archiveSession(_ sessionId: String, stopActivity: Bool = false) async throws {
+        _ = try await call("workspace.archiveSession", args: jsonObject([
+            "sessionId": .string(sessionId),
+            "stopActivity": stopActivity ? .bool(true) : nil,
+        ]))
+    }
+
+    public func unarchiveSession(_ sessionId: String) async throws -> JSONValue {
+        try await call("workspace.unarchiveSession", args: jsonObject(["sessionId": .string(sessionId)]))
+    }
+
+    public func insertWorkspaceBefore(workspaceId: String, beforeWorkspaceId: String?) async throws -> JSONValue {
+        try await call("workspace.insertBefore", args: WorkspaceOrder.insertBeforeArgs(
+            workspaceId: workspaceId,
+            beforeWorkspaceId: beforeWorkspaceId
+        ))
+    }
+
+    public func insertSessionBefore(workspaceId: String, sessionId: String, beforeSessionId: String?) async throws -> JSONValue {
+        try await call("workspace.insertSessionBefore", args: WorkspaceOrder.insertSessionBeforeArgs(
+            workspaceId: workspaceId,
+            sessionId: sessionId,
+            beforeSessionId: beforeSessionId
+        ))
+    }
+
+    public func searchSessions(query: String) async throws -> JSONValue {
+        try await call("sessions.search", args: SessionSearch.args(query: query))
+    }
+
+    public func recordSessionFeedback(sessionId: String, category: String?, note: String) async throws -> JSONValue {
+        try await call("sessionFeedback.record", args: SessionFeedbackRequest.args(
+            sessionId: sessionId,
+            category: category,
+            note: note
+        ))
+    }
+
+    public func presetsList() async throws -> JSONValue { try await call("presets.list") }
+
+    public func presetsSettings() async throws -> JSONValue { try await call("presets.settings") }
+
+    public func readPreset(id: String) async throws -> JSONValue {
+        try await call("presets.read", args: jsonObject(["id": .string(id)]))
     }
 
     public func modelsProviders() async throws -> JSONValue { try await call("models.providers") }
@@ -371,10 +413,10 @@ public final class PocketClient: @unchecked Sendable {
     }
 
     public func sessionAttachment(sessionId: String, attachmentId: String) async throws -> JSONValue {
-        try await call("session.attachment", args: jsonObject([
-            "sessionId": .string(sessionId),
-            "attachmentId": .string(attachmentId),
-        ]))
+        try await call("session.attachment", args: SessionAttachment.args(
+            sessionId: sessionId,
+            attachmentId: attachmentId
+        ))
     }
 
     public func answerUserQuestion(sessionId: String, callId: String, answers: [JSONValue]) async throws -> JSONValue {

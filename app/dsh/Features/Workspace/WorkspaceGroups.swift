@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 import DSHProtocol
 
 struct WorkspaceNavigationGroups<SessionRows: View>: View {
@@ -6,6 +7,7 @@ struct WorkspaceNavigationGroups<SessionRows: View>: View {
     let workspaces: [WorkspaceView]
     let sessions: [SessionSummary]
     let tree: Bool
+    var onMoveWorkspace: ((String, String?) -> Void)? = nil
     @ViewBuilder var renderSessions: (String, [SessionSummary]) -> SessionRows
 
     var body: some View {
@@ -25,6 +27,7 @@ struct WorkspaceNavigationGroups<SessionRows: View>: View {
                     orphans: orphans,
                     workspaces: workspaces,
                     sessions: sessions,
+                    onMoveWorkspace: onMoveWorkspace,
                     renderSessions: renderSessions
                 )
             }
@@ -38,6 +41,7 @@ struct WorkspaceNavigationGroups<SessionRows: View>: View {
                     orphans: orphans,
                     workspaces: workspaces,
                     sessions: sessions,
+                    onMoveWorkspace: onMoveWorkspace,
                     renderSessions: renderSessions
                 )
             }
@@ -52,6 +56,7 @@ struct WorkspaceNavigationGroups<SessionRows: View>: View {
                     orphans: orphans,
                     workspaces: workspaces,
                     sessions: sessions,
+                    onMoveWorkspace: onMoveWorkspace,
                     renderSessions: renderSessions
                 )
             }
@@ -68,6 +73,7 @@ private struct WorkspaceBranchBlock<SessionRows: View>: View {
     let orphans: [SessionSummary]
     let workspaces: [WorkspaceView]
     let sessions: [SessionSummary]
+    var onMoveWorkspace: ((String, String?) -> Void)? = nil
     let renderSessions: (String, [SessionSummary]) -> SessionRows
 
     var body: some View {
@@ -96,6 +102,7 @@ private struct WorkspaceBranchBlock<SessionRows: View>: View {
                         orphans: orphans,
                         workspaces: workspaces,
                         sessions: sessions,
+                        onMoveWorkspace: onMoveWorkspace,
                         renderSessions: renderSessions
                     )
                 }
@@ -110,7 +117,8 @@ private struct WorkspaceBranchBlock<SessionRows: View>: View {
                     collapsed: model.collapsedWorkspaces.contains(key),
                     workspace: workspace,
                     depth: depth,
-                    active: workspace.workspaceId == currentWorkspace?.workspaceId || (index == 0 && containsCurrent(children, current: currentWorkspace))
+                    active: workspace.workspaceId == currentWorkspace?.workspaceId || (index == 0 && containsCurrent(children, current: currentWorkspace)),
+                    onMoveWorkspace: onMoveWorkspace
                 ) { model.toggleWorkspaceCollapsed(key) }
                 if !model.collapsedWorkspaces.contains(key) {
                     if index == 0 {
@@ -124,6 +132,7 @@ private struct WorkspaceBranchBlock<SessionRows: View>: View {
                                 orphans: orphans,
                                 workspaces: workspaces,
                                 sessions: sessions,
+                                onMoveWorkspace: onMoveWorkspace,
                                 renderSessions: renderSessions
                             )
                         }
@@ -152,6 +161,7 @@ struct WorkspaceGroupHeader: View {
     var workspace: WorkspaceView?
     var depth: Int
     var active: Bool
+    var onMoveWorkspace: ((String, String?) -> Void)? = nil
     var onToggle: () -> Void
     @State private var rename = false
     @State private var remove = false
@@ -208,6 +218,19 @@ struct WorkspaceGroupHeader: View {
                     .accessibilityLabel(L.newSession())
                 }
             }
+        }
+        .onDrag {
+            NSItemProvider(object: (workspace?.workspaceId ?? "") as NSString)
+        }
+        .onDrop(of: [.text], isTargeted: nil) { providers in
+            guard let onMoveWorkspace, let target = workspace?.workspaceId else { return false }
+            providers.first?.loadItem(forTypeIdentifier: UTType.text.identifier, options: nil) { item, _ in
+                let source = (item as? Data).flatMap { String(data: $0, encoding: .utf8) } ?? (item as? String)
+                if let source, !source.isEmpty, source != target {
+                    DispatchQueue.main.async { onMoveWorkspace(source, target) }
+                }
+            }
+            return true
         }
         .alert(L.rename(), isPresented: $rename) {
             TextField(L.rename(), text: $draft)

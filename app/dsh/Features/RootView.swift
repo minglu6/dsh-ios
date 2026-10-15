@@ -1,10 +1,13 @@
 import SwiftUI
 import UIKit
+import DSHProtocol
 
 struct RootView: View {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.scenePhase) private var scenePhase
     @ObservedObject private var model = AppModel.shared
     @ObservedObject private var theme = ThemeStateHolder.shared
+    @State private var showHomePreset = false
 
     var body: some View {
         ZStack {
@@ -45,6 +48,18 @@ struct RootView: View {
             }
         }
         .animation(.easeOut(duration: 0.2), value: model.showDrawer)
+        .onChange(of: scenePhase) { phase in
+            ConnectionKeeper.shared.sceneChanged(phase)
+        }
+        .sheet(isPresented: $showHomePreset) {
+            PresetSheet(
+                model: model,
+                current: model.draftPreset,
+                editable: true,
+                onDismiss: { showHomePreset = false },
+                onPick: { model.draftPreset = $0 }
+            )
+        }
     }
 
     @ViewBuilder
@@ -60,6 +75,13 @@ struct RootView: View {
             ModelsSettingsView(model: model)
         case .builtinPlugins:
             PluginInventoryView(model: model)
+        case .presets:
+            AgentPresetSettingsView(model: model, onCreator: {
+                model.pendingCreatorPreset = "cordis"
+                model.pop()
+                model.showDrawer = false
+                model.createAndOpenSession(preset: "cordis")
+            })
         case .diagnostics:
             ConnectionsView(model: model)
         case .panel(let panel):
@@ -81,10 +103,17 @@ struct RootView: View {
         VStack(spacing: 0) {
             HStack {
                 Button { model.showDrawer = true } label: {
-                    Image(systemName: "line.3.horizontal").foregroundStyle(T.ink)
+                    Image(systemName: D.panelLeft).foregroundStyle(T.ink)
                 }
                 Text("dsh").font(.headline).foregroundStyle(T.ink)
                 Spacer()
+                if !model.presetRoster.isEmpty {
+                    Button { showHomePreset = true } label: {
+                        Label(homePresetLabel, systemImage: D.agentPreset)
+                            .font(.caption)
+                            .foregroundStyle(T.accent)
+                    }
+                }
             }
             .padding(14)
             .background(T.surface)
@@ -102,6 +131,16 @@ struct RootView: View {
             Spacer()
         }
         .background(T.bg)
+    }
+
+    private var homePresetLabel: String {
+        let id = model.draftPreset.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? model.presetRoster.first { $0["isDefault"].bool() == true }?["id"].str()
+            : model.draftPreset
+        if let id, let row = model.presetRoster.first(where: { $0["id"].str() == id }) {
+            return PresetPolicy.name(row, english: L.en)
+        }
+        return L.agentPresets()
     }
 
     private var drawerScrim: some View {

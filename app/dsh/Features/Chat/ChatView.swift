@@ -28,6 +28,9 @@ struct ChatView: View {
     @State private var photoItems: [PhotosPickerItem] = []
     @State private var showPhotoPicker = false
     @State private var showFileImporter = false
+    @State private var showMore = false
+    @State private var showSessionFeedback = false
+    @State private var showPreset = false
 
     /// Android: Screen.Chat + drawer closed + focused + RESUMED. Otherwise completion.view gets null.
     private var desiredViewedSession: String? {
@@ -170,7 +173,7 @@ struct ChatView: View {
                 onFile: { showPlus = true },
                 onGoal: { showGoal = true },
                 onPlan: { model.executeCommand("/plan") },
-                onFeedback: {},
+                onFeedback: { showSessionFeedback = true },
                 onCompact: { model.executeCommand("/compact") },
                 onPerm: { showPermission = true },
                 onModel: { showModels = true }
@@ -181,6 +184,30 @@ struct ChatView: View {
         }
         .sheet(item: $model.exportShare) { item in
             ShareSheet(items: [item.url])
+        }
+        .sheet(isPresented: $showMore) {
+            MoreSheet(model: model, onDismiss: { showMore = false }, onFeedback: {
+                showMore = false
+                showSessionFeedback = true
+            })
+        }
+        .sheet(isPresented: $showSessionFeedback) {
+            FeedbackCategorySheet(
+                hint: L.sessionFeedbackHint(),
+                onDismiss: { showSessionFeedback = false },
+                onSubmit: { category, note, complete in
+                    model.recordSessionFeedback(category: category, note: note, onResult: complete)
+                }
+            )
+        }
+        .sheet(isPresented: $showPreset) {
+            PresetSheet(
+                model: model,
+                current: model.chat?.agentPreset ?? model.draftPreset,
+                editable: model.chat == nil,
+                onDismiss: { showPreset = false },
+                onPick: { model.draftPreset = $0 }
+            )
         }
         .confirmationDialog(L.sectionAdd(), isPresented: $showPlus, titleVisibility: .visible) {
             Button(L.image()) { showPhotoPicker = true }
@@ -228,6 +255,15 @@ struct ChatView: View {
         }
     }
 
+    private var presetLabel: String? {
+        let id = model.chat?.agentPreset ?? model.draftPreset.nilIfBlank
+        guard let id else { return nil }
+        if let row = model.presetRoster.first(where: { $0["id"].str() == id }) {
+            return PresetPolicy.name(row, english: L.en)
+        }
+        return id
+    }
+
     private func openFeedback(messageId: String, rating: String) {
         feedbackDraft = FeedbackDraft(messageId: messageId, rating: rating)
     }
@@ -235,7 +271,7 @@ struct ChatView: View {
     private var header: some View {
         HStack(spacing: 10) {
             Button { model.showDrawer = true } label: {
-                Image(systemName: "line.3.horizontal").foregroundStyle(T.ink)
+                Image(systemName: D.panelLeft).foregroundStyle(T.ink)
             }
             if model.chat?.running == true {
                 ProgressView().controlSize(.mini)
@@ -245,6 +281,14 @@ struct ChatView: View {
                 .foregroundStyle(T.ink)
                 .lineLimit(1)
             Spacer()
+            if let label = presetLabel {
+                Button { showPreset = true } label: {
+                    Label(label, systemImage: D.agentPreset)
+                        .font(.caption)
+                        .foregroundStyle(T.accent)
+                        .labelStyle(.titleAndIcon)
+                }
+            }
             Button { showStart = true } label: {
                 Image(systemName: "safari").foregroundStyle(T.ink)
             }
@@ -257,6 +301,10 @@ struct ChatView: View {
                     .padding(.vertical, 4)
                     .background(T.tint, in: Capsule())
             }
+            Button { showMore = true } label: {
+                Image(systemName: D.ellipsis).foregroundStyle(T.ink)
+            }
+            .accessibilityLabel(L.moreActions())
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -727,12 +775,19 @@ struct MessageRow: View {
         switch item {
         case .user(let user):
             VStack(alignment: .trailing, spacing: 0) {
-                HStack {
-                    Spacer(minLength: 48)
-                    Text(user.text)
-                        .foregroundStyle(T.ink.opacity(user.pending ? 0.6 : 1))
-                        .padding(12)
-                        .background(T.bubble, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                if let sessionId = model.chat?.sessionId, !user.imageRefs.isEmpty {
+                    ForEach(Array(user.imageRefs.enumerated()), id: \.offset) { _, ref in
+                        ImageBubble(sessionId: sessionId, ref: ref)
+                    }
+                }
+                if !user.text.isEmpty {
+                    HStack {
+                        Spacer(minLength: 48)
+                        Text(user.text)
+                            .foregroundStyle(T.ink.opacity(user.pending ? 0.6 : 1))
+                            .padding(12)
+                            .background(T.bubble, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
                 }
                 MessageActions(
                     text: user.text,
@@ -1118,6 +1173,65 @@ struct ComposerView: View {
         let next = replaceComposerToken(model.composerText, cursor: model.composerText.count, token: token)
         model.composerText = next.text
         model.mentionQuery = nil
+    }
+}
+
+private struct ImageBubble: View {
+    let sessionId: String
+    let ref: ImageRef
+    @State private var image: UIImage?
+    @State private var failed = false
+    @State private var loading = true
+    @State private var attempt = 0
+    @State private var preview = false
+    @State private var bytes: Data?
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 6) {
+            Group {
+                if loading {
+                    Text(L.imageLoading()).font(.caption).foregroundStyle(T.text3)
+                } else if failed {
+                    Button(L.imageLoadFailed()) { attempt += 1 }.font(.caption).foregroundStyle(T.err)
+                } else if let image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: 220, maxHeight: 220)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .onTapGesture { preview = true }
+                    Button(L.viewOriginal()) { preview = true }.font(.caption).foregroundStyle(T.accent)
+                }
+            }
+        }
+        .padding(.leading, 56)
+        .task(id: "\(ref.attachmentId)-\(attempt)") {
+            loading = true
+            failed = false
+            image = nil
+            let data = await AppModel.shared.loadAttachmentBytes(sessionId: sessionId, attachmentId: ref.attachmentId)
+            bytes = data
+            guard let data else { failed = true; loading = false; return }
+            image = UIImage(data: data)
+            failed = image == nil
+            loading = false
+        }
+        .fullScreenCover(isPresented: $preview) {
+            if let bytes, let full = UIImage(data: bytes) {
+                ZStack {
+                    Color.black.ignoresSafeArea()
+                    Image(uiImage: full).resizable().scaledToFit()
+                }
+                .onTapGesture { preview = false }
+            }
+        }
+    }
+}
+
+private extension String {
+    var nilIfBlank: String? {
+        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : self
     }
 }
 

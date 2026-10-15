@@ -127,6 +127,22 @@ public struct WorkspaceView: Sendable, Equatable, Identifiable {
 
     public var id: String { workspaceId }
 
+    public init(
+        workspaceId: String,
+        path: String,
+        title: String,
+        sessionIds: [String],
+        createdAt: String? = nil,
+        updatedAt: String? = nil
+    ) {
+        self.workspaceId = workspaceId
+        self.path = path
+        self.title = title
+        self.sessionIds = sessionIds
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+
     public static func parse(_ element: JSONValue) -> WorkspaceView? {
         guard let id = element["workspaceId"].str(), let path = element["path"].str() else { return nil }
         return WorkspaceView(

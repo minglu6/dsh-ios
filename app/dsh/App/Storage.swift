@@ -169,6 +169,19 @@ enum AppPrefs {
     static func setCollapsedWorkspaces(hostId: String, value: Set<String>) {
         UserDefaults.standard.set(Array(value), forKey: "dsh.collapsedWorkspaces:\(hostId)")
     }
+
+    static func manualSessionOrder(hostId: String) -> [String] {
+        UserDefaults.standard.stringArray(forKey: "dsh.manualSessionOrder:\(hostId)") ?? []
+    }
+
+    static func setManualSessionOrder(hostId: String, value: [String]) {
+        UserDefaults.standard.set(value, forKey: "dsh.manualSessionOrder:\(hostId)")
+    }
+
+    static var notificationsDeclined: Bool {
+        get { UserDefaults.standard.bool(forKey: "dsh.notificationsDeclined") }
+        set { UserDefaults.standard.set(newValue, forKey: "dsh.notificationsDeclined") }
+    }
 }
 
 enum TerminalStore {

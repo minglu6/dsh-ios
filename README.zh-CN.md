@@ -16,11 +16,11 @@
 
 | 领域 | 本版本 |
 | --- | --- |
-| 连接 | 配对链接／扫码／host:port + 6 位码、局域网 Bonjour `_dshpocket._tcp`、多主机、断线退避重连、**复制诊断报告** |
-| 会话 | 按工作区分组、置顶／Fork／归档、完成未查看绿点、相对时间。无会话路径、无上移下移、无聊天「回到底部」按钮 |
-| 聊天 | 流式正文与思考、Markdown／代码块／表格、官方思考区、工具行回执、进程组折叠、本地回显、排队编辑／插话、审批官方卡、用户提问卡、`/` 指令、附件上传、`@` 官方 mention token 与 chip、模型＋思考强度、权限模式（完全访问确认）、任务清单、目标、本轮用量与会话统计、重试／回合失败、工作区改动卡片（编码视图开启时）。消息动作：复制／赞／踩（远程主机有 `feedback.set` 时）／分支（已完成轮次最后一条上的 `sessions.fork`） |
+| 连接 | 配对链接／扫码／host:port + 6 位码、局域网 Bonjour `_dshpocket._tcp`（TXT `protocol=1` + 64 位 hex `instanceId`）、未配对附近过滤、已配对设备 TCP 探测（10s、最多 2 路）、1s→30s 退避且仅 Offline/Connecting 恢复、短后台任务（不是 Android 前台服务）、完成／审批本地通知、**复制诊断报告** |
+| 会话 | 按工作区分组、置顶／Fork／归档／取消归档（归档行不可打开）、远程主机搜索＋本地标题／路径合并、公布 `insertBefore`／`insertSessionBefore` 时拖拽排序、完成未查看绿点、相对时间。无会话路径、无聊天「回到底部」按钮 |
+| 聊天 | 流式正文与思考、Markdown／代码块／表格、官方思考区、工具行回执、进程组折叠、本地回显、排队编辑／插话、审批官方卡、用户提问卡、`/` 指令、附件上传、会话图片气泡（`session.attachment`）、`@` 官方 mention token 与 chip、模型＋思考强度、权限模式（完全访问确认）、任务清单、目标、本轮用量与会话统计、重试／回合失败、工作区改动卡片（编码视图开启时）、顶栏 ⋯ 导出／会话反馈。消息动作：复制／赞／踩（远程主机有 `feedback.set` 时）／分支（已完成轮次最后一条上的 `sessions.fork`） |
 | 轨迹 | 对话／轨迹页签：紧凑账本（7 种格子）、工具栏时长／轮次／调用＋搜索、泳道、格子检视 概述／参数／结果／Schema／计时、请求检视 概述／选项／用量／计时（官方 `ui-trajectory` 文案）。编码视图关闭时隐藏。差距矩阵：[docs/parity-gap.md](docs/parity-gap.md) |
-| 配置 | 通用设置（字体、折叠时机、性能、权限、Session Log、链接打开位置）。外观与字体只保存在本机，不写入远程主机。模型页：提供商编辑＋密钥（`models.providers*`／`credentials.*`）。无自造「凭证」页。诊断只在「手机连接」 |
+| 配置 | 通用设置（字体、折叠时机、性能、权限、Session Log、链接打开位置）。外观与字体只保存在本机，不写入远程主机。模型页：提供商编辑＋密钥（`models.providers*`／`credentials.*`）。Agent 预设（`presets.list`／`presets.read`／`presets.settings`）＋官方引导＋创造模式入口。无自造「凭证」页。诊断只在「手机连接」 |
 | 远程主机工具 | 抽屉在公布 `plugins.list` 时打开插件管理（安装／检视／来源库／settingsDescribe 配置／插件 Web 界面），在公布 `schedule.catalog` 时打开自动化任务（仅抽屉，设置里没有「自动化」行）。会话「开始」面板始终提供内置浏览器与会话数据诊断；PTY 终端与工作区文件树在公布对应 op 时出现。文件预览语言表与隔离高亮对齐 Android。会话顶栏在公布 `jobs.list` 时显示实时任务 chip／面板。差距矩阵：[docs/parity-gap.md](docs/parity-gap.md) |
 
 远程主机配置来自 `plugins.settingsDescribe` 与 `settings.changed`。正常态不放手动同步。
@@ -123,7 +123,8 @@ zip -qr dsh-ios.ipa Payload
 ## 已知限制
 
 - 不支持在手机本地运行 dsh。电脑休眠、远程主机退出或网络不可达时无法继续远程操作。
-- 请求检视、WorkspaceChanges 卡片、Agent 预设以及批 E／F／G 尚未进入本 IPA。轨迹账本＋格子检视、聊天 Markdown／思考区／进程组折叠、插件管理、自动化任务、模型提供商编辑、远程主机 PTY 终端、工作区文件树、实时任务与完成未读同步已有。
+- iOS 没有 Android 前台服务那种常驻「已连接」通知。`ConnectionKeeper` 只用短时 `beginBackgroundTask`，系统回收后 WebSocket 不保证还在。
+- 附近发现走本地网络＋Bonjour，不是 Android 的 `NEARBY_WIFI_DEVICES`。
 - 上游仍为 alpha。升级时应同时关注 App、dsh-android 中的桥接和 dsh 版本。
 
 ## 致谢

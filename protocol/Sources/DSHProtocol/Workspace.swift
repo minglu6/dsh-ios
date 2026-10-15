@@ -66,6 +66,23 @@ public enum WorkspaceArchivedFilter: String, Sendable {
     case hide, show, only
 }
 
+/// Host archive-activity refusal details (`workspace/session-active`).
+public func archiveActivityDescription(_ details: JSONValue?, english: Bool) -> String {
+    (details?["activity"].arr() ?? []).map { activity in
+        let kind = activity["kind"].str() ?? ""
+        let family: String
+        switch kind {
+        case "turn": family = english ? "Turn in progress" : "进行中的回合"
+        case "subagent": family = english ? "Subagents" : "子智能体"
+        case "job": family = english ? "Background jobs" : "后台任务"
+        case "schedule": family = english ? "Scheduled reminders" : "定时提醒"
+        default: family = kind
+        }
+        let names = (activity["items"].arr() ?? []).compactMap { $0["label"].str() ?? $0["id"].str() }
+        return names.isEmpty ? family : "\(family): \(names.joined(separator: ", "))"
+    }.joined(separator: "\n")
+}
+
 /// Keep hidden archives in the same order account; insert ordinary forks before their source.
 public func reconcileSessionOrder(sessions: [SessionSummary], saved: [String]) -> [String] {
     let members = Dictionary(uniqueKeysWithValues: sessions.map { ($0.sessionId, $0) })
