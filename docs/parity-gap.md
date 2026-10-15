@@ -23,7 +23,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | D | Plugin manager + schedule + remaining official settings + chat polish | done (#6) |
 | E | Permissions + ModelPicker + questions/commands/attachments/queue/goals + Todo/stats/retry + mention/approval/HostUi close | done (#7) |
 | F | WorkspaceChanges + TrajectoryRequest leftover + Session Inspector + Browser + CodePreview + transcript publisher | done (#8) |
-| G | session search/export, Agent presets, NSD, notifications, unarchive, drag reorder, NavigationPolicy | this PR |
+| G | session search/export, Agent presets, NSD, notifications, unarchive, drag reorder, NavigationPolicy | done (#9) |
 
 ---
 
@@ -49,7 +49,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Host UI | pocket `ui.open` | `HostUiScreen.kt` (`ui.close` on dismiss) | `HostUiView` ticket POST + `ui.close` on dismiss |
 | Markdown | `ui-chat` primitives | `Markdown.kt` | `protocol/Markdown.swift` + `Features/Chat/MarkdownView.swift` |
 | Official icons | desktop `D.*` | Android vector set | `Design/Icons.swift` SF Symbol map |
-| Connection keep-alive | — | `ConnectionService` FGS | `ConnectionKeeper` background task + path monitor + local notify |
+| Connection keep-alive | — | `ConnectionService` FGS | `ConnectionKeeper` `beginBackgroundTask` + ping + `BGAppRefreshTask` `dev.dsh.pocket.ios.refresh` + path monitor + local notify |
 
 ---
 
@@ -161,7 +161,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | LAN / NSD discovery | `_dshpocket._tcp` protocol=1 + 64-hex instanceId | same TXT gate; unpaired filter; address bind | **partial** → **present** | **G** |
 | Paired-device online poll | TCP probe, 10s, max 2 | same policy (`PairedDeviceStatusPolicy`) | **missing** → **present** | **G** |
 | Reconnect restore gate | `ConnectionRestorePolicy` Offline/Connecting only | same; `NWPathMonitor` wakes the loop | **partial** → **present** | **G** |
-| Background keep-alive | Android ForegroundService | iOS background task only while scene is active / short background; **not** FGS | **present** (platform) | **G** |
+| Background keep-alive | Android ForegroundService | `beginBackgroundTask` + ping for the system window, then `BGAppRefreshTask` for a later lightweight reconnect/status refresh; **not** FGS | **present** (platform) | **G** |
 | Official `D.*` icons | Android vector set | `Design/Icons.swift` SF Symbol map for search / more / archive / preset / download | **partial** → **present** | **G** |
 
 ---
@@ -203,7 +203,7 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 
 - Account / shortcuts / open config file / open-in-desktop-editor: desktop-local — **hide**.
 - Keyboard shortcut settings: desktop-local — **hide**.
-- Android ForegroundService persistent “已连接” notification: iOS has no equivalent; `ConnectionKeeper` uses `beginBackgroundTask` + `NWPathMonitor`. The WS is not guaranteed after the system expires the background task.
+- Android ForegroundService persistent “已连接” notification: iOS has no equivalent; `ConnectionKeeper` uses `beginBackgroundTask` + ping, then `BGAppRefreshTask` `dev.dsh.pocket.ios.refresh`. The WS is not guaranteed after the system expires those windows.
 - Nearby Wi-Fi (`NEARBY_WIFI_DEVICES`) is Android 13+; iOS uses Local Network + Bonjour (`NSLocalNetworkUsageDescription`).
 - iOS CodePreview has no Meslo font file (CSS falls back to monospace). WKWebView cannot intercept `https://`; assets load over `dsh-code-preview://` mapped to the same Android `https://code-preview.invalid` policy used in tests.
 - Embedded browser cannot intercept every subresource the way Android `shouldInterceptRequest` does; main-frame / navigation policy still uses `BrowserPolicy`.

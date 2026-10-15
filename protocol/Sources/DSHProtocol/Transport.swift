@@ -138,6 +138,24 @@ final class URLSessionFrameTransport: FrameTransport {
         }
     }
 
+    func ping() async throws {
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+            queue.async {
+                if self.closed {
+                    cont.resume(throwing: PocketError(code: "transport", message: "not connected"))
+                    return
+                }
+                self.task.sendPing { error in
+                    if let error {
+                        cont.resume(throwing: PocketError(code: "transport", message: error.localizedDescription))
+                    } else {
+                        cont.resume()
+                    }
+                }
+            }
+        }
+    }
+
     func receive() async throws -> String {
         let message = try await task.receive()
         switch message {

@@ -123,7 +123,7 @@ zip -qr dsh-ios.ipa Payload
 ## 已知限制
 
 - 不支持在手机本地运行 dsh。电脑休眠、远程主机退出或网络不可达时无法继续远程操作。
-- iOS 没有 Android 前台服务那种常驻「已连接」通知。`ConnectionKeeper` 只用短时 `beginBackgroundTask`，系统回收后 WebSocket 不保证还在。
+- iOS 没有 Android 前台服务那种常驻「已连接」通知。`ConnectionKeeper` 用 `beginBackgroundTask` 加 ping，再用 `BGAppRefreshTask`；系统回收后 WebSocket 不保证还在。
 - 附近发现走本地网络＋Bonjour，不是 Android 的 `NEARBY_WIFI_DEVICES`。
 - 上游仍为 alpha。升级时应同时关注 App、dsh-android 中的桥接和 dsh 版本。
 

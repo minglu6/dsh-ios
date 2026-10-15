@@ -1,7 +1,20 @@
 import SwiftUI
+import UIKit
+
+@MainActor
+final class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        ConnectionKeeper.shared.registerBackgroundTasks()
+        return true
+    }
+}
 
 @main
 struct dshApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @ObservedObject private var theme = ThemeStateHolder.shared
 
     var body: some Scene {
