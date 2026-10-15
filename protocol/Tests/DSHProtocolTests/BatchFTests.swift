@@ -549,11 +549,11 @@ final class SessionInspectorModelTests: XCTestCase {
     }
 
     func testTypeFilterMatchesDesktopContainmentNotWildcardExpressions() {
-        XCTAssertTrue(inspectorTypeMatches("reasoning-delta", "DELTA"))
-        XCTAssertTrue(inspectorTypeMatches("reasoning-delta", " ** Reasoning ** "))
-        XCTAssertFalse(inspectorTypeMatches("reasoning-delta", "*reasoning*delta*"))
-        XCTAssertFalse(inspectorTypeMatches("Item.Tool", "Item.+"))
-        XCTAssertTrue(inspectorTypeMatches("anything", " *** "))
+        XCTAssertTrue(inspectorTypeMatches("reasoning-delta", filter: "DELTA"))
+        XCTAssertTrue(inspectorTypeMatches("reasoning-delta", filter: " ** Reasoning ** "))
+        XCTAssertFalse(inspectorTypeMatches("reasoning-delta", filter: "*reasoning*delta*"))
+        XCTAssertFalse(inspectorTypeMatches("Item.Tool", filter: "Item.+"))
+        XCTAssertTrue(inspectorTypeMatches("anything", filter: " *** "))
     }
 
     func testFilterKeepsRealAncestorsWithoutCountingThemAsMatches() {

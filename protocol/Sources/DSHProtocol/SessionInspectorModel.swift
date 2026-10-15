@@ -73,7 +73,7 @@ public func inspectorTypeMatches(_ type: String, filter: String) -> Bool {
 public func inspectorTypeSuggestions(_ rows: [InspectorRow], filter: String) -> [String] {
     var found = Set<String>()
     func visit(_ row: InspectorRow) {
-        if inspectorTypeMatches(row.type, filter) { found.insert(row.type) }
+        if inspectorTypeMatches(row.type, filter: filter) { found.insert(row.type) }
         row.children.forEach(visit)
     }
     rows.forEach(visit)
@@ -95,7 +95,7 @@ public func inspectorVisibleRows(
 ) -> [InspectorVisibleRow] {
     func visit(_ row: InspectorRow, depth: Int) -> [InspectorVisibleRow] {
         let children = row.children.flatMap { visit($0, depth: depth + 1) }
-        let matches = inspectorTypeMatches(row.type, filter)
+        let matches = inspectorTypeMatches(row.type, filter: filter)
         if !matches && children.isEmpty { return [] }
         var out: [InspectorVisibleRow] = [InspectorVisibleRow(row: row, depth: depth, matches: matches)]
         if !collapsed.contains(row.key) &&
@@ -469,8 +469,6 @@ public func inspectorGroupRows(_ st: InspectorChatState, policy: PresentationPol
                     "members": .array(proc.members.map { .string($0.key) }),
                     "steps": .array(proc.steps.map { .string($0.key) }),
                 ]),
-                identity: proc.key,
-                location: proc.turn.map(String.init) ?? "",
                 children: proc.steps.map { step in
                     InspectorRow(
                         key: "step:\(proc.key):\(step.key)",
@@ -484,7 +482,9 @@ public func inspectorGroupRows(_ st: InspectorChatState, policy: PresentationPol
                         identity: step.key,
                         location: step.members.first.map(inspectorItemLocation) ?? ""
                     )
-                }
+                },
+                identity: proc.key,
+                location: proc.turn.map(String.init) ?? ""
             )
         } else {
             result = inspectorItemRow(members[0])
