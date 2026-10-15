@@ -298,6 +298,9 @@ public final class AnsiTerminal: @unchecked Sendable {
                 case "\t": tab()
                 case "\n": lineFeed()
                 case "\r": carriageReturn()
+                case "\r\n":
+                    carriageReturn()
+                    lineFeed()
                 case "\u{000E}", "\u{000F}": break
                 default:
                     if ch.isHighSurrogate {

@@ -71,7 +71,7 @@ public func parseDelimitedPreview(_ text: String, delimiter: Character) throws -
             index = next
             continue
         }
-        if (ch == "\n" || ch == "\r"), !quoted {
+        if isRowBreak(ch), !quoted {
             try finishCell()
             rows.append(row)
             row = []
@@ -86,11 +86,16 @@ public func parseDelimitedPreview(_ text: String, delimiter: Character) throws -
         index = next
     }
     if quoted { throw PocketError(code: "preview", message: "Unclosed quoted table cell") }
-    if !cell.isEmpty || !row.isEmpty || (!text.isEmpty && text.last != "\n" && text.last != "\r") {
+    let trailingBreak = text.last.map(isRowBreak) == true
+    if !cell.isEmpty || !row.isEmpty || (!text.isEmpty && !trailingBreak) {
         try finishCell()
         rows.append(row)
     }
     return rows
+}
+
+private func isRowBreak(_ ch: Character) -> Bool {
+    ch == "\n" || ch == "\r" || ch == "\r\n"
 }
 
 public func classifyFileType(_ path: String) -> String {
