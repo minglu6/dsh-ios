@@ -259,8 +259,6 @@ enum L {
     static func backgroundJobs() -> String { en ? "Background jobs" : "后台任务" }
     static func jobsUnavailable() -> String { en ? "Job status unavailable" : "任务状态不可用" }
     static func jobsZero() -> String { en ? "0 background jobs" : "0 个后台任务" }
-    static func jobsLiveCount(_ n: Int) -> String { JobsActionLabel.text(.live(n), en: en) }
-    static func jobsRetainedCount(_ n: Int) -> String { JobsActionLabel.text(.retained(n), en: en) }
     static func killJob() -> String { en ? "Stop" : "终止" }
     static func killBackgroundJobTitle() -> String { en ? "Stop background job?" : "终止后台任务？" }
     static func killJobFailed() -> String { en ? "Stop failed, retry" : "终止失败，请重试" }
