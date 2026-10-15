@@ -248,7 +248,9 @@ final class SessionAttachmentTests: XCTestCase {
         XCTAssertEqual(SessionAttachment.decodeBytes(result), data)
         XCTAssertNil(SessionAttachment.decodeBytes(.object([:])))
         XCTAssertEqual(SessionAttachment.sampleSize(width: 200, height: 200), 1)
-        XCTAssertEqual(SessionAttachment.sampleSize(width: 1321, height: 10), 4)
+        // Android Chat.kt: while (max(w,h) / sample > 660) sample *= 2  — integer division.
+        XCTAssertEqual(SessionAttachment.sampleSize(width: 1321, height: 10), 2)
+        XCTAssertEqual(SessionAttachment.sampleSize(width: 1322, height: 10), 4)
         XCTAssertEqual(
             SessionAttachment.args(sessionId: "s", attachmentId: "a"),
             jsonObject(["sessionId": .string("s"), "attachmentId": .string("a")])
