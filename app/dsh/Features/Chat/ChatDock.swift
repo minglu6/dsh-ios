@@ -652,7 +652,7 @@ struct CommandSheet: View {
         let enabled = model.isOnline && sessionReady && available
         Button {
             guard enabled else { return }
-            func consume() { if consumeSlash { model.consumeComposerSlash() } }
+            @MainActor func consume() { if consumeSlash { model.consumeComposerSlash() } }
             switch kind {
             case "file": consume(); onDismiss(); onFile()
             case "model": consume(); onModel()

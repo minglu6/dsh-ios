@@ -373,6 +373,7 @@ func collapseText(_ mode: CollapseTiming) -> String {
     }
 }
 
+@MainActor
 func settingsDisconnectedBanner(_ model: AppModel) -> some View {
     Group {
         if !model.isOnline {

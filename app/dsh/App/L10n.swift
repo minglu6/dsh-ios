@@ -124,7 +124,7 @@ enum L {
     static func fork() -> String { en ? "Fork" : "Fork" }
     static func forkSession() -> String { en ? "Fork session" : "分叉会话" }
     static func savingEllipsis() -> String { en ? "Saving…" : "保存中…" }
-    static func moreActions() -> String { en ? "More actions" : "更多操作" }
+    static func moreActions() -> String { en ? "More" : "更多" }
     static func cancel() -> String { en ? "Cancel" : "取消" }
     static func save() -> String { en ? "Save" : "保存" }
     static func delete() -> String { en ? "Delete" : "删除" }
@@ -343,7 +343,6 @@ enum L {
     static func pinned() -> String { en ? "Pinned" : "已置顶" }
     static func expand() -> String { en ? "Expand" : "展开" }
     static func collapse() -> String { en ? "Collapse" : "收起" }
-    static func moreActions() -> String { en ? "More" : "更多" }
     static func showMoreSessions(_ n: Int) -> String {
         en ? "Show \(n) more sessions" : "展开其余 \(n) 个会话"
     }

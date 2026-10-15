@@ -55,7 +55,7 @@ private struct BrowserPanelContent: View {
         HStack(spacing: 0) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 4) {
-                    ForEach(tabs.pages) { page in
+                    ForEach(tabs.pages, id: \.id) { page in
                         let selected = page.id == tabs.selectedId
                         HStack(spacing: 0) {
                             Button {
@@ -364,7 +364,7 @@ private final class BrowserTabsStore: ObservableObject {
 }
 
 @MainActor
-final class BrowserPageState: ObservableObject, Identifiable {
+private final class BrowserPageState: ObservableObject, Identifiable {
     let id: String
     var policy: BrowserPolicy
     private let onCheckpoint: () -> Void
@@ -502,7 +502,7 @@ private struct BrowserViewport: UIViewRepresentable {
 }
 
 @MainActor
-final class BrowserWebCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
+private final class BrowserWebCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
     var state: BrowserPageState
     weak var tabs: BrowserTabsStore?
 
