@@ -123,7 +123,7 @@ Pushes to `main` force-update the `dsh-ios-latest` prerelease with `dsh-ios.ipa`
 ## Limits
 
 - The phone cannot run dsh locally. Sleeping the computer, quitting the Host, or losing the network stops remote control.
-- iOS cannot keep a persistent “connected” notification the way Android ForegroundService does. `ConnectionKeeper` holds a short `beginBackgroundTask`; the WebSocket is not guaranteed after the system expires it.
+- iOS cannot keep a persistent “connected” notification the way Android ForegroundService does. `ConnectionKeeper` holds `beginBackgroundTask` with pings, then a `BGAppRefreshTask`; the WebSocket is not guaranteed after the system expires those windows.
 - Nearby discovery uses Local Network + Bonjour, not Android `NEARBY_WIFI_DEVICES`.
 - Upstream dsh is still alpha. Upgrade the app, the Android-hosted bridge, and dsh together.
 

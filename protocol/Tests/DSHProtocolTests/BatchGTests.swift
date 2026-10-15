@@ -117,6 +117,28 @@ final class ConnectionRestoreTests: XCTestCase {
     }
 }
 
+final class BackgroundKeepAliveTests: XCTestCase {
+    func testRefreshTaskMatchesInfoPlistAndPingsInsideTheBackgroundWindow() {
+        XCTAssertEqual(BackgroundKeepAlivePolicy.taskIdentifier, "dev.dsh.pocket.ios.refresh")
+        XCTAssertEqual(BackgroundKeepAlivePolicy.pingIntervalMs, 10_000)
+        XCTAssertEqual(BackgroundKeepAlivePolicy.pingTimeoutMs, 5_000)
+        XCTAssertLessThan(BackgroundKeepAlivePolicy.pingTimeoutMs, BackgroundKeepAlivePolicy.pingIntervalMs)
+        XCTAssertLessThan(BackgroundKeepAlivePolicy.pingIntervalMs, 30_000)
+        XCTAssertEqual(BackgroundKeepAlivePolicy.refreshEarliestBeginSeconds, 15 * 60)
+    }
+
+    func testResumeNeverTearsDownALiveOnlineSocket() {
+        XCTAssertEqual(BackgroundKeepAlivePolicy.resumeWork(dot: .online, socketOpen: true), .refreshLive)
+        XCTAssertEqual(BackgroundKeepAlivePolicy.resumeWork(dot: .online, socketOpen: false), .reconnect)
+        XCTAssertEqual(BackgroundKeepAlivePolicy.resumeWork(dot: .offline, socketOpen: false), .reconnect)
+        XCTAssertEqual(BackgroundKeepAlivePolicy.resumeWork(dot: .connecting, socketOpen: false), .reconnect)
+        XCTAssertEqual(BackgroundKeepAlivePolicy.resumeWork(dot: .connecting, socketOpen: true), .reconnect)
+        XCTAssertEqual(BackgroundKeepAlivePolicy.resumeWork(dot: .unauthorized, socketOpen: false), .none)
+        XCTAssertEqual(BackgroundKeepAlivePolicy.resumeWork(dot: nil, socketOpen: false), .none)
+        XCTAssertNotEqual(BackgroundKeepAlivePolicy.PingResult.skipped, .failed)
+    }
+}
+
 final class SessionSearchTests: XCTestCase {
     func testPreservesForkIdentityAndSearchSnippetSeparately() throws {
         let fork = try XCTUnwrap(SessionSummary.parse(try JSONValue.parse(

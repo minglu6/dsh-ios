@@ -229,6 +229,9 @@ final class AppModel: ObservableObject {
     private var restoreGeneration: Int64 = 0
     private var probeTask: Task<Void, Never>?
     private var searchGeneration: Int64 = 0
+    private var resumeTask: Task<Void, Never>?
+    private var liveRefreshBusy = false
+    private var liveRefreshPending = false
 
     var activeProfile: Profile? { profiles.first { $0.id == activeId } }
     var currentDot: Dot? { activeId.flatMap { status[$0] } }
@@ -255,6 +258,8 @@ final class AppModel: ObservableObject {
     func pop() { if !routeStack.isEmpty { routeStack.removeLast() } }
 
     func connect(profileId: String) {
+        resumeTask?.cancel()
+        resumeTask = nil
         connectTask?.cancel()
         client?.close()
         client = nil
@@ -329,6 +334,8 @@ final class AppModel: ObservableObject {
 
     func removeProfile(_ id: String) {
         if activeId == id {
+            resumeTask?.cancel()
+            resumeTask = nil
             connectTask?.cancel()
             client?.close()
             client = nil
@@ -985,15 +992,73 @@ final class AppModel: ObservableObject {
     }
 
     func onNetworkRestored() {
+        wakeReconnect()
+    }
+
+    func onBecameActive() {
+        refreshPairedStatus()
+        resumeTask?.cancel()
+        resumeTask = Task { await resumeForegroundSession() }
+    }
+
+    func onEnteredBackground() {
+        resumeTask?.cancel()
+        resumeTask = nil
+    }
+
+    func wakeReconnect() {
         guard let id = activeId else { return }
-        let dot = status[id].map(ConnectionDot.init(dot:))
-        guard ConnectionRestorePolicy.shouldReconnect(dot) else { return }
+        let socketOpen = client?.state == .open
+        let work = BackgroundKeepAlivePolicy.resumeWork(
+            dot: status[id].map(ConnectionDot.init(dot:)),
+            socketOpen: socketOpen
+        )
+        guard work == .reconnect else { return }
         restoreGeneration += 1
         let generation = restoreGeneration
         backoffMs = ReconnectBackoffPolicy.reset()
         reconnectWake = true
-        if status[id] == .connecting, restoreGeneration == generation {
+        if status[id] == .connecting || !socketOpen, restoreGeneration == generation {
             client?.close()
+        }
+    }
+
+    func noteKeepAliveFailed() {
+        client?.close()
+        wakeReconnect()
+    }
+
+    func pingLiveSocket() async -> BackgroundKeepAlivePolicy.PingResult {
+        guard let client, client.state == .open else { return .skipped }
+        do {
+            try await client.ping()
+            return .ok
+        } catch {
+            return .failed
+        }
+    }
+
+    func performBackgroundRefresh() async -> Bool {
+        guard let id = activeId else { return true }
+        let work = BackgroundKeepAlivePolicy.resumeWork(
+            dot: status[id].map(ConnectionDot.init(dot:)),
+            socketOpen: client?.state == .open
+        )
+        switch work {
+        case .none:
+            return true
+        case .reconnect:
+            wakeReconnect()
+            return await waitUntilSocketOpen()
+        case .refreshLive:
+            switch await pingLiveSocket() {
+            case .ok:
+                await refreshLiveSessionState()
+                return true
+            case .skipped, .failed:
+                noteKeepAliveFailed()
+                return await waitUntilSocketOpen()
+            }
         }
     }
 
@@ -1502,7 +1567,7 @@ final class AppModel: ObservableObject {
             do {
                 guard let url = websocketURL(host: profile.host, port: profile.port) else {
                     status[profile.id] = .offline
-                    emit("地址无效，请重新配对（需要 host:port）")
+                    emit(L.t("地址无效，请重新配对（需要远程主机地址）", "Invalid address; pair again (host:port required)"))
                     return
                 }
                 let hello = try await client.connect(url: url, host: profile.host, auth: .token(token))
@@ -1589,6 +1654,65 @@ final class AppModel: ObservableObject {
                 slept += step
             }
             reconnectWake = false
+        }
+    }
+
+    private func resumeForegroundSession() async {
+        guard !Task.isCancelled, let id = activeId else { return }
+        let work = BackgroundKeepAlivePolicy.resumeWork(
+            dot: status[id].map(ConnectionDot.init(dot:)),
+            socketOpen: client?.state == .open
+        )
+        switch work {
+        case .none:
+            return
+        case .reconnect:
+            wakeReconnect()
+        case .refreshLive:
+            switch await pingLiveSocket() {
+            case .ok:
+                await refreshLiveSessionState()
+            case .skipped, .failed:
+                noteKeepAliveFailed()
+            }
+        }
+    }
+
+    private func waitUntilSocketOpen() async -> Bool {
+        while !Task.isCancelled {
+            if client?.state == .open { return true }
+            try? await Task.sleep(nanoseconds: 200_000_000)
+        }
+        return client?.state == .open
+    }
+
+    private func refreshLiveSessionState() async {
+        if liveRefreshBusy {
+            liveRefreshPending = true
+            return
+        }
+        liveRefreshBusy = true
+        defer {
+            liveRefreshBusy = false
+            if liveRefreshPending {
+                liveRefreshPending = false
+                if !Task.isCancelled {
+                    Task { await refreshLiveSessionState() }
+                }
+            }
+        }
+        guard let client, client.state == .open else { return }
+        do {
+            try await refreshAll(client)
+        } catch is CancellationError {
+            return
+        } catch {
+            if client.state != .open {
+                noteKeepAliveFailed()
+            }
+        }
+        if jobsWatchers > 0 {
+            await refreshJobsOnce(clearKillError: false)
         }
     }
 

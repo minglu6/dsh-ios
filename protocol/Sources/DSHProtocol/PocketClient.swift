@@ -573,6 +573,19 @@ public final class PocketClient: @unchecked Sendable {
         notifyState(.closed)
     }
 
+    /// WebSocket ping. Keeps a background socket from going idle during `beginBackgroundTask`.
+    public func ping(timeoutMs: Int64 = BackgroundKeepAlivePolicy.pingTimeoutMs) async throws {
+        let transport: URLSessionFrameTransport = try mutex.withLock {
+            guard state == .open, let current = self.transport else {
+                throw PocketError(code: "transport", message: "not connected")
+            }
+            return current
+        }
+        try await withTimeout(ms: timeoutMs) {
+            try await transport.ping()
+        }
+    }
+
     private func handshakePayload(_ auth: Auth) -> (op: String, args: JSONValue) {
         switch auth {
         case .token(let token):
