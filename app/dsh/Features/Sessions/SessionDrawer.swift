@@ -5,6 +5,9 @@ struct SessionDrawer: View {
     @ObservedObject var model: AppModel
     @State private var query = ""
     @State private var now = Int64(Date().timeIntervalSince1970 * 1000)
+    @State private var viewOptions = false
+    @State private var addWorkspace = false
+    @State private var overflow: [String: Int] = [:]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -32,24 +35,53 @@ struct SessionDrawer: View {
             .padding(.horizontal, 12)
             .padding(.bottom, 8)
 
+            if model.ops.contains("plugins.list") || model.ops.contains("schedule.catalog") {
+                drawerPanels.padding(.bottom, 4)
+            }
+
+            HStack {
+                Text(model.sessionGroupBy == .flat ? L.sectionSessions() : L.sectionWorkspaces())
+                    .font(.system(size: 13))
+                    .foregroundStyle(T.text3)
+                Spacer()
+                Button { viewOptions = true } label: {
+                    Image(systemName: "slider.horizontal.3").foregroundStyle(T.text2)
+                }
+                .accessibilityLabel(L.viewOptions())
+                if model.ops.contains("workspace.create") {
+                    Button { addWorkspace = true } label: {
+                        Image(systemName: "plus").foregroundStyle(T.text2)
+                    }
+                    .accessibilityLabel(L.addWorkspace())
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.bottom, 4)
+
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(Array(grouped.enumerated()), id: \.offset) { _, group in
-                        Text(group.title)
-                            .font(.caption)
-                            .foregroundStyle(T.text3)
-                            .padding(.horizontal, 16)
-                            .padding(.top, 12)
-                            .padding(.bottom, 4)
-                        ForEach(group.sessions) { session in
-                            sessionRow(session)
-                        }
-                    }
-                    if grouped.allSatisfy(\.sessions.isEmpty) {
+                    if pinnedRows.isEmpty && rest.isEmpty && model.workspaces.isEmpty {
                         Text(L.emptySessions()).foregroundStyle(T.text3).padding(24)
                     }
-                    if model.ops.contains("plugins.list") || model.ops.contains("schedule.catalog") {
-                        drawerPanels
+                    if !pinnedRows.isEmpty {
+                        Text(L.pinned())
+                            .font(.system(size: 12))
+                            .foregroundStyle(T.text3)
+                            .padding(.horizontal, 22)
+                            .padding(.vertical, 4)
+                        sessionRows(pinnedRows, groupKey: nil)
+                    }
+                    if model.sessionGroupBy == .flat {
+                        sessionRows(rest, groupKey: "flat")
+                    } else {
+                        WorkspaceNavigationGroups(
+                            model: model,
+                            workspaces: model.workspaces,
+                            sessions: rest,
+                            tree: model.sessionGroupBy == .workspaceTree
+                        ) { key, rows in
+                            sessionRows(rows, groupKey: key)
+                        }
                     }
                 }
             }
@@ -59,31 +91,71 @@ struct SessionDrawer: View {
         .onReceive(Timer.publish(every: 30, on: .main, in: .common).autoconnect()) { _ in
             now = Int64(Date().timeIntervalSince1970 * 1000)
         }
+        .confirmationDialog(L.viewOptions(), isPresented: $viewOptions, titleVisibility: .visible) {
+            Button(L.groupByWorkspace()) { model.setSessionGroupBy(.workspace) }
+            Button(L.groupByWorkspaceTree()) { model.setSessionGroupBy(.workspaceTree) }
+            Button(L.groupByFlat()) { model.setSessionGroupBy(.flat) }
+            Button(L.cancel(), role: .cancel) {}
+        }
+        .sheet(isPresented: $addWorkspace) {
+            WorkspaceDirectorySheet(model: model, onDismiss: { addWorkspace = false })
+        }
     }
 
     private var visibleSessions: [SessionSummary] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let filter: WorkspaceArchivedFilter
+        switch model.archivedFilter {
+        case .hide: filter = .hide
+        case .show: filter = .show
+        case .only: filter = .only
+        }
         return model.sessions.filter { session in
-            if model.archivedIds.contains(session.sessionId) { return false }
+            guard visibleDrawerSession(session, current: model.chat?.sessionId, archived: model.archivedIds, filter: filter) else {
+                return false
+            }
             if q.isEmpty { return true }
             return (session.title ?? "").lowercased().contains(q)
         }
     }
 
-    private var grouped: [(title: String, sessions: [SessionSummary])] {
-        if model.workspaces.isEmpty {
-            return [(L.sectionSessions(), visibleSessions)]
+    private var pinnedRows: [SessionSummary] {
+        visibleSessions.filter { model.pinnedIds.contains($0.sessionId) && !model.archivedIds.contains($0.sessionId) }
+    }
+
+    private var rest: [SessionSummary] {
+        visibleSessions.filter { !model.pinnedIds.contains($0.sessionId) || model.archivedIds.contains($0.sessionId) }
+    }
+
+    @ViewBuilder
+    private func sessionRows(_ rows: [SessionSummary], groupKey: String?) -> some View {
+        let slice = projectSessions(rows, groupKey: groupKey)
+        ForEach(slice.rows) { session in
+            sessionRow(session)
         }
-        var used = Set<String>()
-        var groups: [(String, [SessionSummary])] = []
-        for workspace in model.workspaces {
-            let rows = visibleSessions.filter { workspace.sessionIds.contains($0.sessionId) }
-            rows.forEach { used.insert($0.sessionId) }
-            groups.append((workspace.title.isEmpty ? workspace.path : workspace.title, rows))
+        if let groupKey, slice.idle > 5 {
+            Button {
+                overflow[groupKey] = slice.hidden == 0 ? 5 : (slice.hidden <= 5 ? Int.max : slice.limit + 5)
+            } label: {
+                Text(slice.hidden == 0 ? L.showLess() : L.showMoreSessions(slice.hidden))
+                    .font(.system(size: 13))
+                    .foregroundStyle(T.text3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.leading, 48)
+                    .padding(.vertical, 8)
+            }
         }
-        let rest = visibleSessions.filter { !used.contains($0.sessionId) }
-        if !rest.isEmpty { groups.append((L.ungrouped(), rest)) }
-        return groups
+    }
+
+    private func projectSessions(_ rows: [SessionSummary], groupKey: String?) -> (rows: [SessionSummary], idle: Int, hidden: Int, limit: Int) {
+        let limit = groupKey == nil ? Int.max : (overflow[groupKey!] ?? 5)
+        var idle = 0
+        let projected = rows.filter { session in
+            if session.blank || session.running { return true }
+            idle += 1
+            return idle <= limit
+        }
+        return (projected, idle, rows.count - projected.count, limit)
     }
 
     private func sessionRow(_ session: SessionSummary) -> some View {

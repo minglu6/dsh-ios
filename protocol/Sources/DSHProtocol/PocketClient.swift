@@ -225,6 +225,107 @@ public final class PocketClient: @unchecked Sendable {
         try await call("schedule.list", args: jsonObject(["sessionId": .string(sessionId)]))
     }
 
+    public func listFiles(sessionId: String, path: String = ".") async throws -> JSONValue {
+        try await call("files.list", args: jsonObject([
+            "sessionId": .string(sessionId),
+            "path": .string(path),
+        ]))
+    }
+
+    public func readFile(sessionId: String, path: String, offset: Int? = nil, limit: Int? = nil) async throws -> JSONValue {
+        var args: [String: JSONValue?] = [
+            "sessionId": .string(sessionId),
+            "path": .string(path),
+        ]
+        if offset != nil || limit != nil {
+            args["range"] = jsonObject([
+                "offset": offset.map { .number(Double($0)) },
+                "limit": limit.map { .number(Double($0)) },
+            ])
+        }
+        return try await call("files.read", args: jsonObject(args))
+    }
+
+    public func readFileBytes(sessionId: String, path: String) async throws -> JSONValue {
+        try await call("files.readBytes", args: jsonObject([
+            "sessionId": .string(sessionId),
+            "path": .string(path),
+        ]))
+    }
+
+    public func listTerminals(sessionId: String) async throws -> JSONValue {
+        try await call("terminal.list", args: jsonObject(["sessionId": .string(sessionId)]))
+    }
+
+    public func createTerminal(sessionId: String, cols: Int = 80, rows: Int = 24, id: String? = nil) async throws -> JSONValue {
+        try await call("terminal.create", args: jsonObject([
+            "sessionId": .string(sessionId),
+            "cols": .number(Double(cols)),
+            "rows": .number(Double(rows)),
+            "id": id.map { .string($0) },
+        ]))
+    }
+
+    public func followTerminal(sessionId: String, id: String, attachmentId: String? = nil) async throws -> JSONValue {
+        try await call("terminal.follow", args: jsonObject([
+            "sessionId": .string(sessionId),
+            "id": .string(id),
+            "attachmentId": attachmentId.map { .string($0) },
+        ]))
+    }
+
+    public func writeTerminal(sessionId: String, id: String, attachmentId: String, data: String) async throws -> JSONValue {
+        try await call("terminal.write", args: jsonObject([
+            "sessionId": .string(sessionId),
+            "id": .string(id),
+            "attachmentId": .string(attachmentId),
+            "data": .string(data),
+        ]))
+    }
+
+    public func resizeTerminal(sessionId: String, id: String, attachmentId: String, cols: Int, rows: Int) async throws -> JSONValue {
+        try await call("terminal.resize", args: jsonObject([
+            "sessionId": .string(sessionId),
+            "id": .string(id),
+            "attachmentId": .string(attachmentId),
+            "cols": .number(Double(cols)),
+            "rows": .number(Double(rows)),
+        ]))
+    }
+
+    public func closeTerminal(sessionId: String, id: String) async throws -> JSONValue {
+        try await call("terminal.close", args: jsonObject([
+            "sessionId": .string(sessionId),
+            "id": .string(id),
+        ]))
+    }
+
+    public func createWorkspace(path: String) async throws -> JSONValue {
+        try await call("workspace.create", args: jsonObject(["path": .string(path)]))
+    }
+
+    public func renameWorkspace(workspaceId: String, title: String) async throws -> JSONValue {
+        try await call("workspace.rename", args: jsonObject([
+            "workspaceId": .string(workspaceId),
+            "title": .string(title),
+        ]))
+    }
+
+    public func deleteWorkspace(workspaceId: String) async throws -> JSONValue {
+        try await call("workspace.delete", args: jsonObject(["workspaceId": .string(workspaceId)]))
+    }
+
+    public func directoryList(path: String? = nil) async throws -> JSONValue {
+        try await call("workspace.directoryList", args: jsonObject(["path": path.map { .string($0) }]))
+    }
+
+    public func directoryCreate(path: String, name: String) async throws -> JSONValue {
+        try await call("workspace.directoryCreate", args: jsonObject([
+            "path": .string(path),
+            "name": .string(name),
+        ]))
+    }
+
     public func close() {
         mutex.withLock {
             closeLocked()

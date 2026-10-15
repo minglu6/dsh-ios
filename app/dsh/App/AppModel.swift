@@ -44,6 +44,12 @@ enum DrawerPanel: String, Identifiable {
     var id: String { rawValue }
 }
 
+struct FilePreviewRef: Equatable, Identifiable {
+    var sessionId: String
+    var path: String
+    var id: String { "\(sessionId)\n\(path)" }
+}
+
 enum AppRoute: Equatable {
     case sessions
     case chat
@@ -90,7 +96,17 @@ final class AppModel: ObservableObject {
     @Published var showDrawer = false
     @Published var feedback: [String: MessageFeedback] = [:]
     @Published var firstPrompt: FirstPrompt? = nil
+    @Published var sessionGroupBy: SessionGroupBy = AppPrefs.sessionGroupBy
+    @Published var sessionOrderBy: SessionOrderBy = AppPrefs.sessionOrderBy
+    @Published var archivedFilter: ArchivedFilter = AppPrefs.archivedFilter
+    @Published var collapsedWorkspaces: Set<String> = []
+    @Published var terminalRevision: Int64 = 0
+    @Published var terminalMeta: TerminalMeta?
+    @Published var terminalPlatform: String?
+    @Published var terminalOpening = false
+    @Published var filePreview: FilePreviewRef?
 
+    let terminal = AnsiTerminal()
     let hostSettings = HostSettings()
     let lan = LanDiscovery()
 
@@ -101,6 +117,15 @@ final class AppModel: ObservableObject {
     private var followEpoch: Int64 = 0
     private var backoffMs: Int64 = ReconnectBackoffPolicy.reset()
     private var reconnectWake = false
+    private var terminalSubId: String?
+    private var terminalOpenEpoch: Int64 = 0
+    private var terminalHostId: String?
+    private var terminalWantCols = 80
+    private var terminalWantRows = 24
+    private var terminalReady = TerminalReady()
+    private var terminalStray: [String: [JSONValue]] = [:]
+    private var terminalRosterRevision: [String: Int64] = [:]
+    private var terminalAttachTask: Task<Void, Never>?
 
     var activeProfile: Profile? { profiles.first { $0.id == activeId } }
     var currentDot: Dot? { activeId.flatMap { status[$0] } }
@@ -113,6 +138,7 @@ final class AppModel: ObservableObject {
             Task { @MainActor in self?.applyDiscovery(hosts) }
         }
         lan.start()
+        if let id = activeId { collapsedWorkspaces = AppPrefs.collapsedWorkspaces(hostId: id) }
     }
 
     var currentRoute: AppRoute {
@@ -131,8 +157,11 @@ final class AppModel: ObservableObject {
         hostSettings.clear()
         followEpoch += 1
         detachFollow()
+        resetTerminalAttachment(keepScreen: false)
         activeId = profileId
         ProfileStore.activeId = profileId
+        collapsedWorkspaces = AppPrefs.collapsedWorkspaces(hostId: profileId)
+        filePreview = nil
         sessions = []
         chat = nil
         firstPrompt = nil
@@ -213,11 +242,11 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func createAndOpenSession() {
+    func createAndOpenSession(workspaceId: String? = nil) {
         Task {
             guard let client else { return }
             do {
-                let id = try await client.createSession()
+                let id = try await client.createSession(workspaceId: workspaceId)
                 openSession(id)
             } catch {
                 emit(error.localizedDescription)
@@ -435,6 +464,206 @@ final class AppModel: ObservableObject {
         }
     }
 
+    func setSessionGroupBy(_ value: SessionGroupBy) {
+        sessionGroupBy = value
+        AppPrefs.sessionGroupBy = value
+    }
+
+    func setSessionOrderBy(_ value: SessionOrderBy) {
+        sessionOrderBy = value
+        AppPrefs.sessionOrderBy = value
+    }
+
+    func setArchivedFilter(_ value: ArchivedFilter) {
+        archivedFilter = value
+        AppPrefs.archivedFilter = value
+    }
+
+    func toggleWorkspaceCollapsed(_ key: String) {
+        if collapsedWorkspaces.contains(key) { collapsedWorkspaces.remove(key) }
+        else { collapsedWorkspaces.insert(key) }
+        if let id = activeId { AppPrefs.setCollapsedWorkspaces(hostId: id, value: collapsedWorkspaces) }
+    }
+
+    func openFilePreview(path: String) {
+        guard let sessionId = chat?.sessionId else { return }
+        filePreview = FilePreviewRef(sessionId: sessionId, path: path)
+        if case .panel(.files) = currentRoute { return }
+        push(.panel(.files))
+    }
+
+    func createWorkspace(path: String) async throws -> WorkspaceView {
+        guard let client else { throw PocketError(code: "transport", message: "未连接") }
+        let result = try await client.createWorkspace(path: path)
+        guard let workspace = WorkspaceView.parse(result["workspace"]) else {
+            throw PocketError(code: "bad-reply", message: "missing workspace")
+        }
+        if let state = try? await client.call("workspace.state") {
+            applyWorkspaceState(state)
+        }
+        return workspace
+    }
+
+    func renameWorkspace(id: String, title: String) {
+        Task {
+            guard let client else { return }
+            do {
+                _ = try await client.renameWorkspace(workspaceId: id, title: title)
+                if let state = try? await client.call("workspace.state") { applyWorkspaceState(state) }
+            } catch { emit(error.localizedDescription) }
+        }
+    }
+
+    func deleteWorkspace(id: String) {
+        Task {
+            guard let client else { return }
+            do {
+                _ = try await client.deleteWorkspace(workspaceId: id)
+                if let state = try? await client.call("workspace.state") { applyWorkspaceState(state) }
+            } catch { emit(error.localizedDescription) }
+        }
+    }
+
+    func listWorkspaceDirectories(path: String?) async throws -> WorkspaceDirectoryLevel {
+        guard let client else { throw PocketError(code: "transport", message: "未连接") }
+        return try WorkspaceDirectoryLevel.parse(try await client.directoryList(path: path))
+    }
+
+    func createWorkspaceDirectory(path: String, name: String) async throws -> String {
+        guard let client else { throw PocketError(code: "transport", message: "未连接") }
+        let result = try await client.directoryCreate(path: path, name: name)
+        guard let created = result.str() else {
+            throw PocketError(code: "bad-reply", message: "missing directory path")
+        }
+        return created
+    }
+
+    func listFiles(sessionId: String, path: String) async throws -> JSONValue {
+        guard let client else { throw PocketError(code: "transport", message: "未连接") }
+        return try await client.listFiles(sessionId: sessionId, path: path)
+    }
+
+    func readFile(sessionId: String, path: String, offset: Int? = nil, limit: Int? = nil) async throws -> JSONValue {
+        guard let client else { throw PocketError(code: "transport", message: "未连接") }
+        return try await client.readFile(sessionId: sessionId, path: path, offset: offset, limit: limit)
+    }
+
+    func readFileBytes(sessionId: String, path: String) async throws -> JSONValue {
+        guard let client else { throw PocketError(code: "transport", message: "未连接") }
+        return try await client.readFileBytes(sessionId: sessionId, path: path)
+    }
+
+    func readAllText(sessionId: String, path: String) async throws -> String {
+        var out = ""
+        var offset = 1
+        var version: String?
+        while true {
+            let result = try await readFile(sessionId: sessionId, path: path, offset: offset, limit: 200)
+            let pageVersion = result["version"].str()
+            if offset == 1 { version = pageVersion }
+            else if pageVersion != version {
+                throw PocketError(code: "preview", message: L.fileChangedWhileReading())
+            }
+            let chunk = result["text"].str() ?? ""
+            let lines = result["lines"].int() ?? 0
+            if chunk.contains("\0") {
+                throw PocketError(code: "preview", message: L.binaryNoTextPreview())
+            }
+            if out.utf8.count + chunk.utf8.count > 4_000_000 {
+                throw PocketError(code: "preview", message: L.fileTooLarge())
+            }
+            if lines > 0 {
+                if offset > 1 { out.append("\n") }
+                out.append(chunk)
+            }
+            if result["eof"].bool() != false { break }
+            if lines <= 0 { throw PocketError(code: "bad-reply", message: "File response did not advance") }
+            offset += lines
+        }
+        return out
+    }
+
+    var canShowTerminal: Bool {
+        ops.contains("terminal.create") && ops.contains("terminal.follow")
+    }
+
+    var canShowFiles: Bool { ops.contains("files.list") }
+
+    func openTerminal(sessionId: String, forceNew: Bool = false, terminalId: String? = nil) {
+        terminalAttachTask?.cancel()
+        terminalAttachTask = Task { await attachTerminal(sessionId: sessionId, forceNew: forceNew, terminalId: terminalId) }
+    }
+
+    func writeTerminal(_ data: String) {
+        Task {
+            guard let client, let meta = terminalMeta else { return }
+            do {
+                _ = try await client.writeTerminal(sessionId: meta.sessionId, id: meta.id, attachmentId: meta.attachmentId, data: data)
+            } catch { emit(error.localizedDescription) }
+        }
+    }
+
+    func resizeTerminal(cols: Int, rows: Int) {
+        terminalWantCols = max(cols, 2)
+        terminalWantRows = max(rows, 1)
+        if terminal.cols != terminalWantCols || terminal.rows != terminalWantRows {
+            terminal.resize(newCols: terminalWantCols, newRows: terminalWantRows)
+            terminalRevision = terminal.revision
+        }
+        Task {
+            guard let client, let meta = terminalMeta else { return }
+            do {
+                _ = try await client.resizeTerminal(
+                    sessionId: meta.sessionId, id: meta.id, attachmentId: meta.attachmentId,
+                    cols: terminalWantCols, rows: terminalWantRows
+                )
+            } catch { emit(error.localizedDescription) }
+        }
+    }
+
+    func closeTerminalFollow() {
+        let client = self.client
+        let old = terminalSubId
+        terminalSubId = nil
+        resetTerminalAttachment(keepScreen: true)
+        Task {
+            if let client, let old { try? await client.unfollow(old) }
+        }
+    }
+
+    func terminateTerminal(sessionId: String, terminalId: String?) {
+        Task {
+            guard let client, let hostId = activeId else { return }
+            let meta = terminalMeta.flatMap { $0.sessionId == sessionId ? $0 : nil }
+            guard let id = terminalId ?? meta?.id else {
+                emit(PocketError(code: "terminal/not-attached", message: "没有已连接的终端").localizedDescription)
+                return
+            }
+            let epoch = terminalOpenEpoch
+            do {
+                _ = try await client.closeTerminal(sessionId: sessionId, id: id)
+                bumpRoster(hostId: hostId, sessionId: sessionId)
+                TerminalStore.forget(hostId: hostId, sessionId: sessionId, terminalId: id)
+                if terminalOpenEpoch == epoch,
+                   terminalMeta?.sessionId == sessionId,
+                   terminalMeta?.id == id,
+                   terminalMeta?.attachmentId == meta?.attachmentId {
+                    closeTerminalFollow()
+                }
+            } catch { emit(error.localizedDescription) }
+        }
+    }
+
+    func terminalSessions(sessionId: String) async throws -> TerminalSessionCatalog {
+        guard let client, let hostId = activeId else { throw PocketError(code: "transport", message: "未连接") }
+        let owners = uniqueStrings([sessionId] + TerminalStore.ownerIds(hostId))
+        var entries: [TerminalSessionEntry] = []
+        for owner in owners {
+            entries.append(contentsOf: try await listTerminalOwner(client, hostId: hostId, sessionId: owner))
+        }
+        return TerminalSessionCatalog(entries: entries, platform: terminalPlatform)
+    }
+
     func setAppearance(_ value: Appearance) {
         appearance = value
         AppPrefs.appearance = value
@@ -521,6 +750,7 @@ final class AppModel: ObservableObject {
             hostSettings.clear()
             followEpoch += 1
             detachFollow()
+            resetTerminalAttachment(keepScreen: true)
             ops = []
             let reason = client.closeReason ?? ""
             if reason.contains("4401") || reason.contains("4403") || reason.contains("auth/") {
@@ -719,10 +949,226 @@ final class AppModel: ObservableObject {
             hostSettings.refresh()
         case "completion":
             applyCompletion(m)
+        case "terminal", "terminal.end", "terminal.error":
+            handleTerminalEvent(m)
         default:
             break
         }
     }
+
+    private func handleTerminalEvent(_ m: JSONValue) {
+        guard let id = m["subId"].str() else { return }
+        if id == terminalSubId {
+            if m["ev"].str() == "terminal" {
+                applyTerminalFrame(m["frame"])
+            } else {
+                let message = m["error"]["message"].str() ?? "终端连接已结束"
+                terminalReady.fail(PocketError(code: "terminal/unavailable", message: message))
+                if m["ev"].str() == "terminal.error" { emit(message) }
+                terminalSubId = nil
+                terminalMeta = nil
+            }
+        } else if terminalOpening {
+            terminalStray[id, default: []].append(m)
+        }
+    }
+
+    private func applyTerminalFrame(_ frame: JSONValue) {
+        switch frame["type"].str() {
+        case "snapshot":
+            terminal.applySnapshot(frame["screen"].str() ?? "")
+            terminalRevision = terminal.revision
+            if let info = frame["info"].obj() {
+                terminalMeta = terminalMeta.map {
+                    TerminalMeta(
+                        sessionId: $0.sessionId,
+                        id: $0.id,
+                        attachmentId: $0.attachmentId,
+                        title: info["title"]?.str() ?? $0.title,
+                        state: info["state"]?.str() ?? $0.state,
+                        cwd: info["cwd"]?.str() ?? $0.cwd
+                    )
+                }
+            }
+            if let meta = terminalMeta, let hostId = terminalHostId, activeId == hostId {
+                bumpRoster(hostId: hostId, sessionId: meta.sessionId)
+                TerminalStore.remember(hostId: hostId, sessionId: meta.sessionId, terminalId: meta.id)
+                terminalReady.succeed()
+            }
+        case "output":
+            terminal.write(frame["data"].str() ?? "")
+            terminalRevision = terminal.revision
+        case "state":
+            if let info = frame["info"].obj() {
+                terminalMeta = terminalMeta.map {
+                    TerminalMeta(
+                        sessionId: $0.sessionId,
+                        id: $0.id,
+                        attachmentId: $0.attachmentId,
+                        title: info["title"]?.str() ?? $0.title,
+                        state: info["state"]?.str() ?? $0.state,
+                        cwd: info["cwd"]?.str() ?? $0.cwd
+                    )
+                }
+            }
+        default:
+            break
+        }
+    }
+
+    private func attachTerminal(sessionId: String, forceNew: Bool, terminalId: String?) async {
+        terminalOpenEpoch += 1
+        let epoch = terminalOpenEpoch
+        let client = self.client
+        let hostId = activeId
+        let oldSubId = terminalSubId
+        terminalSubId = nil
+        terminalReady.fail(CancellationError())
+        let ready = TerminalReady()
+        terminalReady = ready
+        terminalOpening = true
+        terminalStray = [:]
+        terminalMeta = nil
+        terminalHostId = hostId
+        terminal.clear()
+        terminal.resize(newCols: terminalWantCols, newRows: terminalWantRows)
+        terminalRevision = terminal.revision
+        var followed: String?
+        var attached = false
+        func current() -> Bool {
+            self.client === client && activeId == hostId && terminalOpenEpoch == epoch
+        }
+        do {
+            guard let client, let hostId else { throw PocketError(code: "transport", message: "未连接") }
+            guard ops.contains("terminal.list"), ops.contains("terminal.follow") else {
+                throw PocketError(code: "unsupported", message: "桌面端未提供终端")
+            }
+            if let oldSubId { try? await client.unfollow(oldSubId) }
+            if !current() { return }
+            let saved = TerminalStore.selectedId(hostId: hostId, sessionId: sessionId)
+            let existing: TerminalSessionEntry?
+            if forceNew {
+                existing = nil
+            } else {
+                existing = try selectTerminal(
+                    entries: try await listTerminalOwner(client, hostId: hostId, sessionId: sessionId),
+                    savedId: saved,
+                    explicitId: terminalId
+                )
+            }
+            if !current() { return }
+            let info: TerminalSessionEntry
+            if let existing {
+                info = existing
+            } else {
+                guard ops.contains("terminal.create") else {
+                    throw PocketError(code: "unsupported", message: "桌面端未提供新建终端")
+                }
+                let requestedId = UUID().uuidString
+                bumpRoster(hostId: hostId, sessionId: sessionId)
+                TerminalStore.discover(hostId: hostId, sessionId: sessionId, terminalId: requestedId)
+                let result = try await client.createTerminal(sessionId: sessionId, cols: terminalWantCols, rows: terminalWantRows, id: requestedId)
+                info = try TerminalSessionEntry.parse(sessionId: sessionId, value: result["terminal"])
+                bumpRoster(hostId: hostId, sessionId: sessionId)
+                TerminalStore.discover(hostId: hostId, sessionId: sessionId, terminalId: info.id)
+                if current() { terminalPlatform = result["platform"].str() }
+            }
+            if !current() { return }
+            let follow = try await client.followTerminal(sessionId: sessionId, id: info.id)
+            followed = follow["subId"].str()
+            guard let followed, let attachmentId = follow["attachmentId"].str() else {
+                throw PocketError(code: "bad-reply", message: "no terminal subscription")
+            }
+            if !current() {
+                try? await client.unfollow(followed)
+                return
+            }
+            terminalSubId = followed
+            terminalMeta = TerminalMeta(sessionId: sessionId, id: info.id, attachmentId: attachmentId, title: info.title, state: info.state, cwd: info.cwd)
+            terminalOpening = false
+            let buffered = terminalStray.removeValue(forKey: followed) ?? []
+            terminalStray = [:]
+            for event in buffered { handleTerminalEvent(event) }
+            try await withThrowingTaskGroup(of: Void.self) { group in
+                group.addTask { @MainActor in try await ready.wait() }
+                group.addTask {
+                    try await Task.sleep(nanoseconds: 60_000_000_000)
+                    throw PocketError(code: "timeout", message: "timed out after 60000ms")
+                }
+                do {
+                    try await group.next()
+                    group.cancelAll()
+                } catch {
+                    ready.fail(error)
+                    group.cancelAll()
+                    throw error
+                }
+            }
+            if !current() { return }
+            attached = true
+            terminal.resize(newCols: terminalWantCols, newRows: terminalWantRows)
+            terminalRevision = terminal.revision
+            if terminalMeta?.state == "running" {
+                _ = try await client.resizeTerminal(sessionId: sessionId, id: info.id, attachmentId: attachmentId, cols: terminalWantCols, rows: terminalWantRows)
+            }
+        } catch is CancellationError {
+            ready.fail(CancellationError())
+            return
+        } catch {
+            ready.fail(error)
+            if current() { emit(error.localizedDescription) }
+        }
+        if current() {
+            terminalOpening = false
+            terminalStray = [:]
+            if !attached {
+                terminalSubId = nil
+                terminalMeta = nil
+                terminalHostId = nil
+            }
+        }
+        if !attached, let followed, let client {
+            try? await client.unfollow(followed)
+        }
+    }
+
+    private func listTerminalOwner(_ client: PocketClient, hostId: String, sessionId: String) async throws -> [TerminalSessionEntry] {
+        let key = rosterKey(hostId, sessionId)
+        let revision = terminalRosterRevision[key] ?? 0
+        let result = try await client.listTerminals(sessionId: sessionId)
+        if self.client !== client || activeId != hostId {
+            throw CancellationError()
+        }
+        guard let rows = result["terminals"].arr() else {
+            throw PocketError(code: "bad-reply", message: "未返回终端列表")
+        }
+        let entries = try rows.map { try TerminalSessionEntry.parse(sessionId: sessionId, value: $0) }
+        terminalPlatform = result["platform"].str()
+        if terminalRosterRevision[key] == revision || terminalRosterRevision[key] == nil && revision == 0 {
+            TerminalStore.reconcile(hostId: hostId, sessionId: sessionId, ids: entries.map(\.id))
+        }
+        return entries
+    }
+
+    private func resetTerminalAttachment(keepScreen: Bool) {
+        terminalOpenEpoch += 1
+        terminalOpening = false
+        terminalStray = [:]
+        terminalReady.fail(CancellationError())
+        terminalHostId = nil
+        terminalMeta = nil
+        if !keepScreen {
+            terminal.clear()
+            terminalRevision = terminal.revision
+        }
+    }
+
+    private func bumpRoster(hostId: String, sessionId: String) {
+        let key = rosterKey(hostId, sessionId)
+        terminalRosterRevision[key] = (terminalRosterRevision[key] ?? 0) + 1
+    }
+
+    private func rosterKey(_ hostId: String, _ sessionId: String) -> String { "\(hostId)\t\(sessionId)" }
 
     private func mutated(_ session: SessionSummary, running: Bool) -> SessionSummary {
         var next = session
@@ -812,11 +1258,50 @@ final class AppModel: ObservableObject {
         errorMessage = message
     }
 
+    private func uniqueStrings(_ values: [String]) -> [String] {
+        var seen = Set<String>()
+        return values.filter { seen.insert($0).inserted }
+    }
+
     private func compatibilityError(_ issue: CompatibilityIssue) -> PocketError {
         switch issue.kind {
         case .appTooOld: return PocketError(code: "compat", message: L.appTooOld(issue.requiredVersion))
         case .pluginTooOld: return PocketError(code: "compat", message: L.pluginTooOld(issue.requiredVersion))
         case .protocolUnsupported: return PocketError(code: "compat", message: L.protocolUnsupported())
         }
+    }
+}
+
+/// Snapshot may complete before the waiter is armed, matching Android `CompletableDeferred`.
+@MainActor
+private final class TerminalReady {
+    private var continuation: CheckedContinuation<Void, Error>?
+    private var stored: Result<Void, Error>?
+
+    func wait() async throws {
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+            if let stored {
+                switch stored {
+                case .success: cont.resume()
+                case .failure(let error): cont.resume(throwing: error)
+                }
+            } else {
+                continuation = cont
+            }
+        }
+    }
+
+    func succeed() { finish(.success(())) }
+
+    func fail(_ error: Error) { finish(.failure(error)) }
+
+    private func finish(_ result: Result<Void, Error>) {
+        if stored != nil { return }
+        stored = result
+        switch result {
+        case .success: continuation?.resume()
+        case .failure(let error): continuation?.resume(throwing: error)
+        }
+        continuation = nil
     }
 }

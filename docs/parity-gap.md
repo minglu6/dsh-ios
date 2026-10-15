@@ -17,8 +17,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 
 | Batch | Scope | Status |
 | --- | --- | --- |
-| A | Trajectory ledger + inspector; chat message actions (copy / like / dislike / branch) | next (#2) → this PR |
-| B | Host PTY terminal + workspace file tree | queued |
+| A | Trajectory ledger + inspector; chat message actions (copy / like / dislike / branch) | done (#3) |
+| B | Host PTY terminal + workspace file tree | this PR |
 | C | Live jobs panel + completion unread green-dot sync | queued |
 | D | Plugin manager + schedule + remaining official settings | queued |
 
@@ -31,8 +31,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Transcript fold | `ui-chat` / `ui-conversation` | `protocol/Transcript.kt`, `Chat.kt`, `ChatProcess.kt` | `protocol/…/Transcript.swift`, `Features/Chat/ChatView.swift` |
 | Message actions | `ui-chat` `MessageIconActions` | `Chat.kt` `MessageActions` | copy-only on assistant text → `ChatView` `MessageActions` (copy / like / dislike / branch) |
 | Trajectory | `ui-trajectory` | `Trajectory.kt` + Detail/Inspector/Request/Locales; `protocol/TrajectoryTimeline.kt` | hidden; no builder → `Features/Trajectory/` + `protocol/Trajectory.swift` |
-| Terminal | Host `terminalController` | `TerminalPanel.kt`, `TerminalView.kt`, `TerminalEmulator.kt` | hidden |
-| Files | `workspaceFiles` | `FilesPanel.kt` | hidden |
+| Terminal | Host `terminalController` | `TerminalPanel.kt`, `TerminalView.kt`, `TerminalEmulator.kt` | `Features/Terminal/` + `protocol/TerminalEmulator.swift` |
+| Files | `workspaceFiles` | `FilesPanel.kt` | `Features/Files/` + workspace tree / browse |
 | Jobs | `job-controller` | `JobsAction.kt`, jobs follow in `Pocket.kt` | hidden |
 | Plugins | `ui-plugin-manager`, `ui-settings-plugins` | `PluginsScreen.kt`, `PluginInventory.kt` | thin `plugins.list` when advertised |
 | Schedule | `ui-schedule` (sidebar, not settings) | `ScheduleScreen.kt`; drawer row | thin list when advertised |
@@ -40,7 +40,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Settings general | `ui-settings-general` | `Screens.kt` `GeneralSettingsScreen`, `HostSettings.kt` | appearance + language + version only |
 | Settings models | `ui-settings-models` | `ModelsSettingsScreen.kt` | catalog list, no provider editor |
 | Connections | pocket `settings.section` `pocket` | `Screens.kt` connections | pairing / diagnostics copy |
-| Workspace drawer | `ui-workspace` | `WorkspaceNavigation.kt`, `Screens.kt` | grouping / pin / fork / archive; no browse add-workspace |
+| Workspace drawer | `ui-workspace` | `WorkspaceNavigation.kt`, `Screens.kt` | entity groups / tree / rename / delete / add-workspace browse |
 | Markdown | `ui-chat` primitives | `Markdown.kt` | `Text(...)` only |
 
 ---
@@ -55,7 +55,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Tool row → inspector | `Chat.kt` tool card | name / args / result snippet | **partial** | A / D |
 | Process group fold | `ChatProcess.kt` | missing | **missing** | D |
 | Notices (stopped / max-tokens / account) | reducer + official `message.*` | reducer emits; plain `.notice` | **partial** | A |
-| Deliverables | `Item.Deliverable` | row exists, no file open | **partial** | B |
+| Deliverables | `Item.Deliverable` | row exists, no file open → tap opens workspace file preview | **partial** → **present** | **B** |
 | Markdown / code block / tables | `Markdown.kt` | raw `Text` | **partial** | D |
 | Copy / like / dislike / branch | `MessageActions` + `FeedbackCategory` + `feedback.set` + `sessions.fork` | copy / like / dislike (category+note sheet; retap clears) / branch; `canFork` needs `firstPrompt == nil` | **missing** → **present** | **A** |
 | Turn usage pill | `ComposerStats.kt` `TurnUsageAction` | missing (needs `TurnTokenUsage` + `PerformanceUsage.Detailed`) | **missing** | D |
@@ -82,20 +82,20 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 
 | Item | Android | iOS | Tag | Batch |
 | --- | --- | --- | --- | --- |
-| `terminal.list/create/follow/write/resize/close` | `PocketClient` + `TerminalPanel.kt` | client stubs only | **missing** | **B** |
-| Tokyo Night PTY emulator | `TerminalEmulator.kt` | none | **missing** | **B** |
-| Top shortcut row; Tab → `\t` | `TerminalView.kt` | none | **missing** | **B** |
-| Tap cursor / long-press select | `TerminalView.kt` | none | **missing** | **B** |
-| Resume saved PTY identities | `Pocket.kt` | none | **missing** | **B** |
+| `terminal.list/create/follow/write/resize/close` | `PocketClient` + `TerminalPanel.kt` | client stubs only → `PocketClient` + `TerminalPanel` (shown when ops advertised) | **missing** → **present** | **B** |
+| Tokyo Night PTY emulator | `TerminalEmulator.kt` | none → `AnsiTerminal` | **missing** → **present** | **B** |
+| Top shortcut row; Tab → `\t` | `TerminalView.kt` | none → same two-row English keycaps; Tab sends `\t` | **missing** → **present** | **B** |
+| Tap cursor / long-press select | `TerminalView.kt` | none → tap / long-press + drag | **missing** → **present** | **B** |
+| Resume saved PTY identities | `Pocket.kt` | none → `TerminalStore` + `selectTerminal` | **missing** → **present** | **B** |
 
 ## 4. Files / workspace
 
 | Item | Android | iOS | Tag | Batch |
 | --- | --- | --- | --- | --- |
-| `files.list/read` listing | `FilesPanel.kt` | none | **missing** | **B** |
-| Preview (md / text / image) | `FilePreview.kt` | none | **missing** | **B** |
-| Workspace entities / tree | `WorkspaceNavigation.kt` | flat-ish groups | **partial** | **B** |
-| Add workspace browse | `WorkspaceDirectoryPicker.kt` | none | **missing** | **B** |
+| `files.list/read` listing | `FilesPanel.kt` | none → `FilesPanel` (shown when `files.list` advertised) | **missing** → **present** | **B** |
+| Preview (md / text / image) | `FilePreview.kt` | none → md / text / image; PDF/Office stay unsupported | **missing** → **present** | **B** |
+| Workspace entities / tree | `WorkspaceNavigation.kt` | flat-ish groups → entity groups / tree / rename / delete / new session | **partial** → **present** | **B** |
+| Add workspace browse | `WorkspaceDirectoryPicker.kt` | none → `WorkspaceDirectorySheet` when `workspace.create` | **missing** → **present** | **B** |
 | Open-in-desktop-editor | desktop only | — | **hide** | — |
 
 ## 5. Jobs + unread
@@ -138,7 +138,7 @@ Port as the matching batch needs them (same JSON, no second protocol):
 | `TrajectoryTimeline.kt` | Trajectory swimlane | A → **A done** (`TrajectoryTimeline.swift`) |
 | `Transcript.kt` extra items (`System`, `Compacted`, `Retry`, `TurnFailure`, `Changes`; System/Compacted folded, Retry/TurnFailure/Changes still unused in chat) | Chat + trajectory | A / D |
 | `TurnTokenUsage.kt` | Inspector + usage | A / D |
-| `WorkspaceChanges.kt` | Changed-file cards | B / D |
+| `WorkspaceChanges.kt` | Changed-file cards | B leftover / D |
 | `PermissionModels.kt` | Permission pickers | D |
 | `HostUi.kt` | Plugin/settings slots | D |
 

@@ -111,4 +111,83 @@ enum AppPrefs {
         get { BusySend(rawValue: UserDefaults.standard.string(forKey: "dsh.busySend") ?? "") ?? .queue }
         set { UserDefaults.standard.set(newValue.rawValue, forKey: "dsh.busySend") }
     }
+
+    static var sessionGroupBy: SessionGroupBy {
+        get { SessionGroupBy(rawValue: UserDefaults.standard.string(forKey: "dsh.sessionGroupBy") ?? "") ?? .workspace }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: "dsh.sessionGroupBy") }
+    }
+
+    static var sessionOrderBy: SessionOrderBy {
+        get { SessionOrderBy(rawValue: UserDefaults.standard.string(forKey: "dsh.sessionOrderBy") ?? "") ?? .updated }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: "dsh.sessionOrderBy") }
+    }
+
+    static var archivedFilter: ArchivedFilter {
+        get { ArchivedFilter(rawValue: UserDefaults.standard.string(forKey: "dsh.archivedFilter") ?? "") ?? .hide }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: "dsh.archivedFilter") }
+    }
+
+    static func collapsedWorkspaces(hostId: String) -> Set<String> {
+        Set(UserDefaults.standard.stringArray(forKey: "dsh.collapsedWorkspaces:\(hostId)") ?? [])
+    }
+
+    static func setCollapsedWorkspaces(hostId: String, value: Set<String>) {
+        UserDefaults.standard.set(Array(value), forKey: "dsh.collapsedWorkspaces:\(hostId)")
+    }
+}
+
+enum TerminalStore {
+    private static func key(_ hostId: String) -> String { "dsh.terminalOwners:\(hostId)" }
+    private static func panelPrefix(_ hostId: String) -> String { "dsh.terminalPanelOwner:\(hostId.count):\(hostId):" }
+
+    private static func owners(_ hostId: String) -> [SavedTerminalOwner] {
+        guard let data = UserDefaults.standard.data(forKey: key(hostId)) else { return [] }
+        return (try? JSONDecoder().decode([SavedTerminalOwner].self, from: data)) ?? []
+    }
+
+    private static func save(_ hostId: String, _ owners: [SavedTerminalOwner]) {
+        if let data = try? JSONEncoder().encode(owners) {
+            UserDefaults.standard.set(data, forKey: key(hostId))
+        }
+    }
+
+    static func ownerIds(_ hostId: String) -> [String] {
+        owners(hostId).map(\.sessionId)
+    }
+
+    static func selectedId(hostId: String, sessionId: String) -> String? {
+        owners(hostId).first { $0.sessionId == sessionId }?.selectedId
+    }
+
+    static func discover(hostId: String, sessionId: String, terminalId: String) {
+        save(hostId, TerminalIdentityStore.record(owners: owners(hostId), sessionId: sessionId, terminalId: terminalId, selected: false))
+    }
+
+    static func remember(hostId: String, sessionId: String, terminalId: String) {
+        save(hostId, TerminalIdentityStore.record(owners: owners(hostId), sessionId: sessionId, terminalId: terminalId, selected: true))
+    }
+
+    static func reconcile(hostId: String, sessionId: String, ids: [String]) {
+        let next = TerminalIdentityStore.reconcile(owners: owners(hostId), sessionId: sessionId, ids: ids)
+        save(hostId, next)
+        if ids.isEmpty {
+            let prefix = panelPrefix(hostId)
+            let defaults = UserDefaults.standard
+            for key in defaults.dictionaryRepresentation().keys where key.hasPrefix(prefix) && defaults.string(forKey: key) == sessionId {
+                defaults.removeObject(forKey: key)
+            }
+        }
+    }
+
+    static func forget(hostId: String, sessionId: String, terminalId: String) {
+        save(hostId, TerminalIdentityStore.forget(owners: owners(hostId), sessionId: sessionId, terminalId: terminalId))
+    }
+
+    static func panelOwner(hostId: String, contextSessionId: String) -> String? {
+        UserDefaults.standard.string(forKey: panelPrefix(hostId) + contextSessionId)
+    }
+
+    static func setPanelOwner(hostId: String, contextSessionId: String, ownerSessionId: String?) {
+        UserDefaults.standard.set(ownerSessionId, forKey: panelPrefix(hostId) + contextSessionId)
+    }
 }
