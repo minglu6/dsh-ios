@@ -375,7 +375,7 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func answer(_ approval: Approval, outcome: String, onResult: @escaping (Bool) -> Void = {}) {
+    func answer(_ approval: Approval, outcome: String, onResult: @escaping (Bool) -> Void = { _ in }) {
         Task {
             guard let client else {
                 onResult(false)
