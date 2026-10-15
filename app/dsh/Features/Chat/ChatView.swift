@@ -131,6 +131,9 @@ struct ChatView: View {
         .sheet(isPresented: $showGoal) {
             GoalSheet(model: model) { showGoal = false }
         }
+        .sheet(item: $model.exportShare) { item in
+            ShareSheet(items: [item.url])
+        }
         .confirmationDialog(L.sectionAdd(), isPresented: $showPlus, titleVisibility: .visible) {
             Button(L.image()) { showPhotoPicker = true }
             if model.ops.contains("attachments.upload") {
@@ -280,7 +283,7 @@ struct ChatView: View {
                 approval: approval,
                 items: model.chat?.items ?? [],
                 enabled: model.isOnline,
-                onAnswer: { approval, outcome in model.answer(approval, outcome: outcome) }
+                onAnswer: { approval, outcome, done in model.answer(approval, outcome: outcome, onResult: done) }
             )
         }
         if sessionQuestion != nil && !questionVisible {
@@ -846,6 +849,7 @@ struct ComposerView: View {
                                 .foregroundStyle(perm == "danger-full-access" ? T.warnText : T.text2)
                                 .frame(width: 48, height: 48)
                         }
+                        .disabled(!model.isOnline)
                         .accessibilityLabel(permissionLabel(value: perm, option: model.permissionCatalog?.find(perm)))
                     }
                     Button(action: onModel) {
@@ -975,4 +979,22 @@ struct ComposerView: View {
         model.composerText = next.text
         model.mentionQuery = nil
     }
+}
+
+struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        if let popover = controller.popoverPresentationController,
+           let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = scene.windows.first {
+            popover.sourceView = window
+            popover.sourceRect = CGRect(x: window.bounds.midX, y: window.bounds.midY, width: 1, height: 1)
+            popover.permittedArrowDirections = []
+        }
+        return controller
+    }
+
+    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }

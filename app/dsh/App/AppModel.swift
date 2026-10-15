@@ -74,6 +74,11 @@ struct JobDetailState: Equatable {
     var error: String?
 }
 
+struct ExportShare: Identifiable {
+    let id = UUID()
+    let url: URL
+}
+
 enum AppRoute: Equatable {
     case sessions
     case chat
@@ -157,6 +162,7 @@ final class AppModel: ObservableObject {
     @Published var terminalPlatform: String?
     @Published var terminalOpening = false
     @Published var filePreview: FilePreviewRef?
+    @Published var exportShare: ExportShare?
 
     let terminal = AnsiTerminal()
     let hostSettings = HostSettings()
@@ -369,11 +375,23 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func answer(_ approval: Approval, outcome: String) {
+    func answer(_ approval: Approval, outcome: String, onResult: @escaping (Bool) -> Void = {}) {
         Task {
-            guard let client else { return }
-            do { try await client.answerApproval(approvalId: approval.approvalId, outcome: outcome) }
-            catch { emit(error.localizedDescription) }
+            guard let client else {
+                onResult(false)
+                return
+            }
+            do {
+                let result = try await client.answerApproval(approvalId: approval.approvalId, outcome: outcome)
+                guard result["accepted"].bool() == true else {
+                    throw PocketError(code: "rejected", message: L.t("审批未被远程主机接受", "The approval was not accepted by the remote host"))
+                }
+                approvals.removeAll { $0.approvalId == approval.approvalId }
+                onResult(true)
+            } catch {
+                emit(error.localizedDescription)
+                onResult(false)
+            }
         }
     }
 
@@ -526,6 +544,11 @@ final class AppModel: ObservableObject {
     func setPermission(_ name: String, onComplete: ((Bool) -> Void)? = nil) {
         Task {
             guard let client, let sessionId = chat?.sessionId, !permissionChanging, !permissionCatalogLoading else {
+                onComplete?(false)
+                return
+            }
+            guard ops.contains("permissions.set") else {
+                emit(L.t("远程主机不支持切换权限", "This remote host cannot change permissions"))
                 onComplete?(false)
                 return
             }
@@ -703,6 +726,11 @@ final class AppModel: ObservableObject {
                 onComplete(false)
                 return
             }
+            guard ops.contains("goals.\(action)") else {
+                emit(L.t("远程主机不支持目标操作", "This remote host cannot change goals"))
+                onComplete(false)
+                return
+            }
             let epoch = goalActivationEpoch
             let ref = jsonObject(["id": goal["id"], "revision": goal["revision"]])
             do {
@@ -747,22 +775,50 @@ final class AppModel: ObservableObject {
     func fetchMentions(query: String) {
         Task {
             guard let client, let sessionId = chat?.sessionId else { return }
-            async let files = client.call("references.files", args: jsonObject([
-                "sessionId": .string(sessionId),
-                "query": .string(query),
-            ]))
-            async let sessions = client.call("references.sessions", args: jsonObject([
-                "sessionId": .string(sessionId),
-                "query": .string(query),
-            ]))
+            let canFiles = ops.contains("references.files")
+            let canSessions = ops.contains("references.sessions")
+            if !canFiles { fileMentions = [] }
+            if !canSessions { sessionMentions = [] }
+            if canFiles {
+                do {
+                    let fileResult = try await client.referenceFiles(sessionId: sessionId, query: query)
+                    fileMentions = (fileResult["items"].arr() ?? []).compactMap(FileReference.parse)
+                } catch {
+                    fileMentions = []
+                }
+            }
+            if canSessions {
+                do {
+                    let sessionResult = try await client.referenceSessions(sessionId: sessionId, query: query)
+                    sessionMentions = (sessionResult["items"].arr() ?? []).compactMap(SessionReference.parse)
+                } catch {
+                    sessionMentions = []
+                }
+            }
+        }
+    }
+
+    func exportSession() {
+        Task {
+            guard let client, let sessionId = chat?.sessionId else {
+                emit(L.t("无会话", "No session"))
+                return
+            }
+            guard ops.contains("session.export") else {
+                emit(L.t("远程主机未提供导出", "This remote host cannot export sessions"))
+                return
+            }
             do {
-                let fileResult = try await files
-                let sessionResult = try await sessions
-                fileMentions = (fileResult["items"].arr() ?? []).compactMap(FileReference.parse)
-                sessionMentions = (sessionResult["items"].arr() ?? []).compactMap(SessionReference.parse)
+                let result = try await client.exportSession(sessionId: sessionId)
+                let name = result["filename"].str() ?? "dsh-session.zip"
+                guard let encoded = result["data"].str(), let data = Data(base64Encoded: encoded) else {
+                    throw PocketError(code: "invalid-response", message: "empty export")
+                }
+                let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
+                try data.write(to: url, options: .atomic)
+                exportShare = ExportShare(url: url)
             } catch {
-                fileMentions = []
-                sessionMentions = []
+                emit(error.localizedDescription)
             }
         }
     }

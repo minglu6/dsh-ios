@@ -143,8 +143,8 @@ public final class PocketClient: @unchecked Sendable {
         ]))
     }
 
-    public func answerApproval(approvalId: String, outcome: String) async throws {
-        _ = try await call("approval.answer", args: jsonObject([
+    public func answerApproval(approvalId: String, outcome: String) async throws -> JSONValue {
+        try await call("approval.answer", args: jsonObject([
             "approvalId": .string(approvalId),
             "outcome": .string(outcome),
         ]))
@@ -345,6 +345,13 @@ public final class PocketClient: @unchecked Sendable {
             "sessionId": .string(sessionId),
             "line": .string(line),
         ]))
+    }
+
+    public func exportSession(sessionId: String, includeDescendants: Bool = true) async throws -> JSONValue {
+        try await call("session.export", args: jsonObject([
+            "sessionId": .string(sessionId),
+            "includeDescendants": .bool(includeDescendants),
+        ]), timeoutMs: 180_000)
     }
 
     public func uploadAttachment(sessionId: String, data: String, name: String? = nil) async throws -> JSONValue {

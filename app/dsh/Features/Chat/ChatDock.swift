@@ -178,7 +178,7 @@ struct ApprovalCard: View {
     let approval: Approval
     let items: [Item]
     var enabled: Bool = true
-    var onAnswer: (Approval, String) -> Void
+    var onAnswer: (Approval, String, @escaping (Bool) -> Void) -> Void
 
     @State private var busy = false
 
@@ -229,7 +229,9 @@ struct ApprovalCard: View {
     private func answer(_ outcome: String) {
         if busy || !enabled { return }
         busy = true
-        onAnswer(approval, outcome)
+        onAnswer(approval, outcome) { success in
+            if !success { busy = false }
+        }
     }
 }
 
@@ -605,7 +607,8 @@ struct CommandSheet: View {
                     ForEach(filtered) { command in
                         let builtin = builtinCommandName(command.definitionId)
                         let requiresHost = builtin == "plan" || builtin == "compact" || builtin == "export" || builtin == "permission"
-                        row("/\(command.name)", "chevron.left.forwardslash.chevron.right", detail: command.description, enabled: model.isOnline || !requiresHost) {
+                        let exportReady = builtin != "export" || model.ops.contains("session.export")
+                        row("/\(command.name)", "chevron.left.forwardslash.chevron.right", detail: command.description, enabled: (model.isOnline || !requiresHost) && exportReady) {
                             switch builtin {
                             case "goal": model.consumeComposerSlash(); onGoal()
                             case "plan":
@@ -618,7 +621,10 @@ struct CommandSheet: View {
                                 if command.name == "compact" { onCompact() } else { model.executeCommand("/\(command.name)") }
                                 onDismiss()
                             case "permission": model.consumeComposerSlash(); onPerm()
-                            case "export": model.consumeComposerSlash(); onDismiss()
+                            case "export":
+                                model.consumeComposerSlash()
+                                model.exportSession()
+                                onDismiss()
                             default:
                                 model.insertComposer("/\(command.name)")
                                 onDismiss()

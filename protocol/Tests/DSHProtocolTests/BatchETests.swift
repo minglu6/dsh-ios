@@ -721,4 +721,17 @@ final class BatchEPolicyTests: XCTestCase {
         XCTAssertEqual(queueUpdateArgs(sessionId: "s", itemId: "q", action: .remove)["action"]["kind"].str(), "remove")
         XCTAssertEqual(queueUpdateArgs(sessionId: "s", itemId: "q", action: .steer)["action"]["kind"].str(), "steer")
     }
+
+    func testApprovalAndExportWireContracts() throws {
+        XCTAssertEqual(try JSONValue.parse(#"{"accepted":true}"#)["accepted"].bool(), true)
+        XCTAssertNotEqual(try JSONValue.parse(#"{"accepted":false}"#)["accepted"].bool(), true)
+        XCTAssertNil(try JSONValue.parse(#"{}"#)["accepted"].bool())
+        let export = jsonObject([
+            "sessionId": .string("s"),
+            "includeDescendants": .bool(true),
+        ])
+        XCTAssertEqual(export["sessionId"].str(), "s")
+        XCTAssertEqual(export["includeDescendants"].bool(), true)
+        XCTAssertEqual(builtinCommandName("@deepseek-ai/dsh-session-log-export"), "export")
+    }
 }

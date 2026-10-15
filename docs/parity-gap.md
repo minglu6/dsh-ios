@@ -63,10 +63,10 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Composer statistics | Activity / Usage / Context pills | `ComposerStats` + Host projections | **missing** → **present** | **E** |
 | Composer queue / steer | busyEnter + `queue.update` | `busySend` + `PromptQueue` edit/remove/steer | **partial** → **present** | **E** |
 | `@` mentions | `MentionMenu.kt` official `@path` / `@"path"` / `@[title](dsh-session:…)` | same tokens + chip row + mention panel | **partial** → **present** | **E** |
-| `/` commands | `CommandPopupSheet` `commands.list/execute` | `CommandSheet` + builtin `goal/plan/feedback/compact/permission` | **missing** → **present** | **E** |
+| `/` commands | `CommandPopupSheet` `commands.list/execute` | `CommandSheet` + builtin `goal/plan/feedback/compact/permission/export` (`session.export` share sheet) | **missing** → **present** | **E** |
 | Attachments | `attachments.upload` | image picker + file importer + receipts | **missing** → **present** | **E** |
 | User questions | `UserQuestionCard` `userQuestions.answer` | same card / plan-review / skip+submit | **missing** → **present** | **E** |
-| Approvals | official `ApprovalCard` takes composer | official card; no leftover inline row | **partial** → **present** | **E** |
+| Approvals | official `ApprovalCard` takes composer | official card; `accepted` callback clears busy, success drops the row | **partial** → **present** | **E** |
 | TodoPanel | dock card above composer | `TodoPanel` expand in place | **missing** → **present** | **E** |
 | Goal bar | `goals.get` / `goal.activation` CAS | `GoalBar` + `GoalSheet` pause/resume/clear/edit | **missing** → **present** | **E** |
 | Permission mode | catalog/get/set + risk sheet | session picker + Settings defaults (`auto` not a default) | **partial** → **present** | **E** |
@@ -158,7 +158,7 @@ Port as the matching batch needs them (same JSON, no second protocol):
 | `PermissionModels.kt` | Permission pickers | **D done** (`PermissionModels.swift`) |
 | `HostUi.kt` | Plugin/settings slots | **D done** (`HostUi.swift`); **E** adds `ui.close` |
 
-Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, commands.list/execute, attachments.upload, userQuestions.answer, goals.get/edit/pause/resume/clear, references.files/sessions, ui.close.
+Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, commands.list/execute, attachments.upload, userQuestions.answer, goals.get/edit/pause/resume/clear, references.files/sessions, session.export, ui.close. Approval `accepted` is required (same as Android `Pocket.answer`).
 
 ---
 
