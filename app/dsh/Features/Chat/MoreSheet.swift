@@ -5,6 +5,8 @@ struct MoreSheet: View {
     @ObservedObject var model: AppModel
     var onDismiss: () -> Void
     var onFeedback: () -> Void
+    var onBrowser: () -> Void = {}
+    var onInspector: () -> Void = {}
 
     @State private var renaming = false
     @State private var title = ""
@@ -56,6 +58,16 @@ struct MoreSheet: View {
                         if MoreSheetPolicy.showsFeedback(ops: model.ops) {
                             row(L.sessionFeedback(), D.paperPlane, enabled: MoreSheetPolicy.feedbackEnabled(inChat: model.chat != nil)) {
                                 onFeedback()
+                            }
+                        }
+                        if MoreSheetPolicy.showsBrowser(inChat: model.chat != nil) {
+                            row(L.browser(), D.globe) {
+                                onBrowser()
+                            }
+                        }
+                        if MoreSheetPolicy.showsInspector(inChat: model.chat != nil) {
+                            row(L.sessionInspector(), "viewfinder") {
+                                onInspector()
                             }
                         }
                         if MoreSheetPolicy.showsFork(ops: model.ops, inChat: model.chat != nil) {

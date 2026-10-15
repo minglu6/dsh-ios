@@ -24,6 +24,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | E | Permissions + ModelPicker + questions/commands/attachments/queue/goals + Todo/stats/retry + mention/approval/HostUi close | done (#7) |
 | F | WorkspaceChanges + TrajectoryRequest leftover + Session Inspector + Browser + CodePreview + transcript publisher | done (#8) |
 | G | session search/export, Agent presets, NSD, notifications, unarchive, drag reorder, NavigationPolicy | done (#9) |
+| P0 | Brand wordmark + official plugin market | done (#12) |
+| P1 | Chat share row, composer model/permission chips, Start IA, settings shell | this PR |
 
 ---
 
@@ -32,11 +34,11 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Surface | Official package | Android | iOS now |
 | --- | --- | --- | --- |
 | Transcript fold | `ui-chat` / `ui-conversation` | `protocol/Transcript.kt`, `Chat.kt`, `ChatProcess.kt` | `protocol/…/Transcript.swift`, `ChatProcess.swift`, `Features/Chat/ChatView.swift` |
-| Message actions | `ui-chat` `MessageIconActions` | `Chat.kt` `MessageActions` | `ChatView` `MessageActions` (copy / like / dislike / branch + turn usage) |
+| Message actions | `ui-chat` `MessageIconActions` | `Chat.kt` `MessageActions` | `ChatView` `MessageActions` (copy / like / dislike / share + turn usage; branch on session ⋯) |
 | Trajectory | `ui-trajectory` | `Trajectory.kt` + Detail/Inspector/Request/Locales; `protocol/TrajectoryTimeline.kt` | `Features/Trajectory/` + `protocol/Trajectory.swift` / `TrajectoryRequest.swift` |
 | WorkspaceChanges | Host `workspaceChanges.summary/diff` | `WorkspaceChanges.kt` | `Features/Chat/WorkspaceChanges.swift` + `protocol/WorkspaceChanges.swift` |
-| Session Inspector | desktop session-inspector | `SessionInspectorPanel.kt` / Log / Model / Navigation | `Features/Inspector/` + `protocol/SessionInspectorLog.swift` / `SessionInspectorModel.swift` |
-| Browser | local HTTP(S) panel | `BrowserPanel.kt` + `BrowserPolicy.kt` | `Features/Browser/BrowserPanel.swift` + `protocol/BrowserPolicy.swift` |
+| Session Inspector | desktop session-inspector | `SessionInspectorPanel.kt` / Log / Model / Navigation | session ⋯ (`MoreSheet`); pick overlay still returns to inspector |
+| Browser | local HTTP(S) panel | `BrowserPanel.kt` + `BrowserPolicy.kt` | session ⋯ (`MoreSheet`); desktop Start does not list it |
 | Code preview | shiki offline preview | `CodePreview.kt` | `Features/Files/CodePreview.swift` + `CodePreviewAssets/` |
 | Terminal | Host `terminalController` | `TerminalPanel.kt`, `TerminalView.kt`, `TerminalEmulator.kt` | `Features/Terminal/` + `protocol/TerminalEmulator.swift`; default fg/bg follow appearance, Tokyo Night ANSI unchanged |
 | Files | `workspaceFiles` | `FilesPanel.kt` | `Features/Files/` + workspace tree / browse |
@@ -65,7 +67,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Notices (stopped / max-tokens / account) | reducer + official `message.*` | reducer emits; `.notice` / `RetryRow` / `TurnFailureRow` | **present** | **E** |
 | Deliverables | `Item.Deliverable` | tap opens workspace file preview | **present** | **B** |
 | Markdown / code block / tables | `Markdown.kt` | AST + GFM tables / code / file chips | **present** | **D** |
-| Copy / like / dislike / branch | `MessageActions` + `FeedbackCategory` | same; `canFork` needs `firstPrompt == nil` | **present** | **A** |
+| Copy / like / dislike / share | `MessageActions` + `FeedbackCategory` | desktop row is share (not branch); branch stays on session ⋯ | **present** | **A** / **P1** |
 | Turn usage pill | `ComposerStats.kt` `TurnUsageAction` | same; only `PerformanceUsage.Detailed` | **missing** → **present** | **E** |
 | Composer statistics | Activity / Usage / Context pills | `ComposerStats` + Host projections | **missing** → **present** | **E** |
 | Composer queue / steer | busyEnter + `queue.update` | `busySend` + `PromptQueue` edit/remove/steer | **partial** → **present** | **E** |
@@ -103,7 +105,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | `terminal.list/create/follow/write/resize/close` | `PocketClient` + `TerminalPanel.kt` | `PocketClient` + `TerminalPanel` (shown when ops advertised) | **present** | **B** |
 | Tokyo Night PTY emulator | `TerminalEmulator.kt` | `AnsiTerminal` | **present** | **B** |
 | Default fg/bg follow appearance | canvas tokens | `T.ink` / `T.bg`; Tokyo Night ANSI palette unchanged | **present** | **D** |
-| Top shortcut row; Tab → `\t` | `TerminalView.kt` | same two-row English keycaps; Tab sends `\t` | **present** | **B** |
+| Top shortcut row; Tab → `\t` | `TerminalView.kt` | same two-row English keycaps; Tab sends `\t`. Desktop live buffer **not captured** this round — no invented recolor | **present** | **B** / **P1** |
 | Tap cursor / long-press select | `TerminalView.kt` | tap / long-press + drag | **present** | **B** |
 | Resume saved PTY identities | `Pocket.kt` | `TerminalStore` + `selectTerminal` | **present** | **B** |
 
@@ -111,7 +113,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 
 | Item | Android | iOS | Tag | Batch |
 | --- | --- | --- | --- | --- |
-| `files.list/read` listing | `FilesPanel.kt` | `FilesPanel` (shown when `files.list` advertised) | **present** | **B** |
+| `files.list/read` listing | `FilesPanel.kt` | `FilesPanel` (shown when `files.list` advertised). Desktop tree **not captured** — no invented columns/colors | **present** | **B** / **P1** |
 | Preview (md / text / image) | `FilePreview.kt` | md / text / image; code uses shiki language table + isolated WebView; PDF/Office stay unsupported | **partial** → **present** | **B** / **F** |
 | Workspace entities / tree | `WorkspaceNavigation.kt` | entity groups / tree / rename / delete / new session | **present** | **B** |
 | Add workspace browse | `WorkspaceDirectoryPicker.kt` | `WorkspaceDirectorySheet` when `workspace.create` | **present** | **B** |
@@ -122,8 +124,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Open-in-desktop-editor | desktop only | — | **hide** | — |
 | WorkspaceChanges cards | `WorkspaceChanges.kt` | chat cards + review sheet (`workspaceChanges.summary/diff`); attached to last answer when `showCodeWorkView` | **missing** → **present** | **F** |
 | File tree on `workspace.changed` | entity follow; tree still cwd/generation | bump `filesRevision` so the listing reloads | **partial** → **present** | **F** |
-| Browser | `BrowserPanel.kt` HTTP(S)-only, no credentials | Start panel (no ops gate); checkpoint URL/title only | **missing** → **present** | **F** |
-| Session Inspector | `SessionInspectorPanel` raw/grouped + pick | Start panel (no ops gate); pick overlay returns to inspector | **missing** → **present** | **F** |
+| Browser | `BrowserPanel.kt` HTTP(S)-only, no credentials | session ⋯ (desktop Start has files+terminal only); checkpoint URL/title only | **missing** → **present** | **F** / **P1** |
+| Session Inspector | `SessionInspectorPanel` raw/grouped + pick | session ⋯ (not on desktop Start); pick overlay returns to inspector | **missing** → **present** | **F** / **P1** |
 
 ## 5. Jobs + unread
 
@@ -151,7 +153,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Drawer 自动化 (not a settings section) | `ScheduleScreen.kt` | drawer only; Settings 自动化 row removed | **present** | **D** |
 | Schedule catalog / edit / history | `ScheduleScreen.kt` | CAS update + delete + history; New → chat | **present** | **D** |
 | Agent presets | `AgentPresetSettingsScreen.kt` | Settings row + guide + Creator CTA when `presets.list`/`presets.settings` | **missing** → **present** | **G** |
-| General: fonts, transcript, collapse, busy, performance, log upload, link opening | `GeneralSettingsScreen` | present; appearance/fonts **local only** | **present** | **D** |
+| General: fonts, transcript, collapse, busy, performance, log upload, link opening | `GeneralSettingsScreen` | appearance 3 cards + `14 px` menu; fonts **local only**; drawer 设置 row + gear | **present** | **D** / **P1** |
 | Permission defaults | `PermissionPickerSheet(forDefaults)` + risk | same; `auto` cannot be a default | **partial** → **present** | **E** |
 | Models provider editor + keys | `ModelsSettingsScreen.kt` | `models.providers*` + `credentials.*` | **present** | **D** |
 | 「移动端」 group / 代码自动换行 | Android still has these (audit S2/S5) | wrap is local; no extra mobile group copied | **present** | — |
@@ -191,7 +193,7 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 
 - Trajectory: session header / more menu — data is the current follow transcript (no extra Host op). Hidden when coding view is off.
 - Terminal / files / jobs: expose when the matching op is in `hello.ops` (same as Android).
-- Browser / Session Inspector: Start panel always (no ops gate), same as Android GuideBody.
+- Browser / Session Inspector: not on desktop Start (files + new terminal only, colored icons + ⌘P). Reachable from session ⋯ when a chat is open.
 - WorkspaceChanges: chat cards when `showCodeWorkView` and `workspaceChanges.summary` is advertised; diff sheet needs `workspaceChanges.diff`.
 - Plugins: drawer when `plugins.list`; market enable when `plugins.setEnabled`; add when `plugins.install`; Settings 「内置插件」 when `plugins.inventory`. HostUi webview remains implemented but is not a market banner (desktop has none).
 - Schedule: **drawer only** (desktop sidebar). Do not add a Settings row.

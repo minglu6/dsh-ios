@@ -83,7 +83,7 @@ struct SessionInspectorPanel: View {
                 NavigationStack {
                     SessionInspectorContent(model: model, sessionId: sessionId, state: state, onDismiss: onDismiss)
                         .background(T.bg)
-                        .navigationTitle(L.t("会话数据诊断", "Session Log"))
+                        .navigationTitle(L.sessionInspector())
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
                             ToolbarItem(placement: .cancellationAction) {

@@ -173,7 +173,7 @@ struct ConnectionsView: View {
                 field(L.addressField(), text: $address, hint: L.pairingUriHint(), mono: true)
                 field(L.nameField(), text: $name, hint: L.nameHint(), mono: false)
                 if !address.contains("dshpocket://") {
-                    field("Code", text: $code, hint: "123456", mono: true)
+                    field(L.pairingCode(), text: $code, hint: "123456", mono: true)
                 }
                 Spacer()
                 Button {

@@ -7,6 +7,7 @@ struct SettingsView: View {
     var body: some View {
         VStack(spacing: 0) {
             header(L.settings()) { model.pop() }
+                .accessibilityIdentifier("settingsShell")
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     card {
@@ -55,6 +56,7 @@ struct GeneralSettingsView: View {
     var body: some View {
         VStack(spacing: 0) {
             header(L.generalNav()) { model.pop() }
+                .accessibilityIdentifier("generalSettings")
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     if shared.saving {
@@ -86,14 +88,13 @@ struct GeneralSettingsView: View {
                             Text("中文").tag(AppLanguage.zh)
                             Text("English").tag(AppLanguage.en)
                         }
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 10) {
                             Text(L.appearance()).foregroundStyle(T.ink)
-                            Picker("", selection: Binding(get: { model.appearance }, set: { model.setAppearance($0) })) {
-                                Text(L.light()).tag(Appearance.light)
-                                Text(L.dark()).tag(Appearance.dark)
-                                Text(L.followSystem()).tag(Appearance.system)
+                            HStack(spacing: 8) {
+                                appearanceCard(.light, L.light(), "sun.max")
+                                appearanceCard(.dark, L.dark(), "moon")
+                                appearanceCard(.system, L.followSystem(), "desktopcomputer")
                             }
-                            .pickerStyle(.segmented)
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)
@@ -136,7 +137,7 @@ struct GeneralSettingsView: View {
                         if shared.namespace(.sessionLog) != nil {
                             HStack {
                                 VStack(alignment: .leading) {
-                                    Text(L.t("在使用官方模型 API 时上传 Session Log", "Upload Session Log when using the official model API")).foregroundStyle(T.ink)
+                                    Text(sessionLogUploadLabel(english: L.en)).foregroundStyle(T.ink)
                                     Text(L.t("帮助改进 DeepSeek 模型与产品", "Help improve DeepSeek models and products.")).font(.caption).foregroundStyle(T.text3)
                                 }
                                 Spacer()
@@ -220,7 +221,7 @@ struct GeneralSettingsView: View {
 
     @ViewBuilder
     private var fontRow: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        HStack(alignment: .center, spacing: 12) {
             Button { fontsExpanded.toggle() } label: {
                 HStack {
                     VStack(alignment: .leading) {
@@ -228,18 +229,57 @@ struct GeneralSettingsView: View {
                         Text(L.t("仅影响会话内容的字号", "Only affects conversation content")).font(.caption).foregroundStyle(T.text3)
                     }
                     Spacer()
-                    Text("\(model.fontSize)").foregroundStyle(T.text3)
-                    Image(systemName: fontsExpanded ? "chevron.up" : "chevron.down").font(.caption).foregroundStyle(T.text3)
                 }
             }
-            Slider(value: Binding(
-                get: { Double(model.fontSize) },
-                set: { model.setFontSize(Int($0.rounded())) }
-            ), in: 10...22, step: 1)
+            Menu {
+                ForEach(Array(ConversationFontSize.range), id: \.self) { size in
+                    Button(conversationFontSizeLabel(size)) { model.setFontSize(size) }
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Text(conversationFontSizeLabel(model.fontSize)).foregroundStyle(T.text2)
+                    Image(systemName: "chevron.down").font(.caption).foregroundStyle(T.text3)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(T.fill, in: Capsule())
+            }
+            .accessibilityLabel(L.fontSize())
+            .accessibilityValue(conversationFontSizeLabel(model.fontSize))
+            Button { fontsExpanded.toggle() } label: {
+                Image(systemName: fontsExpanded ? "chevron.up" : "chevron.down").font(.caption).foregroundStyle(T.text3)
+            }
+            .accessibilityLabel(fontsExpanded ? L.collapse() : L.expand())
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         Divider().padding(.leading, 16)
+    }
+
+    private func appearanceCard(_ value: Appearance, _ title: String, _ system: String) -> some View {
+        let selected = model.appearance == value
+        return Button {
+            model.setAppearance(value)
+        } label: {
+            VStack(spacing: 8) {
+                Image(systemName: system)
+                    .font(.system(size: 18))
+                    .foregroundStyle(T.ink)
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(T.ink)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(selected ? T.fill2 : T.surface, in: RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(selected ? T.borderStrong : T.border, lineWidth: selected ? 1.5 : 0.5)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
+        .accessibilityLabel(title)
     }
 
     @ViewBuilder
