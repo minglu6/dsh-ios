@@ -178,7 +178,7 @@ final class SchedulePolicyTests: XCTestCase {
 
     func testSnapshotKeepsCompleteRuleButNoCatalogMetadata() throws {
         let expected = try scheduleSnapshot(weekly())
-        XCTAssertEqual(Set(expected.obj()?.keys ?? []), ["id", "kind", "title", "prompt", "scheduledAt", "time", "timeZone", "weekdays"])
+        XCTAssertEqual(Set((expected.obj() ?? [:]).keys), Set(["id", "kind", "title", "prompt", "scheduledAt", "time", "timeZone", "weekdays"]))
         XCTAssertEqual(expected["weekdays"], try weekly()["weekdays"])
         XCTAssertEqual(expected["time"].str(), "09:00:00.123")
         XCTAssertEqual(expected["scheduledAt"].str(), "2026-10-15T01:00:00.123Z")
