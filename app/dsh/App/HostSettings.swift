@@ -1,15 +1,21 @@
 import Foundation
 import DSHProtocol
 
-enum SharedSetting: String {
-    case appearance, fontSize, language, busySend, codeWork
+enum SharedSetting: String, CaseIterable {
+    case appearance, fontSize, codeFontSize, terminalFontSize
+    case textFontFamily, codeFontFamily, terminalFontFamily
+    case language, busySend, codeWork, transcript, performance, permission, sessionLog, linkOpening
 
     var namespace: String {
         switch self {
-        case .appearance, .fontSize: return "ui-theme"
+        case .appearance, .fontSize, .codeFontSize, .terminalFontSize, .textFontFamily, .codeFontFamily, .terminalFontFamily:
+            return "ui-theme"
         case .language: return "locale"
         case .busySend: return "ui-conversation"
         case .codeWork: return "ui-settings"
+        case .transcript, .performance, .linkOpening: return "ui-chat"
+        case .permission: return "permission"
+        case .sessionLog: return "session-log-deepseek"
         }
     }
 
@@ -17,9 +23,29 @@ enum SharedSetting: String {
         switch self {
         case .appearance: return "preference"
         case .fontSize: return "fontSize"
+        case .codeFontSize: return "codeFontSize"
+        case .terminalFontSize: return "terminalFontSize"
+        case .textFontFamily: return "textFontFamily"
+        case .codeFontFamily: return "codeFontFamily"
+        case .terminalFontFamily: return "terminalFontFamily"
         case .language: return "preference"
         case .busySend: return "busyEnter"
         case .codeWork: return "enabled"
+        case .transcript: return "transcriptView"
+        case .performance: return "performanceUsage"
+        case .permission: return "defaultPreset"
+        case .sessionLog: return "enabled"
+        case .linkOpening: return "linkOpening"
+        }
+    }
+
+    /// Appearance and fonts stay on the phone; they must never mutate the remote host.
+    var writesRemoteHost: Bool {
+        switch self {
+        case .appearance, .fontSize, .codeFontSize, .terminalFontSize, .textFontFamily, .codeFontFamily, .terminalFontFamily:
+            return false
+        default:
+            return true
         }
     }
 }
@@ -30,15 +56,20 @@ final class HostSettings: ObservableObject {
     @Published private(set) var snapshot: JSONValue?
     @Published private(set) var online = false
     @Published private(set) var loading = false
+    @Published private(set) var saving = false
     @Published var error: String?
 
     private var describe: (() async throws -> JSONValue)?
     private var mutate: ((String, JSONValue, Int) async throws -> JSONValue)?
     private var generation = 0
+    var onChange: (() -> Void)?
 
     var ready: Bool { online && snapshot != nil }
 
-    func bind(describe: @escaping () async throws -> JSONValue, mutate: @escaping (String, JSONValue, Int) async throws -> JSONValue) {
+    func bind(
+        describe: @escaping () async throws -> JSONValue,
+        mutate: ((String, JSONValue, Int) async throws -> JSONValue)? = nil
+    ) {
         clear()
         self.describe = describe
         self.mutate = mutate
@@ -53,15 +84,34 @@ final class HostSettings: ObservableObject {
         snapshot = nil
         online = false
         loading = false
+        saving = false
         error = nil
     }
 
+    func dismissError() { error = nil }
+
     func namespace(_ setting: SharedSetting) -> JSONValue? {
-        snapshot?["namespaces"].arr()?.first { $0["ns"].str() == setting.namespace }
+        namespace(setting.namespace)
+    }
+
+    func namespace(_ ns: String) -> JSONValue? {
+        snapshot?["namespaces"].arr()?.first { $0["ns"].str() == ns }
     }
 
     func value(_ setting: SharedSetting) -> JSONValue? {
         namespace(setting)?["value"][setting.field]
+    }
+
+    func hasField(_ setting: SharedSetting) -> Bool {
+        guard let object = namespace(setting)?["value"].obj() else { return false }
+        return object.keys.contains(setting.field)
+    }
+
+    func writable(_ setting: SharedSetting) -> Bool {
+        guard setting.writesRemoteHost else { return false }
+        return ready && !saving && mutate != nil && snapshot?["writable"].bool() == true
+            && namespace(setting)?["writable"].bool() != false
+            && (namespace(setting)?["revision"].int() ?? -1) >= 0
     }
 
     func refresh() {
@@ -98,23 +148,43 @@ final class HostSettings: ObservableObject {
         var object = next.obj() ?? [:]
         object["namespaces"] = .array(namespaces)
         snapshot = .object(object)
+        onChange?()
     }
 
-    func write(_ setting: SharedSetting, value: JSONValue) {
-        guard let mutate, let row = namespace(setting), let revision = row["revision"].int() else { return }
+    func write(_ setting: SharedSetting, value: JSONValue, onSaved: @escaping () -> Void = {}) {
+        if !setting.writesRemoteHost {
+            error = L.t("外观与字体仅保存在本机，不会写入远程主机", "Appearance and fonts stay on this device and are not written to the remote host")
+            return
+        }
+        guard let mutate else {
+            error = L.t("远程主机设置尚未连接、不可用或只读，未保存", "Remote host settings are disconnected, unavailable, or read-only; nothing was saved")
+            return
+        }
+        guard writable(setting), let revision = namespace(setting)?["revision"].int() else {
+            error = saving
+                ? L.t("正在保存，请稍后再试", "Saving; try again shortly")
+                : L.t("远程主机设置尚未连接、不可用或只读，未保存", "Remote host settings are disconnected, unavailable, or read-only; nothing was saved")
+            return
+        }
+        saving = true
+        error = nil
         Task {
             do {
-                _ = try await mutate(setting.namespace, .array([
+                let result = try await mutate(setting.namespace, .array([
                     jsonObject([
                         "op": .string("set"),
                         "path": .array([.string(setting.field)]),
                         "value": value,
                     ]),
                 ]), revision)
+                try requireSettingsSuccess(result)
                 refresh()
+                onSaved()
             } catch {
                 self.error = error.localizedDescription
+                refresh()
             }
+            saving = false
         }
     }
 }

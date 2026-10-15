@@ -58,6 +58,8 @@ struct RootView: View {
             GeneralSettingsView(model: model)
         case .models:
             ModelsSettingsView(model: model)
+        case .builtinPlugins:
+            PluginInventoryView(model: model)
         case .diagnostics:
             ConnectionsView(model: model)
         case .panel(let panel):

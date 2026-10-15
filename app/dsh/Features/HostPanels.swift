@@ -1,5 +1,4 @@
 import SwiftUI
-import DSHProtocol
 
 /// Host surfaces that share official desktop semantics.
 /// Trajectory is the Chat / 轨迹 tab; this panel is only reached if something
@@ -14,8 +13,8 @@ struct HostPanelView: View {
                 header(title) { model.pop() }
             }
             switch panel {
-            case .plugins: PluginsPanel(model: model)
-            case .schedule: SchedulePanel(model: model)
+            case .plugins: PluginsScreen(model: model)
+            case .schedule: ScheduleScreen(model: model)
             case .trajectory: TrajectoryView(model: model)
             case .files: FilesPanel(model: model)
             case .terminal: TerminalPanel(model: model)
@@ -32,7 +31,7 @@ struct HostPanelView: View {
 
     private var showsSharedHeader: Bool {
         switch panel {
-        case .files, .terminal, .jobs: return false
+        case .files, .terminal, .jobs, .plugins, .schedule: return false
         default: return true
         }
     }
@@ -49,99 +48,6 @@ struct HostPanelView: View {
         }
     }
 
-}
-
-struct PluginsPanel: View {
-    @ObservedObject var model: AppModel
-    @State private var rows: [JSONValue] = []
-    @State private var error: String?
-    @State private var loaded = false
-
-    var body: some View {
-        Group {
-            if let error {
-                Text(error).foregroundStyle(T.err).padding()
-            } else if !loaded {
-                Text(L.loading()).foregroundStyle(T.text3).padding()
-            } else if rows.isEmpty {
-                Color.clear
-            } else {
-                List(Array(rows.enumerated()), id: \.offset) { _, row in
-                    HStack {
-                        VStack(alignment: .leading) {
-                            Text(row["name"].str() ?? row["id"].str() ?? row["bundle"].str() ?? "").foregroundStyle(T.ink)
-                            if let id = row["id"].str() ?? row["bundle"].str() {
-                                Text(id).font(.caption).foregroundStyle(T.text3)
-                            }
-                        }
-                        Spacer()
-                        Text((row["enabled"].bool() == true) ? (L.en ? "Enabled" : "已启用") : (L.en ? "Disabled" : "已停用"))
-                            .font(.caption)
-                            .foregroundStyle(row["enabled"].bool() == true ? T.ok : T.text3)
-                    }
-                }
-            }
-        }
-        .task { await load() }
-    }
-
-    private func load() async {
-        guard model.ops.contains("plugins.list") else {
-            loaded = true
-            return
-        }
-        do {
-            let result = try await PocketCall.pluginsList()
-            rows = result["plugins"].arr() ?? result["items"].arr() ?? result["entries"].arr() ?? []
-            loaded = true
-        } catch {
-            self.error = error.localizedDescription
-        }
-    }
-}
-
-struct SchedulePanel: View {
-    @ObservedObject var model: AppModel
-    @State private var rows: [JSONValue] = []
-    @State private var error: String?
-    @State private var loaded = false
-
-    var body: some View {
-        Group {
-            if let error {
-                Text(error).foregroundStyle(T.err).padding()
-            } else if !loaded {
-                Text(L.loading()).foregroundStyle(T.text3).padding()
-            } else if rows.isEmpty {
-                Color.clear
-            } else {
-                List(Array(rows.enumerated()), id: \.offset) { _, row in
-                    VStack(alignment: .leading) {
-                        Text(row["title"].str() ?? row["id"].str() ?? "").foregroundStyle(T.ink)
-                        if let next = row["nextRun"].str() ?? row["next"].str() {
-                            Text(next).font(.caption).foregroundStyle(T.text3)
-                        }
-                    }
-                }
-            }
-        }
-        .task { await load() }
-    }
-
-    private func load() async {
-        guard let sessionId = model.chat?.sessionId,
-              model.ops.contains("schedule.list") || model.ops.contains("schedule.catalog") else {
-            loaded = true
-            return
-        }
-        do {
-            let result = try await PocketCall.scheduleList(sessionId: sessionId)
-            rows = result["tasks"].arr() ?? result["items"].arr() ?? []
-            loaded = true
-        } catch {
-            self.error = error.localizedDescription
-        }
-    }
 }
 
 /// Official GuideBody: compass watermark and a centered column of entry capsules.
@@ -197,16 +103,5 @@ struct StartPanel: View {
             .overlay(RoundedRectangle(cornerRadius: 20).stroke(T.border, lineWidth: 0.5))
         }
         .buttonStyle(.plain)
-    }
-}
-
-/// Narrow bridge so feature panels can call the live client without exposing it.
-enum PocketCall {
-    static func pluginsList() async throws -> JSONValue {
-        try await AppModel.shared.call("plugins.list")
-    }
-
-    static func scheduleList(sessionId: String) async throws -> JSONValue {
-        try await AppModel.shared.call("schedule.list", args: jsonObject(["sessionId": .string(sessionId)]))
     }
 }

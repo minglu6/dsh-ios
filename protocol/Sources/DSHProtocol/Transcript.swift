@@ -48,6 +48,10 @@ public struct TodoItem: Sendable, Equatable, Identifiable {
     public var id: String { content }
 }
 
+public enum RetryState: String, Sendable, Equatable {
+    case scheduled, started, cancelled
+}
+
 public struct RetryAttempt: Sendable, Equatable {
     public var seq: Int64
     public var retry: Int
@@ -56,6 +60,27 @@ public struct RetryAttempt: Sendable, Equatable {
     public var delayMs: Int64
     public var message: String
     public var code: String?
+    public var state: RetryState
+
+    public init(
+        seq: Int64,
+        retry: Int,
+        maxRetries: Int? = nil,
+        mode: String,
+        delayMs: Int64,
+        message: String,
+        code: String? = nil,
+        state: RetryState = .scheduled
+    ) {
+        self.seq = seq
+        self.retry = retry
+        self.maxRetries = maxRetries
+        self.mode = mode
+        self.delayMs = delayMs
+        self.message = message
+        self.code = code
+        self.state = state
+    }
 }
 
 public enum Item: Sendable, Equatable, Identifiable {
@@ -323,6 +348,14 @@ public enum Item: Sendable, Equatable, Identifiable {
         public var turn: Int?
         public var step: Int?
         public var attempts: [RetryAttempt]
+
+        public init(key: String, retryId: String, turn: Int? = nil, step: Int? = nil, attempts: [RetryAttempt]) {
+            self.key = key
+            self.retryId = retryId
+            self.turn = turn
+            self.step = step
+            self.attempts = attempts
+        }
     }
 
     public struct TurnFailure: Sendable, Equatable {
@@ -330,12 +363,25 @@ public enum Item: Sendable, Equatable, Identifiable {
         public var message: String
         public var code: String?
         public var turn: Int?
+
+        public init(key: String, message: String, code: String? = nil, turn: Int? = nil) {
+            self.key = key
+            self.message = message
+            self.code = code
+            self.turn = turn
+        }
     }
 
     public struct Changes: Sendable, Equatable {
         public var key: String
         public var turn: Int
         public var seq: Int64?
+
+        public init(key: String, turn: Int, seq: Int64? = nil) {
+            self.key = key
+            self.turn = turn
+            self.seq = seq
+        }
     }
 }
 
@@ -426,6 +472,28 @@ public struct TurnRecord: Sendable, Equatable {
     public var endedAt: Int64?
     public var endReason: String?
     public var closed: Bool { endSeq != nil }
+    /// Host turn start/end only. Abort/error never invent an elapsed time.
+    public var durationMs: Int64? {
+        if !closed || endReason == "aborted" || endReason == "error" { return nil }
+        guard let start = startedAt, let end = endedAt else { return nil }
+        return max(end - start, 1000)
+    }
+
+    public init(
+        turn: Int,
+        startSeq: Int64? = nil,
+        endSeq: Int64? = nil,
+        startedAt: Int64? = nil,
+        endedAt: Int64? = nil,
+        endReason: String? = nil
+    ) {
+        self.turn = turn
+        self.startSeq = startSeq
+        self.endSeq = endSeq
+        self.startedAt = startedAt
+        self.endedAt = endedAt
+        self.endReason = endReason
+    }
 }
 
 /// Folds dsh SessionFollowFrames into chat items. Pure and deterministic.

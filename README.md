@@ -18,10 +18,10 @@ Available surfaces depend on the Host version and enabled plugins. The phone mir
 | --- | --- |
 | Connection | Pairing URI / QR / host:port + 6-digit code, LAN Bonjour `_dshpocket._tcp`, multi-host list, reconnect with backoff, **Copy diagnostic report** |
 | Sessions | Workspace grouping, pin / fork / archive, unread green dot, relative time. No session path, no move up/down, no chat “scroll to bottom” button |
-| Chat | Streaming text and reasoning, tool rows, local echo, queue / steer send, approvals, `@` file and session mentions, model picker, history page. Message actions: copy / like / dislike (when Host has `feedback.set`) / branch (`sessions.fork` on the last message of a completed turn) |
+| Chat | Streaming text and reasoning, Markdown / code / tables, official Think disclosure, tool-row receipts, ChatProcess fold, local echo, queue / steer send, approvals, `@` file and session mentions, model picker, history page. Message actions: copy / like / dislike (when the remote host has `feedback.set`) / branch (`sessions.fork` on the last message of a completed turn) |
 | Trajectory | Chat / 轨迹 tab: compact ledger (7 cell kinds), toolbar 时长 / 轮次 / 调用 + search, swimlane, inspector 概述 / 参数 / 结果 / Schema / 计时 (official `ui-trajectory` copy). Request inspector still missing. Gap matrix: [docs/parity-gap.md](docs/parity-gap.md) |
-| Configuration | Host-mirrored general settings (appearance / language) and model catalog. No invented “credentials” page. Diagnostics live on Phone connection |
-| Host tools | Drawer / settings show plugins and scheduled tasks only when the Host advertises those ops. Session Start panel exposes the Host PTY terminal and workspace file tree when those ops are advertised. Session header shows the live jobs chip / panel when `jobs.list` is advertised. Gap matrix: [docs/parity-gap.md](docs/parity-gap.md) |
+| Configuration | General settings (fonts, collapse timing, performance, permission, session log, link opening). Appearance and fonts stay on the phone and are not written to the remote host. Models page: provider editor + API keys (`models.providers*` / `credentials.*`). No invented “credentials” page. Diagnostics live on Phone connection |
+| Host tools | Drawer shows the plugin manager (install / inspect / registries / settingsDescribe slots / HostUi) when `plugins.list` is advertised, and scheduled tasks when `schedule.catalog` is advertised (drawer only; not a Settings row). Session Start panel exposes the Host PTY terminal and workspace file tree when those ops are advertised. Session header shows the live jobs chip / panel when `jobs.list` is advertised. Gap matrix: [docs/parity-gap.md](docs/parity-gap.md) |
 
 Host configuration is adopted from `plugins.settingsDescribe` and `settings.changed`. Normal use does not show a manual sync control.
 
@@ -123,7 +123,7 @@ Pushes to `main` force-update the `dsh-ios-latest` prerelease with `dsh-ios.ipa`
 ## Limits
 
 - The phone cannot run dsh locally. Sleeping the computer, quitting the Host, or losing the network stops remote control.
-- Request inspector is not in this IPA yet. Trajectory ledger + cell inspector, chat message actions, Host PTY terminal, workspace file tree, live jobs, and completion unread sync are.
+- Request inspector, WorkspaceChanges cards, Agent presets, and batches E/F/G are not in this IPA yet. Trajectory ledger + cell inspector, chat Markdown / Think / process fold, plugin manager, scheduled tasks, provider editor, Host PTY terminal, workspace file tree, live jobs, and completion unread sync are.
 - Upstream dsh is still alpha. Upgrade the app, the Android-hosted bridge, and dsh together.
 
 ## Acknowledgements

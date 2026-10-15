@@ -112,6 +112,41 @@ enum AppPrefs {
         set { UserDefaults.standard.set(newValue.rawValue, forKey: "dsh.busySend") }
     }
 
+    static var fontSize: Int {
+        get { clampFontSize(UserDefaults.standard.object(forKey: "dsh.fontSize") as? Int ?? 14, range: 10...22) }
+        set { UserDefaults.standard.set(clampFontSize(newValue, range: 10...22), forKey: "dsh.fontSize") }
+    }
+
+    static var codeFontSize: Int {
+        get { clampFontSize(UserDefaults.standard.object(forKey: "dsh.codeFontSize") as? Int ?? 11, range: 10...16) }
+        set { UserDefaults.standard.set(clampFontSize(newValue, range: 10...16), forKey: "dsh.codeFontSize") }
+    }
+
+    static var terminalFontSize: Int {
+        get { clampFontSize(UserDefaults.standard.object(forKey: "dsh.terminalFontSize") as? Int ?? 13, range: 10...20) }
+        set { UserDefaults.standard.set(clampFontSize(newValue, range: 10...20), forKey: "dsh.terminalFontSize") }
+    }
+
+    static var textFontFamily: String {
+        get { UserDefaults.standard.string(forKey: "dsh.textFontFamily") ?? "" }
+        set { UserDefaults.standard.set(normalizeFontFamily(newValue), forKey: "dsh.textFontFamily") }
+    }
+
+    static var codeFontFamily: String {
+        get { UserDefaults.standard.string(forKey: "dsh.codeFontFamily") ?? "" }
+        set { UserDefaults.standard.set(normalizeFontFamily(newValue), forKey: "dsh.codeFontFamily") }
+    }
+
+    static var terminalFontFamily: String {
+        get { UserDefaults.standard.string(forKey: "dsh.terminalFontFamily") ?? "" }
+        set { UserDefaults.standard.set(normalizeFontFamily(newValue), forKey: "dsh.terminalFontFamily") }
+    }
+
+    static var codeWordWrap: Bool {
+        get { UserDefaults.standard.object(forKey: "dsh.codeWordWrap") as? Bool ?? false }
+        set { UserDefaults.standard.set(newValue, forKey: "dsh.codeWordWrap") }
+    }
+
     static var sessionGroupBy: SessionGroupBy {
         get { SessionGroupBy(rawValue: UserDefaults.standard.string(forKey: "dsh.sessionGroupBy") ?? "") ?? .workspace }
         set { UserDefaults.standard.set(newValue.rawValue, forKey: "dsh.sessionGroupBy") }

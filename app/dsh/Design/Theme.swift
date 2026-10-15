@@ -13,6 +13,10 @@ enum BusySend: String, CaseIterable, Codable {
     var mode: String { rawValue }
 }
 
+enum PerformanceUsage: String, CaseIterable, Codable {
+    case compact, detailed
+}
+
 enum SessionGroupBy: String, Codable { case workspace, workspaceTree, flat }
 enum SessionOrderBy: String, Codable { case manual, updated }
 enum ArchivedFilter: String, Codable { case hide, show, only }

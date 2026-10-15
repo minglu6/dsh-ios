@@ -213,7 +213,26 @@ public final class PocketClient: @unchecked Sendable {
         _ = try await call("workspace.archiveSession", args: jsonObject(["sessionId": .string(sessionId)]))
     }
 
+    public func modelsProviders() async throws -> JSONValue { try await call("models.providers") }
+    public func modelsProviderGet(provider: String) async throws -> JSONValue {
+        try await call("models.providerGet", args: jsonObject(["provider": .string(provider)]))
+    }
+    public func modelsSettingsMutate(ns: String, ops: JSONValue, expectedRevision: Int64? = nil) async throws -> JSONValue {
+        try await call("models.settingsMutate", args: jsonObject([
+            "ns": .string(ns),
+            "ops": ops,
+            "expectedRevision": expectedRevision.map { .number(Double($0)) },
+        ]))
+    }
+    public func modelsDiscover(settingsNs: String, request: JSONValue = .object([:])) async throws -> JSONValue {
+        try await call("models.discover", args: jsonObject([
+            "settingsNs": .string(settingsNs),
+            "request": request,
+        ]))
+    }
+
     public func pluginsList() async throws -> JSONValue { try await call("plugins.list") }
+    public func pluginsInventory() async throws -> JSONValue { try await call("plugins.inventory") }
     public func pluginsSetEnabled(enabled: Bool, bundle: String? = nil, id: String? = nil) async throws -> JSONValue {
         try await call("plugins.setEnabled", args: jsonObject([
             "enabled": .bool(enabled),
@@ -221,9 +240,77 @@ public final class PocketClient: @unchecked Sendable {
             "id": id.map { .string($0) },
         ]))
     }
+    public func pluginsInstall(spec: String, options: JSONValue? = nil) async throws -> JSONValue {
+        try await call("plugins.install", args: jsonObject([
+            "spec": .string(spec),
+            "options": options,
+        ]), timeoutMs: 1_800_000)
+    }
+    public func pluginsInspect(spec: String, registry: String? = nil) async throws -> JSONValue {
+        try await call("plugins.inspect", args: jsonObject([
+            "spec": .string(spec),
+            "options": registry.map { jsonObject(["registry": .string($0)]) },
+        ]))
+    }
+    public func pluginsRegistries() async throws -> JSONValue { try await call("plugins.registries") }
+    public func pluginsUninstall(bundle: String) async throws -> JSONValue {
+        try await call("plugins.uninstall", args: jsonObject(["bundle": .string(bundle)]), timeoutMs: 1_800_000)
+    }
+    public func pluginsCancelInstall(requestId: String) async throws -> JSONValue {
+        try await call("plugins.cancelInstall", args: jsonObject(["requestId": .string(requestId)]), timeoutMs: 120_000)
+    }
+    public func pluginsWaitForInstall(requestId: String) async throws -> JSONValue {
+        try await call("plugins.waitForInstall", args: jsonObject(["requestId": .string(requestId)]), timeoutMs: 1_800_000)
+    }
+    public func pluginsSettingsDescribe() async throws -> JSONValue { try await call("plugins.settingsDescribe") }
+    public func pluginsSettingsMutate(ns: String, ops: JSONValue, expectedRevision: Int) async throws -> JSONValue {
+        try await call("plugins.settingsMutate", args: jsonObject([
+            "ns": .string(ns),
+            "ops": ops,
+            "expectedRevision": .number(Double(expectedRevision)),
+        ]))
+    }
+
+    public func scheduleCatalog() async throws -> JSONValue { try await call("schedule.catalog") }
     public func scheduleList(sessionId: String) async throws -> JSONValue {
         try await call("schedule.list", args: jsonObject(["sessionId": .string(sessionId)]))
     }
+    public func scheduleCreate(args: JSONValue) async throws -> JSONValue {
+        try await call("schedule.create", args: args)
+    }
+    public func scheduleUpdate(args: JSONValue) async throws -> JSONValue {
+        try await call("schedule.update", args: args)
+    }
+    public func scheduleDelete(sessionId: String, id: String) async throws -> JSONValue {
+        try await call("schedule.delete", args: jsonObject([
+            "sessionId": .string(sessionId),
+            "id": .string(id),
+        ]))
+    }
+    public func scheduleHistory(sessionId: String, id: String, limit: Int = 20, before: String? = nil) async throws -> JSONValue {
+        try await call("schedule.history", args: jsonObject([
+            "sessionId": .string(sessionId),
+            "id": .string(id),
+            "limit": .number(Double(limit)),
+            "before": before.map { .string($0) },
+        ]))
+    }
+
+    public func credentialsDescribe(ref: String) async throws -> JSONValue {
+        try await call("credentials.describe", args: jsonObject(["ref": .string(ref)]))
+    }
+    public func credentialsSet(ref: String, value: String) async throws -> JSONValue {
+        try await call("credentials.set", args: jsonObject(["ref": .string(ref), "value": .string(value)]))
+    }
+    public func credentialsUnset(ref: String) async throws -> JSONValue {
+        try await call("credentials.unset", args: jsonObject(["ref": .string(ref)]))
+    }
+
+    public func uiOpen(section: String? = nil) async throws -> JSONValue {
+        try await call("ui.open", args: jsonObject(["section": section.map { .string($0) }]))
+    }
+
+    public func permissionsCatalog() async throws -> JSONValue { try await call("permissions.catalog") }
 
     public func listFiles(sessionId: String, path: String = ".") async throws -> JSONValue {
         try await call("files.list", args: jsonObject([
