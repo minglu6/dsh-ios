@@ -12,13 +12,21 @@
 			exceptions = (
 				A10000000000000000000015 /* Exceptions for "dsh" folder in "dsh" target */,
 			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+				CodePreviewAssets,
+				WorkbookPreviewAssets,
+			);
 			path = dsh;
 			sourceTree = "<group>";
 		};
 		A10000000000000000000015 /* Exceptions for "dsh" folder in "dsh" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				CodePreviewAssets,
 				Info.plist,
+				WorkbookPreviewAssets,
 			);
 			target = A10000000000000000000006 /* dsh */;
 		};
@@ -26,6 +34,8 @@
 
 /* Begin PBXFileReference section */
 		A10000000000000000000002 /* dsh.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = dsh.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000030 /* CodePreviewAssets */ = {isa = PBXFileReference; lastKnownFileType = folder; name = CodePreviewAssets; path = dsh/CodePreviewAssets; sourceTree = "<group>"; };
+		A10000000000000000000031 /* WorkbookPreviewAssets */ = {isa = PBXFileReference; lastKnownFileType = folder; name = WorkbookPreviewAssets; path = dsh/WorkbookPreviewAssets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -44,6 +54,8 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000001 /* dsh */,
+				A10000000000000000000030 /* CodePreviewAssets */,
+				A10000000000000000000031 /* WorkbookPreviewAssets */,
 				A10000000000000000000005 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -125,6 +137,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A10000000000000000000032 /* CodePreviewAssets in Resources */,
+				A10000000000000000000033 /* WorkbookPreviewAssets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -277,6 +291,8 @@
 			isa = PBXBuildFile;
 			productRef = A10000000000000000000013 /* DSHProtocol */;
 		};
+		A10000000000000000000032 /* CodePreviewAssets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000030 /* CodePreviewAssets */; };
+		A10000000000000000000033 /* WorkbookPreviewAssets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000031 /* WorkbookPreviewAssets */; };
 /* End PBXBuildFile section */
 
 /* Begin XCSwiftPackageProductDependency section */
