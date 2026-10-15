@@ -24,11 +24,6 @@ struct SessionDrawer: View {
                 Button { model.createAndOpenSession() } label: {
                     Image(systemName: D.newChat).foregroundStyle(T.ink)
                 }
-                Button { model.push(.settings); model.showDrawer = false } label: {
-                    Image(systemName: D.gear).foregroundStyle(T.ink)
-                }
-                .accessibilityLabel(L.settings())
-                .accessibilityIdentifier("drawerSettingsGear")
             }
             .padding(.horizontal, 16)
             .padding(.top, 14)

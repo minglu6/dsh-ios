@@ -11,7 +11,6 @@ struct ChatView: View {
     @State private var tab = 0
     @State private var feedbackDraft: FeedbackDraft?
     @State private var showStart = false
-    @State private var showBrowser = false
     @State private var showInspector = false
     @State private var highlightedRow: String?
     @ObservedObject private var inspectorNav = InspectorNavigation.shared
@@ -82,13 +81,6 @@ struct ChatView: View {
                     showStart = false
                 },
                 onDismiss: { showStart = false }
-            )
-        }
-        .sheet(isPresented: $showBrowser) {
-            BrowserPanel(
-                model: model,
-                sessionKey: "\(model.activeId ?? ""):\(model.chat?.sessionId ?? "")",
-                onDismiss: { showBrowser = false }
             )
         }
         .sheet(isPresented: $showInspector) {
@@ -184,14 +176,6 @@ struct ChatView: View {
                 onFeedback: {
                     showMore = false
                     showSessionFeedback = true
-                },
-                onBrowser: {
-                    showMore = false
-                    showBrowser = true
-                },
-                onInspector: {
-                    showMore = false
-                    showInspector = true
                 }
             )
         }
@@ -1036,7 +1020,9 @@ struct ComposerView: View {
                                 Image(systemName: permissionIcon(perm))
                                 Text(permissionLabel(value: perm, option: model.permissionCatalog?.find(perm)))
                                     .lineLimit(1)
-                                Image(systemName: "chevron.down").font(.caption2)
+                                Text("⌄")
+                                    .font(.subheadline.weight(.semibold))
+                                    .accessibilityHidden(true)
                             }
                             .font(.subheadline)
                             .foregroundStyle(perm == "danger-full-access" ? T.warnText : T.text2)

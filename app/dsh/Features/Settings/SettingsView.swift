@@ -44,7 +44,6 @@ struct SettingsView: View {
 struct GeneralSettingsView: View {
     @ObservedObject var model: AppModel
     @ObservedObject private var shared: HostSettings
-    @State private var fontsExpanded = false
     @State private var sheet: String?
     @State private var riskPermission: String?
 
@@ -100,7 +99,6 @@ struct GeneralSettingsView: View {
                         .padding(.vertical, 12)
                         Divider().padding(.leading, 16)
                         fontRow
-                        if fontsExpanded { fontDetails }
                         nav(L.workDetails(), "list.bullet", value: transcriptText(model.transcriptView)) {
                             sheet = "transcript"
                         }
@@ -222,15 +220,11 @@ struct GeneralSettingsView: View {
     @ViewBuilder
     private var fontRow: some View {
         HStack(alignment: .center, spacing: 12) {
-            Button { fontsExpanded.toggle() } label: {
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text(L.fontSize()).foregroundStyle(T.ink)
-                        Text(L.t("仅影响会话内容的字号", "Only affects conversation content")).font(.caption).foregroundStyle(T.text3)
-                    }
-                    Spacer()
-                }
+            VStack(alignment: .leading) {
+                Text(L.fontSize()).foregroundStyle(T.ink)
+                Text(L.t("仅影响会话内容的字号", "Only affects conversation content")).font(.caption).foregroundStyle(T.text3)
             }
+            Spacer()
             Menu {
                 ForEach(Array(ConversationFontSize.range), id: \.self) { size in
                     Button(conversationFontSizeLabel(size)) { model.setFontSize(size) }
@@ -238,7 +232,10 @@ struct GeneralSettingsView: View {
             } label: {
                 HStack(spacing: 4) {
                     Text(conversationFontSizeLabel(model.fontSize)).foregroundStyle(T.text2)
-                    Image(systemName: "chevron.down").font(.caption).foregroundStyle(T.text3)
+                    Text("⌄")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(T.text3)
+                        .accessibilityHidden(true)
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
@@ -246,10 +243,6 @@ struct GeneralSettingsView: View {
             }
             .accessibilityLabel(L.fontSize())
             .accessibilityValue(conversationFontSizeLabel(model.fontSize))
-            Button { fontsExpanded.toggle() } label: {
-                Image(systemName: fontsExpanded ? "chevron.up" : "chevron.down").font(.caption).foregroundStyle(T.text3)
-            }
-            .accessibilityLabel(fontsExpanded ? L.collapse() : L.expand())
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -280,49 +273,6 @@ struct GeneralSettingsView: View {
         .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? [.isSelected] : [])
         .accessibilityLabel(title)
-    }
-
-    @ViewBuilder
-    private var fontDetails: some View {
-        fontFamilyField(L.t("正文字体", "Text font"), L.t("用于界面与会话正文。多个字体用逗号分隔，留空使用默认字体", "Interface and conversation text. Separate fonts with commas; leave empty for defaults."), model.textFontFamily, model.setTextFontFamily)
-        sliderRow(L.t("代码字号", "Code font size"), model.codeFontSize, 10...16, model.setCodeFontSize)
-        fontFamilyField(L.t("代码字体", "Code font"), L.t("用于代码块、行内代码与工具输出。多个字体用逗号分隔，留空使用默认字体", "Code blocks, inline code, and tool output. Separate fonts with commas; leave empty for defaults."), model.codeFontFamily, model.setCodeFontFamily)
-        sliderRow(L.t("终端字号", "Terminal font size"), model.terminalFontSize, 10...20, model.setTerminalFontSize)
-        fontFamilyField(L.t("终端字体", "Terminal font"), L.t("用于侧栏终端。多个字体用逗号分隔，留空使用默认字体", "Sidebar terminal. Separate fonts with commas; leave empty for defaults."), model.terminalFontFamily, model.setTerminalFontFamily)
-    }
-
-    @ViewBuilder
-    private func fontFamilyField(_ title: String, _ hint: String, _ value: String, _ set: @escaping (String) -> Void) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title).foregroundStyle(T.ink)
-            Text(hint).font(.caption).foregroundStyle(T.text3)
-            TextField("", text: Binding(get: { value }, set: set))
-                .textInputAutocapitalization(.never)
-                .padding(8)
-                .background(T.input, in: RoundedRectangle(cornerRadius: 8))
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        Divider().padding(.leading, 16)
-    }
-
-    @ViewBuilder
-    private func sliderRow(_ title: String, _ value: Int, _ range: ClosedRange<Int>, _ set: @escaping (Int) -> Void) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(title).foregroundStyle(T.ink)
-                Spacer()
-                Text("\(value)").foregroundStyle(T.text3)
-            }
-            Slider(
-                value: Binding(get: { Double(value) }, set: { set(Int($0.rounded())) }),
-                in: Double(range.lowerBound)...Double(range.upperBound),
-                step: 1
-            )
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        Divider().padding(.leading, 16)
     }
 
     private var defaultPermissionLabel: String {

@@ -83,15 +83,9 @@ public func sessionLogUploadLabel(english: Bool) -> String {
         : "在使用官方模型 API 时上传会话日志"
 }
 
+/// Official `ui-settings-models` locales.ts (`deepseek-ai/deepseek-harness`).
 public func modelsSettingsIntro(english: Bool) -> String {
     english
-        ? "Enter each provider's API key to use its models."
-        : "填入各提供商的 API 密钥即可使用模型。"
-}
-
-public extension MoreSheetPolicy {
-    /// Browser and session inspector are not on the desktop Start panel.
-    /// They stay reachable from the session ⋯ overflow when a chat is open.
-    static func showsBrowser(inChat: Bool) -> Bool { inChat }
-    static func showsInspector(inChat: Bool) -> Bool { inChat }
+        ? "Enter your API keys to use models from the following providers."
+        : "填入各提供商的 API 密钥即可使用其模型。"
 }

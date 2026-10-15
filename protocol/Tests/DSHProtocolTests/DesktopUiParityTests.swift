@@ -80,7 +80,11 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertEqual(downloadSessionLogLabel(english: false), "下载会话日志")
         XCTAssertEqual(downloadSessionLogLabel(english: true), "Download session log")
         XCTAssertEqual(sessionLogUploadLabel(english: false), "在使用官方模型 API 时上传会话日志")
-        XCTAssertEqual(modelsSettingsIntro(english: false), "填入各提供商的 API 密钥即可使用模型。")
+        XCTAssertEqual(modelsSettingsIntro(english: false), "填入各提供商的 API 密钥即可使用其模型。")
+        XCTAssertEqual(
+            modelsSettingsIntro(english: true),
+            "Enter your API keys to use models from the following providers."
+        )
         XCTAssertEqual(conversationFontSizeLabel(14), "14 px")
         XCTAssertEqual(ConversationFontSize.range, 10...22)
     }
@@ -89,10 +93,8 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertEqual(permissionLabel(value: "workspace-write"), "工作区内修改")
     }
 
-    func testMoreSheetKeepsBrowserAndInspectorOffStartButReachable() {
-        XCTAssertTrue(MoreSheetPolicy.showsBrowser(inChat: true))
-        XCTAssertTrue(MoreSheetPolicy.showsInspector(inChat: true))
-        XCTAssertFalse(MoreSheetPolicy.showsBrowser(inChat: false))
-        XCTAssertFalse(MoreSheetPolicy.showsInspector(inChat: false))
+    func testDesktopDoesNotExposeBrowserOrInspectorOnStart() {
+        XCTAssertFalse(StartPanelPolicy.includesBrowser)
+        XCTAssertFalse(StartPanelPolicy.includesSessionInspector)
     }
 }

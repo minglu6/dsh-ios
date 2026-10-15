@@ -37,8 +37,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Message actions | `ui-chat` `MessageIconActions` | `Chat.kt` `MessageActions` | `ChatView` `MessageActions` (copy / like / dislike / share + turn usage; branch on session ⋯) |
 | Trajectory | `ui-trajectory` | `Trajectory.kt` + Detail/Inspector/Request/Locales; `protocol/TrajectoryTimeline.kt` | `Features/Trajectory/` + `protocol/Trajectory.swift` / `TrajectoryRequest.swift` |
 | WorkspaceChanges | Host `workspaceChanges.summary/diff` | `WorkspaceChanges.kt` | `Features/Chat/WorkspaceChanges.swift` + `protocol/WorkspaceChanges.swift` |
-| Session Inspector | desktop session-inspector | `SessionInspectorPanel.kt` / Log / Model / Navigation | session ⋯ (`MoreSheet`); pick overlay still returns to inspector |
-| Browser | local HTTP(S) panel | `BrowserPanel.kt` + `BrowserPolicy.kt` | session ⋯ (`MoreSheet`); desktop Start does not list it |
+| Session Inspector | desktop session-inspector | `SessionInspectorPanel.kt` / Log / Model / Navigation | implemented, unexposed (desktop Start / ⋯ have no entry) |
+| Browser | local HTTP(S) panel | `BrowserPanel.kt` + `BrowserPolicy.kt` | implemented, unexposed (desktop Start / ⋯ have no entry) |
 | Code preview | shiki offline preview | `CodePreview.kt` | `Features/Files/CodePreview.swift` + `CodePreviewAssets/` |
 | Terminal | Host `terminalController` | `TerminalPanel.kt`, `TerminalView.kt`, `TerminalEmulator.kt` | `Features/Terminal/` + `protocol/TerminalEmulator.swift`; default fg/bg follow appearance, Tokyo Night ANSI unchanged |
 | Files | `workspaceFiles` | `FilesPanel.kt` | `Features/Files/` + workspace tree / browse |
@@ -124,8 +124,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Open-in-desktop-editor | desktop only | — | **hide** | — |
 | WorkspaceChanges cards | `WorkspaceChanges.kt` | chat cards + review sheet (`workspaceChanges.summary/diff`); attached to last answer when `showCodeWorkView` | **missing** → **present** | **F** |
 | File tree on `workspace.changed` | entity follow; tree still cwd/generation | bump `filesRevision` so the listing reloads | **partial** → **present** | **F** |
-| Browser | `BrowserPanel.kt` HTTP(S)-only, no credentials | session ⋯ (desktop Start has files+terminal only); checkpoint URL/title only | **missing** → **present** | **F** / **P1** |
-| Session Inspector | `SessionInspectorPanel` raw/grouped + pick | session ⋯ (not on desktop Start); pick overlay returns to inspector | **missing** → **present** | **F** / **P1** |
+| Browser | `BrowserPanel.kt` HTTP(S)-only, no credentials | implemented, unexposed — desktop Start / ⋯ have no entry | **hide** | **P1** |
+| Session Inspector | `SessionInspectorPanel` raw/grouped + pick | implemented, unexposed — desktop Start / ⋯ have no entry | **hide** | **P1** |
 
 ## 5. Jobs + unread
 
@@ -193,7 +193,7 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 
 - Trajectory: session header / more menu — data is the current follow transcript (no extra Host op). Hidden when coding view is off.
 - Terminal / files / jobs: expose when the matching op is in `hello.ops` (same as Android).
-- Browser / Session Inspector: not on desktop Start (files + new terminal only, colored icons + ⌘P). Reachable from session ⋯ when a chat is open.
+- Browser / Session Inspector: desktop Start and session ⋯ do not list them. Do not invent an entry; implementations stay unexposed.
 - WorkspaceChanges: chat cards when `showCodeWorkView` and `workspaceChanges.summary` is advertised; diff sheet needs `workspaceChanges.diff`.
 - Plugins: drawer when `plugins.list`; market enable when `plugins.setEnabled`; add when `plugins.install`; Settings 「内置插件」 when `plugins.inventory`. HostUi webview remains implemented but is not a market banner (desktop has none).
 - Schedule: **drawer only** (desktop sidebar). Do not add a Settings row.

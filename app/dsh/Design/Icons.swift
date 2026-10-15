@@ -9,7 +9,6 @@ enum D {
     static let share = "square.and.arrow.up"
     static let paperPlane = "paperplane"
     static let terminal = "terminal"
-    static let globe = "globe"
     static let ellipsis = "ellipsis"
     static let pin = "pin"
     static let pinFill = "pin.fill"

@@ -65,7 +65,6 @@ enum L {
     static func downloadSessionLog() -> String { downloadSessionLogLabel(english: en) }
     static func share() -> String { en ? "Share" : "分享" }
     static func pairingCode() -> String { pairingCodeFieldLabel(english: en) }
-    static func browser() -> String { en ? "Browser" : "浏览器" }
     static func sessionInspector() -> String { en ? "Session diagnostics" : "会话数据诊断" }
     static func sessionFeedback() -> String { en ? "Feedback" : "反馈" }
     static func sessionFeedbackHint() -> String {
