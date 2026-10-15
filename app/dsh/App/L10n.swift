@@ -351,6 +351,11 @@ enum L {
     static func fontSize() -> String { en ? "Font size" : "字号大小" }
     static func linkOpening() -> String { en ? "Where links open" : "链接打开位置" }
     static func addPlugin() -> String { en ? "Add plugin" : "添加插件" }
+    static func pluginsHint() -> String { en ? "Install, enable and configure plugins" : "安装、启用和配置插件" }
+    static func officialPlugins(_ count: Int) -> String { en ? "Official \(count)" : "官方 \(count)" }
+    static func installedPlugins() -> String { en ? "Installed plugins" : "已安装插件" }
+    static func experimentalBadge() -> String { en ? "Experimental" : "实验性" }
+    static func configureComponent() -> String { en ? "Configure component" : "配置组件" }
     static func pluginInterfaces() -> String { en ? "Open plugin interfaces" : "打开插件自定义界面" }
     static func newAutomation() -> String { en ? "New automation task" : "新建自动化任务" }
     static func automation() -> String { en ? "Scheduled tasks" : "自动化任务" }

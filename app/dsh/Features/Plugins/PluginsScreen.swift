@@ -3,23 +3,21 @@ import DSHProtocol
 
 struct PluginsScreen: View {
     @ObservedObject var model: AppModel
-    @State private var hostUi = false
     @State private var bundles: [JSONValue] = []
     @State private var plugins: [JSONValue] = []
     @State private var namespaces: [JSONValue] = []
     @State private var managementAvailable = false
     @State private var writable = false
     @State private var loading = false
-    @State private var loaded = false
     @State private var busy = false
     @State private var error: String?
-    @State private var moreOptional = false
     @State private var configError: String?
     @State private var outcome: JSONValue?
     @State private var detail: String?
     @State private var config: JSONValue?
     @State private var installOpen = false
     @State private var installSpec = ""
+    @State private var catalogEnabled = false
     @State private var registry = ""
     @State private var registries: [String] = []
     @State private var inspection: JSONValue?
@@ -32,9 +30,7 @@ struct PluginsScreen: View {
     @State private var uninstall: JSONValue?
 
     var body: some View {
-        if hostUi {
-            HostUiView(model: model, title: L.pluginInterfaces(), onBack: { hostUi = false })
-        } else if let config {
+        if let config {
             PluginConfigurationView(model: model, namespace: config, writable: model.isOnline && writable && model.ops.contains("plugins.settingsMutate"), onBack: { self.config = nil })
         } else {
             list
@@ -45,58 +41,21 @@ struct PluginsScreen: View {
 
     private var list: some View {
         VStack(spacing: 0) {
-            header(selected.map { pluginTitle($0) } ?? (moreOptional ? L.t("实验性插件", "Experimental plugins") : L.pluginsNav())) {
-                back()
-            }
+            pluginsHeader(selected.map { pluginTitle($0, english: L.en) } ?? L.pluginsNav())
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Button(L.refresh()) { reload() }.disabled(!model.isOnline || locked)
-                        Spacer()
-                        if selected == nil && !moreOptional && managementAvailable && model.ops.contains("plugins.install") || installRequest != nil {
-                            Button(installRequest != nil ? L.t("安装任务", "Installation") : L.addPlugin()) { openInstall() }
-                                .disabled(!(installRequest != nil || (model.isOnline && !locked)))
-                        }
-                    }
-                    .padding(.horizontal, 18)
                     if let error { settingsMessage(error, error: true) }
                     if let outcome { Text(pluginChangeText(outcome, en: L.en)).foregroundStyle(T.text2).padding(.horizontal, 22) }
                     if loading || busy { ProgressView().frame(maxWidth: .infinity) }
-                    if model.ops.contains("ui.open") {
-                        card {
-                            nav(L.pluginInterfaces(), "puzzlepiece.extension", value: L.t("与桌面共用", "Shared with desktop"), divider: false) {
-                                hostUi = true
-                            }
-                        }
-                    } else {
-                        settingsMessage(L.t("更新桌面端手机连接插件后，可在此加载插件原有的 Web 界面。", "Update the Host phone-connection plugin to load installed plugin Web interfaces here."))
-                    }
                     if let selected {
-                        bundleDetail(selected)
-                    } else if moreOptional {
-                        bundleGroup(official: true, expanded: true)
-                    } else {
-                        settingsMessage(L.t("安装、启用和配置插件", "Install, enable and configure plugins"))
-                        if !namespaces.isEmpty {
-                            Text(L.t("插件配置", "Plugin settings")).font(.caption).foregroundStyle(T.text3).padding(.horizontal, 22)
-                        }
                         if let configError { settingsMessage(configError, error: true) }
-                        ForEach(Array(namespaces.enumerated()), id: \.offset) { _, ns in
-                            let nsId = ns["ns"].str() ?? ""
-                            Button { config = ns } label: {
-                                HStack(spacing: 12) {
-                                    PluginArtwork(kind: configurationArtwork(nsId))
-                                    VStack(alignment: .leading) {
-                                        Text(configurationTitle(nsId, plugins: plugins)).foregroundStyle(T.ink)
-                                        Text(configurationDescription(nsId)).font(.caption).foregroundStyle(T.text3)
-                                    }
-                                    Spacer()
-                                }
-                                .padding(.horizontal, 18)
-                            }
-                        }
-                        bundleGroup(official: true, expanded: false)
-                        bundleGroup(official: false, expanded: false)
+                        bundleDetail(selected)
+                    } else {
+                        Text(L.pluginsHint())
+                            .font(.footnote)
+                            .foregroundStyle(T.text3)
+                            .padding(.horizontal, 22)
+                        market
                     }
                 }
                 .padding(.vertical, 12)
@@ -136,59 +95,146 @@ struct PluginsScreen: View {
         bundles.first { $0["name"].str() == detail }
     }
 
-    @ViewBuilder
-    private func bundleGroup(official: Bool, expanded: Bool) -> some View {
-        let visible = bundles.filter { $0["installed"].bool() == true || $0["official"].bool() == true || !$0["error"].isNull }
-        let all = visible.filter { ($0["official"].bool() == true) == official }
-        if !all.isEmpty {
-            HStack {
-                Text(official ? L.t("实验性插件", "Experimental plugins") : L.t("已安装插件", "Installed plugins"))
-                    .font(.caption).foregroundStyle(T.text3)
-                Spacer()
-                if official && !expanded {
-                    Button(L.t("更多", "More")) { moreOptional = true }
-                }
+    private func pluginsHeader(_ title: String) -> some View {
+        HStack(spacing: 10) {
+            Button(action: back) { Image(systemName: "chevron.left").foregroundStyle(T.ink) }
+            Text(title).font(.headline).foregroundStyle(T.ink).lineLimit(1).minimumScaleFactor(0.8)
+            Spacer(minLength: 8)
+            Button(action: reload) {
+                Image(systemName: "arrow.clockwise").foregroundStyle(T.ink)
             }
-            .padding(.horizontal, 22)
-            let group = all.filter { !official || pluginOptionalVisible(name: $0["name"].str(), expanded: expanded) }
-                .sorted { a, b in
-                    official ? pluginOptionalRank(a["name"].str()) < pluginOptionalRank(b["name"].str()) : false
-                }
-            ForEach(Array(group.enumerated()), id: \.offset) { _, bundle in
-                Button { detail = bundle["name"].str() } label: {
-                    HStack {
-                        PluginMetadataArtwork(icon: bundle["meta"]["icon"].str())
-                        VStack(alignment: .leading) {
-                            Text(pluginTitle(bundle)).foregroundStyle(T.ink)
-                            Text(bundleState(bundle)).font(.caption).foregroundStyle(T.text3)
-                        }
-                        Spacer()
+            .accessibilityLabel(L.refresh())
+            .disabled(!model.isOnline || locked)
+            if selected == nil && ((managementAvailable && model.ops.contains("plugins.install")) || installRequest != nil) {
+                Button { openInstall() } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                        Text(installRequest != nil ? L.t("安装任务", "Installation") : L.addPlugin())
+                            .lineLimit(1)
                     }
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 8)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(T.onPrimary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(T.primaryButton, in: RoundedRectangle(cornerRadius: 8))
                 }
+                .disabled(!(installRequest != nil || (model.isOnline && !locked)))
+                .accessibilityLabel(L.addPlugin())
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(T.surface)
+    }
+
+    private func titleLine(_ title: String, experimental: Bool) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(title).font(.body.weight(.medium)).foregroundStyle(T.ink)
+                if experimental { experimentalBadge }
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title).font(.body.weight(.medium)).foregroundStyle(T.ink)
+                if experimental { experimentalBadge }
             }
         }
     }
 
+    private var experimentalBadge: some View {
+        Text(L.experimentalBadge())
+            .font(.system(size: 10, weight: .medium))
+            .foregroundStyle(T.accent)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(T.tint, in: RoundedRectangle(cornerRadius: 4))
+    }
+
+    @ViewBuilder
+    private var market: some View {
+        let groups = pluginMarketGroups(bundles)
+        if !groups.official.isEmpty {
+            Text(L.officialPlugins(groups.official.count))
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(T.text2)
+                .padding(.horizontal, 22)
+                .padding(.top, 8)
+            ForEach(Array(groups.official.enumerated()), id: \.offset) { _, bundle in
+                marketRow(bundle)
+            }
+        }
+        if !groups.installed.isEmpty {
+            Text(L.installedPlugins())
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(T.text2)
+                .padding(.horizontal, 22)
+                .padding(.top, 8)
+            ForEach(Array(groups.installed.enumerated()), id: \.offset) { _, bundle in
+                marketRow(bundle)
+            }
+        }
+    }
+
+    private func marketRow(_ bundle: JSONValue) -> some View {
+        let name = bundle["name"].str() ?? ""
+        let enabled = bundle["enabled"].bool() == true
+        let canSwitch = model.isOnline && !locked && bundle["readOnlyReason"].str() == nil
+            && model.ops.contains("plugins.setEnabled")
+            && (bundle["availability"].str() != "missing" || bundle["installTarget"]["spec"].str() != nil)
+        let description = pluginDescription(bundle, english: L.en)
+        let state = bundleState(bundle)
+        return HStack(alignment: .center, spacing: 12) {
+            Button { detail = name } label: {
+                HStack(alignment: .center, spacing: 12) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(T.border, lineWidth: 0.5)
+                            .frame(width: 46, height: 46)
+                        PluginMetadataArtwork(icon: bundle["meta"]["icon"].str())
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        titleLine(pluginTitle(bundle, english: L.en), experimental: pluginExperimental(bundle))
+                        if !description.isEmpty {
+                            Text(description)
+                                .font(.caption)
+                                .foregroundStyle(T.text3)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .multilineTextAlignment(.leading)
+                        }
+                        if !state.isEmpty {
+                            Text(state).font(.caption).foregroundStyle(T.err)
+                        }
+                    }
+                    Spacer(minLength: 4)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            Toggle("", isOn: Binding(
+                get: { enabled },
+                set: { toggleBundle(bundle, enabled: $0) }
+            ))
+            .labelsHidden()
+            .disabled(!canSwitch)
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 6)
+    }
+
     @ViewBuilder
     private func bundleDetail(_ bundle: JSONValue) -> some View {
-        let name = bundle["name"].str() ?? ""
         let rows = bundle["rows"].arr() ?? []
         let counts = pluginParts(rows: rows, plugins: plugins)
-        Text(pluginTitle(bundle)).font(.headline).padding(.horizontal, 22)
+        Text(pluginTitle(bundle, english: L.en)).font(.headline).padding(.horizontal, 22)
         Text("\(counts.total) · \(counts.running)").font(.caption).foregroundStyle(T.text3).padding(.horizontal, 22)
-        if let description = pluginLocalized(bundle["meta"]["description"], english: L.en) {
+        let description = pluginDescription(bundle, english: L.en)
+        if !description.isEmpty {
             Text(description).foregroundStyle(T.text2).padding(.horizontal, 22)
         }
-        let live = pluginLiveRow(bundle, plugins: plugins) ?? bundle
         Toggle(L.t("启用", "Enable"), isOn: Binding(
-            get: { live["enabled"].bool() == true },
-            set: { enabled in
-                mutate { try await $0.pluginsSetEnabled(enabled: enabled, bundle: name) }
-            }
+            get: { bundle["enabled"].bool() == true },
+            set: { toggleBundle(bundle, enabled: $0) }
         ))
-        .disabled(locked || !model.isOnline || !managementAvailable)
+        .disabled(locked || !model.isOnline || !managementAvailable || !model.ops.contains("plugins.setEnabled") || bundle["readOnlyReason"].str() != nil)
         .padding(.horizontal, 22)
         if model.ops.contains("plugins.uninstall"), bundle["official"].bool() != true {
             Button(L.t("卸载", "Uninstall"), role: .destructive) { uninstall = bundle }
@@ -196,10 +242,19 @@ struct PluginsScreen: View {
         }
         ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
             let liveRow = pluginLiveRow(row, plugins: plugins)
-            HStack {
-                Text(row["moduleName"].str() ?? row["rowId"].str() ?? "").foregroundStyle(T.ink)
-                Spacer()
-                Text(phaseText(liveRow)).font(.caption).foregroundStyle(T.text3)
+            let ns = namespaces.first { $0["ns"].str() == row["rowId"].str() }
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    PluginMetadataArtwork(icon: row["meta"]["icon"].str(), size: 28)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(pluginTitle(row, english: L.en)).foregroundStyle(T.ink)
+                        Text(phaseText(liveRow)).font(.caption).foregroundStyle(T.text3)
+                    }
+                    Spacer()
+                }
+                if ns != nil {
+                    Button(L.configureComponent()) { config = ns }
+                }
             }
             .padding(.horizontal, 22)
         }
@@ -239,8 +294,16 @@ struct PluginsScreen: View {
         if config != nil { config = nil }
         else if detail != nil { detail = nil }
         else if installRequest != nil || installing { installOpen = true }
-        else if moreOptional { moreOptional = false }
         else { model.pop() }
+    }
+
+    private func toggleBundle(_ bundle: JSONValue, enabled: Bool) {
+        let name = bundle["name"].str() ?? ""
+        if enabled && pluginNeedsInstallToEnable(bundle), let spec = bundle["installTarget"]["spec"].str() {
+            openInstall(spec: spec, enable: true)
+            return
+        }
+        mutate { try await $0.pluginsSetEnabled(enabled: enabled, bundle: name) }
     }
 
     private func reload() {
@@ -264,7 +327,6 @@ struct PluginsScreen: View {
                 return !hiddenProfileBundles.contains(name)
             }
             plugins = data["plugins"].arr() ?? []
-            loaded = true
             if detail != nil, bundles.contains(where: { $0["name"].str() == detail }) == false { detail = nil }
             if model.ops.contains("plugins.settingsDescribe") {
                 do {
@@ -300,7 +362,14 @@ struct PluginsScreen: View {
         }
     }
 
-    private func openInstall() {
+    private func openInstall(spec: String = "", enable: Bool = false) {
+        if !spec.isEmpty {
+            installSpec = spec
+            inspection = nil
+            installResult = nil
+            installError = nil
+        }
+        catalogEnabled = enable
         installOpen = true
         guard model.ops.contains("plugins.registries"), model.isOnline, let client = model.clientOrNull() else { return }
         Task {
@@ -343,7 +412,7 @@ struct PluginsScreen: View {
             do {
                 var options: [String: JSONValue] = [
                     "requestId": .string(request),
-                    "enabled": .bool(false),
+                    "enabled": .bool(catalogEnabled),
                 ]
                 if !registry.trimmingCharacters(in: .whitespaces).isEmpty {
                     options["registry"] = .string(registry.trimmingCharacters(in: .whitespaces))
@@ -477,31 +546,6 @@ struct PluginConfigurationView: View {
             }
             busy = false
         }
-    }
-}
-
-private func pluginTitle(_ value: JSONValue) -> String {
-    pluginLocalized(value["meta"]["title"], english: L.en) ?? value["name"].str() ?? value["rowId"].str() ?? value["moduleName"].str() ?? ""
-}
-
-private func configurationTitle(_ ns: String, plugins: [JSONValue]) -> String {
-    let runtime = plugins.first { $0["patchId"].str() == ns }
-    switch ns {
-    case "shell", "bash-sandbox", "pwsh-sandbox": return L.t("终端", "Terminal")
-    case "agent-loop": return L.t("Agent 循环", "Agent loop")
-    case "subagent": return L.t("子智能体", "Subagents")
-    case "web-search", "web-search-deepseek": return L.t("网页搜索", "Web search")
-    default: return pluginLocalized(runtime?["meta"]["title"], english: L.en) ?? ns
-    }
-}
-
-private func configurationDescription(_ ns: String) -> String {
-    switch ns {
-    case "subagent": return L.t("设置子智能体的递归层级、数量和模型。", "Set Subagent recursion depth, count, and models.")
-    case "web-search-deepseek": return L.t("设置 DeepSeek 的搜索提供方。", "Set up the DeepSeek search provider.")
-    case "agent-loop": return L.t("控制 Agent 派发工具调用的方式。", "Control how the Agent dispatches tool calls.")
-    case "bash-sandbox", "pwsh-sandbox": return L.t("限制每条命令最多能跑多久、最多输出多少内容。", "Limit how long each command may run and how much it may output.")
-    default: return L.t("插件高级配置", "Advanced plugin configuration")
     }
 }
 

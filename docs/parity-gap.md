@@ -142,10 +142,10 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Item | Android | iOS | Tag | Batch |
 | --- | --- | --- | --- | --- |
 | Drawer 插件 (`plugins.list`) | `Screens.kt` | shown if op advertised | **present** | **D** |
-| Plugin manager (install / enable / inspect / uninstall / cancel / wait) | `PluginsScreen.kt` | `PluginsScreen` | **present** | **D** |
+| Plugin manager (official market + switch + add) | `PluginsScreen.kt` | desktop `ui-plugin-manager`: 「官方 N」 rows (icon / name / 实验性 / description / toggle), subtitle, refresh, 「+ 添加插件」; config namespaces are not the hub | **present** | **D** / P0 |
 | Registries + inspect | `PluginsScreen.kt` | `plugins.registries` / `plugins.inspect` | **present** | **D** |
-| Built-in plugin slots from Host describe | audit P1; no APK whitelist | `plugins.settingsDescribe` namespaces | **present** | **D** |
-| PluginArtwork (SF Symbol kinds + sanitized SVG) | `PluginArtwork.kt` | `PluginArtwork.swift` | **present** | **D** |
+| Built-in plugin slots from Host describe | audit P1; no APK whitelist | `plugins.settingsDescribe` on bundle detail 「配置组件」, not a market list | **present** | **D** / P0 |
+| PluginArtwork (desktop canvas kinds + sanitized SVG) | `PluginArtwork.kt` | `PluginArtwork.swift` official 36×36 paths; metadata SVG when Host provides it | **present** | **D** / P0 |
 | Settings 「内置插件」 inventory | `PluginInventory.kt` | `PluginInventoryView` when `plugins.inventory` | **present** | **D** |
 | HostUi (`ui.open`) | `HostUi.kt` + `ui.close` on dismiss | ticket exchange + WKWebView + `ui.close` | **partial** → **present** | **E** |
 | Drawer 自动化 (not a settings section) | `ScheduleScreen.kt` | drawer only; Settings 自动化 row removed | **present** | **D** |
@@ -193,7 +193,7 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 - Terminal / files / jobs: expose when the matching op is in `hello.ops` (same as Android).
 - Browser / Session Inspector: Start panel always (no ops gate), same as Android GuideBody.
 - WorkspaceChanges: chat cards when `showCodeWorkView` and `workspaceChanges.summary` is advertised; diff sheet needs `workspaceChanges.diff`.
-- Plugins: drawer when `plugins.list`; Settings 「内置插件」 when `plugins.inventory`; HostUi when `ui.open`.
+- Plugins: drawer when `plugins.list`; market enable when `plugins.setEnabled`; add when `plugins.install`; Settings 「内置插件」 when `plugins.inventory`. HostUi webview remains implemented but is not a market banner (desktop has none).
 - Schedule: **drawer only** (desktop sidebar). Do not add a Settings row.
 - Permissions / models / commands / attachments / queue / goals / presets / session search / export / session feedback / unarchive / Host reorder: expose when the matching op is advertised.
 - Appearance and fonts stay on the phone; they must not be written to the remote host.

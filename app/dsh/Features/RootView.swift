@@ -105,7 +105,7 @@ struct RootView: View {
                 Button { model.showDrawer = true } label: {
                     Image(systemName: D.panelLeft).foregroundStyle(T.ink)
                 }
-                Text("dsh").font(.headline).foregroundStyle(T.ink)
+                BrandWordmark(height: 20)
                 Spacer()
                 if !model.presetRoster.isEmpty {
                     Button { showHomePreset = true } label: {
