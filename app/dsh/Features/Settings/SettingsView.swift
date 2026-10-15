@@ -7,6 +7,7 @@ struct SettingsView: View {
     var body: some View {
         VStack(spacing: 0) {
             header(L.settings()) { model.pop() }
+                .accessibilityIdentifier("settingsShell")
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     card {
@@ -43,7 +44,6 @@ struct SettingsView: View {
 struct GeneralSettingsView: View {
     @ObservedObject var model: AppModel
     @ObservedObject private var shared: HostSettings
-    @State private var fontsExpanded = false
     @State private var sheet: String?
     @State private var riskPermission: String?
 
@@ -55,6 +55,7 @@ struct GeneralSettingsView: View {
     var body: some View {
         VStack(spacing: 0) {
             header(L.generalNav()) { model.pop() }
+                .accessibilityIdentifier("generalSettings")
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     if shared.saving {
@@ -86,20 +87,18 @@ struct GeneralSettingsView: View {
                             Text("中文").tag(AppLanguage.zh)
                             Text("English").tag(AppLanguage.en)
                         }
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 10) {
                             Text(L.appearance()).foregroundStyle(T.ink)
-                            Picker("", selection: Binding(get: { model.appearance }, set: { model.setAppearance($0) })) {
-                                Text(L.light()).tag(Appearance.light)
-                                Text(L.dark()).tag(Appearance.dark)
-                                Text(L.followSystem()).tag(Appearance.system)
+                            HStack(spacing: 8) {
+                                appearanceCard(.light, L.light(), "sun.max")
+                                appearanceCard(.dark, L.dark(), "moon")
+                                appearanceCard(.system, L.followSystem(), "desktopcomputer")
                             }
-                            .pickerStyle(.segmented)
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)
                         Divider().padding(.leading, 16)
                         fontRow
-                        if fontsExpanded { fontDetails }
                         nav(L.workDetails(), "list.bullet", value: transcriptText(model.transcriptView)) {
                             sheet = "transcript"
                         }
@@ -136,7 +135,7 @@ struct GeneralSettingsView: View {
                         if shared.namespace(.sessionLog) != nil {
                             HStack {
                                 VStack(alignment: .leading) {
-                                    Text(L.t("在使用官方模型 API 时上传 Session Log", "Upload Session Log when using the official model API")).foregroundStyle(T.ink)
+                                    Text(sessionLogUploadLabel(english: L.en)).foregroundStyle(T.ink)
                                     Text(L.t("帮助改进 DeepSeek 模型与产品", "Help improve DeepSeek models and products.")).font(.caption).foregroundStyle(T.text3)
                                 }
                                 Spacer()
@@ -220,69 +219,60 @@ struct GeneralSettingsView: View {
 
     @ViewBuilder
     private var fontRow: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Button { fontsExpanded.toggle() } label: {
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text(L.fontSize()).foregroundStyle(T.ink)
-                        Text(L.t("仅影响会话内容的字号", "Only affects conversation content")).font(.caption).foregroundStyle(T.text3)
-                    }
-                    Spacer()
-                    Text("\(model.fontSize)").foregroundStyle(T.text3)
-                    Image(systemName: fontsExpanded ? "chevron.up" : "chevron.down").font(.caption).foregroundStyle(T.text3)
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading) {
+                Text(L.fontSize()).foregroundStyle(T.ink)
+                Text(L.t("仅影响会话内容的字号", "Only affects conversation content")).font(.caption).foregroundStyle(T.text3)
+            }
+            Spacer()
+            Menu {
+                ForEach(Array(ConversationFontSize.range), id: \.self) { size in
+                    Button(conversationFontSizeLabel(size)) { model.setFontSize(size) }
                 }
+            } label: {
+                HStack(spacing: 4) {
+                    Text(conversationFontSizeLabel(model.fontSize)).foregroundStyle(T.text2)
+                    Text("⌄")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(T.text3)
+                        .accessibilityHidden(true)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(T.fill, in: Capsule())
             }
-            Slider(value: Binding(
-                get: { Double(model.fontSize) },
-                set: { model.setFontSize(Int($0.rounded())) }
-            ), in: 10...22, step: 1)
+            .accessibilityLabel(L.fontSize())
+            .accessibilityValue(conversationFontSizeLabel(model.fontSize))
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         Divider().padding(.leading, 16)
     }
 
-    @ViewBuilder
-    private var fontDetails: some View {
-        fontFamilyField(L.t("正文字体", "Text font"), L.t("用于界面与会话正文。多个字体用逗号分隔，留空使用默认字体", "Interface and conversation text. Separate fonts with commas; leave empty for defaults."), model.textFontFamily, model.setTextFontFamily)
-        sliderRow(L.t("代码字号", "Code font size"), model.codeFontSize, 10...16, model.setCodeFontSize)
-        fontFamilyField(L.t("代码字体", "Code font"), L.t("用于代码块、行内代码与工具输出。多个字体用逗号分隔，留空使用默认字体", "Code blocks, inline code, and tool output. Separate fonts with commas; leave empty for defaults."), model.codeFontFamily, model.setCodeFontFamily)
-        sliderRow(L.t("终端字号", "Terminal font size"), model.terminalFontSize, 10...20, model.setTerminalFontSize)
-        fontFamilyField(L.t("终端字体", "Terminal font"), L.t("用于侧栏终端。多个字体用逗号分隔，留空使用默认字体", "Sidebar terminal. Separate fonts with commas; leave empty for defaults."), model.terminalFontFamily, model.setTerminalFontFamily)
-    }
-
-    @ViewBuilder
-    private func fontFamilyField(_ title: String, _ hint: String, _ value: String, _ set: @escaping (String) -> Void) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title).foregroundStyle(T.ink)
-            Text(hint).font(.caption).foregroundStyle(T.text3)
-            TextField("", text: Binding(get: { value }, set: set))
-                .textInputAutocapitalization(.never)
-                .padding(8)
-                .background(T.input, in: RoundedRectangle(cornerRadius: 8))
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        Divider().padding(.leading, 16)
-    }
-
-    @ViewBuilder
-    private func sliderRow(_ title: String, _ value: Int, _ range: ClosedRange<Int>, _ set: @escaping (Int) -> Void) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(title).foregroundStyle(T.ink)
-                Spacer()
-                Text("\(value)").foregroundStyle(T.text3)
+    private func appearanceCard(_ value: Appearance, _ title: String, _ system: String) -> some View {
+        let selected = model.appearance == value
+        return Button {
+            model.setAppearance(value)
+        } label: {
+            VStack(spacing: 8) {
+                Image(systemName: system)
+                    .font(.system(size: 18))
+                    .foregroundStyle(T.ink)
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(T.ink)
             }
-            Slider(
-                value: Binding(get: { Double(value) }, set: { set(Int($0.rounded())) }),
-                in: Double(range.lowerBound)...Double(range.upperBound),
-                step: 1
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(selected ? T.fill2 : T.surface, in: RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(selected ? T.borderStrong : T.border, lineWidth: selected ? 1.5 : 0.5)
             )
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        Divider().padding(.leading, 16)
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
+        .accessibilityLabel(title)
     }
 
     private var defaultPermissionLabel: String {

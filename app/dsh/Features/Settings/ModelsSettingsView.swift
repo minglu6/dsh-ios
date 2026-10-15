@@ -18,9 +18,10 @@ struct ModelsSettingsView: View {
     var body: some View {
         VStack(spacing: 0) {
             header(L.modelsNav()) { if !busy { model.pop() } }
+                .accessibilityIdentifier("modelsSettings")
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    settingsMessage(L.t("配置远程主机上的模型提供商与密钥。", "Configure model providers and API keys on the remote host."))
+                    settingsMessage(modelsSettingsIntro(english: L.en))
                     if model.isOnline && !writable && !loading && error == nil {
                         settingsMessage(L.t("远程主机配置为只读", "Remote host settings are read-only"))
                     }
