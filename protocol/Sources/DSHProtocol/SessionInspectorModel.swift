@@ -67,7 +67,10 @@ private func inspectorTypeQuery(_ filter: String) -> String {
 }
 
 public func inspectorTypeMatches(_ type: String, filter: String) -> Bool {
-    type.range(of: inspectorTypeQuery(filter), options: .caseInsensitive) != nil
+    let query = inspectorTypeQuery(filter)
+    // Kotlin String.contains("") is true for every receiver.
+    if query.isEmpty { return true }
+    return type.range(of: query, options: .caseInsensitive) != nil
 }
 
 public func inspectorTypeSuggestions(_ rows: [InspectorRow], filter: String) -> [String] {

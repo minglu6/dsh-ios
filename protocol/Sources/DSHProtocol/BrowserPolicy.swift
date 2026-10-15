@@ -88,7 +88,8 @@ public struct BrowserPolicy: Sendable {
         }
         if raw.contains("%") { return nil }
         guard let ascii = idnaASCII(raw) else { return nil }
-        let trimmed = ascii.trimmingCharacters(in: CharacterSet(charactersIn: ".")).lowercased()
+        var trimmed = ascii.lowercased()
+        while trimmed.hasSuffix(".") { trimmed.removeLast() }
         if trimmed.isEmpty { return nil }
         let labels = trimmed.split(separator: ".", omittingEmptySubsequences: false)
         if labels.contains(where: { $0.isEmpty }) { return nil }
@@ -217,12 +218,12 @@ private func percentEncode(_ value: String, extraUnreserved: String) -> String? 
     while index < value.endIndex {
         let ch = value[index]
         if ch == "%" {
-            let next = value.index(index, offsetBy: 2, limitedBy: value.endIndex)
-            guard let next, next > value.index(after: index) else { return nil }
-            let hex = value[value.index(after: index)..<next]
+            // offset 3 from "%" lands after the two hex digits (`%20b` → index of `b`).
+            guard let hexEnd = value.index(index, offsetBy: 3, limitedBy: value.endIndex) else { return nil }
+            let hex = value[value.index(after: index)..<hexEnd]
             guard hex.count == 2, hex.allSatisfy({ $0.isHexDigit }) else { return nil }
             out += "%" + hex.uppercased()
-            index = next
+            index = hexEnd
             continue
         }
         if ch.asciiValue != nil, extraUnreserved.contains(ch) || ch.isLetter || ch.isNumber {
@@ -241,9 +242,13 @@ private func percentEncode(_ value: String, extraUnreserved: String) -> String? 
 
 private func idnaASCII(_ host: String) -> String? {
     if host.allSatisfy({ $0.isASCII && $0 != " " }) {
-        if host.hasPrefix("-") || host.hasSuffix("-") { return nil }
+        if host.hasPrefix("-") { return nil }
         let labels = host.split(separator: ".", omittingEmptySubsequences: false)
-        for label in labels {
+        var last = labels.count
+        while last > 0 && labels[last - 1].isEmpty { last -= 1 }
+        if last == 0 { return nil }
+        for i in 0..<last {
+            let label = labels[i]
             if label.isEmpty { return nil }
             if label.hasPrefix("-") || label.hasSuffix("-") { return nil }
             if !label.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "-" }) { return nil }
@@ -254,10 +259,10 @@ private func idnaASCII(_ host: String) -> String? {
     components.scheme = "https"
     components.host = host
     if let encoded = components.percentEncodedHost, !encoded.isEmpty, !encoded.contains("%") {
-        return encoded.trimmingCharacters(in: CharacterSet(charactersIn: ".")).lowercased()
+        return encoded
     }
     if let ascii = components.url?.host, !ascii.isEmpty {
-        return ascii.trimmingCharacters(in: CharacterSet(charactersIn: ".")).lowercased()
+        return ascii
     }
     return nil
 }

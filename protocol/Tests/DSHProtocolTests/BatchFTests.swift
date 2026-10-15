@@ -283,57 +283,104 @@ final class CodePreviewTests: XCTestCase {
 }
 
 final class TranscriptPublisherTests: XCTestCase {
-    private struct View: Equatable {
+    private struct View: Equatable, Sendable {
         var session: String
         var text: String
         var running: Bool
     }
 
-    func testContinuousDeltasPublishTheCompleteLatestTextWithoutDebouncingForever() async throws {
-        var state = View(session: "A", text: "", running: true)
-        var painted: [View] = []
-        let publisher = TranscriptPublisher { painted.append(state) }
-        for index in 0..<5 {
-            state.text += "\(index)"
-            publisher.schedule()
+    private final class PaintLog: @unchecked Sendable {
+        private let lock = NSLock()
+        private var views: [View] = []
+        var current = View(session: "", text: "", running: false)
+        func appendCurrent() {
+            lock.lock()
+            views.append(current)
+            lock.unlock()
         }
-        try await Task.sleep(nanoseconds: 20_000_000)
-        XCTAssertTrue(painted.isEmpty)
-        try await Task.sleep(nanoseconds: 50_000_000)
-        XCTAssertEqual(painted, [View(session: "A", text: "01234", running: true)])
-        state.text += "5"
+        var snapshot: [View] {
+            lock.lock()
+            defer { lock.unlock() }
+            return views
+        }
+    }
+
+    private func waitUntilWaiters(_ clock: ManualTranscriptClock, _ count: Int, file: StaticString = #filePath, line: UInt = #line) async {
+        for _ in 0..<10_000 {
+            if clock.pendingWaiterCount >= count { return }
+            await Task.yield()
+        }
+        XCTFail("clock waiters \(clock.pendingWaiterCount) < \(count)", file: file, line: line)
+    }
+
+    private func waitUntilPainted(_ log: PaintLog, _ count: Int, file: StaticString = #filePath, line: UInt = #line) async {
+        for _ in 0..<10_000 {
+            if log.snapshot.count >= count { return }
+            await Task.yield()
+        }
+        XCTFail("painted \(log.snapshot.count) < \(count)", file: file, line: line)
+    }
+
+    func testContinuousDeltasPublishTheCompleteLatestTextWithoutDebouncingForever() async throws {
+        let painted = PaintLog()
+        painted.current = View(session: "A", text: "", running: true)
+        let clock = ManualTranscriptClock()
+        let publisher = TranscriptPublisher(clock: clock) { painted.appendCurrent() }
+        for index in 0..<5 {
+            painted.current.text += "\(index)"
+            publisher.schedule()
+            if index == 0 { await waitUntilWaiters(clock, 1) }
+            clock.advanceTime(10)
+        }
+        XCTAssertTrue(painted.snapshot.isEmpty)
+        clock.runDue()
+        await waitUntilPainted(painted, 1)
+        XCTAssertEqual(painted.snapshot, [View(session: "A", text: "01234", running: true)])
+        painted.current.text += "5"
         publisher.schedule()
-        try await Task.sleep(nanoseconds: 70_000_000)
-        XCTAssertEqual(painted.last, View(session: "A", text: "012345", running: true))
-        XCTAssertEqual(painted.count, 2)
+        await waitUntilWaiters(clock, 1)
+        clock.advanceTime(50)
+        clock.runDue()
+        await waitUntilPainted(painted, 2)
+        XCTAssertEqual(painted.snapshot.last, View(session: "A", text: "012345", running: true))
+        XCTAssertEqual(painted.snapshot.count, 2)
     }
 
     func testCompletionFlushIncludesPendingTextAndOldTickCannotReopenRunningState() async throws {
-        var state = View(session: "A", text: "partial", running: true)
-        var painted: [View] = []
-        let publisher = TranscriptPublisher { painted.append(state) }
+        let painted = PaintLog()
+        painted.current = View(session: "A", text: "partial", running: true)
+        let clock = ManualTranscriptClock()
+        let publisher = TranscriptPublisher(clock: clock) { painted.appendCurrent() }
         publisher.schedule()
-        try await Task.sleep(nanoseconds: 20_000_000)
-        state = View(session: "A", text: "complete answer", running: false)
+        await waitUntilWaiters(clock, 1)
+        clock.advanceTime(20)
+        painted.current = View(session: "A", text: "complete answer", running: false)
         publisher.flush()
-        XCTAssertEqual(painted, [state])
-        try await Task.sleep(nanoseconds: 100_000_000)
-        XCTAssertEqual(painted, [View(session: "A", text: "complete answer", running: false)])
+        XCTAssertEqual(painted.snapshot, [painted.current])
+        clock.advanceTime(100)
+        clock.runDue()
+        XCTAssertEqual(painted.snapshot, [View(session: "A", text: "complete answer", running: false)])
     }
 
     func testDetachedGenerationCannotPaintIntoTheNextSession() async throws {
-        var state = View(session: "A", text: "old answer", running: true)
-        var painted: [View] = []
-        let publisher = TranscriptPublisher { painted.append(state) }
+        let painted = PaintLog()
+        painted.current = View(session: "A", text: "old answer", running: true)
+        let clock = ManualTranscriptClock()
+        let publisher = TranscriptPublisher(clock: clock) { painted.appendCurrent() }
         publisher.schedule()
-        try await Task.sleep(nanoseconds: 25_000_000)
+        await waitUntilWaiters(clock, 1)
+        clock.advanceTime(25)
         publisher.cancel()
-        state = View(session: "B", text: "new answer", running: true)
+        painted.current = View(session: "B", text: "new answer", running: true)
         publisher.schedule()
-        try await Task.sleep(nanoseconds: 25_000_000)
-        XCTAssertTrue(painted.isEmpty)
-        try await Task.sleep(nanoseconds: 40_000_000)
-        XCTAssertEqual(painted, [View(session: "B", text: "new answer", running: true)])
+        await waitUntilWaiters(clock, 2)
+        clock.advanceTime(25)
+        clock.runDue()
+        XCTAssertTrue(painted.snapshot.isEmpty)
+        clock.advanceTime(25)
+        clock.runDue()
+        await waitUntilPainted(painted, 1)
+        XCTAssertEqual(painted.snapshot, [View(session: "B", text: "new answer", running: true)])
     }
 }
 

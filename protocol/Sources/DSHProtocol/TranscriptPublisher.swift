@@ -28,9 +28,18 @@ public final class ManualTranscriptClock: TranscriptClock, @unchecked Sendable {
         }
     }
 
-    public func advance(_ milliseconds: Int) {
+    public var pendingWaiterCount: Int {
+        mutex.withLock { waiters.count }
+    }
+
+    /// Move virtual time without resuming waiters (kotlinx `advanceTimeBy`).
+    public func advanceTime(_ milliseconds: Int) {
+        mutex.withLock { now += milliseconds }
+    }
+
+    /// Resume waiters whose deadline is due (kotlinx `runCurrent` after time has moved).
+    public func runDue() {
         let due: [CheckedContinuation<Void, Never>] = mutex.withLock {
-            now += milliseconds
             var keep: [(deadline: Int, continuation: CheckedContinuation<Void, Never>)] = []
             var fire: [CheckedContinuation<Void, Never>] = []
             for waiter in waiters {
@@ -44,6 +53,11 @@ public final class ManualTranscriptClock: TranscriptClock, @unchecked Sendable {
             return fire
         }
         due.forEach { $0.resume() }
+    }
+
+    public func advance(_ milliseconds: Int) {
+        advanceTime(milliseconds)
+        runDue()
     }
 }
 
