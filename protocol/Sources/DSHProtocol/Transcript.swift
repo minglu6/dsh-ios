@@ -812,7 +812,6 @@ public final class TranscriptReducer {
         openLastAttemptError = nil
         toolTimings.removeAll()
         turnUsageLedger.clear()
-        composerProjections.clear()
     }
 
     private func rebuildIndexes() {
@@ -1136,7 +1135,9 @@ public final class TranscriptReducer {
         case "tool/call":
             let id = data["callId"].str() ?? "c\(seq)"
             let time = e["time"].long()
-            toolTimings[id, default: ToolCallTiming()].callStartedAt = time
+            let timing = toolTimings[id] ?? ToolCallTiming()
+            timing.callStartedAt = time
+            toolTimings[id] = timing
             upsertTool(
                 id: id,
                 name: data["name"].str() ?? "",

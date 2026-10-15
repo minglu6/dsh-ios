@@ -212,8 +212,10 @@ private func parseTokens(_ v: JSONValue?) -> ComposerTokenUsage? {
 }
 
 private func parseContext(_ v: JSONValue?) -> ComposerContext? {
-    guard let used = nonnegativeNumber(v?["projectedTokens"] ?? v?["pressureTokens"]),
-          let capacity = nonnegativeNumber(v?["contextWindow"]), capacity > 0 else { return nil }
+    let object = v?.obj()
+    let usedRaw = object?["projectedTokens"] ?? object?["pressureTokens"]
+    guard let used = nonnegativeNumber(usedRaw),
+          let capacity = nonnegativeNumber(object?["contextWindow"]), capacity > 0 else { return nil }
     return ComposerContext(usedTokens: used, contextWindow: capacity)
 }
 
