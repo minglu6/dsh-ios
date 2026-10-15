@@ -234,7 +234,8 @@ private struct BrowserTabChip: View {
             .accessibilityLabel(L.t("关闭", "Close"))
         }
         .padding(.leading, 9)
-        .frame(minWidth: 80, maxWidth: 180, height: 32)
+        .frame(minWidth: 80, maxWidth: 180)
+        .frame(height: 32)
         .background(selected ? T.bg : T.surface, in: RoundedRectangle(cornerRadius: 8))
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(selected ? T.border : T.surface, lineWidth: 0.5))
     }
