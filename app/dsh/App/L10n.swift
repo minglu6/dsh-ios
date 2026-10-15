@@ -107,7 +107,152 @@ enum L {
     static func pairingUriHint() -> String { "dshpocket://pair?h=<host:port>&c=<code>" }
 
     static func files() -> String { en ? "Files" : "文件" }
+    static func workspaceFiles() -> String { en ? "Workspace files" : "工作区文件" }
+    static func workspaceFilesHint() -> String {
+        en ? "Browse files in this session's workspace" : "浏览会话工作区的文件"
+    }
+    static func startPanel() -> String { en ? "Start" : "开始" }
+    static func collapseRightPanel() -> String { en ? "Collapse right sidebar" : "收起右侧边栏" }
+    static func parentDirectory() -> String { en ? "Parent directory" : "上级目录" }
+    static func noWorkspace() -> String { en ? "No workspace" : "无工作区" }
+    static func noWorkspaceHint() -> String {
+        en
+            ? "This session has no workspace. Choose one in session settings first."
+            : "此会话没有工作区。请先在会话设置中选择工作区。"
+    }
+    static func readingFiles() -> String { en ? "Reading…" : "正在读取…" }
+    static func emptyDirectory() -> String { en ? "Empty directory" : "空目录" }
+    static func filesTruncated() -> String {
+        en ? "Too many entries, showing only some of them." : "条目太多，只显示了一部分。"
+    }
+    static func reload() -> String { en ? "Reload" : "重新读取" }
+    static func notFileOrDirectory() -> String {
+        en ? "Not a file or a directory, so it cannot be opened." : "这不是文件或目录，没法打开。"
+    }
+    static func preview() -> String { en ? "Preview" : "预览" }
+    static func source() -> String { en ? "Source" : "源码" }
+    static func code() -> String { en ? "Code" : "代码" }
+    static func plainText() -> String { en ? "Plain text" : "纯文本" }
+    static func openWith() -> String { en ? "Open with" : "打开方式" }
+    static func refreshFile() -> String { en ? "Refresh file" : "刷新文件" }
+    static func wrapLines() -> String { en ? "Wrap lines" : "自动换行" }
+    static func unwrapLines() -> String { en ? "Do not wrap lines" : "取消自动换行" }
+    static func viewOriginal() -> String { en ? "View original" : "查看原图" }
+    static func image() -> String { en ? "Image" : "图片" }
+    static func imagePreviewFailed() -> String { en ? "This image could not be displayed." : "无法显示这张图片" }
+    static func docUnsupported() -> String {
+        en ? "Preview is not available for this file type yet." : "该格式文件暂时无法预览"
+    }
+    static func docRetry() -> String { en ? "Retry" : "重试" }
+    static func fileUnchanged() -> String { en ? "File unchanged" : "文件未变更" }
+    static func fileUpdated() -> String { en ? "Loaded updated file" : "已加载文件的新版本" }
+    static func fileChangedWhileReading() -> String {
+        en ? "The file changed while reading; refresh to reload." : "文件在读取过程中发生变更，请刷新。"
+    }
+    static func binaryNoTextPreview() -> String {
+        en ? "Binary files cannot be previewed as text" : "二进制文件不支持文本预览"
+    }
+    static func fileTooLarge() -> String {
+        en ? "File too large to safely preview in full" : "文件过大，无法安全预览全文"
+    }
+    static func incompleteFile() -> String {
+        en ? "Incomplete file response; cannot preview" : "文件未读取完整，无法预览"
+    }
+    static func reset() -> String { en ? "Reset" : "重置" }
+    static func close() -> String { en ? "Close" : "关闭" }
+    static func zoomIn() -> String { en ? "Zoom in" : "放大图片" }
+    static func zoomOut() -> String { en ? "Zoom out" : "缩小图片" }
+
     static func terminal() -> String { en ? "Terminal" : "终端" }
+    static func terminalHint() -> String {
+        en ? "Run commands in the Session workspace" : "在会话工作区运行命令"
+    }
+    static func terminalSessions() -> String { en ? "Terminal sessions" : "终端会话" }
+    static func terminalSessionsActions() -> String { en ? "Terminal sessions and actions" : "终端会话与操作" }
+    static func terminalOffline() -> String { en ? "Offline" : "离线" }
+    static func terminalConnecting() -> String { en ? "Connecting" : "连接中" }
+    static func terminalExiting() -> String { en ? "Exiting" : "退出中" }
+    static func terminalRunning() -> String { en ? "Running" : "运行中" }
+    static func terminalStopped() -> String { en ? "Stopped" : "已停止" }
+    static func connectToSwitchSessions() -> String { en ? "Connect to switch sessions" : "连接后可切换会话" }
+    static func noRetainedSessions() -> String { en ? "No retained sessions" : "暂无保留的会话" }
+    static func newTerminal() -> String { en ? "New terminal" : "新建终端" }
+    static func exitTerminal() -> String { en ? "Exit" : "退出" }
+    static func exitTerminalTitle() -> String { en ? "Exit terminal?" : "退出终端？" }
+    static func exitTerminalBody() -> String {
+        en
+            ? "This ends the current shell and its running commands. Collapsing the panel keeps the session."
+            : "这将结束当前 Shell 和其中正在运行的命令。仅收起面板不会结束会话。"
+    }
+    static func disconnectedReattach() -> String {
+        en ? "Disconnected; reattaching when the connection returns." : "连接已断开；连接恢复后会重新附加。"
+    }
+    static func terminalConnectingEllipsis() -> String { en ? "Connecting…" : "正在连接…" }
+    static func terminalExitingEllipsis() -> String { en ? "Exiting…" : "正在退出…" }
+    static func terminalExitedHint() -> String {
+        en
+            ? "Terminal exited. Switch sessions or create a terminal from the menu."
+            : "终端已退出。可从菜单切换会话或新建终端。"
+    }
+    static func terminalUnavailable() -> String { en ? "Terminal unavailable" : "终端不可用" }
+    static func terminalEnded() -> String { en ? "Terminal ended." : "终端已结束。" }
+    static func reconnect() -> String { en ? "Reconnect" : "重新连接" }
+    static func pasteMultilineTitle() -> String { en ? "Paste multiple lines?" : "粘贴多行内容？" }
+    static func pasteMultilineBody() -> String {
+        en
+            ? "Line breaks may execute commands immediately. Review before sending."
+            : "换行可能立即执行命令，请确认内容后再发送。"
+    }
+    static func confirmPaste() -> String { en ? "Paste" : "确认粘贴" }
+    static func terminalKeyboardInput() -> String { en ? "Terminal keyboard input" : "终端键盘输入" }
+    static func terminalOutputHint() -> String {
+        en ? "Terminal output; long press to select text" : "终端输出，长按选择文本"
+    }
+    static func showKeyboard() -> String { en ? "Show keyboard" : "Show keyboard" }
+    static func hideKeyboard() -> String { en ? "Hide keyboard" : "Hide keyboard" }
+    static func terminalDone() -> String { en ? "Done" : "Done" }
+    static func cannotLoadTerminalSessions() -> String {
+        en ? "Unable to load terminal sessions" : "无法读取终端会话"
+    }
+
+    static func addWorkspace() -> String { en ? "Add workspace" : "添加工作区" }
+    static func selectWorkspaceDirectory() -> String { en ? "Select Workspace Directory" : "选择工作区目录" }
+    static func editPath() -> String { en ? "Edit path" : "编辑路径" }
+    static func newFolder() -> String { en ? "New folder" : "新建文件夹" }
+    static func folderName() -> String { en ? "Folder name" : "文件夹名称" }
+    static func untitledFolder() -> String { en ? "Untitled folder" : "未命名文件夹" }
+    static func newFolderIn(_ name: String) -> String {
+        en ? "New folder in “\(name)”" : "在“\(name)”中新建文件夹"
+    }
+    static func open() -> String { en ? "Open" : "打开" }
+    static func create() -> String { en ? "Create" : "创建" }
+    static func homeDirectory() -> String { en ? "Home" : "主目录" }
+    static func showHiddenFiles() -> String { en ? "Show hidden files" : "显示隐藏文件" }
+    static func foldersTruncated() -> String {
+        en ? "Too many folders to list; only the beginning is shown." : "文件夹过多，仅显示开头部分。"
+    }
+    static func deleteWorkspace() -> String { en ? "Delete workspace" : "删除工作区" }
+    static func deleteWorkspaceBody(_ title: String) -> String {
+        en
+            ? "This removes “\(title)” from the workspace list. The folder and session logs will be kept. Its sessions will appear under Ungrouped."
+            : "将把“\(title)”从工作区列表中移除。文件夹与会话记录会保留，其会话将显示在“未分组”下。"
+    }
+    static func defaultWorkspace() -> String { en ? "Default workspace" : "默认工作区" }
+    static func viewOptions() -> String { en ? "View options" : "视图选项" }
+    static func groupByLabel() -> String { en ? "Group by" : "分组方式" }
+    static func groupByWorkspace() -> String { en ? "WorkSpace" : "按工作区" }
+    static func groupByWorkspaceTree() -> String { en ? "Workspace Tree" : "按工作区树" }
+    static func groupByFlat() -> String { en ? "In one list" : "单列表" }
+    static func pinned() -> String { en ? "Pinned" : "已置顶" }
+    static func expand() -> String { en ? "Expand" : "展开" }
+    static func collapse() -> String { en ? "Collapse" : "收起" }
+    static func moreActions() -> String { en ? "More" : "更多" }
+    static func showMoreSessions(_ n: Int) -> String {
+        en ? "Show \(n) more sessions" : "展开其余 \(n) 个会话"
+    }
+    static func showLess() -> String { en ? "Show less" : "收起" }
+
+    static func presentFiles() -> String { en ? "Present files" : "交付文件" }
     static func trajectory() -> String { en ? "Trajectory" : "轨迹" }
     static func jobs() -> String { en ? "Jobs" : "任务" }
     static func reasoning() -> String { en ? "Reasoning" : "思考" }

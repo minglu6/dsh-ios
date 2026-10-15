@@ -87,7 +87,7 @@ struct RootView: View {
             .padding(14)
             .background(T.surface)
             Spacer()
-            Button(L.newSession(), action: model.createAndOpenSession)
+            Button(L.newSession(), action: { model.createAndOpenSession() })
                 .foregroundStyle(T.onPrimary)
                 .padding(.horizontal, 18)
                 .padding(.vertical, 12)

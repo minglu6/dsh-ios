@@ -10,12 +10,16 @@ struct HostPanelView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            header(title) { model.pop() }
+            if showsSharedHeader {
+                header(title) { model.pop() }
+            }
             switch panel {
             case .plugins: PluginsPanel(model: model)
             case .schedule: SchedulePanel(model: model)
             case .trajectory: TrajectoryView(model: model)
-            case .files, .terminal, .jobs, .settings:
+            case .files: FilesPanel(model: model)
+            case .terminal: TerminalPanel(model: model)
+            case .jobs, .settings:
                 Color.clear
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(T.bg)
@@ -23,6 +27,13 @@ struct HostPanelView: View {
             }
         }
         .background(T.bg.ignoresSafeArea())
+    }
+
+    private var showsSharedHeader: Bool {
+        switch panel {
+        case .files, .terminal: return false
+        default: return true
+        }
     }
 
     private var title: String {
@@ -129,6 +140,62 @@ struct SchedulePanel: View {
         } catch {
             self.error = error.localizedDescription
         }
+    }
+}
+
+/// Official GuideBody: compass watermark and a centered column of entry capsules.
+struct StartPanel: View {
+    @ObservedObject var model: AppModel
+    var onDismiss: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            header(L.startPanel()) { onDismiss() }
+            ScrollView {
+                VStack(spacing: 14) {
+                    Image(systemName: "safari")
+                        .font(.system(size: 40))
+                        .foregroundStyle(T.caption)
+                        .padding(.bottom, 16)
+                    if model.canShowFiles {
+                        guideEntry(L.workspaceFiles(), L.workspaceFilesHint(), "folder") {
+                            model.push(.panel(.files))
+                            onDismiss()
+                        }
+                    }
+                    if model.canShowTerminal {
+                        guideEntry(L.terminal(), L.terminalHint(), "terminal") {
+                            model.push(.panel(.terminal))
+                            onDismiss()
+                        }
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 24)
+                .frame(maxWidth: 380)
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .background(T.bg.ignoresSafeArea())
+    }
+
+    private func guideEntry(_ title: String, _ description: String, _ system: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                Image(systemName: system).font(.system(size: 22)).foregroundStyle(T.text2).frame(width: 26)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title).font(.system(size: 14)).foregroundStyle(T.ink).lineLimit(1)
+                    Text(description).font(.system(size: 11)).foregroundStyle(T.text3).lineLimit(1)
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+            .frame(minHeight: 56)
+            .background(T.surface, in: RoundedRectangle(cornerRadius: 20))
+            .overlay(RoundedRectangle(cornerRadius: 20).stroke(T.border, lineWidth: 0.5))
+        }
+        .buttonStyle(.plain)
     }
 }
 

@@ -7,6 +7,7 @@ struct ChatView: View {
     @State private var showModels = false
     @State private var tab = 0
     @State private var feedbackDraft: FeedbackDraft?
+    @State private var showStart = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -22,6 +23,7 @@ struct ChatView: View {
         }
         .background(T.bg.ignoresSafeArea())
         .sheet(isPresented: $showModels) { ModelPickerSheet(model: model) }
+        .sheet(isPresented: $showStart) { StartPanel(model: model) { showStart = false } }
         .sheet(item: $feedbackDraft) { draft in
             FeedbackCategorySheet(
                 onDismiss: { feedbackDraft = nil },
@@ -56,6 +58,12 @@ struct ChatView: View {
                 .foregroundStyle(T.ink)
                 .lineLimit(1)
             Spacer()
+            if model.canShowFiles || model.canShowTerminal {
+                Button { showStart = true } label: {
+                    Image(systemName: "safari").foregroundStyle(T.ink)
+                }
+                .accessibilityLabel(L.startPanel())
+            }
             Button { showModels = true } label: {
                 Text(model.modelChoice?.name ?? L.modelsNav())
                     .font(.caption)
@@ -226,9 +234,15 @@ struct MessageRow: View {
         case .notice(let notice):
             Text(notice.text).font(.footnote).foregroundStyle(T.warnText)
         case .deliverable(let deliverable):
-            VStack(alignment: .leading) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(L.presentFiles()).font(.caption).foregroundStyle(T.text3)
                 ForEach(deliverable.files, id: \.path) { file in
-                    Text(file.path).font(.footnote.monospaced()).foregroundStyle(T.link)
+                    Button {
+                        model.openFilePreview(path: file.path)
+                    } label: {
+                        Text(file.path).font(.footnote.monospaced()).foregroundStyle(T.link)
+                    }
+                    .disabled(!model.canShowFiles)
                 }
             }
         case .context, .system, .compacted, .retry, .turnFailure, .changes:
