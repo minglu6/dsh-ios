@@ -21,8 +21,9 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | B | Host PTY terminal + workspace file tree | done (#4) |
 | C | Live jobs panel + completion unread green-dot sync | done (#5) |
 | D | Plugin manager + schedule + remaining official settings + chat polish | done (#6) |
-| E | Permissions + ModelPicker + questions/commands/attachments/queue/goals + Todo/stats/retry + mention/approval/HostUi close | this PR |
-| F / G | later surfaces (see Deferred) | queued |
+| E | Permissions + ModelPicker + questions/commands/attachments/queue/goals + Todo/stats/retry + mention/approval/HostUi close | done (#7) |
+| F | WorkspaceChanges + TrajectoryRequest leftover + Session Inspector + Browser + CodePreview + transcript publisher | this PR |
+| G | session search/export, Agent presets, NSD, notifications | queued |
 
 ---
 
@@ -32,7 +33,11 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | --- | --- | --- | --- |
 | Transcript fold | `ui-chat` / `ui-conversation` | `protocol/Transcript.kt`, `Chat.kt`, `ChatProcess.kt` | `protocol/…/Transcript.swift`, `ChatProcess.swift`, `Features/Chat/ChatView.swift` |
 | Message actions | `ui-chat` `MessageIconActions` | `Chat.kt` `MessageActions` | `ChatView` `MessageActions` (copy / like / dislike / branch + turn usage) |
-| Trajectory | `ui-trajectory` | `Trajectory.kt` + Detail/Inspector/Request/Locales; `protocol/TrajectoryTimeline.kt` | `Features/Trajectory/` + `protocol/Trajectory.swift` (request inspector leftover) |
+| Trajectory | `ui-trajectory` | `Trajectory.kt` + Detail/Inspector/Request/Locales; `protocol/TrajectoryTimeline.kt` | `Features/Trajectory/` + `protocol/Trajectory.swift` / `TrajectoryRequest.swift` |
+| WorkspaceChanges | Host `workspaceChanges.summary/diff` | `WorkspaceChanges.kt` | `Features/Chat/WorkspaceChanges.swift` + `protocol/WorkspaceChanges.swift` |
+| Session Inspector | desktop session-inspector | `SessionInspectorPanel.kt` / Log / Model / Navigation | `Features/Inspector/` + `protocol/SessionInspectorLog.swift` / `SessionInspectorModel.swift` |
+| Browser | local HTTP(S) panel | `BrowserPanel.kt` + `BrowserPolicy.kt` | `Features/Browser/BrowserPanel.swift` + `protocol/BrowserPolicy.swift` |
+| Code preview | shiki offline preview | `CodePreview.kt` | `Features/Files/CodePreview.swift` + `CodePreviewAssets/` |
 | Terminal | Host `terminalController` | `TerminalPanel.kt`, `TerminalView.kt`, `TerminalEmulator.kt` | `Features/Terminal/` + `protocol/TerminalEmulator.swift`; default fg/bg follow appearance, Tokyo Night ANSI unchanged |
 | Files | `workspaceFiles` | `FilesPanel.kt` | `Features/Files/` + workspace tree / browse |
 | Jobs | `job-controller` | `JobsAction.kt`, jobs follow in `Pocket.kt` | header chip + `JobsPanel` (`jobs.list` / `follow` / `kill`) |
@@ -83,7 +88,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Toolbar 时长 / 轮次 / 调用 + search | `TrajectoryToolbar` port | same chips + search field | **present** | **A** |
 | Swimlane overview | `TrajectoryTimeline.kt` | `TrajectoryTimeline.swift` + `SwimlaneChart` | **present** | **A** |
 | Inspector tabs 概述 / 参数 / 结果 / Schema / 计时 | `TrajectoryDetail.kt` | `TrajectoryDetailSheet` | **present** | **A** |
-| Request inspector | `TrajectoryRequest.kt` | cell inspector only | **missing** | leftover (see Deferred) |
+| Request inspector | `TrajectoryRequest.kt` | ledger boundary chip + Request sheet 概述/选项/用量/计时; overview parentRequest | **missing** → **present** | **F** |
 | Official locales | `TrajectoryLocales.kt` ← `ui-trajectory` `locales.ts` | `TrajL` | **present** | **A** |
 | Chat / 轨迹 entry | session header + more sheet | session header tabs 对话 / 轨迹 | **present** | **A** |
 
@@ -103,11 +108,14 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Item | Android | iOS | Tag | Batch |
 | --- | --- | --- | --- | --- |
 | `files.list/read` listing | `FilesPanel.kt` | `FilesPanel` (shown when `files.list` advertised) | **present** | **B** |
-| Preview (md / text / image) | `FilePreview.kt` | md / text / image; PDF/Office stay unsupported | **present** | **B** |
+| Preview (md / text / image) | `FilePreview.kt` | md / text / image; code uses shiki language table + isolated WebView; PDF/Office stay unsupported | **partial** → **present** | **B** / **F** |
 | Workspace entities / tree | `WorkspaceNavigation.kt` | entity groups / tree / rename / delete / new session | **present** | **B** |
 | Add workspace browse | `WorkspaceDirectoryPicker.kt` | `WorkspaceDirectorySheet` when `workspace.create` | **present** | **B** |
 | Open-in-desktop-editor | desktop only | — | **hide** | — |
-| WorkspaceChanges cards | `WorkspaceChanges.kt` | not in chat | **missing** | leftover (see Deferred) |
+| WorkspaceChanges cards | `WorkspaceChanges.kt` | chat cards + review sheet (`workspaceChanges.summary/diff`); attached to last answer when `showCodeWorkView` | **missing** → **present** | **F** |
+| File tree on `workspace.changed` | entity follow; tree still cwd/generation | bump `filesRevision` so the listing reloads | **partial** → **present** | **F** |
+| Browser | `BrowserPanel.kt` HTTP(S)-only, no credentials | Start panel (no ops gate); checkpoint URL/title only | **missing** → **present** | **F** |
+| Session Inspector | `SessionInspectorPanel` raw/grouped + pick | Start panel (no ops gate); pick overlay returns to inspector | **missing** → **present** | **F** |
 
 ## 5. Jobs + unread
 
@@ -151,10 +159,12 @@ Port as the matching batch needs them (same JSON, no second protocol):
 | Android `app/core/protocol` | Used by | Batch |
 | --- | --- | --- |
 | `TrajectoryTimeline.kt` | Trajectory swimlane | **A done** (`TrajectoryTimeline.swift`) |
-| `Transcript.kt` extra items (`System`, `Compacted`, `Retry`, `TurnFailure`, `Changes`; System/Compacted folded, Retry/TurnFailure rendered, Changes still unused in chat) | Chat + trajectory | A / D / **E**; Changes → leftover |
+| `Transcript.kt` extra items (`System`, `Compacted`, `Retry`, `TurnFailure`, `Changes`; System/Compacted folded, Retry/TurnFailure rendered, Changes cards in chat when coding view is on) | Chat + trajectory | A / D / **E** / **F** |
 | `TurnTokenUsage.kt` | Inspector + usage | **E done** (`TurnTokenUsage.swift`) |
 | `ComposerMetrics.kt` | Composer statistics | **E done** (`ComposerMetrics.swift`) |
-| `WorkspaceChanges.kt` | Changed-file cards | leftover (see Deferred) |
+| `WorkspaceChanges.kt` | Changed-file cards | **F done** (`WorkspaceChanges.swift`) |
+| `TranscriptPublisher` | 50ms assistant-stream coalescing | **F done** (`TranscriptPublisher.swift`) |
+| `BrowserPolicy` / `CodePreview*` / `SessionInspector*` / `TrajectoryRequest` | Browser + preview + inspector + request leftover | **F done** |
 | `PermissionModels.kt` | Permission pickers | **D done** (`PermissionModels.swift`) |
 | `HostUi.kt` | Plugin/settings slots | **D done** (`HostUi.swift`); **E** adds `ui.close` |
 
@@ -164,8 +174,10 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 
 ## iOS entry rules (after a batch lands)
 
-- Trajectory: session header / more menu — data is the current follow transcript (no extra Host op).
+- Trajectory: session header / more menu — data is the current follow transcript (no extra Host op). Hidden when coding view is off.
 - Terminal / files / jobs: expose when the matching op is in `hello.ops` (same as Android).
+- Browser / Session Inspector: Start panel always (no ops gate), same as Android GuideBody.
+- WorkspaceChanges: chat cards when `showCodeWorkView` and `workspaceChanges.summary` is advertised; diff sheet needs `workspaceChanges.diff`.
 - Plugins: drawer when `plugins.list`; Settings 「内置插件」 when `plugins.inventory`; HostUi when `ui.open`.
 - Schedule: **drawer only** (desktop sidebar). Do not add a Settings row.
 - Permissions / models / commands / attachments / queue / goals: expose when the matching op is advertised.
@@ -174,8 +186,7 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 
 ## Deferred
 
-- Batches **F / G**.
-- Trajectory **request inspector**.
-- Chat **WorkspaceChanges** cards.
+- Batch **G**: session search/export entry finishing, Agent presets, NSD, notifications.
 - **Agent presets**.
-- Session Inspector / browser surfaces.
+- iOS CodePreview has no Meslo font file (CSS falls back to monospace). WKWebView cannot intercept `https://`; assets load over `dsh-code-preview://` mapped to the same Android `https://code-preview.invalid` policy used in tests.
+- Embedded browser cannot intercept every subresource the way Android `shouldInterceptRequest` does; main-frame / navigation policy still uses `BrowserPolicy`.

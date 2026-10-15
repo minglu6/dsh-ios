@@ -143,6 +143,14 @@ public final class PocketClient: @unchecked Sendable {
         ]))
     }
 
+    public func workspaceChangesSummary(sessionId: String, seq: Int64) async throws -> JSONValue {
+        try await call("workspaceChanges.summary", args: workspaceChangesSummaryArgs(sessionId: sessionId, seq: seq))
+    }
+
+    public func workspaceChangesDiff(sessionId: String, seq: Int64, index: Int) async throws -> JSONValue {
+        try await call("workspaceChanges.diff", args: workspaceChangesDiffArgs(sessionId: sessionId, seq: seq, index: index))
+    }
+
     public func answerApproval(approvalId: String, outcome: String) async throws -> JSONValue {
         try await call("approval.answer", args: jsonObject([
             "approvalId": .string(approvalId),

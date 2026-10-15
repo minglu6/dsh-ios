@@ -11,6 +11,10 @@ struct ChatView: View {
     @State private var tab = 0
     @State private var feedbackDraft: FeedbackDraft?
     @State private var showStart = false
+    @State private var showBrowser = false
+    @State private var showInspector = false
+    @State private var highlightedRow: String?
+    @ObservedObject private var inspectorNav = InspectorNavigation.shared
     @State private var showJobs = false
     @State private var openTurns: [String: Bool] = [:]
     @State private var openProcesses: [String: Bool] = [:]
@@ -44,7 +48,7 @@ struct ChatView: View {
                 if let metrics = model.chat?.composerMetrics {
                     ComposerStats(metrics: metrics)
                 }
-            } else {
+            } else if model.showCodeWorkView {
                 TrajectoryView(model: model)
             }
         }
@@ -63,7 +67,51 @@ struct ChatView: View {
             )
             .padding()
         }
-        .sheet(isPresented: $showStart) { StartPanel(model: model) { showStart = false } }
+        .sheet(isPresented: $showStart) {
+            StartPanel(
+                model: model,
+                onFiles: {
+                    model.push(.panel(.files))
+                    showStart = false
+                },
+                onTerminal: {
+                    model.push(.panel(.terminal))
+                    showStart = false
+                },
+                onBrowser: {
+                    showStart = false
+                    showBrowser = true
+                },
+                onInspector: {
+                    showStart = false
+                    showInspector = true
+                },
+                onDismiss: { showStart = false }
+            )
+        }
+        .sheet(isPresented: $showBrowser) {
+            BrowserPanel(
+                model: model,
+                sessionKey: "\(model.activeId ?? ""):\(model.chat?.sessionId ?? "")",
+                onDismiss: { showBrowser = false }
+            )
+        }
+        .sheet(isPresented: $showInspector) {
+            if let sessionId = model.chat?.sessionId {
+                SessionInspectorPanel(model: model, sessionId: sessionId) { showInspector = false }
+            }
+        }
+        .onChange(of: inspectorNav.picking) { picking in
+            if !picking, inspectorNav.sessionId == model.chat?.sessionId {
+                showInspector = true
+            }
+        }
+        .onChange(of: model.showDrawer) { show in
+            if show && inspectorNav.picking { inspectorNav.cancel() }
+        }
+        .onChange(of: model.showCodeWorkView) { show in
+            if !show { tab = 0 }
+        }
         .sheet(isPresented: $showJobs) {
             JobsPanel(model: model) { showJobs = false }
         }
@@ -197,12 +245,10 @@ struct ChatView: View {
                 .foregroundStyle(T.ink)
                 .lineLimit(1)
             Spacer()
-            if model.canShowFiles || model.canShowTerminal {
-                Button { showStart = true } label: {
-                    Image(systemName: "safari").foregroundStyle(T.ink)
-                }
-                .accessibilityLabel(L.startPanel())
+            Button { showStart = true } label: {
+                Image(systemName: "safari").foregroundStyle(T.ink)
             }
+            .accessibilityLabel(L.startPanel())
             Button { showModels = true } label: {
                 Text(model.modelChoice?.name ?? L.modelsNav())
                     .font(.caption)
@@ -220,7 +266,9 @@ struct ChatView: View {
     private var tabs: some View {
         HStack(spacing: 16) {
             tabChip(0, L.chatTab())
-            tabChip(1, TrajL.viewTrajectory)
+            if model.showCodeWorkView {
+                tabChip(1, TrajL.viewTrajectory)
+            }
             Spacer()
             if let sessionId = model.chat?.sessionId {
                 JobsAction(model: model, sessionId: sessionId) { showJobs = true }
@@ -308,16 +356,42 @@ struct ChatView: View {
         }
     }
 
-    private var chatRows: [ChatRow] {
+    private var foldedRows: [ChatRow] {
         let policy = presentationPolicyFor(model.transcriptView, collapseTiming: model.collapseTiming)
-        let folded = foldChatItems(
+        return foldChatItems(
             model.chat?.items ?? [],
             policy: policy,
             sessionRunning: model.chat?.running == true,
             turnRecords: model.chat?.turns ?? [],
             en: L.en
         )
-        return visibleChatRows(folded, openTurns: openTurns)
+    }
+
+    private var lastAnswerKeys: [Int: String] {
+        var keys: [Int: String] = [:]
+        for row in foldedRows {
+            if case .answer(let text) = row, let turn = text.turn {
+                keys[turn] = text.key
+            }
+        }
+        return keys
+    }
+
+    private var changesByTurn: [Int: Item.Changes] {
+        var keys: [Int: Item.Changes] = [:]
+        for row in foldedRows {
+            if case .changes(let item) = row {
+                keys[item.turn] = item
+            }
+        }
+        return keys
+    }
+
+    private var chatRows: [ChatRow] {
+        visibleChatRows(foldedRows, openTurns: openTurns).filter { row in
+            if case .changes(let item) = row { return lastAnswerKeys[item.turn] == nil }
+            return true
+        }
     }
 
     private var transcript: some View {
@@ -330,14 +404,29 @@ struct ChatView: View {
                             .padding(.vertical, 8)
                     }
                     ForEach(Array(chatRows.enumerated()), id: \.element.key) { _, row in
-                        ChatRowView(
-                            row: row,
-                            model: model,
-                            openTurns: $openTurns,
-                            openProcesses: $openProcesses,
-                            onOpenFeedback: openFeedback,
-                            onTool: { inspectTool = $0 }
-                        )
+                        let pickKey = inspectorPickKey(row)
+                        let attached: Item.Changes? = {
+                            if case .answer(let text) = row, let turn = text.turn {
+                                return changesByTurn[turn]
+                            }
+                            return nil
+                        }()
+                        InspectorChatTarget(
+                            itemKey: pickKey,
+                            highlighted: highlightedRow == row.key,
+                            reveal: inspectorNav.revealItemKey == row.key
+                        ) {
+                            ChatRowView(
+                                row: row,
+                                model: model,
+                                openTurns: $openTurns,
+                                openProcesses: $openProcesses,
+                                changes: attached,
+                                highlightedChanges: attached.map { inspectorNav.revealItemKey == $0.key } ?? false,
+                                onOpenFeedback: openFeedback,
+                                onTool: { inspectTool = $0 }
+                            )
+                        }
                         .id(row.key)
                     }
                     if model.chat?.loaded == false {
@@ -349,7 +438,38 @@ struct ChatView: View {
                 .padding(.vertical, 12)
             }
             .onChange(of: chatRows.last?.key) { _ in
+                if inspectorNav.picking { return }
                 withAnimation { proxy.scrollTo("bottom", anchor: .bottom) }
+            }
+            .onChange(of: inspectorNav.revealItemKey) { key in
+                guard let key, inspectorNav.sessionId == model.chat?.sessionId else { return }
+                let attachedTurn = changesByTurn.first { $0.value.key == key }?.key
+                let target = attachedTurn.flatMap { lastAnswerKeys[$0] } ?? key
+                for row in foldedRows {
+                    if case .process(let proc) = row, proc.turnSummary {
+                        let hit = row.key == target || proc.members.contains { $0.key == target } || proc.controlledKeys.contains(target)
+                        if hit { openTurns[proc.key] = true }
+                    }
+                }
+                let index = inspectorRowIndex(chatRows, itemKey: target)
+                if index >= 0 {
+                    let scrollKey = chatRows[index].key
+                    proxy.scrollTo(scrollKey, anchor: .center)
+                    highlightedRow = scrollKey
+                    Task {
+                        try? await Task.sleep(nanoseconds: 1_400_000_000)
+                        if highlightedRow == scrollKey { highlightedRow = nil }
+                        if inspectorNav.sessionId == model.chat?.sessionId && inspectorNav.revealItemKey == key {
+                            inspectorNav.revealItemKey = nil
+                        }
+                    }
+                } else if inspectorRowIndex(foldedRows, itemKey: target) >= 0 {
+                    return
+                } else if model.chat?.loaded == true, model.chat?.hasMore == true, model.chat?.loadingOlder != true {
+                    model.loadOlderHistory()
+                } else if model.chat?.loaded == true, model.chat?.hasMore != true {
+                    inspectorNav.revealItemKey = nil
+                }
             }
         }
         .sheet(item: Binding(
@@ -415,6 +535,8 @@ struct ChatRowView: View {
     @ObservedObject var model: AppModel
     @Binding var openTurns: [String: Bool]
     @Binding var openProcesses: [String: Bool]
+    var changes: Item.Changes? = nil
+    var highlightedChanges = false
     var onOpenFeedback: (String, String) -> Void
     var onTool: (Item.Tool) -> Void
 
@@ -423,7 +545,13 @@ struct ChatRowView: View {
         case .user(let user):
             MessageRow(item: .user(user), model: model, onOpenFeedback: onOpenFeedback)
         case .answer(let text):
-            MessageRow(item: .text(text), model: model, onOpenFeedback: onOpenFeedback)
+            MessageRow(
+                item: .text(text),
+                model: model,
+                changes: changes,
+                highlightedChanges: highlightedChanges,
+                onOpenFeedback: onOpenFeedback
+            )
         case .notice(let notice):
             MessageRow(item: .notice(notice), model: model, onOpenFeedback: onOpenFeedback)
         case .deliverable(let deliverable):
@@ -438,8 +566,12 @@ struct ChatRowView: View {
             ReasoningRow(reasoning: reasoning)
         case .process(let proc):
             ProcessGroupView(proc: proc, openTurns: $openTurns, openProcesses: $openProcesses, onTool: onTool)
-        case .changes:
-            EmptyView()
+        case .changes(let item):
+            if model.showCodeWorkView,
+               model.chat?.turns.contains(where: { $0.turn == item.turn && $0.closed }) == true,
+               let sessionId = model.chat?.sessionId {
+                ChangesCard(model: model, sessionId: sessionId, item: item)
+            }
         }
     }
 }
@@ -587,6 +719,8 @@ private struct ToolCard: View {
 struct MessageRow: View {
     let item: Item
     @ObservedObject var model: AppModel
+    var changes: Item.Changes? = nil
+    var highlightedChanges = false
     var onOpenFeedback: (String, String) -> Void = { _, _ in }
 
     var body: some View {
@@ -614,6 +748,12 @@ struct MessageRow: View {
                 MarkdownView(source: text.text, streaming: text.live, wrapCode: model.codeWordWrap, onFile: { path in
                     model.openFilePreview(path: path)
                 })
+                if showAssistantActions(text), model.showCodeWorkView, let changes, let sessionId = model.chat?.sessionId {
+                    InspectorChatTarget(itemKey: changes.key, reveal: highlightedChanges) {
+                        ChangesCard(model: model, sessionId: sessionId, item: changes)
+                    }
+                    .padding(.top, 6)
+                }
                 if showAssistantActions(text) {
                     assistantActions(text)
                 }

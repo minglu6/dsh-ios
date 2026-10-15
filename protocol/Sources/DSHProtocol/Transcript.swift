@@ -478,6 +478,60 @@ public struct StepRecord: Sendable, Equatable {
     }
 }
 
+/// Parsed desktop ToolSchema (`name` + `description` + object `parameters`).
+public struct ParsedToolSchema: Sendable, Equatable {
+    public var name: String
+    public var description: String
+    public var parameters: [String: JSONValue]
+}
+
+/// Desktop `parseToolSchema`: require name/description strings and object parameters.
+public func parseToolSchema(_ value: String) -> ParsedToolSchema? {
+    guard let parsed = try? JSONValue.parse(value), let object = parsed.obj() else { return nil }
+    guard let name = object["name"]?.str(), let description = object["description"]?.str(),
+          let parameters = object["parameters"]?.obj() else { return nil }
+    return ParsedToolSchema(name: name, description: description, parameters: parameters)
+}
+
+/// Pretty-print one EpochHeader tool entry for `Item.Tool.schemaJson` / Schema tab.
+public func prettyToolSchema(_ tool: JSONValue?) -> String? {
+    guard let object = tool?.obj(), object["name"]?.str() != nil else { return nil }
+    return tool?.prettyString()
+}
+
+/// Desktop `TrajectoryRequestHeaderState` snapshot from one `request/header` event.
+public struct RequestHeaderFact: Sendable, Equatable {
+    public var seq: Int64
+    public var time: Int64?
+    public var turn: Int?
+    public var step: Int?
+    public var provider: String?
+    public var model: String?
+    /// Pretty JSON of `header.config` (desktop AssistantRequestConfig).
+    public var configJson: String?
+    public var reason: String?
+
+    public init(
+        seq: Int64,
+        time: Int64? = nil,
+        turn: Int? = nil,
+        step: Int? = nil,
+        provider: String? = nil,
+        model: String? = nil,
+        configJson: String? = nil,
+        reason: String? = nil
+    ) {
+        self.seq = seq
+        self.time = time
+        self.turn = turn
+        self.step = step
+        self.provider = provider
+        self.model = model
+        self.configJson = configJson
+        self.reason = reason
+    }
+}
+
 public struct TurnRecord: Sendable, Equatable {
     public var turn: Int
     public var startSeq: Int64?
@@ -556,6 +610,13 @@ public final class TranscriptReducer {
     private var openMaxRetries: Int?
     private var openRetryDelayMs: Int64?
     private var openLastAttemptError: String?
+    private var headerFacts: [RequestHeaderFact] = []
+    private var toolsByName: [String: String] = [:]
+    private var toolsCatalogJson: String?
+    private var previousToolsCatalogJson: String?
+    private var latestRequestConfigJson: String?
+    private var latestRequestProvider: String?
+    private var latestRequestModel: String?
     private var toolTimings: [String: ToolCallTiming] = [:]
     private let turnUsageLedger = TurnUsageLedger()
     private let composerProjections = ComposerProjectionStore()
@@ -576,6 +637,7 @@ public final class TranscriptReducer {
     public func turnRecords() -> [TurnRecord] { turnFacts.values.sorted { $0.turn < $1.turn } }
     public func stepRecords() -> [StepRecord] { settledSteps }
     public func turnTokenUsage() -> [Int: TurnTokenUsage] { turnUsageLedger.snapshot() }
+    public func requestHeaders() -> [RequestHeaderFact] { headerFacts }
     public func clearComposerProjections() { composerProjections.clear() }
 
     public func items() -> [Item] {
@@ -710,7 +772,12 @@ public final class TranscriptReducer {
             closedSteps[step] = max(closedSteps[step] ?? -1, seq)
         }
         var mergedRetries = Set<RetryIdentity>()
-        let older = prior.items().map { item -> Item in
+        let changedTurns = Set(committed.compactMap { item -> Int? in
+            if case .changes(let changes) = item { return changes.turn }
+            return nil
+        })
+        let older = prior.items().compactMap { item -> Item? in
+            if case .changes(let changes) = item, changedTurns.contains(changes.turn) { return nil }
             guard case .retry(let retry) = item else { return item }
             let identity = retry.identity
             guard let laterIndex = retryIndex[identity], case .retry(let later) = committed[laterIndex] else { return item }
@@ -733,11 +800,15 @@ public final class TranscriptReducer {
         if !olderSteps.isEmpty {
             settledSteps.insert(contentsOf: olderSteps, at: 0)
         }
+        let olderHeaders = prior.requestHeaders()
+        if !olderHeaders.isEmpty {
+            headerFacts.insert(contentsOf: olderHeaders, at: 0)
+        }
         if let min = filtered.compactMap({ $0["event"]["seq"].long() }).min() {
             firstSeq = firstSeq < 0 ? min : Swift.min(firstSeq, min)
         }
-        return !older.isEmpty || !olderSteps.isEmpty || !prior.toolTimings.isEmpty || !prior.turnFacts.isEmpty
-            || olderTurnUsage || !prior.retryStarts.isEmpty || !prior.closedSteps.isEmpty
+        return !older.isEmpty || !olderSteps.isEmpty || !olderHeaders.isEmpty || !prior.toolTimings.isEmpty
+            || !prior.turnFacts.isEmpty || olderTurnUsage || !prior.retryStarts.isEmpty || !prior.closedSteps.isEmpty
     }
 
     public func echo(text: String, requestId: String = UUID().uuidString, mode: String = "queue", images: Int = 0, files: Int = 0) {
@@ -810,6 +881,13 @@ public final class TranscriptReducer {
         openMaxRetries = nil
         openRetryDelayMs = nil
         openLastAttemptError = nil
+        headerFacts.removeAll()
+        toolsByName.removeAll()
+        toolsCatalogJson = nil
+        previousToolsCatalogJson = nil
+        latestRequestConfigJson = nil
+        latestRequestProvider = nil
+        latestRequestModel = nil
         toolTimings.removeAll()
         turnUsageLedger.clear()
     }
@@ -995,6 +1073,8 @@ public final class TranscriptReducer {
                 closedSteps[StepIdentity(turn: turn, step: step)] = seq
             }
             refreshRetries()
+        case "request/header":
+            indexRequestHeader(e, data: data, seq: seq)
         case "llm/retry":
             openRetry = data["retry"].int() ?? ((openRetry ?? 0) + 1)
             openMaxRetries = data["maxRetries"].int() ?? data["maximum"].int() ?? openMaxRetries
@@ -1106,10 +1186,11 @@ public final class TranscriptReducer {
                 replyText: replyParts.joined(separator: "\n\n"),
                 reasoningText: reasoningParts.joined(separator: "\n\n"),
                 usage: stepUsage,
-                provider: source["provider"].str(),
-                model: source["model"].str(),
+                provider: source["provider"].str() ?? latestRequestProvider,
+                model: source["model"].str() ?? latestRequestModel,
                 toolCallIds: toolCallIds,
                 interrupted: interrupted,
+                requestConfigJson: latestRequestConfigJson,
                 retry: openRetry,
                 maxRetries: openMaxRetries,
                 retryDelayMs: openRetryDelayMs,
@@ -1358,11 +1439,14 @@ public final class TranscriptReducer {
     }
 
     private func upsertTool(id: String, name: String, args: String, time: Int64?, turn: Int?, step: Int?, status: ToolStatus = .running, parentCallId: String? = nil) {
+        let schema = name.isEmpty ? nil : toolsByName[name]
         if let i = toolIndex[id], case .tool(var tool) = committed[i] {
-            tool.name = name.isEmpty ? tool.name : name
+            let resolvedName = name.isEmpty ? tool.name : name
+            tool.name = resolvedName
             tool.arguments = args.isEmpty ? tool.arguments : args
             if tool.status == .preparing { tool.status = status }
             if tool.status == .preparing && status == .running { tool.startedAt = time }
+            tool.schemaJson = schema ?? toolsByName[resolvedName] ?? tool.schemaJson
             tool.turn = turn ?? tool.turn
             tool.step = step ?? tool.step
             tool.parentCallId = parentCallId ?? tool.parentCallId
@@ -1371,7 +1455,8 @@ public final class TranscriptReducer {
             toolIndex[id] = committed.count
             committed.append(.tool(Item.Tool(
                 key: "k\(id)", callId: id, name: name, arguments: args, status: status,
-                result: nil, error: nil, startedAt: time, endedAt: nil, turn: turn, step: step, parentCallId: parentCallId, schemaJson: nil
+                result: nil, error: nil, startedAt: time, endedAt: nil, turn: turn, step: step,
+                parentCallId: parentCallId, schemaJson: schema
             )))
         }
     }
@@ -1442,8 +1527,45 @@ public final class TranscriptReducer {
         systemPromptSeen = true
         lastSystemPromptText = text
         committed.append(.system(Item.System(
-            key: "sys\(seq)", label: label, text: text, at: e["time"].long(), previousText: previous
+            key: "sys\(seq)", label: label, text: text, at: e["time"].long(), previousText: previous,
+            toolsJson: toolsCatalogJson,
+            previousToolsJson: previous == nil ? nil : previousToolsCatalogJson
         )))
+    }
+
+    /// Index `request/header` → tools + config (desktop `indexTools` / `captureSchemas` /
+    /// Request inspector `requestConfig`).
+    private func indexRequestHeader(_ e: JSONValue, data: JSONValue, seq: Int64) {
+        let header = data["header"].isNull ? data : data["header"]
+        if let tools = header["tools"].arr() {
+            var pretty: [JSONValue] = []
+            for tool in tools {
+                guard let name = tool["name"].str(), let schema = prettyToolSchema(tool) else { continue }
+                toolsByName[name] = schema
+                if let parsed = try? JSONValue.parse(schema) { pretty.append(parsed) }
+            }
+            if !pretty.isEmpty {
+                previousToolsCatalogJson = toolsCatalogJson
+                toolsCatalogJson = JSONValue.array(pretty).prettyString()
+            }
+        }
+        let config = header["config"]
+        let configJson = config.isNull ? nil : config.prettyString()
+        let provider = config["provider"].str()
+        let model = config["model"].str()
+        if let configJson { latestRequestConfigJson = configJson }
+        if let provider { latestRequestProvider = provider }
+        if let model { latestRequestModel = model }
+        headerFacts.append(RequestHeaderFact(
+            seq: seq,
+            time: e["time"].long(),
+            turn: data["turn"].int() ?? openTurn,
+            step: data["step"].int() ?? openStep,
+            provider: provider,
+            model: model,
+            configJson: configJson,
+            reason: data["reason"].str()
+        ))
     }
 
     private func upsertCompactionStart(_ data: JSONValue, time: Int64?) {

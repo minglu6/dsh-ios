@@ -25,6 +25,7 @@ struct ChatState {
     var lastAnswerKeys: [Int: String] = [:]
     var composerMetrics = ComposerMetrics()
     var turnTokenUsage: [Int: TurnTokenUsage] = [:]
+    var inspectorRecords: [JSONValue] = []
     var goal: JSONValue?
 }
 
@@ -163,6 +164,7 @@ final class AppModel: ObservableObject {
     @Published var terminalOpening = false
     @Published var filePreview: FilePreviewRef?
     @Published var exportShare: ExportShare?
+    @Published var filesRevision: Int64 = 0
 
     let terminal = AnsiTerminal()
     let hostSettings = HostSettings()
@@ -171,6 +173,10 @@ final class AppModel: ObservableObject {
     private var client: PocketClient?
     private var connectTask: Task<Void, Never>?
     private var reducer = TranscriptReducer()
+    private var inspectorLog = SessionInspectorLog()
+    private lazy var transcriptPublisher = TranscriptPublisher { [weak self] in
+        Task { @MainActor in self?.publishChat() }
+    }
     private var subId: String?
     private var followEpoch: Int64 = 0
     private var backoffMs: Int64 = ReconnectBackoffPolicy.reset()
@@ -237,6 +243,8 @@ final class AppModel: ObservableObject {
         connectTask?.cancel()
         client?.close()
         client = nil
+        transcriptPublisher.cancel()
+        inspectorLog = SessionInspectorLog()
         hostSettings.clear()
         followEpoch += 1
         detachFollow()
@@ -415,6 +423,7 @@ final class AppModel: ObservableObject {
                 )
                 guard followEpoch == epoch, reducer === target else { return }
                 _ = reducer.prepend(records: page["records"], pageHasMore: page["hasMore"].bool() ?? false)
+                inspectorLog.prepend(page["records"])
                 publishChat()
                 chat?.loadingOlder = false
             } catch {
@@ -1019,6 +1028,18 @@ final class AppModel: ObservableObject {
         return out
     }
 
+    func fetchChangesSummary(sessionId: String, seq: Int64) async throws -> WorkspaceChangesSummary? {
+        guard ops.contains("workspaceChanges.summary") else { return nil }
+        guard let client else { throw PocketError(code: "transport", message: "not connected") }
+        return WorkspaceChangesSummary.parse(try await client.workspaceChangesSummary(sessionId: sessionId, seq: seq)["summary"])
+    }
+
+    func fetchChangesDiff(sessionId: String, seq: Int64, index: Int) async throws -> WorkspaceFileDiff? {
+        guard ops.contains("workspaceChanges.diff") else { return nil }
+        guard let client else { throw PocketError(code: "transport", message: "not connected") }
+        return WorkspaceFileDiff.parse(try await client.workspaceChangesDiff(sessionId: sessionId, seq: seq, index: index)["diff"])
+    }
+
     var canShowTerminal: Bool {
         ops.contains("terminal.create") && ops.contains("terminal.follow")
     }
@@ -1393,7 +1414,9 @@ final class AppModel: ObservableObject {
     private func initializeChat(_ sessionId: String) {
         followEpoch += 1
         detachFollow()
+        transcriptPublisher.cancel()
         reducer = TranscriptReducer()
+        inspectorLog = SessionInspectorLog()
         reducer.setRunning(sessions.first { $0.sessionId == sessionId }?.running ?? false)
         chat = ChatState(
             sessionId: sessionId,
@@ -1636,10 +1659,16 @@ final class AppModel: ObservableObject {
         case "follow":
             if m["subId"].str() == subId {
                 let frame = m["frame"]
-                _ = reducer.apply(frame)
+                let changed = reducer.apply(frame)
+                inspectorLog.apply(frame)
+                let frameType = frame["type"].str()
+                if frameType == "assistant-stream" && frame["frame"]["type"].str() == "chunk" {
+                    if changed { transcriptPublisher.schedule() }
+                    break
+                }
                 applyFollowProjections(frame)
-                publishChat()
-                if frame["type"].str() == "snapshot" || frame["type"].str() == "resume",
+                transcriptPublisher.flush()
+                if frameType == "snapshot" || frameType == "resume",
                    let sessionId = chat?.sessionId {
                     completionReadySession = sessionId
                     if let client {
@@ -1671,7 +1700,7 @@ final class AppModel: ObservableObject {
                 sessions = sessions.map { $0.sessionId == id ? mutated($0, running: running) : $0 }
                 if chat?.sessionId == id {
                     reducer.setRunning(running)
-                    publishChat()
+                    transcriptPublisher.flush()
                 }
             case "activity":
                 let id = m["sessionId"].str()
@@ -1707,6 +1736,7 @@ final class AppModel: ObservableObject {
             reloadPermissionCatalog()
         case "workspace.changed":
             applyWorkspaceFrame(m["frame"])
+            filesRevision += 1
         case "plugins.changed":
             pluginCatalogRevision += 1
             modelSettingsRevision += 1
@@ -1968,6 +1998,11 @@ final class AppModel: ObservableObject {
             }
         case "remove":
             workspaces.removeAll { $0.workspaceId == frame["workspaceId"].str() }
+        case "order":
+            let rows = Dictionary(uniqueKeysWithValues: workspaces.map { ($0.workspaceId, $0) })
+            workspaces = (frame["workspaceIds"].arr() ?? []).compactMap { id in
+                id.str().flatMap { rows[$0] }
+            }
         case "archived":
             archivedIds = Set((frame["archivedSessionIds"].arr() ?? []).compactMap { $0.str() })
         case "pinned":
@@ -2229,6 +2264,7 @@ final class AppModel: ObservableObject {
         state.lastAnswerKeys = ChatActionKeys.lastCommittedAnswerKeys(state.items)
         state.composerMetrics = reducer.composerMetrics
         state.turnTokenUsage = reducer.turnTokenUsage()
+        state.inspectorRecords = inspectorLog.snapshot()
         state.loaded = true
         chat = state
         if let title = state.title {

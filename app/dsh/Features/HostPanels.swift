@@ -53,6 +53,10 @@ struct HostPanelView: View {
 /// Official GuideBody: compass watermark and a centered column of entry capsules.
 struct StartPanel: View {
     @ObservedObject var model: AppModel
+    var onFiles: () -> Void
+    var onTerminal: () -> Void
+    var onBrowser: () -> Void
+    var onInspector: () -> Void
     var onDismiss: () -> Void
 
     var body: some View {
@@ -65,17 +69,18 @@ struct StartPanel: View {
                         .foregroundStyle(T.caption)
                         .padding(.bottom, 16)
                     if model.canShowFiles {
-                        guideEntry(L.workspaceFiles(), L.workspaceFilesHint(), "folder") {
-                            model.push(.panel(.files))
-                            onDismiss()
-                        }
+                        guideEntry(L.workspaceFiles(), L.workspaceFilesHint(), "folder", action: onFiles)
                     }
                     if model.canShowTerminal {
-                        guideEntry(L.terminal(), L.terminalHint(), "terminal") {
-                            model.push(.panel(.terminal))
-                            onDismiss()
-                        }
+                        guideEntry(L.terminal(), L.terminalHint(), "terminal", action: onTerminal)
                     }
+                    guideEntry(L.t("浏览器", "Browser"), L.t("浏览网页", "Browse web pages"), "globe", action: onBrowser)
+                    guideEntry(
+                        L.t("会话数据诊断", "Session Log"),
+                        L.t("在侧边栏分析当前会话原始日志和聊天分组数据", "Analyze raw logs and grouped chat messages for the current session in the sidebar."),
+                        "viewfinder",
+                        action: onInspector
+                    )
                 }
                 .padding(.horizontal, 24)
                 .padding(.vertical, 24)

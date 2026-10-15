@@ -113,6 +113,8 @@ enum L {
         en ? "Browse files in this session's workspace" : "浏览会话工作区的文件"
     }
     static func startPanel() -> String { en ? "Start" : "开始" }
+    static func editedCount(_ count: Int) -> String { en ? "Edited \(count) files" : "已编辑 \(count) 个文件" }
+    static func editedName(_ name: String) -> String { en ? "Edited \(name)" : "已编辑 \(name)" }
     static func collapseRightPanel() -> String { en ? "Collapse right sidebar" : "收起右侧边栏" }
     static func parentDirectory() -> String { en ? "Parent directory" : "上级目录" }
     static func noWorkspace() -> String { en ? "No workspace" : "无工作区" }
