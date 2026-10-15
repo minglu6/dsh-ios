@@ -2,6 +2,7 @@ import Foundation
 
 enum L {
     static var en: Bool { AppPrefs.language == .en }
+    static func t(_ zh: String, _ en: String) -> String { Self.en ? en : zh }
 
     static func sendMessage() -> String { en ? "Send message" : "发送消息" }
     static func queueSend() -> String { en ? "Queue message" : "排队发送" }
@@ -95,7 +96,7 @@ enum L {
     static func pairTimeout() -> String {
         en
             ? "Pairing timed out. Confirm the desktop pairing window is open and this host:port is reachable."
-            : "配对超时。请确认电脑已打开配对，且手机可达该 host:port。"
+            : "配对超时。请确认电脑已打开配对，且手机可达该远程主机地址。"
     }
     static func pairFailed() -> String { en ? "Pairing failed" : "配对失败" }
     static func connecting() -> String { en ? "Connecting" : "连接中" }
@@ -269,7 +270,20 @@ enum L {
     static func jobOutputFailed() -> String { en ? "Unable to read output" : "输出读取失败" }
     static func jobLoadFailed() -> String { en ? "Unable to load jobs" : "任务加载失败" }
     static func completedUnread() -> String { en ? "Completed, unread" : "已完成，未查看" }
-    static func reasoning() -> String { en ? "Reasoning" : "思考" }
+    static func reasoning() -> String { en ? "Think" : "思考" }
+    static func unavailable() -> String { en ? "Unavailable" : "暂不可用" }
+    static func saving() -> String { en ? "Saving…" : "保存中…" }
+    static func workDetails() -> String { en ? "Work details" : "工作步骤展示" }
+    static func collapseTiming() -> String { en ? "When to Collapse Work Details" : "工作步骤收起时机" }
+    static func performanceUsage() -> String { en ? "Performance & usage" : "性能与用量" }
+    static func compact() -> String { en ? "Compact" : "简洁" }
+    static func detailed() -> String { en ? "Detailed" : "详细" }
+    static func fontSize() -> String { en ? "Font size" : "字号大小" }
+    static func linkOpening() -> String { en ? "Where links open" : "链接打开位置" }
+    static func addPlugin() -> String { en ? "Add plugin" : "添加插件" }
+    static func pluginInterfaces() -> String { en ? "Open plugin interfaces" : "打开插件自定义界面" }
+    static func newAutomation() -> String { en ? "New automation task" : "新建自动化任务" }
+    static func automation() -> String { en ? "Scheduled tasks" : "自动化任务" }
     static func tool() -> String { en ? "Tool" : "工具" }
     static func composerPlaceholder() -> String { en ? "Message" : "消息" }
     static func notConnected() -> String { en ? "Not connected" : "未连接" }
@@ -279,7 +293,7 @@ enum L {
         let need = required.map { en ? " (need ≥ \($0))" : "（需要 ≥ \($0)）" } ?? ""
         return en
             ? "Desktop plugin is too old\(need). Update dsh-plugin-pocket on the computer."
-            : "桌面端插件版本过旧\(need)，请在电脑上升级 dsh-plugin-pocket。"
+            : "远程主机插件版本过旧\(need)，请在电脑上升级 dsh-plugin-pocket。"
     }
 
     static func appTooOld(_ required: String?) -> String {

@@ -1,4 +1,5 @@
 import SwiftUI
+import DSHProtocol
 
 struct SettingsView: View {
     @ObservedObject var model: AppModel
@@ -10,12 +11,9 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     card {
                         nav(L.generalNav(), "slider.horizontal.3") { model.push(.general) }
-                        nav(L.modelsNav(), "cpu", divider: hasPluginSettings || hasScheduleSettings) { model.push(.models) }
+                        nav(L.modelsNav(), "cpu", divider: hasPluginSettings) { model.push(.models) }
                         if hasPluginSettings {
-                            nav(L.builtinPluginsNav(), "puzzlepiece.extension", divider: hasScheduleSettings) { model.push(.panel(.plugins)) }
-                        }
-                        if hasScheduleSettings {
-                            nav(L.scheduleNav(), "calendar", divider: false) { model.push(.panel(.schedule)) }
+                            nav(L.builtinPluginsNav(), "puzzlepiece.extension", divider: false) { model.push(.builtinPlugins) }
                         }
                     }
                     Text(L.phoneConnection())
@@ -36,33 +34,132 @@ struct SettingsView: View {
     }
 
     private var hasPluginSettings: Bool { model.ops.contains("plugins.inventory") }
-    private var hasScheduleSettings: Bool { model.ops.contains("schedule.catalog") }
 }
 
 struct GeneralSettingsView: View {
     @ObservedObject var model: AppModel
+    @ObservedObject private var shared: HostSettings
+    @State private var fontsExpanded = false
+    @State private var sheet: String?
+
+    init(model: AppModel) {
+        self.model = model
+        self.shared = model.hostSettings
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             header(L.generalNav()) { model.pop() }
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    if shared.saving {
+                        settingsMessage(L.saving())
+                    } else if shared.loading {
+                        settingsMessage(L.loading())
+                    } else if shared.online && !shared.ready {
+                        settingsMessage(L.unavailable())
+                    }
+                    if let error = shared.error {
+                        settingsMessage(error, error: true)
+                        if shared.online {
+                            Button(L.retry()) { shared.dismissError(); shared.refresh() }
+                                .disabled(shared.loading || shared.saving)
+                                .padding(.horizontal, 22)
+                        }
+                    }
                     card {
-                        picker(L.appearance(), selection: Binding(
-                            get: { model.appearance },
-                            set: { model.setAppearance($0) }
-                        )) {
-                            Text(L.light()).tag(Appearance.light)
-                            Text(L.dark()).tag(Appearance.dark)
-                            Text(L.followSystem()).tag(Appearance.system)
+                        if model.ops.contains("permissions.catalog") {
+                            nav(L.t("权限", "Permission"), "hand.raised", value: permissionLabel, divider: true) {
+                                sheet = "perm"
+                            }
+                            .disabled(!model.isOnline || !shared.writable(.permission))
                         }
                         picker(L.language(), selection: Binding(
                             get: { model.language },
-                            set: { model.setLanguage($0) }
-                        ), divider: false) {
+                            set: { model.setLanguage($0); sheet = nil }
+                        ), divider: true) {
                             Text("中文").tag(AppLanguage.zh)
                             Text("English").tag(AppLanguage.en)
                         }
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(L.appearance()).foregroundStyle(T.ink)
+                            Picker("", selection: Binding(get: { model.appearance }, set: { model.setAppearance($0) })) {
+                                Text(L.light()).tag(Appearance.light)
+                                Text(L.dark()).tag(Appearance.dark)
+                                Text(L.followSystem()).tag(Appearance.system)
+                            }
+                            .pickerStyle(.segmented)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        Divider().padding(.leading, 16)
+                        fontRow
+                        if fontsExpanded { fontDetails }
+                        nav(L.workDetails(), "list.bullet", value: transcriptText(model.transcriptView)) {
+                            sheet = "transcript"
+                        }
+                        .disabled(!shared.writable(.transcript))
+                        nav(L.collapseTiming(), "rectangle.compress.vertical", value: collapseText(model.collapseTiming)) {
+                            sheet = "collapse"
+                        }
+                        .disabled(!model.isOnline)
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text(L.t("显示代码工作视图", "Show coding view")).foregroundStyle(T.ink)
+                                Text(L.t("开启后，显示轨迹、本轮代码差异，可选择完整的 Agent 预设切换", "Shows trajectory, code diffs, and all Agent presets"))
+                                    .font(.caption).foregroundStyle(T.text3)
+                            }
+                            Spacer()
+                            Toggle("", isOn: Binding(
+                                get: { model.showCodeWorkView },
+                                set: { shared.write(.codeWork, value: .bool($0)) }
+                            ))
+                            .labelsHidden()
+                            .disabled(!shared.writable(.codeWork))
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        Divider().padding(.leading, 16)
+                        nav(L.t("繁忙时的发送行为", "Send behavior while busy"), "paperplane", value: model.busySend == .steer ? L.steerSend() : L.queueSend()) {
+                            sheet = "busy"
+                        }
+                        .disabled(!shared.writable(.busySend))
+                        nav(L.performanceUsage(), "speedometer", value: model.performanceUsage == .detailed ? L.detailed() : L.compact()) {
+                            sheet = "perf"
+                        }
+                        .disabled(!shared.writable(.performance))
+                        if shared.namespace(.sessionLog) != nil {
+                            HStack {
+                                VStack(alignment: .leading) {
+                                    Text(L.t("在使用官方模型 API 时上传 Session Log", "Upload Session Log when using the official model API")).foregroundStyle(T.ink)
+                                    Text(L.t("帮助改进 DeepSeek 模型与产品", "Help improve DeepSeek models and products.")).font(.caption).foregroundStyle(T.text3)
+                                }
+                                Spacer()
+                                Toggle("", isOn: Binding(
+                                    get: { shared.value(.sessionLog)?.bool() == true },
+                                    set: { shared.write(.sessionLog, value: .bool($0)) }
+                                ))
+                                .labelsHidden()
+                                .disabled(!shared.writable(.sessionLog))
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            Divider().padding(.leading, 16)
+                        }
+                        if shared.hasField(.linkOpening) {
+                            nav(L.linkOpening(), "link", value: shared.value(.linkOpening)?.str() ?? "") {
+                                sheet = "links"
+                            }
+                            .disabled(!shared.writable(.linkOpening))
+                        }
+                        HStack {
+                            Text(L.t("代码自动换行", "Wrap code")).foregroundStyle(T.ink)
+                            Spacer()
+                            Toggle("", isOn: Binding(get: { model.codeWordWrap }, set: { model.setCodeWordWrap($0) }))
+                                .labelsHidden()
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
                     }
                     Text("\(L.currentVersion())：\(AppModel.appVersion)")
                         .font(.caption)
@@ -75,39 +172,169 @@ struct GeneralSettingsView: View {
             .background(T.bg)
         }
         .background(T.bg.ignoresSafeArea())
+        .sheet(isPresented: Binding(get: { sheet != nil }, set: { if !$0 { sheet = nil } })) {
+            optionSheet
+        }
+        .onAppear { if model.ops.contains("permissions.catalog") { model.reloadPermissionCatalog() } }
     }
-}
 
-struct ModelsSettingsView: View {
-    @ObservedObject var model: AppModel
+    @ViewBuilder
+    private var fontRow: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button { fontsExpanded.toggle() } label: {
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text(L.fontSize()).foregroundStyle(T.ink)
+                        Text(L.t("仅影响会话内容的字号", "Only affects conversation content")).font(.caption).foregroundStyle(T.text3)
+                    }
+                    Spacer()
+                    Text("\(model.fontSize)").foregroundStyle(T.text3)
+                    Image(systemName: fontsExpanded ? "chevron.up" : "chevron.down").font(.caption).foregroundStyle(T.text3)
+                }
+            }
+            Slider(value: Binding(
+                get: { Double(model.fontSize) },
+                set: { model.setFontSize(Int($0.rounded())) }
+            ), in: 10...22, step: 1)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        Divider().padding(.leading, 16)
+    }
 
-    var body: some View {
-        VStack(spacing: 0) {
-            header(L.modelsNav()) { model.pop() }
+    @ViewBuilder
+    private var fontDetails: some View {
+        fontFamilyField(L.t("正文字体", "Text font"), L.t("用于界面与会话正文。多个字体用逗号分隔，留空使用默认字体", "Interface and conversation text. Separate fonts with commas; leave empty for defaults."), model.textFontFamily, model.setTextFontFamily)
+        sliderRow(L.t("代码字号", "Code font size"), model.codeFontSize, 10...16, model.setCodeFontSize)
+        fontFamilyField(L.t("代码字体", "Code font"), L.t("用于代码块、行内代码与工具输出。多个字体用逗号分隔，留空使用默认字体", "Code blocks, inline code, and tool output. Separate fonts with commas; leave empty for defaults."), model.codeFontFamily, model.setCodeFontFamily)
+        sliderRow(L.t("终端字号", "Terminal font size"), model.terminalFontSize, 10...20, model.setTerminalFontSize)
+        fontFamilyField(L.t("终端字体", "Terminal font"), L.t("用于侧栏终端。多个字体用逗号分隔，留空使用默认字体", "Sidebar terminal. Separate fonts with commas; leave empty for defaults."), model.terminalFontFamily, model.setTerminalFontFamily)
+    }
+
+    @ViewBuilder
+    private func fontFamilyField(_ title: String, _ hint: String, _ value: String, _ set: @escaping (String) -> Void) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title).foregroundStyle(T.ink)
+            Text(hint).font(.caption).foregroundStyle(T.text3)
+            TextField("", text: Binding(get: { value }, set: set))
+                .textInputAutocapitalization(.never)
+                .padding(8)
+                .background(T.input, in: RoundedRectangle(cornerRadius: 8))
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        Divider().padding(.leading, 16)
+    }
+
+    @ViewBuilder
+    private func sliderRow(_ title: String, _ value: Int, _ range: ClosedRange<Int>, _ set: @escaping (Int) -> Void) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(title).foregroundStyle(T.ink)
+                Spacer()
+                Text("\(value)").foregroundStyle(T.text3)
+            }
+            Slider(
+                value: Binding(get: { Double(value) }, set: { set(Int($0.rounded())) }),
+                in: Double(range.lowerBound)...Double(range.upperBound),
+                step: 1
+            )
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        Divider().padding(.leading, 16)
+    }
+
+    private var permissionLabel: String {
+        model.permissionCatalog?.find(model.defaultPermission)?.name ?? model.defaultPermission
+    }
+
+    @ViewBuilder
+    private var optionSheet: some View {
+        NavigationStack {
             List {
-                ForEach(model.catalog?.groups ?? []) { group in
-                    Section(group.name) {
-                        ForEach(group.models) { info in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(info.name).foregroundStyle(T.ink)
-                                if let description = info.description {
-                                    Text(description).font(.caption).foregroundStyle(T.text3)
-                                }
+                switch sheet {
+                case "transcript":
+                    ForEach(TranscriptView.allCases, id: \.rawValue) { mode in
+                        Button(transcriptText(mode)) {
+                            shared.write(.transcript, value: .string(mode.rawValue)) { sheet = nil }
+                        }
+                    }
+                case "collapse":
+                    ForEach(CollapseTiming.allCases, id: \.rawValue) { mode in
+                        Button(collapseText(mode)) {
+                            model.collapseTiming = mode
+                            sheet = nil
+                        }
+                    }
+                case "busy":
+                    Button(L.queueSend()) { model.setBusySend(.queue); sheet = nil }
+                    Button(L.steerSend()) { model.setBusySend(.steer); sheet = nil }
+                case "perf":
+                    ForEach(PerformanceUsage.allCases, id: \.rawValue) { mode in
+                        Button(mode == .detailed ? L.detailed() : L.compact()) {
+                            shared.write(.performance, value: .string(mode.rawValue)) { sheet = nil }
+                        }
+                    }
+                case "perm":
+                    ForEach(model.permissionCatalog?.defaultOptions ?? [], id: \.value) { option in
+                        Button(option.name) {
+                            if model.permissionCatalog?.allowsDefault(option.value) == true {
+                                shared.write(.permission, value: .string(option.value)) { sheet = nil }
                             }
                         }
                     }
-                }
-                if let failures = model.catalog?.failures, !failures.isEmpty {
-                    Section {
-                        ForEach(failures, id: \.id) { failure in
-                            Text("\(failure.name): \(failure.message)").foregroundStyle(T.err)
+                case "links":
+                    let current = shared.value(.linkOpening)?.str()
+                    ForEach(["in-app", "system"], id: \.self) { value in
+                        Button(value == "system" ? L.t("系统浏览器", "System browser") : L.t("应用内", "In-app")) {
+                            shared.write(.linkOpening, value: .string(value)) { sheet = nil }
                         }
+                        .disabled(current == value)
                     }
+                default:
+                    EmptyView()
                 }
             }
+            .navigationTitle(sheetTitle)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L.cancel()) { sheet = nil } } }
         }
-        .background(T.bg.ignoresSafeArea())
     }
+
+    private var sheetTitle: String {
+        switch sheet {
+        case "transcript": return L.workDetails()
+        case "collapse": return L.collapseTiming()
+        case "busy": return L.t("繁忙时的发送行为", "Send behavior while busy")
+        case "perf": return L.performanceUsage()
+        case "perm": return L.t("权限", "Permission")
+        case "links": return L.linkOpening()
+        default: return ""
+        }
+    }
+}
+
+func transcriptText(_ mode: TranscriptView) -> String {
+    switch mode {
+    case .compact: return L.t("精简", "Compact")
+    case .standard: return L.t("标准", "Standard")
+    case .detailed: return L.t("详细", "Detailed")
+    case .verbose: return L.t("完整", "Verbose")
+    }
+}
+
+func collapseText(_ mode: CollapseTiming) -> String {
+    switch mode {
+    case .completion: return L.t("本轮完成后", "After the turn completes")
+    case .nextInput: return L.t("下次发送后", "After the next send")
+    }
+}
+
+func settingsMessage(_ text: String, error: Bool = false) -> some View {
+    Text(text)
+        .font(.footnote)
+        .foregroundStyle(error ? T.err : T.text3)
+        .padding(.horizontal, 22)
 }
 
 func header(_ title: String, back: @escaping () -> Void) -> some View {
@@ -135,8 +362,8 @@ func nav(_ title: String, _ system: String, value: String? = nil, divider: Bool 
                 Image(systemName: system).foregroundStyle(T.text2)
                 Text(title).foregroundStyle(T.ink)
                 Spacer()
-                if let value {
-                    Text(value).font(.subheadline).foregroundStyle(T.text3)
+                if let value, !value.isEmpty {
+                    Text(value).font(.subheadline).foregroundStyle(T.text3).lineLimit(1)
                 }
                 Image(systemName: "chevron.right").font(.caption).foregroundStyle(T.text3)
             }

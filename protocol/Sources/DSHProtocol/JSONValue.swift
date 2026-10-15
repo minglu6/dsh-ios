@@ -146,6 +146,32 @@ public func jsonObject(_ pairs: [String: JSONValue?]) -> JSONValue {
     return .object(object)
 }
 
+public func jsonObjectKeeping(_ pairs: [String: JSONValue]) -> JSONValue {
+    .object(pairs)
+}
+
+public extension JSONValue {
+    func at(_ path: [String]) -> JSONValue {
+        path.reduce(self) { $0[$1] }
+    }
+
+    func requiredString(_ field: String) throws -> String {
+        guard let value = str(), !value.isEmpty else {
+            throw PocketError(code: "invalid-response", message: "\(field) must be a non-empty string")
+        }
+        return value
+    }
+
+    /// Schemastery and pocket JSON may name a graph node as a string or a number uid.
+    func refId() -> String? {
+        if let value = str() { return value }
+        if let value = long() { return String(value) }
+        if let value = self["uid"].str() { return value }
+        if let value = self["uid"].long() { return String(value) }
+        return nil
+    }
+}
+
 public extension JSONValue {
     static func stringOrNull(_ value: String?) -> JSONValue {
         value.map { .string($0) } ?? .null

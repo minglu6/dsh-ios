@@ -10,6 +10,9 @@ struct ChatView: View {
     @State private var feedbackDraft: FeedbackDraft?
     @State private var showStart = false
     @State private var showJobs = false
+    @State private var openTurns: [String: Bool] = [:]
+    @State private var openProcesses: [String: Bool] = [:]
+    @State private var inspectTool: Item.Tool?
 
     /// Android: Screen.Chat + drawer closed + focused + RESUMED. Otherwise completion.view gets null.
     private var desiredViewedSession: String? {
@@ -55,6 +58,8 @@ struct ChatView: View {
         .onChange(of: model.showDrawer) { _ in model.setViewedSession(desiredViewedSession) }
         .onChange(of: model.chat?.sessionId) { _ in
             tab = 0
+            openTurns = [:]
+            openProcesses = [:]
             model.setViewedSession(desiredViewedSession)
         }
     }
@@ -155,6 +160,18 @@ struct ChatView: View {
         }
     }
 
+    private var chatRows: [ChatRow] {
+        let policy = presentationPolicyFor(model.transcriptView, collapseTiming: model.collapseTiming)
+        let folded = foldChatItems(
+            model.chat?.items ?? [],
+            policy: policy,
+            sessionRunning: model.chat?.running == true,
+            turnRecords: model.chat?.turns ?? [],
+            en: L.en
+        )
+        return visibleChatRows(folded, openTurns: openTurns)
+    }
+
     private var transcript: some View {
         ScrollViewReader { proxy in
             ScrollView {
@@ -164,9 +181,16 @@ struct ChatView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 8)
                     }
-                    ForEach(model.chat?.items ?? []) { item in
-                        MessageRow(item: item, model: model, onOpenFeedback: openFeedback)
-                            .id(item.key)
+                    ForEach(Array(chatRows.enumerated()), id: \.element.key) { _, row in
+                        ChatRowView(
+                            row: row,
+                            model: model,
+                            openTurns: $openTurns,
+                            openProcesses: $openProcesses,
+                            onOpenFeedback: openFeedback,
+                            onTool: { inspectTool = $0 }
+                        )
+                        .id(row.key)
                     }
                     if model.chat?.loaded == false {
                         ProgressView().frame(maxWidth: .infinity).padding()
@@ -176,9 +200,15 @@ struct ChatView: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
             }
-            .onChange(of: model.chat?.items.last?.key) { _ in
+            .onChange(of: chatRows.last?.key) { _ in
                 withAnimation { proxy.scrollTo("bottom", anchor: .bottom) }
             }
+        }
+        .sheet(item: Binding(
+            get: { inspectTool.map { ToolInspect($0) } },
+            set: { inspectTool = $0?.tool }
+        )) { inspect in
+            ToolInspectSheet(tool: inspect.tool) { inspectTool = nil }
         }
     }
 
@@ -191,6 +221,213 @@ private struct FeedbackDraft: Identifiable {
     let messageId: String
     let rating: String
     var id: String { "\(messageId):\(rating)" }
+}
+
+private struct ToolInspect: Identifiable {
+    let tool: Item.Tool
+    var id: String { tool.key }
+    init(_ tool: Item.Tool) { self.tool = tool }
+}
+
+private struct ToolInspectSheet: View {
+    let tool: Item.Tool
+    var onDismiss: () -> Void
+    private var summary: ToolProcessSummary { toolProcessSummary(tool, en: L.en) }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(summary.title).font(.headline).foregroundStyle(T.ink)
+                    if let summary = summary.summary { Text(summary).foregroundStyle(T.text2) }
+                    if !tool.arguments.isEmpty {
+                        Text(tool.arguments).font(LocalFonts.code()).foregroundStyle(T.text3).textSelection(.enabled)
+                    }
+                    if let result = tool.result, !result.isEmpty {
+                        Text(result).font(LocalFonts.code()).foregroundStyle(T.text2).textSelection(.enabled)
+                    }
+                    if let error = tool.error { Text(error).foregroundStyle(T.err) }
+                }
+                .padding(16)
+            }
+            .navigationTitle(L.tool())
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L.close(), action: onDismiss) } }
+        }
+    }
+}
+
+struct ChatRowView: View {
+    let row: ChatRow
+    @ObservedObject var model: AppModel
+    @Binding var openTurns: [String: Bool]
+    @Binding var openProcesses: [String: Bool]
+    var onOpenFeedback: (String, String) -> Void
+    var onTool: (Item.Tool) -> Void
+
+    var body: some View {
+        switch row {
+        case .user(let user):
+            MessageRow(item: .user(user), model: model, onOpenFeedback: onOpenFeedback)
+        case .answer(let text):
+            MessageRow(item: .text(text), model: model, onOpenFeedback: onOpenFeedback)
+        case .notice(let notice):
+            MessageRow(item: .notice(notice), model: model, onOpenFeedback: onOpenFeedback)
+        case .deliverable(let deliverable):
+            MessageRow(item: .deliverable(deliverable), model: model, onOpenFeedback: onOpenFeedback)
+        case .retry(let retry):
+            Text(retry.attempts.last?.message ?? L.t("正在重试", "Retrying")).font(.footnote).foregroundStyle(T.warnText)
+        case .turnFailure(let failure):
+            Text(chatFailureMessage(failure.message, code: failure.code, en: L.en)).font(.footnote).foregroundStyle(T.err)
+        case .tool(let tool):
+            ToolCard(tool: tool, onTap: { onTool(tool) })
+        case .reasoning(let reasoning):
+            ReasoningRow(reasoning: reasoning)
+        case .process(let proc):
+            ProcessGroupView(proc: proc, openTurns: $openTurns, openProcesses: $openProcesses, onTool: onTool)
+        case .changes:
+            EmptyView()
+        }
+    }
+}
+
+private struct ProcessGroupView: View {
+    let proc: ChatRow.Process
+    @Binding var openTurns: [String: Bool]
+    @Binding var openProcesses: [String: Bool]
+    var onTool: (Item.Tool) -> Void
+
+    var body: some View {
+        let binding = proc.turnSummary ? $openTurns : $openProcesses
+        let open = binding.wrappedValue[proc.key] ?? proc.defaultOpen
+        VStack(alignment: .leading, spacing: 6) {
+            Button {
+                binding.wrappedValue[proc.key] = !open
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: processSymbol(proc.activityKind)).foregroundStyle(T.text3)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(proc.title).font(LocalFonts.text()).foregroundStyle(T.text2)
+                        if let detail = proc.detail, !open {
+                            Text(detail).font(.caption).foregroundStyle(T.text3).lineLimit(1)
+                        }
+                    }
+                    Spacer()
+                    if !proc.closed { ProgressView().controlSize(.mini) }
+                    Image(systemName: open ? "chevron.down" : "chevron.right").font(.caption).foregroundStyle(T.text3)
+                }
+            }
+            .buttonStyle(.plain)
+            .disabled(!proc.canCollapse && proc.turnSummary)
+            if open && !proc.members.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(Array(proc.members.enumerated()), id: \.element.key) { _, member in
+                        switch member {
+                        case .reasoning(let reasoning): ReasoningRow(reasoning: reasoning)
+                        case .tool(let tool): ToolCard(tool: tool, onTap: { onTool(tool) })
+                        default: EmptyView()
+                        }
+                    }
+                }
+                .padding(.leading, 22)
+            }
+        }
+    }
+
+    private func processSymbol(_ kind: String) -> String {
+        switch kind {
+        case "thinking": return "brain"
+        case "read", "readImage", "webFetch": return "doc.text.magnifyingglass"
+        case "search", "webSearch": return "magnifyingglass"
+        case "edit", "write": return "pencil"
+        case "commands": return "terminal"
+        case "code": return "chevron.left.forwardslash.chevron.right"
+        case "subagents": return "person.2"
+        case "plan": return "checklist"
+        case "questions": return "questionmark.circle"
+        default: return "sparkle"
+        }
+    }
+}
+
+private struct ReasoningRow: View {
+    let reasoning: Item.Reasoning
+    @State private var open = false
+
+    var body: some View {
+        let preview = reasoningPreview(reasoning.text, running: reasoning.live)
+        let policy = presentationPolicyFor(AppModel.shared.transcriptView)
+        let showPreview = !open && !preview.isEmpty && (reasoning.live || policy.settledReasoningPreview)
+        VStack(alignment: .leading, spacing: 4) {
+            Button { open.toggle() } label: {
+                HStack(spacing: 6) {
+                    if reasoning.live { ProgressView().controlSize(.mini) }
+                    Image(systemName: open ? "chevron.down" : "brain").foregroundStyle(T.text3)
+                    Text(L.reasoning()).font(.system(size: CGFloat(AppPrefs.fontSize - 1))).foregroundStyle(T.text3)
+                    if showPreview {
+                        Circle().fill(T.caption).frame(width: 2, height: 2)
+                        Text(preview).font(.system(size: CGFloat(AppPrefs.fontSize - 1))).foregroundStyle(T.text3).lineLimit(1)
+                    }
+                    Spacer()
+                }
+            }
+            .buttonStyle(.plain)
+            if open {
+                MarkdownView(source: reasoning.text, streaming: reasoning.live, wrapCode: AppModel.shared.codeWordWrap, bodyColor: T.text2)
+                    .padding(.leading, 22)
+            }
+        }
+    }
+}
+
+private struct ToolCard: View {
+    let tool: Item.Tool
+    var onTap: () -> Void
+
+    var body: some View {
+        let summary = toolProcessSummary(tool, en: L.en)
+        let tint: Color = {
+            switch tool.status {
+            case .error: return T.err
+            case .awaitingApproval: return T.warnText
+            default: return T.text3
+            }
+        }()
+        Button(action: onTap) {
+            HStack(spacing: 8) {
+                Image(systemName: toolSymbol(summary.icon)).foregroundStyle(tint)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(summary.title).font(LocalFonts.text()).foregroundStyle(T.ink)
+                    if let line = summary.summary {
+                        Text(line).font(.caption).foregroundStyle(T.text3).lineLimit(2)
+                    }
+                }
+                Spacer()
+                if tool.status == .running || tool.status == .preparing { ProgressView().controlSize(.mini) }
+            }
+            .padding(tool.status == .awaitingApproval ? 8 : 0)
+            .background(tool.status == .awaitingApproval ? T.warnTint : Color.clear, in: RoundedRectangle(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
+        .disabled(tool.status == .preparing)
+    }
+
+    private func toolSymbol(_ icon: ToolProcessIcon) -> String {
+        switch icon {
+        case .browse: return "doc.text.magnifyingglass"
+        case .search: return "magnifyingglass"
+        case .command: return "terminal"
+        case .write, .edit: return "pencil"
+        case .code: return "chevron.left.forwardslash.chevron.right"
+        case .users: return "person.2"
+        case .checklist: return "checklist"
+        case .clock: return "clock"
+        case .goal: return "flag"
+        case .plugin: return "puzzlepiece.extension"
+        case .agent: return "person.crop.circle"
+        case .branch: return "arrow.triangle.branch"
+        case .generic: return "sparkle"
+        }
+    }
 }
 
 struct MessageRow: View {
@@ -220,38 +457,17 @@ struct MessageRow: View {
             }
         case .text(let text):
             VStack(alignment: .leading, spacing: 6) {
-                Text(text.text).foregroundStyle(T.ink)
+                MarkdownView(source: text.text, streaming: text.live, wrapCode: model.codeWordWrap, onFile: { path in
+                    model.openFilePreview(path: path)
+                })
                 if showAssistantActions(text) {
                     assistantActions(text)
                 }
             }
         case .reasoning(let reasoning):
-            DisclosureGroup {
-                Text(reasoning.text).font(.footnote).foregroundStyle(T.text2)
-            } label: {
-                HStack(spacing: 6) {
-                    if reasoning.live { ProgressView().controlSize(.mini) }
-                    Text(L.reasoning()).font(.subheadline).foregroundStyle(T.bluish)
-                }
-            }
+            ReasoningRow(reasoning: reasoning)
         case .tool(let tool):
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Image(systemName: "wrench.and.screwdriver").font(.caption)
-                    Text(tool.name).font(.subheadline.weight(.medium)).foregroundStyle(T.ink)
-                    Spacer()
-                    Text(statusLabel(tool.status)).font(.caption).foregroundStyle(statusColor(tool.status))
-                }
-                if !tool.arguments.isEmpty {
-                    Text(tool.arguments).font(.system(.footnote, design: .monospaced)).foregroundStyle(T.text3).lineLimit(4)
-                }
-                if let result = tool.result, !result.isEmpty {
-                    Text(result).font(.footnote).foregroundStyle(T.text2).lineLimit(8)
-                }
-            }
-            .padding(10)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(T.codeBlock, in: RoundedRectangle(cornerRadius: 12))
+            ToolCard(tool: tool, onTap: {})
         case .notice(let notice):
             Text(notice.text).font(.footnote).foregroundStyle(T.warnText)
         case .deliverable(let deliverable):
@@ -309,24 +525,6 @@ struct MessageRow: View {
                 else { onOpenFeedback(mid!, "negative") }
             } : nil
         )
-    }
-
-    private func statusLabel(_ status: ToolStatus) -> String {
-        switch status {
-        case .preparing, .running: return L.loading()
-        case .awaitingApproval: return L.approval()
-        case .ok: return L.en ? "Completed" : "已完成"
-        case .error: return L.en ? "Failed" : "失败"
-        }
-    }
-
-    private func statusColor(_ status: ToolStatus) -> Color {
-        switch status {
-        case .ok: return T.ok
-        case .error: return T.err
-        case .awaitingApproval: return T.warnText
-        default: return T.text3
-        }
     }
 }
 

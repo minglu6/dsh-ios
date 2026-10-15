@@ -65,6 +65,7 @@ enum AppRoute: Equatable {
     case settings
     case general
     case models
+    case builtinPlugins
     case diagnostics
     case panel(DrawerPanel)
 }
@@ -98,6 +99,19 @@ final class AppModel: ObservableObject {
     @Published var language: AppLanguage = AppPrefs.language
     @Published var appearance: Appearance = AppPrefs.appearance
     @Published var busySend: BusySend = AppPrefs.busySend
+    @Published var fontSize: Int = AppPrefs.fontSize
+    @Published var codeFontSize: Int = AppPrefs.codeFontSize
+    @Published var terminalFontSize: Int = AppPrefs.terminalFontSize
+    @Published var textFontFamily: String = AppPrefs.textFontFamily
+    @Published var codeFontFamily: String = AppPrefs.codeFontFamily
+    @Published var terminalFontFamily: String = AppPrefs.terminalFontFamily
+    @Published var codeWordWrap: Bool = AppPrefs.codeWordWrap
+    @Published var collapseTiming: CollapseTiming = .completion
+    @Published var pluginCatalogRevision: Int64 = 0
+    @Published var scheduleCatalogRevision: Int64 = 0
+    @Published var modelSettingsRevision: Int64 = 0
+    @Published var permissionCatalog: PermissionCatalog?
+    @Published var permissionCatalogError: String?
     @Published var nearby: [DiscoveredHost] = []
     @Published var composerText = ""
     @Published var mentionQuery: String?
@@ -461,6 +475,29 @@ final class AppModel: ObservableObject {
         return try await client.call(op, args: args)
     }
 
+    func clientOrNull() -> PocketClient? { client }
+
+    var transcriptView: TranscriptView {
+        switch hostSettings.value(.transcript)?.str() {
+        case "compact": return .compact
+        case "detailed", "normal", "expanded": return .detailed
+        case "verbose": return .verbose
+        default: return .standard
+        }
+    }
+
+    var performanceUsage: PerformanceUsage {
+        hostSettings.value(.performance)?.str() == "detailed" ? .detailed : .compact
+    }
+
+    var showCodeWorkView: Bool {
+        hostSettings.value(.codeWork)?.bool() ?? true
+    }
+
+    var defaultPermission: String {
+        hostSettings.value(.permission)?.str() ?? "workspace-write"
+    }
+
     func copyDiagnostics() async -> String? {
         guard let profile = activeProfile, !profile.needsRepair else { return nil }
         guard let url = URL(string: "http://\(profile.host):\(profile.port)/diagnostics") else { return nil }
@@ -492,8 +529,21 @@ final class AppModel: ObservableObject {
         language = value
         AppPrefs.language = value
         TrajL.en = value == .en
-        if hostSettings.ready {
+        if hostSettings.writable(.language) {
             hostSettings.write(.language, value: .string(value == .en ? "en" : "zh"))
+        }
+    }
+
+    func applyHostMirroredPrefs() {
+        if let hosted = hostSettings.value(.busySend)?.str(), let parsed = BusySend(rawValue: hosted) {
+            busySend = parsed
+        }
+        if let hosted = hostSettings.value(.language)?.str() {
+            let next: AppLanguage = hosted.hasPrefix("zh") ? .zh : .en
+            if next != language {
+                language = next
+                TrajL.en = next == .en
+            }
         }
     }
 
@@ -786,14 +836,63 @@ final class AppModel: ObservableObject {
     func setAppearance(_ value: Appearance) {
         appearance = value
         AppPrefs.appearance = value
-        if hostSettings.ready {
-            let mapped: String
-            switch value {
-            case .light: mapped = "light"
-            case .dark: mapped = "dark"
-            case .system: mapped = "system"
+    }
+
+    func setFontSize(_ value: Int) {
+        fontSize = clampFontSize(value, range: 10...22)
+        AppPrefs.fontSize = fontSize
+    }
+
+    func setCodeFontSize(_ value: Int) {
+        codeFontSize = clampFontSize(value, range: 10...16)
+        AppPrefs.codeFontSize = codeFontSize
+    }
+
+    func setTerminalFontSize(_ value: Int) {
+        terminalFontSize = clampFontSize(value, range: 10...20)
+        AppPrefs.terminalFontSize = terminalFontSize
+    }
+
+    func setTextFontFamily(_ value: String) {
+        textFontFamily = normalizeFontFamily(value)
+        AppPrefs.textFontFamily = textFontFamily
+    }
+
+    func setCodeFontFamily(_ value: String) {
+        codeFontFamily = normalizeFontFamily(value)
+        AppPrefs.codeFontFamily = codeFontFamily
+    }
+
+    func setTerminalFontFamily(_ value: String) {
+        terminalFontFamily = normalizeFontFamily(value)
+        AppPrefs.terminalFontFamily = terminalFontFamily
+    }
+
+    func setBusySend(_ value: BusySend) {
+        busySend = value
+        AppPrefs.busySend = value
+        if hostSettings.writable(.busySend) {
+            hostSettings.write(.busySend, value: .string(value.rawValue))
+        }
+    }
+
+    func setCodeWordWrap(_ value: Bool) {
+        codeWordWrap = value
+        AppPrefs.codeWordWrap = value
+    }
+
+    func reloadPermissionCatalog() {
+        guard ops.contains("permissions.catalog") else {
+            permissionCatalog = nil
+            return
+        }
+        Task {
+            do {
+                permissionCatalog = try PermissionCatalog.parse(try await call("permissions.catalog"))
+                permissionCatalogError = nil
+            } catch {
+                permissionCatalogError = error.localizedDescription
             }
-            hostSettings.write(.appearance, value: .string(mapped))
         }
     }
 
@@ -840,17 +939,23 @@ final class AppModel: ObservableObject {
                     }
                     ProfileStore.save(profiles)
                 }
-                if ops.contains("plugins.settingsDescribe") && ops.contains("plugins.settingsMutate") {
+                if ops.contains("plugins.settingsDescribe") {
+                    hostSettings.onChange = { [weak self] in self?.applyHostMirroredPrefs() }
                     hostSettings.bind(
                         describe: { try await client.call("plugins.settingsDescribe") },
-                        mutate: { ns, ops, rev in
-                            try await client.call("plugins.settingsMutate", args: jsonObject([
-                                "ns": .string(ns),
-                                "ops": ops,
-                                "expectedRevision": .number(Double(rev)),
-                            ]))
-                        }
+                        mutate: ops.contains("plugins.settingsMutate")
+                            ? { ns, ops, rev in
+                                try await client.call("plugins.settingsMutate", args: jsonObject([
+                                    "ns": .string(ns),
+                                    "ops": ops,
+                                    "expectedRevision": .number(Double(rev)),
+                                ]))
+                            }
+                            : nil
                     )
+                }
+                if ops.contains("permissions.catalog") {
+                    reloadPermissionCatalog()
                 }
                 try await refreshAll(client)
                 while !Task.isCancelled && client.state == .open {
@@ -866,7 +971,9 @@ final class AppModel: ObservableObject {
                 client.close()
             }
             self.client = nil
+            hostSettings.onChange = nil
             hostSettings.clear()
+            permissionCatalog = nil
             followEpoch += 1
             detachFollow()
             resetTerminalAttachment(keepScreen: true)
@@ -1116,8 +1223,16 @@ final class AppModel: ObservableObject {
             userQuestions.removeAll { $0.questionId == m["questionId"].str() }
         case "workspace.changed":
             applyWorkspaceFrame(m["frame"])
+        case "plugins.changed":
+            pluginCatalogRevision += 1
+            modelSettingsRevision += 1
+        case "models.changed", "credentials.changed":
+            modelSettingsRevision += 1
+        case "schedule.changed":
+            scheduleCatalogRevision += 1
         case "settings.changed":
             hostSettings.refresh()
+            applyHostMirroredPrefs()
         case "completion":
             applyCompletion(m)
         case "job", "job.end", "job.error":
