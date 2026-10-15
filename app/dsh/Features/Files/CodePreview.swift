@@ -38,7 +38,7 @@ struct CodePreviewBody: View {
 
     @Environment(\.colorScheme) private var colorScheme
 
-    var body: some View {
+    private var encodedOptions: String {
         let options: [String: Any] = [
             "wrap": wrap,
             "plain": plain,
@@ -53,7 +53,11 @@ struct CodePreviewBody: View {
               let encoded = String(data: data, encoding: .utf8) else {
             preconditionFailure("code preview options JSON must encode")
         }
-        CodePreviewWebView(path: path, text: text, options: encoded)
+        return encoded
+    }
+
+    var body: some View {
+        CodePreviewWebView(path: path, text: text, options: encodedOptions)
             .background(T.surface)
     }
 }

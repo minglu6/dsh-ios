@@ -83,7 +83,7 @@ private struct BrowserPanelContent: View {
                 TextField("", text: Binding(
                     get: { state.address },
                     set: { if $0.count <= maxBrowserURLLength { state.address = $0 } }
-                ), prompt: Text(L.t("输入 HTTP(S) 地址", "Enter an HTTP(S) address")).foregroundStyle(T.text3).font(.system(size: 12)))
+                ), prompt: Text(L.t("输入 HTTP(S) 地址", "Enter an HTTP(S) address")).foregroundColor(T.text3).font(.system(size: 12)))
                 .font(.system(size: 12))
                 .foregroundStyle(T.ink)
                 .textInputAutocapitalization(.never)
