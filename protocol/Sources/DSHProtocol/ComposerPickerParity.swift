@@ -97,6 +97,11 @@ public func modelPickerEmptyEfforts(english: Bool) -> String {
     english ? "This model provides no reasoning effort levels." : "当前模型未提供推理等级。"
 }
 
+/// Desktop `ui-model-selection` locale `effort.providerDefault` is the English word in both zh and en.
+public func modelPickerEffortProviderDefault(english: Bool) -> String {
+    "Default"
+}
+
 public func modelPickerSearchPlaceholder(english: Bool) -> String {
     english ? "Search models…" : "搜索模型…"
 }

@@ -42,6 +42,8 @@ final class ComposerPickerParityTests: XCTestCase {
         XCTAssertEqual(modelPickerEmptyModels(english: true), "No models available.")
         XCTAssertEqual(modelPickerSearchEmpty(english: false), "没有匹配的模型。")
         XCTAssertEqual(modelPickerEmptyEfforts(english: false), "当前模型未提供推理等级。")
+        XCTAssertEqual(modelPickerEffortProviderDefault(english: false), "Default")
+        XCTAssertEqual(modelPickerEffortProviderDefault(english: true), "Default")
         XCTAssertEqual(modelPickerSearchPlaceholder(english: false), "搜索模型…")
         XCTAssertTrue(modelPickerRootShowsEffortOnlyWhenReasoning)
         XCTAssertEqual(modelPickerMenuMinWidthPoints, 240)

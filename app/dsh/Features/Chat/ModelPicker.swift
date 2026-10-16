@@ -194,7 +194,7 @@ struct ModelPicker: View {
                         .padding(8)
                 } else if let current, let selectedModel {
                     if selectedModel.defaultEffort == nil {
-                        option(L.t("默认", "Default"), selected: effectiveEffort == nil, pending: busy != nil && busy?.effort == nil) {
+                        option(modelPickerEffortProviderDefault(english: L.en), selected: effectiveEffort == nil, pending: busy != nil && busy?.effort == nil) {
                             pick(ModelChoice(provider: current.provider, model: current.model, name: current.name, effort: nil), unchanged: effectiveEffort == nil)
                         }
                     }
