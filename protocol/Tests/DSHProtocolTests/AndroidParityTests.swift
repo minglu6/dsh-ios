@@ -24,6 +24,14 @@ final class AndroidParityTests: XCTestCase {
             ["file", "feedback", "model", "export", "deploy"]
         )
         XCTAssertTrue(commandMenuClientRows(ops: ["session.export"], sessionReady: false, subagent: false).isEmpty)
+        XCTAssertEqual(
+            commandContributionCollisionMessage("plan", english: false),
+            "指令贡献 /plan 与远程主机指令冲突"
+        )
+        XCTAssertEqual(
+            commandContributionCollisionMessage("plan", english: true),
+            "Command contribution /plan collides with a host command"
+        )
     }
 
     func testCommandMenuEmptyQueryUsesDesktopSections() throws {

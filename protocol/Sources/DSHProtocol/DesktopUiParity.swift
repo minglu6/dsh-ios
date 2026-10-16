@@ -69,6 +69,24 @@ public enum ConversationHeaderPolicy {
     public static var includesOverflowMenu: Bool { false }
 }
 
+/// Same title as the workspace row: the current blank session is 新会话,
+/// every other missing title is 未命名 / Untitled.
+public func conversationHeaderTitle(
+    sessionId: String?,
+    title: String?,
+    blank: Bool,
+    newSession: String,
+    untitled: String
+) -> String {
+    guard let sessionId else { return newSession }
+    return drawerSessionTitle(
+        SessionSummary(sessionId: sessionId, title: title, blank: blank),
+        current: sessionId,
+        newSession: newSession,
+        untitled: untitled
+    )
+}
+
 public enum ConversationFontSize {
     public static let min = 10
     public static let max = 22

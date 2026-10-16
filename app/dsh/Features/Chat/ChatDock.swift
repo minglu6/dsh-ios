@@ -601,7 +601,7 @@ struct CommandSheet: View {
                     }
                     let collision = commandContributionCollision(candidates)
                     if let collision {
-                        Text("Command contribution /\(collision) collides with a host command")
+                        Text(commandContributionCollisionMessage(collision, english: L.en))
                             .foregroundStyle(T.err)
                     }
                     let rows = collision == nil ? commandMenuRows(candidates, query: query, leading: leading, english: L.en) : []

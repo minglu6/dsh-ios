@@ -186,6 +186,12 @@ public func commandContributionCollision(_ commands: [JSONValue]) -> String? {
     return counts.first { $0.value > 1 }?.key
 }
 
+public func commandContributionCollisionMessage(_ name: String, english: Bool) -> String {
+    english
+        ? "Command contribution /\(name) collides with a host command"
+        : "指令贡献 /\(name) 与远程主机指令冲突"
+}
+
 public func todoProgressLabel(_ todos: [TodoItem], en: Bool) -> String {
     var done = 0
     var active = 0

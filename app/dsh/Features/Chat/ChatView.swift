@@ -213,6 +213,18 @@ struct ChatView: View {
         }
     }
 
+    private var headerTitle: String {
+        guard let chat = model.chat else { return L.newSession() }
+        let row = model.sessions.first { $0.sessionId == chat.sessionId }
+        return conversationHeaderTitle(
+            sessionId: chat.sessionId,
+            title: chat.title ?? row?.title,
+            blank: row?.blank ?? false,
+            newSession: L.newSession(),
+            untitled: L.untitledSession()
+        )
+    }
+
     private var presetLabel: String? {
         let id = model.chat?.agentPreset ?? model.draftPreset.nilIfBlank
         guard let id else { return nil }
@@ -234,7 +246,7 @@ struct ChatView: View {
             if model.chat?.running == true {
                 ProgressView().controlSize(.mini)
             }
-            Text(model.chat?.title?.isEmpty == false ? model.chat!.title! : L.newSession())
+            Text(headerTitle)
                 .font(.headline)
                 .foregroundStyle(T.ink)
                 .lineLimit(1)
@@ -835,7 +847,7 @@ struct MessageRow: View {
 
 private enum MessageClock { case start, end }
 
-/// Desktop MessageIconActions: copy → like/dislike → share. Branch stays on session ⋯.
+/// Desktop MessageIconActions: copy → like/dislike → share. Branch stays on the session row menu.
 private struct MessageActions: View {
     let text: String
     let timeMs: Int64?
