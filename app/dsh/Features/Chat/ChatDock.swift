@@ -796,7 +796,7 @@ struct CommandMenuOverlay: View {
     private var loadingRow: some View {
         HStack {
             ProgressView().controlSize(.mini)
-            Text(L.t("正在加载选项…", "Loading options…")).font(.caption).foregroundStyle(T.text3)
+            Text(commandMenuStatusLoading(english: L.en)).font(.caption).foregroundStyle(T.text3)
         }
         .padding(12)
     }

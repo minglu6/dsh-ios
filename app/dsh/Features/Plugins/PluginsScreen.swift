@@ -104,13 +104,13 @@ struct PluginsScreen: View {
 
     private var creatorDescription: String {
         switch creatorState {
-        case "idle", "loading": return L.t("正在确认创造模式是否可用", "Checking whether Creator mode is available")
+        case "idle", "loading": return pluginAddCreatePluginChecking(english: L.en)
         case "ready":
             return creatorPresent
-                ? L.t("进入创造模式，制作属于你的 DSH 插件", "Enter Creator mode and make your own DSH plugin")
-                : L.t("当前配置未提供创造模式", "Creator mode is not included in this configuration")
+                ? pluginAddCreatePluginDescription(english: L.en)
+                : pluginAddCreatePluginMissing(english: L.en)
         default:
-            return L.t("暂时不可用，请重新打开菜单重试", "Temporarily unavailable. Reopen this menu to retry")
+            return pluginAddCreatePluginUnavailable(english: L.en)
         }
     }
 
@@ -658,22 +658,61 @@ private struct PluginAddMenu: View {
             }
             .disabled(!enabled)
             Button {
-                expanded = true
                 onOpen()
+                if pluginAddMenuUsesMenuSurface { expanded.toggle() }
             } label: {
                 Image(systemName: "chevron.down").font(.system(size: 12)).foregroundStyle(T.ink).frame(width: 32, height: 32)
             }
             .disabled(!enabled)
-            .accessibilityLabel(L.t("选择添加插件方式", "Choose how to add a plugin"))
-            .confirmationDialog(L.addPlugin(), isPresented: $expanded, titleVisibility: .hidden) {
-                Button(L.t("安装第三方插件", "Install a third-party plugin")) { onInstall() }
-                    .disabled(!enabled)
-                Button(L.t("让 Agent 创建插件", "Let the agent create a plugin")) { onCreatePlugin() }
-                    .disabled(!(enabled && creatorEnabled))
-                Button(L.cancel(), role: .cancel) {}
-            } message: {
-                Text(L.t("支持 npm 包、Git 仓库和本地目录", "Supports npm packages, Git repositories, and local directories") + "\n" + creatorDescription)
+            .accessibilityLabel(pluginAddChooseMethod(english: L.en))
+            .popover(isPresented: $expanded, arrowEdge: .top) {
+                VStack(alignment: .leading, spacing: 0) {
+                    addRow(
+                        title: pluginAddInstallExisting(english: L.en),
+                        detail: pluginAddInstallExistingDescription(english: L.en),
+                        enabled: enabled
+                    ) {
+                        expanded = false
+                        onInstall()
+                    }
+                    addRow(
+                        title: pluginAddCreatePlugin(english: L.en),
+                        detail: creatorDescription,
+                        enabled: enabled && creatorEnabled
+                    ) {
+                        expanded = false
+                        onCreatePlugin()
+                    }
+                }
+                .padding(CGFloat(permissionMenuPaddingPoints))
+                .frame(minWidth: 220, maxWidth: 320)
+                .modifier(PopoverCompactAdaptation())
             }
         }
+    }
+
+    private func addRow(
+        title: String,
+        detail: String,
+        enabled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 13))
+                    .foregroundStyle(enabled ? T.ink : T.text3)
+                Text(detail)
+                    .font(.system(size: 12))
+                    .foregroundStyle(T.caption)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
     }
 }

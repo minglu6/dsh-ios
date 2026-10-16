@@ -42,7 +42,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R11 | 底栏 Token 用量贴 chip 的 popover；已结束任务 SIGTERM 整句；完全权限确认先收键盘 | done (#29) |
 | R12 | Token 用量弹层在 chip 上方；表头图标 + 合计右对齐；本轮用量对齐 `message.turnUsage`；Think 展开保留图标；轨迹吞吐空窗用官方「不可用」；「已结束」一次点按展开 | done (#30) |
 | R13 | 权限/模型 picker 对齐桌面 MenuSurface；去掉标题模型名与预设；landing AgentPresetSeat；连接入口回到抽屉脚；会话绿点/运行 spinner；Think 块对齐 ReasoningRow | done (#31) |
-| R14 | 权限/模型 picker 弹层在 composer chip **上方**（同 Token 用量 `arrowEdge: .bottom`）；完全权限 / Auto review 确认不被键盘裁切 | this PR |
+| R14 | 权限/模型 picker 弹层在 composer chip **上方**（同 Token 用量 `arrowEdge: .bottom`）；完全权限 / Auto review 确认不被键盘裁切 | done (#32) |
+| R16 | landing 工作区 ghost chip + WorkspacePicker；计划 chip 进 composer modes 行；抽屉脚 footer.action 在 Settings 之上；+ aria / 插件添加 MenuSurface | this PR |
 
 ---
 
@@ -406,3 +407,17 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 | 权限 picker 方向 | `PermissionChipMenu` `composerPickerPopoverOpensAbove` → `arrowEdge: .bottom` | `ui-permission-presets` `PermissionSelect` `MenuSurface` `side: 'top'` | 弹层在 composer chip **上方**；高度按目录行（含 Auto review）收缩，不被屏幕底裁切 |
 | 模型 picker 方向 | `ModelChipMenu` 同一旗标 | `ui-model-selection` `ModelSelect` `MenuSurface` `side: 'top'` | 同上；两级菜单 maxHeight 360，内容不足时 hug |
 | 危险档确认 | `PermissionRiskDialog` `permissionRiskStaysAboveKeyboard` | `RiskConfirmation` 视口居中 overlay | 先收键盘；忽略 keyboard safe area；内容超出则滚，勾选 / 确认可点 |
+
+## Round 16 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`）
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| landing 工作区 chip | `LandingWorkspaceChip` | `ui-conversation` `WorkspaceChip` / `HeroShell.module.css` `.workspace` + `ui-workspace` `WorkspacePicker` | 幽灵触发 13/500/minHeight 28/maxWidth 360；自定义 popover 不是系统 Menu；文案 `hero.chooseWorkspace` / `menu.addWorkspace`「添加工作区…」；无工作区且可创建时直接开目录流 |
+| 计划 chip | `ComposerView` modes 行 | `ui-plan` `PlanModeControl` + `InputBar.js` `.modes` | 可见「计划」；a11y `chip.on.aria`；tooltip `chip.on.title`；在权限 chip 旁，不在输入框上方 |
+| + 按钮 | `ComposerView` plus | `InputBar` `input.commands` | aria「添加文件或调用指令」；landing `/file` 打开文件选择（图可挂草稿） |
+| 权限 chip 目录 | `permissionChipRequiresCatalog` | `PermissionSelect` `catalog === null → null` | 目录未到不画死 chip |
+| 抽屉脚顺序 | `SessionDrawer.footer` | `ui-sidebar` `SidebarRoot` `sidebar.footer.action` 然后 `sidebar.settings` | 主机/设备行在 Settings **之上**；Settings 仍不含「手机连接」 |
+| Agent 预设菜单 | `AgentPresetSeat` | `ui-agent-preset` `noDescription` / `seatHint` | 空描述「暂无描述。」；hint「选择新任务使用的 Agent 预设」 |
+| 设置默认权限说明 | `PermissionPickerSheet` | `settings.permission` `description` | 仅「选择新会话的默认权限模式」，去掉自撰「自动审查仅适用于…」 |
+| 斜杠空态 | `CommandMenuOverlay` | `ui-commands` `status.loading` / `status.empty` | 「正在加载选项…」/「无选项」 |
+| 插件添加菜单 | `PluginAddMenu` popover | `ui-plugin-manager` `AddPluginMenu` | 两行 MenuSurface：第三方 + 创造；不再用 confirmationDialog |

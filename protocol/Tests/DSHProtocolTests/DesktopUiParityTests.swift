@@ -107,6 +107,7 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertFalse(conversationHeaderShowsTimestamp)
         XCTAssertFalse(settingsIncludesPhoneConnection)
         XCTAssertTrue(phoneConnectionLivesInDrawerFooter)
+        XCTAssertTrue(sidebarFooterActionAboveSettings)
     }
 
     func testGeneralSettingsCopyMatchesDesktopLocale() {
@@ -285,6 +286,12 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertEqual(askPendingDetail(english: false), "等待中的问题仍可在输入框中回答")
         XCTAssertEqual(askRowTitle(english: false), "提问")
         XCTAssertEqual(planChipTitle(english: false), "计划模式已开启 — 点击关闭（/plan off）")
+        XCTAssertEqual(planChipLabel(english: false), "计划")
+        XCTAssertEqual(planChipAria(english: false), "计划模式已开启，按下关闭")
+        XCTAssertTrue(planChipLivesInComposerModesRow)
+        XCTAssertTrue(sidebarFooterActionAboveSettings)
+        XCTAssertEqual(composerCommandsAria(english: false), "添加文件或调用指令")
+        XCTAssertEqual(addWorkspaceMenuLabel(english: false), "添加工作区…")
         XCTAssertEqual(pendingAttachmentsLabel(english: false), "待发送附件")
         XCTAssertEqual(pluginsEmptyLabel(english: false), "还没有安装任何插件。")
         XCTAssertEqual(pluginsEmptyLabel(english: true), "No plugins are installed yet.")

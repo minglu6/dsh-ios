@@ -429,31 +429,45 @@ struct SessionDrawer: View {
 
     private var footer: some View {
         VStack(spacing: 0) {
-            Button {
-                model.push(.settings)
-                model.showDrawer = false
-            } label: {
-                Label(L.settings(), systemImage: D.gear)
-                    .foregroundStyle(T.ink)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-            }
-            .accessibilityIdentifier("drawerSettingsRow")
-            Button { model.push(.connections) } label: {
-                HStack {
-                    Circle().fill(dotColor).frame(width: 8, height: 8)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(model.activeProfile?.name ?? L.notConnected()).foregroundStyle(T.ink)
-                        Text(footerSubtitle).font(.caption).foregroundStyle(T.text3)
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(T.text3)
-                }
-                .padding(12)
+            if sidebarFooterActionAboveSettings {
+                footerPeerDevice
+                footerSettings
+            } else {
+                footerSettings
+                footerPeerDevice
             }
         }
         .background(T.surface)
+    }
+
+    private var footerPeerDevice: some View {
+        Button { model.push(.connections) } label: {
+            HStack {
+                Circle().fill(dotColor).frame(width: 8, height: 8)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(model.activeProfile?.name ?? L.notConnected()).foregroundStyle(T.ink)
+                    Text(footerSubtitle).font(.caption).foregroundStyle(T.text3)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(T.text3)
+            }
+            .padding(12)
+        }
+        .accessibilityIdentifier("drawerPeerDeviceRow")
+    }
+
+    private var footerSettings: some View {
+        Button {
+            model.push(.settings)
+            model.showDrawer = false
+        } label: {
+            Label(L.settings(), systemImage: D.gear)
+                .foregroundStyle(T.ink)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+        }
+        .accessibilityIdentifier("drawerSettingsRow")
     }
 
     private var dotColor: Color {

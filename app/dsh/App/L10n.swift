@@ -398,15 +398,15 @@ enum L {
     static func sectionAdd() -> String { en ? "Add" : "添加" }
     static func sectionCommands() -> String { en ? "Commands" : "指令" }
     static func sectionSkills() -> String { en ? "Skills" : "技能" }
-    static func noOptions() -> String { en ? "No options" : "无选项" }
+    static func noOptions() -> String { commandMenuStatusEmpty(english: en) }
     static func file() -> String { en ? "File" : "文件" }
     static func pendingFiles() -> String { pendingAttachmentsLabel(english: en) }
     static func uploading() -> String { en ? "Uploading…" : "上传中…" }
     static func uploadFailed() -> String { en ? "Upload failed; tap to retry" : "上传失败，点击重试" }
     static func removeFile(_ name: String) -> String { en ? "Remove file \(name)" : "移除文件 \(name)" }
     static func filesAndFolders() -> String { en ? "Files & folders" : "文件与文件夹" }
-    static func planChip() -> String { en ? "Plan" : "计划" }
-    static func planModeOn() -> String { planChipTitle(english: en) }
+    static func planChip() -> String { planChipLabel(english: en) }
+    static func planModeOn() -> String { planChipAria(english: en) }
     static func reopenQuestion() -> String { askReopenLabel(english: en) }
     static func notConnected() -> String { en ? "Not connected" : "未连接" }
     static func disconnected() -> String { en ? "Disconnected" : "已断开" }

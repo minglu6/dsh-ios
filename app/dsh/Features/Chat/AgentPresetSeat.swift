@@ -1,6 +1,123 @@
 import SwiftUI
 import DSHProtocol
 
+/// Desktop `EmptyHero` `WorkspaceChip`: ghost trigger + WorkspacePicker MenuSurface.
+/// System `Menu` + capsule fill is not the desktop chip.
+struct LandingWorkspaceChip: View {
+    @ObservedObject var model: AppModel
+    @Binding var showDirectoryPicker: Bool
+    @State private var open = false
+
+    private var selectedId: String? {
+        model.draftWorkspaceId ?? model.workspaces.first?.workspaceId
+    }
+
+    private var canCreate: Bool { model.ops.contains("workspace.create") }
+
+    var body: some View {
+        Button {
+            if workspaceChipOpensDirectoryFlowDirectly(
+                workspaceCount: model.workspaces.count,
+                canCreate: canCreate
+            ) {
+                showDirectoryPicker = true
+            } else if model.isOnline {
+                open.toggle()
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: model.landingWorkspaceLabel == nil ? "folder" : "folder.fill")
+                    .font(.system(size: CGFloat(workspaceChipIconSizePoints)))
+                Text(model.landingWorkspaceLabel ?? landingChooseWorkspace(english: L.en))
+                    .font(.system(size: CGFloat(workspaceChipFontSizePoints), weight: .medium))
+                    .lineLimit(1)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: CGFloat(workspaceChipChevronSizePoints)))
+                    .foregroundStyle(T.caption)
+                    .rotationEffect(.degrees(open ? 180 : 0))
+            }
+            .foregroundStyle(T.ink)
+            .padding(.horizontal, 8)
+            .frame(minHeight: CGFloat(workspaceChipMinHeightPoints))
+            .frame(maxWidth: CGFloat(workspaceChipMaxWidthPoints), alignment: .leading)
+        }
+        .buttonStyle(.plain)
+        .disabled(!model.isOnline)
+        .opacity(model.isOnline ? 1 : 0.45)
+        .accessibilityLabel(landingChooseWorkspace(english: L.en))
+        .popover(
+            isPresented: $open,
+            attachmentAnchor: .rect(.bounds),
+            arrowEdge: composerPickerPopoverOpensAbove ? .bottom : .top
+        ) {
+            VStack(alignment: .leading, spacing: 0) {
+                if model.workspaces.isEmpty {
+                    Text(workspacePickerLoading(english: L.en))
+                        .font(.system(size: 12))
+                        .foregroundStyle(T.text2)
+                        .padding(8)
+                }
+                ForEach(model.workspaces) { workspace in
+                    let title = workspaceDisplayTitle(
+                        title: workspace.title,
+                        path: workspace.path,
+                        localizedDefault: L.defaultWorkspace()
+                    )
+                    Button {
+                        model.draftWorkspaceId = workspace.workspaceId
+                        open = false
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "folder")
+                                .font(.system(size: CGFloat(workspaceChipIconSizePoints)))
+                                .foregroundStyle(T.ink)
+                            Text(title)
+                                .font(.system(size: 13))
+                                .foregroundStyle(T.ink)
+                                .lineLimit(1)
+                            Spacer(minLength: 8)
+                            if selectedId == workspace.workspaceId {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(T.ink)
+                            }
+                        }
+                        .padding(.horizontal, 8)
+                        .frame(minHeight: CGFloat(permissionMenuRowMinHeightPoints))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                if canCreate {
+                    Button {
+                        open = false
+                        showDirectoryPicker = true
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: D.plus)
+                                .font(.system(size: CGFloat(workspaceChipIconSizePoints)))
+                                .foregroundStyle(T.ink)
+                            Text(addWorkspaceMenuLabel(english: L.en))
+                                .font(.system(size: 13))
+                                .foregroundStyle(T.ink)
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.horizontal, 8)
+                        .frame(minHeight: CGFloat(permissionMenuRowMinHeightPoints))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(CGFloat(permissionMenuPaddingPoints))
+            .frame(minWidth: 180, maxWidth: CGFloat(workspaceChipMaxWidthPoints))
+            .modifier(PopoverCompactAdaptation())
+        }
+    }
+}
+
 /// Desktop `AgentPresetSeat`: landing-only ghost chip, custom menu of name + description.
 struct AgentPresetSeat: View {
     @ObservedObject var model: AppModel
@@ -38,6 +155,7 @@ struct AgentPresetSeat: View {
                     Image(systemName: "chevron.down")
                         .font(.system(size: 11))
                         .foregroundStyle(T.caption)
+                        .rotationEffect(.degrees(open ? 180 : 0))
                 }
                 .foregroundStyle(T.ink)
                 .padding(.horizontal, 8)
@@ -48,7 +166,12 @@ struct AgentPresetSeat: View {
             .disabled(!model.isOnline)
             .opacity(model.isOnline ? 1 : 0.45)
             .accessibilityLabel(currentLabel)
-            .popover(isPresented: $open, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
+            .accessibilityHint(agentPresetSeatHint(english: L.en))
+            .popover(
+                isPresented: $open,
+                attachmentAnchor: .rect(.bounds),
+                arrowEdge: composerPickerPopoverOpensAbove ? .bottom : .top
+            ) {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                         let id = row["id"].str() ?? ""
@@ -61,12 +184,11 @@ struct AgentPresetSeat: View {
                                     Text(PresetPolicy.name(row, english: L.en))
                                         .font(.system(size: 13))
                                         .foregroundStyle(T.ink)
-                                    if let detail = PresetPolicy.description(row, english: L.en), !detail.isEmpty {
-                                        Text(detail)
-                                            .font(.system(size: 12))
-                                            .foregroundStyle(T.caption)
-                                            .fixedSize(horizontal: false, vertical: true)
-                                    }
+                                    Text(PresetPolicy.description(row, english: L.en).flatMap { $0.isEmpty ? nil : $0 }
+                                         ?? agentPresetNoDescription(english: L.en))
+                                        .font(.system(size: 12))
+                                        .foregroundStyle(T.caption)
+                                        .fixedSize(horizontal: false, vertical: true)
                                 }
                                 Spacer(minLength: 8)
                                 if currentId == id {
