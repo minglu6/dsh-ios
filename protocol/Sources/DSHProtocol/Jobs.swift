@@ -411,7 +411,7 @@ public func applyJobOutputFrames(
 
 public func parseJobRoster(_ result: JSONValue) -> [JobRow] {
     let rows = result["jobs"].arr() ?? result["rows"].arr() ?? result.arr() ?? []
-    return rows.compactMap(JobRow.parse)
+    return rows.compactMap { JobRow.parse($0) }
 }
 
 /// Host `job.list` rows use string ids (`bash-1`); pocket JSON may also send a number.
