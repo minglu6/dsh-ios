@@ -244,6 +244,180 @@ public func skillMenuRows(_ skills: [SkillEntry], query: String) -> [SkillEntry]
     }.map(\.skill)
 }
 
+/// One slash-menu row. Sections are headings; command/skill rows are selectable.
+public enum CommandMenuRow: Equatable, Sendable {
+    case section(String)
+    case command(JSONValue)
+    case skill(SkillEntry)
+
+    public var isSelectable: Bool {
+        switch self {
+        case .section: return false
+        case .command, .skill: return true
+        }
+    }
+}
+
+public func commandMenuSectionTitle(_ section: String, english: Bool) -> String {
+    switch section {
+    case "add": return english ? "Add" : "添加"
+    case "commands": return english ? "Commands" : "指令"
+    case "skills": return english ? "Skills" : "技能"
+    default:
+        return section
+    }
+}
+
+public func commandMenuAvailable(kind: String?, ops: Set<String>) -> Bool {
+    switch kind {
+    case "file": return ops.contains("attachments.upload")
+    case "model": return ops.contains("models.catalog")
+    case "feedback": return ops.contains("sessionFeedback.record")
+    case "export": return ops.contains("session.export")
+    case "permission": return ops.contains("permissions.catalog")
+    default: return ops.contains("commands.execute")
+    }
+}
+
+/// Desktop composer menu keeps 「添加 / 指令 / 技能」 as three groups.
+/// Rank inside each group with the shared name ranker.
+public func commandMenuDisplayRows(
+    commands: [JSONValue],
+    skills: [SkillEntry],
+    query: String,
+    leading: Bool,
+    english: Bool
+) -> [CommandMenuRow] {
+    let add = commands.filter { commandAddNames.contains($0["name"].str() ?? "") }
+    let rest = commands.filter { !commandAddNames.contains($0["name"].str() ?? "") }
+    let addRows = commandMenuRows(add, query: query, leading: leading, english: english)
+    let commandRows = commandMenuRows(rest, query: query, leading: leading, english: english)
+    let skillRows = skillMenuRows(skills, query: query)
+    var items: [CommandMenuRow] = []
+    if !addRows.isEmpty {
+        items.append(.section(commandMenuSectionTitle("add", english: english)))
+        items.append(contentsOf: addRows.map { .command($0) })
+    }
+    if !commandRows.isEmpty {
+        items.append(.section(commandMenuSectionTitle("commands", english: english)))
+        items.append(contentsOf: commandRows.map { .command($0) })
+    }
+    if !skillRows.isEmpty {
+        items.append(.section(commandMenuSectionTitle("skills", english: english)))
+        items.append(contentsOf: skillRows.map { .skill($0) })
+    }
+    return items
+}
+
+public func commandMenuSelectableIndexes(_ rows: [CommandMenuRow]) -> [Int] {
+    rows.indices.filter { rows[$0].isSelectable }
+}
+
+public func commandMenuDefaultHighlight(_ rows: [CommandMenuRow]) -> Int? {
+    commandMenuSelectableIndexes(rows).first
+}
+
+public func commandMenuMoveHighlight(rows: [CommandMenuRow], current: Int?, direction: Int) -> Int? {
+    let indexes = commandMenuSelectableIndexes(rows)
+    guard !indexes.isEmpty else { return nil }
+    guard let current, let at = indexes.firstIndex(of: current) else {
+        return direction >= 0 ? indexes.first : indexes.last
+    }
+    let next = (at + direction % indexes.count + indexes.count) % indexes.count
+    return indexes[next]
+}
+
+public func commandMenuHighlightedRow(_ rows: [CommandMenuRow], highlight: Int?) -> CommandMenuRow? {
+    guard let highlight, rows.indices.contains(highlight) else { return nil }
+    let row = rows[highlight]
+    return row.isSelectable ? row : nil
+}
+
+/// Identity of a slash token whose menu the user dismissed. The same query
+/// must not reopen until the token or query changes (desktop ui-input-trigger).
+public struct SlashMenuDismissal: Equatable, Sendable {
+    public var query: String
+    public var start: Int
+    public var end: Int
+
+    public init(query: String, start: Int, end: Int) {
+        self.query = query
+        self.start = start
+        self.end = end
+    }
+}
+
+public func slashMenuTrigger(_ text: String, cursor: Int? = nil) -> ComposerTrigger? {
+    let at = cursor ?? text.count
+    guard let trigger = composerTrigger(text, cursor: at), trigger.kind == Character("/") else { return nil }
+    return trigger
+}
+
+public func slashMenuQuery(_ text: String, cursor: Int? = nil) -> String {
+    slashMenuTrigger(text, cursor: cursor)?.query ?? ""
+}
+
+public func slashMenuIsLeading(_ text: String, cursor: Int? = nil) -> Bool {
+    let at = cursor ?? text.count
+    if let trigger = slashMenuTrigger(text, cursor: at) {
+        return text.prefix(trigger.start).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+    return text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+}
+
+/// Plus-button launcher + typed `/` share one overlay. A dismissed token stays
+/// closed until the query changes; deleting `/` always hides the menu.
+public struct SlashMenuState: Equatable, Sendable {
+    public var plusOpen: Bool
+    public var dismissed: SlashMenuDismissal?
+
+    public init(plusOpen: Bool = false, dismissed: SlashMenuDismissal? = nil) {
+        self.plusOpen = plusOpen
+        self.dismissed = dismissed
+    }
+
+    public func isVisible(trigger: ComposerTrigger?) -> Bool {
+        if plusOpen { return true }
+        guard let trigger, trigger.kind == Character("/") else { return false }
+        if let dismissed, dismissed.query == trigger.query, dismissed.start == trigger.start, dismissed.end == trigger.end {
+            return false
+        }
+        return true
+    }
+
+    public mutating func track(trigger: ComposerTrigger?) {
+        guard let trigger, trigger.kind == Character("/") else {
+            if dismissed != nil, trigger == nil { dismissed = nil }
+            return
+        }
+        if let dismissed, dismissed.query != trigger.query || dismissed.start != trigger.start || dismissed.end != trigger.end {
+            self.dismissed = nil
+        }
+    }
+
+    public mutating func dismiss(trigger: ComposerTrigger?) {
+        plusOpen = false
+        if let trigger, trigger.kind == Character("/") {
+            dismissed = SlashMenuDismissal(query: trigger.query, start: trigger.start, end: trigger.end)
+        } else {
+            dismissed = nil
+        }
+    }
+
+    public mutating func togglePlus(trigger: ComposerTrigger?) {
+        if isVisible(trigger: trigger) {
+            dismiss(trigger: trigger)
+            return
+        }
+        plusOpen = true
+        dismissed = nil
+    }
+
+    public mutating func closeAfterPick(trigger: ComposerTrigger?) {
+        dismiss(trigger: trigger)
+    }
+}
+
 public func todoProgressLabel(_ todos: [TodoItem], en: Bool) -> String {
     var done = 0
     var active = 0

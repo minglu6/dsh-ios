@@ -206,10 +206,10 @@ enum L {
     static func parentDirectory() -> String { en ? "Parent directory" : "上级目录" }
     static func noWorkspace() -> String { en ? "No workspace" : "无工作区" }
     static func noWorkspaceHint() -> String {
-        en
-            ? "This session has no workspace. Choose one in session settings first."
-            : "此会话没有工作区。请先在会话设置中选择工作区。"
+        en ? "This session has no workspace directory." : "这个会话没有工作区目录。"
     }
+    static func copyPath() -> String { en ? "Copy path" : "复制路径" }
+    static func copyName() -> String { en ? "Copy name" : "复制名称" }
     static func readingFiles() -> String { en ? "Reading…" : "正在读取…" }
     static func emptyDirectory() -> String { en ? "Empty directory" : "空目录" }
     static func filesTruncated() -> String {

@@ -1,22 +1,19 @@
 import SwiftUI
+import UIKit
 import DSHProtocol
 
 struct FilesPanel: View {
     @ObservedObject var model: AppModel
     @Environment(\.scenePhase) private var scenePhase
-    @State private var requestedPath = ""
-    @State private var path = ""
-    @State private var entries: [WorkspaceFileEntry] = []
-    @State private var loading = true
-    @State private var failure: String?
-    @State private var truncated = false
-    @State private var generation = 0
+    @State private var tree = FileTreeState.root
+    @State private var refreshToken = 0
     @State private var previewPath: String?
 
     private var sessionId: String? { model.chat?.sessionId }
     private var cwd: String? { model.sessions.first { $0.sessionId == sessionId }?.cwd }
     private var canList: Bool { model.isOnline && model.ops.contains("files.list") }
     private var canWatch: Bool { canList && model.ops.contains("files.follow") }
+    private var rows: [FileTreeRow] { fileTreeVisibleRows(tree) }
 
     var body: some View {
         Group {
@@ -44,7 +41,7 @@ struct FilesPanel: View {
     private var listing: some View {
         VStack(spacing: 0) {
             header(L.workspaceFiles()) { model.pop() }
-            crumbs
+            toolbar
             Divider()
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
@@ -53,51 +50,20 @@ struct FilesPanel: View {
             }
         }
         .background(T.bg)
-        .onAppear {
-            load(requestedPath)
-        }
-        .task(id: "\(sessionId ?? "")-\(generation)-\(cwd ?? "")-\(model.filesRevision)-\(canWatch)-\(previewPath ?? "")-\(scenePhase == .active)") {
-            guard scenePhase == .active else { return }
-            await fetch()
-        }
+        .background { watches }
+        .onChange(of: sessionId) { _ in resetTree() }
+        .onChange(of: cwd) { _ in resetTree() }
+        .onChange(of: model.filesRevision) { _ in refreshToken += 1 }
     }
 
-    private var crumbs: some View {
-        HStack(spacing: 4) {
-            let parent = workspaceFilesParentPath(path)
-            Button {
-                if let parent { load(parent) }
-            } label: {
-                Image(systemName: "chevron.left")
-                    .foregroundStyle(canList && parent != nil ? T.text2 : T.text3.opacity(0.45))
+    private var toolbar: some View {
+        HStack(spacing: 8) {
+            PreviewPathLabel(path: cwdName)
+            Spacer(minLength: 8)
+            Button { refreshToken += 1 } label: {
+                Image(systemName: "arrow.clockwise").foregroundStyle(canList && !(cwd ?? "").isEmpty ? T.text2 : T.caption)
             }
-            .disabled(!(canList && parent != nil))
-            .accessibilityLabel(L.parentDirectory())
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 2) {
-                    Button {
-                        load("")
-                    } label: {
-                        Text(cwdName)
-                            .font(.system(size: 12))
-                            .foregroundStyle(canList && !loading && !(cwd ?? "").isEmpty ? T.text2 : T.caption)
-                    }
-                    .disabled(!(canList && !loading && !(cwd ?? "").isEmpty))
-                    ForEach(Array(path.split(separator: "/").enumerated()), id: \.offset) { index, part in
-                        Image(systemName: "chevron.right").font(.system(size: 9)).foregroundStyle(T.text3)
-                        Button {
-                            load(path.split(separator: "/").prefix(index + 1).joined(separator: "/"))
-                        } label: {
-                            Text(String(part)).font(.system(size: 12)).foregroundStyle(canList && !loading ? T.text2 : T.caption)
-                        }
-                        .disabled(!(canList && !loading))
-                    }
-                }
-            }
-            Button { load(path) } label: {
-                Image(systemName: "arrow.clockwise").foregroundStyle(canList && !loading && !(cwd ?? "").isEmpty ? T.text2 : T.caption)
-            }
-            .disabled(!(canList && !loading && !(cwd ?? "").isEmpty))
+            .disabled(!(canList && !(cwd ?? "").isEmpty))
             .accessibilityLabel(L.reload())
         }
         .padding(.horizontal, 12)
@@ -107,128 +73,186 @@ struct FilesPanel: View {
 
     private var cwdName: String {
         guard let cwd, !cwd.isEmpty else { return L.noWorkspace() }
-        let trimmed = cwd.trimmingCharacters(in: CharacterSet(charactersIn: "/\\"))
-        return trimmed.split(whereSeparator: { $0 == "/" || $0 == "\\" }).last.map(String.init) ?? "/"
+        return cwd
+    }
+
+    @ViewBuilder
+    private var watches: some View {
+        if previewPath == nil, scenePhase == .active, canList, let cwd, !cwd.isEmpty {
+            ForEach(tree.expanded.sorted(), id: \.self) { path in
+                Color.clear
+                    .frame(width: 0, height: 0)
+                    .task(id: "\(sessionId ?? "")-\(path)-\(refreshToken)-\(cwd)-\(canWatch)") {
+                        await fetch(path)
+                    }
+            }
+        }
     }
 
     @ViewBuilder
     private var content: some View {
         if cwd == nil || cwd?.isEmpty == true {
             Text(L.noWorkspaceHint()).font(.system(size: 13)).foregroundStyle(T.text3).padding(20)
-        } else if loading {
-            HStack(spacing: 10) {
-                ProgressView().controlSize(.mini)
-                Text(L.readingFiles()).font(.system(size: 13)).foregroundStyle(T.text3)
-            }
-            .padding(20)
-        } else if let failure {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(failure).font(.system(size: 13)).foregroundStyle(T.err)
-                Button(L.reload()) { load(path) }.disabled(!canList).foregroundStyle(canList ? T.accent : T.caption)
-            }
-            .padding(20)
-        } else if entries.isEmpty {
-            Text(L.emptyDirectory()).font(.system(size: 13)).foregroundStyle(T.text3).padding(20)
+        } else if tree.levels[""] == nil && !canList {
+            EmptyView()
         } else {
-            ForEach(entries) { entry in
-                let directory = entry.isDirectory
-                let openable = directory || entry.isFile
-                let enabled = model.isOnline && openable && (!directory || canList)
-                Button {
-                    let child = path.isEmpty ? entry.name : "\(path)/\(entry.name)"
-                    if directory { load(child) } else { previewPath = child }
-                } label: {
-                    HStack(spacing: 10) {
-                        FileTypeIcon(path: entry.name, type: entry.type, openable: openable)
-                        Text(entry.name)
-                            .font(.system(size: 13))
-                            .foregroundStyle(enabled ? T.ink : T.text3)
-                            .lineLimit(1)
-                        Spacer()
-                        if directory { Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(T.text3) }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 9)
-                    .frame(minHeight: 48)
+            ForEach(rows) { row in
+                fileRow(row)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func fileRow(_ row: FileTreeRow) -> some View {
+        switch row.kind {
+        case .loading:
+            noteRow(L.readingFiles(), depth: row.depth)
+        case .empty:
+            noteRow(L.emptyDirectory(), depth: row.depth)
+        case .truncated:
+            noteRow(L.filesTruncated(), depth: row.depth)
+        case .failed:
+            noteRow(row.message ?? "", depth: row.depth, error: true)
+        case .directory(let expanded):
+            let enabled = model.isOnline && canList
+            Button {
+                fileTreeToggle(&tree, path: row.path)
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: expanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(T.text3)
+                        .frame(width: 12)
+                    FileTypeIcon(path: row.name, type: row.type, openable: enabled)
+                    Text(row.name)
+                        .font(.system(size: 13))
+                        .foregroundStyle(enabled ? T.ink : T.text3)
+                        .lineLimit(1)
+                    Spacer()
                 }
-                .disabled(!enabled)
-                .accessibilityLabel(openable ? entry.name : "\(entry.name)。\(L.notFileOrDirectory())")
+                .padding(.leading, 12 + CGFloat(row.depth) * 18)
+                .padding(.trailing, 20)
+                .padding(.vertical, 9)
+                .frame(minHeight: 48)
             }
-            if truncated {
-                Text(L.filesTruncated()).font(.system(size: 12)).foregroundStyle(T.text3).padding(20)
+            .buttonStyle(.plain)
+            .disabled(!enabled)
+            .accessibilityLabel(row.name)
+            .accessibilityAddTraits(expanded ? [.isSelected] : [])
+            .fileTreeContextMenu(path: row.path)
+        case .file:
+            let enabled = model.isOnline
+            Button {
+                previewPath = row.path
+            } label: {
+                HStack(spacing: 8) {
+                    Color.clear.frame(width: 12, height: 1)
+                    FileTypeIcon(path: row.name, type: row.type, openable: enabled)
+                    Text(row.name)
+                        .font(.system(size: 13))
+                        .foregroundStyle(enabled ? T.ink : T.text3)
+                        .lineLimit(1)
+                    Spacer()
+                }
+                .padding(.leading, 12 + CGFloat(row.depth) * 18)
+                .padding(.trailing, 20)
+                .padding(.vertical, 9)
+                .frame(minHeight: 48)
             }
+            .buttonStyle(.plain)
+            .disabled(!enabled)
+            .accessibilityLabel(row.name)
+            .fileTreeContextMenu(path: row.path)
+        case .other:
+            HStack(spacing: 8) {
+                Color.clear.frame(width: 12, height: 1)
+                FileTypeIcon(path: row.name, type: row.type, openable: false)
+                Text(row.name)
+                    .font(.system(size: 13))
+                    .foregroundStyle(T.text3)
+                    .lineLimit(1)
+                Spacer()
+            }
+            .padding(.leading, 12 + CGFloat(row.depth) * 18)
+            .padding(.trailing, 20)
+            .padding(.vertical, 9)
+            .frame(minHeight: 48)
+            .accessibilityLabel("\(row.name)。\(L.notFileOrDirectory())")
+            .fileTreeContextMenu(path: row.path)
         }
     }
 
-    private func load(_ target: String) {
-        guard canList else { return }
-        if target != path {
-            entries = []
-            truncated = false
-            loading = true
-        }
-        requestedPath = target
-        path = target
-        failure = nil
-        generation += 1
+    private func noteRow(_ text: String, depth: Int, error: Bool = false) -> some View {
+        Text(text)
+            .font(.system(size: 12))
+            .foregroundStyle(error ? T.err : T.text3)
+            .padding(.leading, 32 + CGFloat(depth) * 18)
+            .padding(.trailing, 20)
+            .padding(.vertical, 6)
     }
 
-    private func fetch() async {
-        guard canList, let sessionId, previewPath == nil else {
-            loading = false
-            return
-        }
-        let request = generation
-        let target = requestedPath
-        guard let cwd, !cwd.isEmpty else {
-            entries = []
-            loading = false
-            return
-        }
-        func currentRequest() -> Bool { generation == request }
+    private func resetTree() {
+        tree = FileTreeState.root
+        refreshToken += 1
+    }
+
+    private func fetch(_ path: String) async {
+        guard canList, let sessionId, previewPath == nil else { return }
+        guard let cwd, !cwd.isEmpty else { return }
+        await MainActor.run { fileTreeMarkLoading(&tree, path: path) }
         do {
             try await observeWorkspaceDirectory(
-                list: { watchedPath in
-                    try await model.listFiles(sessionId: sessionId, path: watchedPath ?? (target.isEmpty ? "." : target))
+                list: { _ in
+                    try await model.listFiles(sessionId: sessionId, path: path.isEmpty ? "." : path)
                 },
-                changes: canWatch ? model.followFiles(sessionId: sessionId, path: target.isEmpty ? "." : target) : nil,
+                changes: canWatch ? model.followFiles(sessionId: sessionId, path: path.isEmpty ? "." : path) : nil,
                 onListing: { result in
                     Task { @MainActor in
-                        guard currentRequest() else { return }
-                        let listedPath = result["path"].str() ?? target
+                        let listedPath = result["path"].str() ?? path
                         let relative = listedPath == "." ? "" : listedPath
                         if !workspaceFileListIsRelative(relative) {
-                            entries = []
-                            truncated = false
-                            failure = filesFailureMessage(error: PocketError(code: "workspace-file/outside-workspace", message: listedPath), english: L.en)
-                            loading = false
+                            fileTreeApplyFailure(
+                                &tree,
+                                path: path,
+                                message: filesFailureMessage(
+                                    error: PocketError(code: "workspace-file/outside-workspace", message: listedPath),
+                                    english: L.en
+                                )
+                            )
                             return
                         }
-                        path = relative
-                        entries = parseWorkspaceFileEntries(result)
-                        truncated = result["truncated"].bool() == true
-                        failure = nil
-                        loading = false
+                        fileTreeApplyListing(
+                            &tree,
+                            path: path,
+                            entries: parseWorkspaceFileEntries(result),
+                            truncated: result["truncated"].bool() == true
+                        )
                     }
                 },
                 onFailure: { error in
                     Task { @MainActor in
-                        guard currentRequest() else { return }
-                        entries = []
-                        truncated = false
-                        failure = filesFailureMessage(error: error, english: L.en)
-                        loading = false
+                        fileTreeApplyFailure(&tree, path: path, message: filesFailureMessage(error: error, english: L.en))
                     }
                 }
             )
         } catch is CancellationError {
             return
         } catch {
-            if currentRequest() {
-                entries = []
-                truncated = false
-                failure = filesFailureMessage(error: error, english: L.en)
-                loading = false
+            await MainActor.run {
+                fileTreeApplyFailure(&tree, path: path, message: filesFailureMessage(error: error, english: L.en))
+            }
+        }
+    }
+}
+
+private extension View {
+    func fileTreeContextMenu(path: String) -> some View {
+        contextMenu {
+            Button(L.copyPath()) {
+                UIPasteboard.general.string = path
+            }
+            Button(L.copyName()) {
+                UIPasteboard.general.string = previewFileName(path)
             }
         }
     }

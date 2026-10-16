@@ -213,7 +213,7 @@ public func parseWorkspaceFileEntries(_ result: JSONValue) -> [WorkspaceFileEntr
     }
     .sorted {
         if $0.isDirectory != $1.isDirectory { return $0.isDirectory && !$1.isDirectory }
-        return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+        return $0.name.localizedStandardCompare($1.name) == .orderedAscending
     }
 }
 

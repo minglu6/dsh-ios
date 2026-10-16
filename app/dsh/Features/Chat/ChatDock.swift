@@ -554,9 +554,22 @@ struct PromptQueue: View {
     }
 }
 
-struct CommandSheet: View {
+final class CommandMenuHost: ObservableObject {
+    @Published var enterRequest = 0
+    @Published var moveRequest = 0
+    @Published var moveDirection = 0
+
+    func requestEnter() { enterRequest += 1 }
+    func requestMove(_ direction: Int) {
+        moveDirection = direction
+        moveRequest += 1
+    }
+}
+
+struct CommandMenuOverlay: View {
     @ObservedObject var model: AppModel
-    var initialQuery: String = ""
+    @ObservedObject var host: CommandMenuHost
+    var query: String = ""
     var leading: Bool = true
     var consumeSlash: Bool = true
     var onDismiss: () -> Void
@@ -569,12 +582,12 @@ struct CommandSheet: View {
     var onModel: () -> Void
     var onExport: () -> Void
 
-    @State private var query = ""
     @State private var commands: [JSONValue] = []
     @State private var skills: [SkillEntry] = []
     @State private var loading = true
     @State private var error: String?
     @State private var attempt = 0
+    @State private var highlight: Int?
 
     private var sessionReady: Bool { model.chat?.loaded == true }
     private var subagent: Bool {
@@ -588,191 +601,241 @@ struct CommandSheet: View {
         )
     }
 
+    private var collision: String? { commandContributionCollision(candidates) }
+
+    private var rows: [CommandMenuRow] {
+        if collision != nil { return [] }
+        return commandMenuDisplayRows(
+            commands: candidates,
+            skills: skills,
+            query: query,
+            leading: leading,
+            english: L.en
+        )
+    }
+
+    private var catalogTaskId: String {
+        "\(model.activeId ?? "")-\(model.chat?.sessionId ?? "")-\(sessionReady)-\(attempt)-\(model.isOnline)-\(model.ops.sorted().joined())-\(subagent)"
+    }
+
     var body: some View {
-        NavigationStack {
+        menuCard
+            .task(id: catalogTaskId) { await load() }
+            .onAppear { highlight = commandMenuDefaultHighlight(rows) }
+            .onChange(of: query) { _ in highlight = commandMenuDefaultHighlight(rows) }
+            .onChange(of: rows.count) { _ in syncHighlight() }
+            .onChange(of: host.enterRequest) { _ in
+                if host.enterRequest > 0 { activateHighlight() }
+            }
+            .onChange(of: host.moveRequest) { _ in
+                if host.moveRequest > 0 {
+                    highlight = commandMenuMoveHighlight(rows: rows, current: highlight, direction: host.moveDirection)
+                }
+            }
+    }
+
+    private var menuCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            statusBanner
+            menuList
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(T.settingsCard)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 0.5))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    @ViewBuilder
+    private var statusBanner: some View {
+        if loading { loadingRow }
+        if let error { errorRow(error) }
+        if let collision {
+            Text(commandContributionCollisionMessage(collision, english: L.en))
+                .font(.caption)
+                .foregroundStyle(T.err)
+                .padding(12)
+        }
+        if !loading && error == nil && rows.isEmpty {
+            Text(L.noOptions()).font(.caption).foregroundStyle(T.text3).padding(12)
+        }
+    }
+
+    private var loadingRow: some View {
+        HStack {
+            ProgressView().controlSize(.mini)
+            Text(L.t("正在加载选项…", "Loading options…")).font(.caption).foregroundStyle(T.text3)
+        }
+        .padding(12)
+    }
+
+    private func errorRow(_ message: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text(message).font(.caption).foregroundStyle(T.err)
+            Button(L.retry()) { attempt += 1 }.disabled(!model.isOnline)
+        }
+        .padding(12)
+    }
+
+    private var menuList: some View {
+        ScrollViewReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: 8) {
-                    TextField(L.en ? "Search…" : "搜索…", text: $query)
-                        .padding(12)
-                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 1))
-                    if loading { ProgressView().frame(maxWidth: .infinity) }
-                    if let error {
-                        Text(error).foregroundStyle(T.err)
-                        Button(L.retry()) { attempt += 1 }.disabled(!model.isOnline)
-                    }
-                    let collision = commandContributionCollision(candidates)
-                    if let collision {
-                        Text(commandContributionCollisionMessage(collision, english: L.en))
-                            .foregroundStyle(T.err)
-                    }
-                    let rows = collision == nil ? commandMenuRows(candidates, query: query, leading: leading, english: L.en) : []
-                    let skillRows = skillMenuRows(skills, query: query)
-                    if !loading && error == nil && rows.isEmpty && skillRows.isEmpty {
-                        Text(L.noOptions()).foregroundStyle(T.text3)
-                    }
-                    if !query.isEmpty && !rows.isEmpty {
-                        Text(L.sectionCommands()).font(.caption).foregroundStyle(T.text3)
-                    }
-                    ForEach(Array(commandSections(rows).enumerated()), id: \.offset) { _, item in
-                        switch item {
-                        case .section(let title):
-                            Text(title).font(.caption).foregroundStyle(T.text3)
-                        case .command(let command):
-                            let name = command["name"].str() ?? ""
-                            commandRow(command, name: name, kind: commandMenuKind(command))
-                        }
-                    }
-                    if !query.isEmpty && !skillRows.isEmpty {
-                        Text(L.sectionSkills()).font(.caption).foregroundStyle(T.text3)
-                    }
-                    ForEach(Array(skillSections(skillRows).enumerated()), id: \.offset) { _, item in
-                        switch item {
-                        case .section(let title):
-                            Text(title).font(.caption).foregroundStyle(T.text3)
-                        case .skill(let skill):
-                            skillRow(skill)
-                        }
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(rows.enumerated()), id: \.offset) { index, item in
+                        menuItem(item, index: index)
                     }
                 }
-                .padding(22)
             }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L.cancel(), action: onDismiss) } }
-        }
-        .onAppear { query = initialQuery }
-        .task(id: "\(model.activeId ?? "")-\(model.chat?.sessionId ?? "")-\(sessionReady)-\(attempt)-\(model.isOnline)-\(model.ops.sorted().joined())-\(subagent)") {
-            await load()
+            .frame(maxHeight: .infinity)
+            .onChange(of: highlight) { value in
+                if let value { proxy.scrollTo(value, anchor: .center) }
+            }
         }
     }
 
     @ViewBuilder
-    private func commandRow(_ command: JSONValue, name: String, kind: String?) -> some View {
+    private func menuItem(_ item: CommandMenuRow, index: Int) -> some View {
+        switch item {
+        case .section(let title):
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(T.text3)
+                .padding(.horizontal, 12)
+                .padding(.top, 10)
+                .padding(.bottom, 4)
+        case .command(let command):
+            commandRow(command, name: command["name"].str() ?? "", kind: commandMenuKind(command), index: index)
+        case .skill(let skill):
+            skillRow(skill, index: index)
+        }
+    }
+
+    private func syncHighlight() {
+        if highlight.flatMap({ rows.indices.contains($0) && rows[$0].isSelectable }) != true {
+            highlight = commandMenuDefaultHighlight(rows)
+        }
+    }
+
+    @ViewBuilder
+    private func commandRow(_ command: JSONValue, name: String, kind: String?, index: Int) -> some View {
         let label = commandMenuLabel(command, english: L.en)
-        let available: Bool = {
-            switch kind {
-            case "file": return model.ops.contains("attachments.upload")
-            case "model": return model.ops.contains("models.catalog")
-            case "feedback": return model.ops.contains("sessionFeedback.record")
-            case "export": return model.ops.contains("session.export")
-            case "permission": return model.ops.contains("permissions.catalog")
-            default: return model.ops.contains("commands.execute")
-            }
-        }()
-        let enabled = model.isOnline && sessionReady && available
-        Button {
-            guard enabled else { return }
-            @MainActor func consume() { if consumeSlash { model.consumeComposerSlash() } }
-            switch kind {
-            case "file": consume(); onDismiss(); onFile()
-            case "model": consume(); onModel()
-            case "goal": consume(); onGoal()
-            case "plan":
-                consume()
-                if name == "plan" { onPlan() } else { model.executeCommand("/\(name)") }
-                onDismiss()
-            case "feedback": consume(); onFeedback()
-            case "compact":
-                consume()
-                if name == "compact" { onCompact() } else { model.executeCommand("/\(name)") }
-                onDismiss()
-            case "permission": consume(); onPerm()
-            case "export": consume(); onExport(); onDismiss()
-            default:
-                if command["input"].obj() != nil {
-                    model.insertComposer("/\(name)")
-                } else {
-                    consume()
-                    model.executeCommand("/\(name)")
-                }
-                onDismiss()
-            }
-        } label: {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Image(systemName: commandIcon(kind)).foregroundStyle(enabled ? T.text2 : T.text3)
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack {
-                        Text(label ?? name).foregroundStyle(enabled ? T.ink : T.text3)
-                        if let label, label.caseInsensitiveCompare(name) != .orderedSame {
-                            Text(name).font(.caption).foregroundStyle(T.text3)
-                        }
-                    }
-                    if let detail = commandMenuDescription(command, english: L.en) {
-                        Text(detail).font(.caption).foregroundStyle(T.text3)
-                    }
-                }
-                Spacer()
-            }
-            .padding(.vertical, 8)
+        let enabled = model.isOnline && sessionReady && commandMenuAvailable(kind: kind, ops: model.ops)
+        let active = highlight == index
+        menuRow(
+            index: index,
+            enabled: enabled,
+            active: active,
+            icon: commandMenuIconSymbol(kind),
+            title: label ?? name,
+            alias: label.flatMap { $0.caseInsensitiveCompare(name) == .orderedSame ? nil : name },
+            detail: commandMenuDescription(command, english: L.en)
+        ) {
+            activate(command, name: name, kind: kind)
         }
-        .buttonStyle(.plain)
-        .disabled(!enabled)
-    }
-
-    private func commandIcon(_ kind: String?) -> String {
-        commandMenuIconSymbol(kind)
     }
 
     @ViewBuilder
-    private func skillRow(_ skill: SkillEntry) -> some View {
+    private func skillRow(_ skill: SkillEntry, index: Int) -> some View {
         let enabled = model.isOnline && sessionReady
-        Button {
+        menuRow(
+            index: index,
+            enabled: enabled,
+            active: highlight == index,
+            icon: "sparkle",
+            title: skill.name,
+            alias: nil,
+            detail: {
+                let text = skill.menuDescription(english: L.en)
+                return text.isEmpty ? nil : text
+            }()
+        ) {
             guard enabled else { return }
             model.insertComposer("/\(skill.name) ")
             onDismiss()
-        } label: {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Image(systemName: "sparkle").foregroundStyle(enabled ? T.text2 : T.text3)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(skill.name).foregroundStyle(enabled ? T.ink : T.text3)
-                    let detail = skill.menuDescription(english: L.en)
-                    if !detail.isEmpty {
-                        Text(detail).font(.caption).foregroundStyle(T.text3)
+        }
+    }
+
+    private func menuRow(
+        index: Int,
+        enabled: Bool,
+        active: Bool,
+        icon: String,
+        title: String,
+        alias: String?,
+        detail: String?,
+        action: @escaping () -> Void
+    ) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Image(systemName: icon).foregroundStyle(enabled ? T.text2 : T.text3)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack {
+                    Text(title).foregroundStyle(enabled ? T.ink : T.text3)
+                    if let alias {
+                        Text(alias).font(.caption).foregroundStyle(T.text3)
                     }
                 }
-                Spacer()
-            }
-            .padding(.vertical, 8)
-        }
-        .buttonStyle(.plain)
-        .disabled(!enabled)
-    }
-
-    private enum CommandListItem {
-        case section(String)
-        case command(JSONValue)
-    }
-
-    private enum SkillListItem {
-        case section(String)
-        case skill(SkillEntry)
-    }
-
-    private func commandSections(_ rows: [JSONValue]) -> [CommandListItem] {
-        var items: [CommandListItem] = []
-        var lastSection: String?
-        for command in rows {
-            if query.isEmpty, let name = command["name"].str() {
-                let section = commandAddNames.contains(name) ? L.sectionAdd() : L.sectionCommands()
-                if section != lastSection {
-                    items.append(.section(section))
-                    lastSection = section
+                if let detail, !detail.isEmpty {
+                    Text(detail).font(.caption).foregroundStyle(T.text3)
                 }
             }
-            items.append(.command(command))
+            Spacer()
         }
-        return items
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(active ? T.hoverBg : Color.clear)
+        .contentShape(Rectangle())
+        .id(index)
+        .onTapGesture {
+            highlight = index
+            if enabled { action() }
+        }
+        .onHover { hovering in
+            if hovering { highlight = index }
+        }
     }
 
-    private func skillSections(_ rows: [SkillEntry]) -> [SkillListItem] {
-        guard !rows.isEmpty else { return [] }
-        var items: [SkillListItem] = []
-        if query.isEmpty {
-            items.append(.section(L.sectionSkills()))
+    private func activateHighlight() {
+        guard let row = commandMenuHighlightedRow(rows, highlight: highlight) else { return }
+        switch row {
+        case .command(let command):
+            activate(command, name: command["name"].str() ?? "", kind: commandMenuKind(command))
+        case .skill(let skill):
+            guard model.isOnline && sessionReady else { return }
+            model.insertComposer("/\(skill.name) ")
+            onDismiss()
+        case .section:
+            return
         }
-        for skill in rows {
-            items.append(.skill(skill))
+    }
+
+    private func activate(_ command: JSONValue, name: String, kind: String?) {
+        let enabled = model.isOnline && sessionReady && commandMenuAvailable(kind: kind, ops: model.ops)
+        guard enabled else { return }
+        @MainActor func consume() { if consumeSlash { model.consumeComposerSlash() } }
+        switch kind {
+        case "file": consume(); onDismiss(); onFile()
+        case "model": consume(); onModel(); onDismiss()
+        case "goal": consume(); onGoal(); onDismiss()
+        case "plan":
+            consume()
+            if name == "plan" { onPlan() } else { model.executeCommand("/\(name)") }
+            onDismiss()
+        case "feedback": consume(); onFeedback(); onDismiss()
+        case "compact":
+            consume()
+            if name == "compact" { onCompact() } else { model.executeCommand("/\(name)") }
+            onDismiss()
+        case "permission": consume(); onPerm(); onDismiss()
+        case "export": consume(); onExport(); onDismiss()
+        default:
+            if command["input"].obj() != nil {
+                model.insertComposer("/\(name)")
+            } else {
+                consume()
+                model.executeCommand("/\(name)")
+            }
+            onDismiss()
         }
-        return items
     }
 
     private func load() async {

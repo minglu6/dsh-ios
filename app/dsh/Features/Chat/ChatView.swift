@@ -19,8 +19,9 @@ struct ChatView: View {
     @State private var inspectTool: Item.Tool?
     @State private var showPermission = false
     @State private var riskPermission: String?
-    @State private var showCommands = false
-    @State private var commandFromSlash = false
+    @State private var slashMenu = SlashMenuState()
+    @StateObject private var commandHost = CommandMenuHost()
+    @State private var composerFocus = 0
     @State private var showGoal = false
     @State private var questionDrafts: [String: QuestionDraft] = [:]
     @State private var showFileImporter = false
@@ -38,14 +39,7 @@ struct ChatView: View {
             header
             tabs
             if tab == 0 {
-                transcript
-                dock
-                if !questionVisible && sessionApproval == nil {
-                    composer
-                }
-                if let metrics = model.chat?.composerMetrics {
-                    ComposerStats(metrics: metrics)
-                }
+                chatTab
             } else if model.showCodeWorkView {
                 TrajectoryView(model: model)
             }
@@ -145,22 +139,8 @@ struct ChatView: View {
                 )
             }
         }
-        .sheet(isPresented: $showCommands) {
-            CommandSheet(
-                model: model,
-                initialQuery: commandFromSlash ? slashQuery : "",
-                leading: commandLeading,
-                consumeSlash: commandFromSlash,
-                onDismiss: { showCommands = false },
-                onFile: { showFileImporter = true },
-                onGoal: { showGoal = true },
-                onPlan: { model.executeCommand("/plan") },
-                onFeedback: { showSessionFeedback = true },
-                onCompact: { model.executeCommand("/compact") },
-                onPerm: { if model.isOnline { showPermission = true } },
-                onModel: { if model.isOnline { showModels = true } },
-                onExport: { model.exportSession() }
-            )
+        .onChange(of: model.composerText) { _ in
+            slashMenu.track(trigger: slashTrigger)
         }
         .sheet(isPresented: $showGoal) {
             GoalSheet(model: model) { showGoal = false }
@@ -322,18 +302,75 @@ struct ChatView: View {
         return !question.questions.isEmpty && model.hiddenQuestionId != question.questionId
     }
 
-    private var slashQuery: String {
-        composerTrigger(model.composerText, cursor: model.composerText.count)?.kind == Character("/")
-            ? (composerTrigger(model.composerText, cursor: model.composerText.count)?.query ?? "")
-            : ""
+    private var slashTrigger: ComposerTrigger? { slashMenuTrigger(model.composerText) }
+
+    private var commandMenuVisible: Bool { slashMenu.isVisible(trigger: slashTrigger) }
+
+    private var chatTab: some View {
+        VStack(spacing: 0) {
+            GeometryReader { geo in
+                ZStack(alignment: .bottom) {
+                    VStack(spacing: 0) {
+                        transcript
+                        dock
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    if commandMenuVisible {
+                        commandMenuLayer(maxHeight: max(240, geo.size.height * 0.72))
+                    }
+                }
+            }
+            if !questionVisible && sessionApproval == nil {
+                composer
+            }
+            if let metrics = model.chat?.composerMetrics {
+                ComposerStats(metrics: metrics)
+            }
+        }
     }
 
-    private var commandLeading: Bool {
-        let text = model.composerText
-        if commandFromSlash, let trigger = composerTrigger(text, cursor: text.count), trigger.kind == Character("/") {
-            return text.prefix(trigger.start).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    private func commandMenuLayer(maxHeight: CGFloat) -> some View {
+        ZStack(alignment: .bottom) {
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture { dismissCommandMenu() }
+            commandMenu
+                .padding(.horizontal, 14)
+                .padding(.bottom, 4)
+                .frame(maxHeight: maxHeight, alignment: .bottom)
         }
-        return text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var commandMenu: some View {
+        CommandMenuOverlay(
+            model: model,
+            host: commandHost,
+            query: slashMenuQuery(model.composerText),
+            leading: slashMenuIsLeading(model.composerText),
+            consumeSlash: slashTrigger != nil,
+            onDismiss: { dismissCommandMenu() },
+            onFile: { showFileImporter = true },
+            onGoal: { showGoal = true },
+            onPlan: { model.executeCommand("/plan") },
+            onFeedback: { showSessionFeedback = true },
+            onCompact: { model.executeCommand("/compact") },
+            onPerm: { if model.isOnline { showPermission = true } },
+            onModel: { if model.isOnline { showModels = true } },
+            onExport: { model.exportSession() }
+        )
+    }
+
+    private func dismissCommandMenu() {
+        slashMenu.dismiss(trigger: slashTrigger)
+    }
+
+    private func submitCommandMenuOrSend() {
+        if commandMenuVisible {
+            commandHost.requestEnter()
+            return
+        }
+        model.sendCurrent()
     }
 
     @ViewBuilder
@@ -501,10 +538,20 @@ struct ChatView: View {
     private var composer: some View {
         ComposerView(
             model: model,
-            onPlus: { commandFromSlash = false; showCommands = true },
+            interceptKeys: commandMenuVisible,
+            focusToken: composerFocus,
+            onPlus: {
+                slashMenu.togglePlus(trigger: slashTrigger)
+                if slashMenu.isVisible(trigger: slashTrigger) {
+                    composerFocus += 1
+                }
+            },
             onPerm: { if model.isOnline { showPermission = true } },
             onModel: { if model.isOnline { showModels = true } },
-            onSlash: { commandFromSlash = true; showCommands = true }
+            onSend: { submitCommandMenuOrSend() },
+            onCommandReturn: { commandHost.requestEnter() },
+            onCommandMove: { commandHost.requestMove($0) },
+            onCommandEscape: { dismissCommandMenu() }
         )
     }
 }
@@ -935,11 +982,15 @@ private struct MessageActions: View {
 
 struct ComposerView: View {
     @ObservedObject var model: AppModel
+    var interceptKeys = false
+    var focusToken = 0
     var onPlus: () -> Void = {}
     var onPerm: () -> Void = {}
     var onModel: () -> Void = {}
-    var onSlash: () -> Void = {}
-    @FocusState private var focused: Bool
+    var onSend: () -> Void = {}
+    var onCommandReturn: () -> Void = {}
+    var onCommandMove: (Int) -> Void = { _ in }
+    var onCommandEscape: () -> Void = {}
 
     private var trigger: ComposerTrigger? {
         composerTrigger(model.composerText, cursor: model.composerText.count)
@@ -976,16 +1027,21 @@ struct ComposerView: View {
                     .buttonStyle(.plain)
                     .frame(minHeight: 48)
                 }
-                TextField(L.composerPlaceholder(), text: $model.composerText, axis: .vertical)
-                    .lineLimit(1...6)
-                    .focused($focused)
+                ComposerTextView(
+                    text: $model.composerText,
+                    placeholder: L.composerPlaceholder(),
+                    interceptKeys: interceptKeys,
+                    focusToken: focusToken,
+                    onReturn: onCommandReturn,
+                    onMove: onCommandMove,
+                    onEscape: onCommandEscape
+                )
+                    .frame(minHeight: 22, maxHeight: 132, alignment: .topLeading)
                     .onChange(of: model.composerText) { value in
                         if let trigger = composerTrigger(value, cursor: value.count) {
                             if trigger.kind == Character("@") {
                                 model.mentionQuery = trigger.query
                                 model.fetchMentions(query: trigger.query)
-                            } else if trigger.kind == Character("/") {
-                                onSlash()
                             }
                         } else {
                             model.mentionQuery = nil
@@ -1042,11 +1098,11 @@ struct ComposerView: View {
                         .background(T.accent, in: Circle())
                         .accessibilityLabel(L.stop())
                     } else {
-                        Button(action: model.sendCurrent) {
+                        Button(action: onSend) {
                             Image(systemName: "arrow.up").foregroundStyle(Color.white).frame(width: 48, height: 48)
                         }
-                        .background(T.accent.opacity(canSend ? 1 : 0.4), in: Circle())
-                        .disabled(!canSend)
+                        .background(T.accent.opacity(canSend || interceptKeys ? 1 : 0.4), in: Circle())
+                        .disabled(!canSend && !interceptKeys)
                         .accessibilityLabel(L.busySendLabel(running: model.chat?.running == true, busy: model.busySend))
                     }
                 }
@@ -1145,6 +1201,131 @@ struct ComposerView: View {
         let next = replaceComposerToken(model.composerText, cursor: model.composerText.count, token: token)
         model.composerText = next.text
         model.mentionQuery = nil
+    }
+}
+
+/// Composer field that keeps first responder while the slash menu is open so
+/// the keyboard stays up; Return / arrows / Escape are routed to the menu.
+private struct ComposerTextView: UIViewRepresentable {
+    @Binding var text: String
+    var placeholder: String
+    var interceptKeys: Bool
+    var focusToken: Int
+    var onReturn: () -> Void
+    var onMove: (Int) -> Void
+    var onEscape: () -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeUIView(context: Context) -> ComposerUITextView {
+        let view = ComposerUITextView()
+        view.delegate = context.coordinator
+        view.font = .preferredFont(forTextStyle: .body)
+        view.backgroundColor = .clear
+        view.textContainerInset = .zero
+        view.textContainer.lineFragmentPadding = 0
+        view.isScrollEnabled = true
+        view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        view.adjustsFontForContentSizeCategory = true
+        view.text = text
+        let placeholder = UILabel()
+        placeholder.font = view.font
+        placeholder.textColor = UIColor.placeholderText
+        placeholder.numberOfLines = 0
+        placeholder.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(placeholder)
+        NSLayoutConstraint.activate([
+            placeholder.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: view.textContainer.lineFragmentPadding),
+            placeholder.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            placeholder.topAnchor.constraint(equalTo: view.topAnchor),
+        ])
+        context.coordinator.placeholder = placeholder
+        context.coordinator.applyPlaceholder(view)
+        return view
+    }
+
+    func updateUIView(_ view: ComposerUITextView, context: Context) {
+        context.coordinator.parent = self
+        view.onMove = onMove
+        view.onEscape = onEscape
+        view.lockFirstResponder = interceptKeys
+        view.interceptArrows = interceptKeys
+        if view.text != text && view.markedTextRange == nil {
+            view.text = text
+        }
+        context.coordinator.applyPlaceholder(view)
+        if focusToken != context.coordinator.focusToken {
+            context.coordinator.focusToken = focusToken
+            if focusToken > 0 {
+                view.becomeFirstResponder()
+            }
+        }
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: ComposerUITextView, context: Context) -> CGSize {
+        let width = proposal.width ?? uiView.bounds.width
+        let fitted = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
+        return CGSize(width: width, height: min(132, max(22, fitted.height)))
+    }
+
+    final class Coordinator: NSObject, UITextViewDelegate {
+        var parent: ComposerTextView
+        var placeholder: UILabel?
+        var focusToken = 0
+
+        init(_ parent: ComposerTextView) {
+            self.parent = parent
+        }
+
+        func applyPlaceholder(_ view: UITextView) {
+            placeholder?.text = parent.placeholder
+            placeholder?.isHidden = !view.text.isEmpty
+        }
+
+        func textViewDidChange(_ textView: UITextView) {
+            parent.text = textView.text
+            applyPlaceholder(textView)
+        }
+
+        func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+            if textView.markedTextRange != nil { return true }
+            if parent.interceptKeys && text == "\n" {
+                parent.onReturn()
+                return false
+            }
+            return true
+        }
+    }
+}
+
+private final class ComposerUITextView: UITextView {
+    var onMove: ((Int) -> Void)?
+    var onEscape: (() -> Void)?
+    var lockFirstResponder = false
+    var interceptArrows = false
+
+    override func resignFirstResponder() -> Bool {
+        if lockFirstResponder { return false }
+        return super.resignFirstResponder()
+    }
+
+    override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        if interceptArrows, let key = presses.first?.key {
+            switch key.keyCode {
+            case .keyboardUpArrow:
+                onMove?(-1)
+                return
+            case .keyboardDownArrow:
+                onMove?(1)
+                return
+            case .keyboardEscape:
+                onEscape?()
+                return
+            default:
+                break
+            }
+        }
+        super.pressesBegan(presses, with: event)
     }
 }
 
