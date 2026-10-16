@@ -24,6 +24,10 @@ public let settingsIncludesPhoneConnection = false
 /// Drawer footer is the desktop location for switching / managing the remote Host.
 public let phoneConnectionLivesInDrawerFooter = true
 
+/// Desktop `ui-sidebar` `SidebarRoot` foot: `sidebar.footer.action` then `sidebar.settings`.
+/// The peer/device switcher is that footer action, never a Settings group.
+public let sidebarFooterActionAboveSettings = true
+
 // MARK: - Permission chip + menu
 
 public let permissionMenuMinWidthPoints: Double = 144
@@ -224,3 +228,110 @@ public func sidebarAwaitingApprovalLabel(english: Bool) -> String {
 public func sidebarAwaitingAnswerLabel(english: Bool) -> String {
     english ? "Waiting for answer" : "等待回答"
 }
+
+// MARK: - Landing workspace chip (desktop EmptyHero WorkspaceChip)
+
+/// Desktop `HeroShell.module.css` `.workspace`: ghost, 13/500, minHeight 28, maxWidth 360.
+public let workspaceChipMinHeightPoints: Double = 28
+public let workspaceChipMaxWidthPoints: Double = 360
+public let workspaceChipFontSizePoints: Double = 13
+public let workspaceChipFontWeight: Double = 500
+public let workspaceChipIconSizePoints: Double = 16
+public let workspaceChipChevronSizePoints: Double = 12
+public let workspaceChipUsesGhostTrigger = true
+public let workspaceChipUsesSystemMenu = false
+
+/// Desktop `WorkspacePicker` opens the directory flow immediately when add is the only entry.
+public func workspaceChipOpensDirectoryFlowDirectly(workspaceCount: Int, canCreate: Bool) -> Bool {
+    canCreate && workspaceCount == 0
+}
+
+/// Desktop `ui-workspace` `menu.addWorkspace`.
+public func addWorkspaceMenuLabel(english: Bool) -> String {
+    english ? "Add workspace…" : "添加工作区…"
+}
+
+/// Desktop `ui-workspace` `picker.loading`.
+public func workspacePickerLoading(english: Bool) -> String {
+    english ? "Loading workspaces…" : "正在加载工作区…"
+}
+
+// MARK: - Plan chip (desktop ui-plan PlanModeControl)
+
+/// Visible chip text is `chip.label`. Tooltip is `planChipTitle`; a11y is `planChipAria`.
+public func planChipLabel(english: Bool) -> String {
+    english ? "Plan" : "计划"
+}
+
+/// Desktop `chip.on.aria`.
+public func planChipAria(english: Bool) -> String {
+    english ? "Plan mode on, press to turn off" : "计划模式已开启，按下关闭"
+}
+
+/// Desktop `InputBar` `.modes` sits permission then plan, not above the draft editor.
+public let planChipLivesInComposerModesRow = true
+public let planChipHeightPoints: Double = 28
+public let planChipFontSizePoints: Double = 13
+public let planChipFontWeight: Double = 500
+public let planChipIconSizePoints: Double = 14
+
+/// Desktop `PermissionSelect` returns null until `catalog` is loaded.
+public let permissionChipRequiresCatalog = true
+
+/// Desktop `conversation` `input.commands` (plus button aria / tooltip).
+public func composerCommandsAria(english: Bool) -> String {
+    english ? "Add files or run commands" : "添加文件或调用指令"
+}
+
+/// Desktop `ui-commands` `status.loading` / `status.empty`.
+public func commandMenuStatusLoading(english: Bool) -> String {
+    english ? "Loading options…" : "正在加载选项…"
+}
+
+public func commandMenuStatusEmpty(english: Bool) -> String {
+    english ? "No options" : "无选项"
+}
+
+/// Desktop `ui-agent-preset` `seatHint` / `noDescription`.
+public func agentPresetSeatHint(english: Bool) -> String {
+    english ? "Choose the agent preset for your new task" : "选择新任务使用的 Agent 预设"
+}
+
+public func agentPresetNoDescription(english: Bool) -> String {
+    english ? "No description." : "暂无描述。"
+}
+
+/// Desktop `ui-plugin-manager` add-plugin menu (not a system confirmationDialog).
+public func pluginAddInstallExisting(english: Bool) -> String {
+    english ? "Install a third-party plugin" : "安装第三方插件"
+}
+
+public func pluginAddInstallExistingDescription(english: Bool) -> String {
+    english ? "Supports npm packages, Git repositories, and local directories" : "支持 npm 包、Git 仓库和本地目录"
+}
+
+public func pluginAddCreatePlugin(english: Bool) -> String {
+    english ? "Let the agent create a plugin" : "让 Agent 创建插件"
+}
+
+public func pluginAddChooseMethod(english: Bool) -> String {
+    english ? "Choose how to add a plugin" : "选择添加插件方式"
+}
+
+public func pluginAddCreatePluginDescription(english: Bool) -> String {
+    english ? "Enter Creator mode and make your own DSH plugin" : "进入创造模式，制作属于你的 DSH 插件"
+}
+
+public func pluginAddCreatePluginChecking(english: Bool) -> String {
+    english ? "Checking whether Creator mode is available" : "正在确认创造模式是否可用"
+}
+
+public func pluginAddCreatePluginUnavailable(english: Bool) -> String {
+    english ? "Temporarily unavailable. Reopen this menu to retry" : "暂时不可用，请重新打开菜单重试"
+}
+
+public func pluginAddCreatePluginMissing(english: Bool) -> String {
+    english ? "Creator mode is not included in this configuration" : "当前配置未提供创造模式"
+}
+
+public let pluginAddMenuUsesMenuSurface = true

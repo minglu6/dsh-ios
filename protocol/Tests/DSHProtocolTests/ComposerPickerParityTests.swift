@@ -12,6 +12,57 @@ final class ComposerPickerParityTests: XCTestCase {
     func testPhoneConnectionLivesInDrawerFooterNotSettings() {
         XCTAssertFalse(settingsIncludesPhoneConnection)
         XCTAssertTrue(phoneConnectionLivesInDrawerFooter)
+        XCTAssertTrue(sidebarFooterActionAboveSettings)
+    }
+
+    func testLandingWorkspaceChipMatchesDesktopHeroChip() {
+        XCTAssertTrue(workspaceChipUsesGhostTrigger)
+        XCTAssertFalse(workspaceChipUsesSystemMenu)
+        XCTAssertEqual(workspaceChipMinHeightPoints, 28)
+        XCTAssertEqual(workspaceChipMaxWidthPoints, 360)
+        XCTAssertEqual(workspaceChipFontSizePoints, 13)
+        XCTAssertEqual(workspaceChipFontWeight, 500)
+        XCTAssertEqual(workspaceChipIconSizePoints, 16)
+        XCTAssertEqual(workspaceChipChevronSizePoints, 12)
+        XCTAssertTrue(workspaceChipOpensDirectoryFlowDirectly(workspaceCount: 0, canCreate: true))
+        XCTAssertFalse(workspaceChipOpensDirectoryFlowDirectly(workspaceCount: 1, canCreate: true))
+        XCTAssertFalse(workspaceChipOpensDirectoryFlowDirectly(workspaceCount: 0, canCreate: false))
+        XCTAssertEqual(addWorkspaceMenuLabel(english: false), "添加工作区…")
+        XCTAssertEqual(addWorkspaceMenuLabel(english: true), "Add workspace…")
+        XCTAssertEqual(workspacePickerLoading(english: false), "正在加载工作区…")
+        XCTAssertEqual(landingChooseWorkspace(english: false), "选择工作区")
+    }
+
+    func testPlanChipCopyAndModesRowMatchDesktop() {
+        XCTAssertEqual(planChipLabel(english: false), "计划")
+        XCTAssertEqual(planChipLabel(english: true), "Plan")
+        XCTAssertEqual(planChipAria(english: false), "计划模式已开启，按下关闭")
+        XCTAssertEqual(planChipAria(english: true), "Plan mode on, press to turn off")
+        XCTAssertEqual(planChipTitle(english: false), "计划模式已开启 — 点击关闭（/plan off）")
+        XCTAssertTrue(planChipLivesInComposerModesRow)
+        XCTAssertEqual(planChipHeightPoints, 28)
+        XCTAssertEqual(planChipFontSizePoints, 13)
+        XCTAssertTrue(permissionChipRequiresCatalog)
+        XCTAssertEqual(composerCommandsAria(english: false), "添加文件或调用指令")
+        XCTAssertEqual(composerCommandsAria(english: true), "Add files or run commands")
+        XCTAssertEqual(commandMenuStatusLoading(english: false), "正在加载选项…")
+        XCTAssertEqual(commandMenuStatusEmpty(english: false), "无选项")
+        XCTAssertEqual(commandMenuStatusEmpty(english: true), "No options")
+    }
+
+    func testAgentPresetAndPluginAddCopyMatchDesktopLocales() {
+        XCTAssertEqual(agentPresetSeatHint(english: false), "选择新任务使用的 Agent 预设")
+        XCTAssertEqual(agentPresetNoDescription(english: false), "暂无描述。")
+        XCTAssertEqual(agentPresetNoDescription(english: true), "No description.")
+        XCTAssertEqual(pluginAddInstallExisting(english: false), "安装第三方插件")
+        XCTAssertEqual(pluginAddInstallExistingDescription(english: false), "支持 npm 包、Git 仓库和本地目录")
+        XCTAssertEqual(pluginAddCreatePlugin(english: false), "让 Agent 创建插件")
+        XCTAssertEqual(pluginAddChooseMethod(english: false), "选择添加插件方式")
+        XCTAssertEqual(pluginAddCreatePluginDescription(english: false), "进入创造模式，制作属于你的 DSH 插件")
+        XCTAssertEqual(pluginAddCreatePluginChecking(english: false), "正在确认创造模式是否可用")
+        XCTAssertEqual(pluginAddCreatePluginUnavailable(english: false), "暂时不可用，请重新打开菜单重试")
+        XCTAssertEqual(pluginAddCreatePluginMissing(english: false), "当前配置未提供创造模式")
+        XCTAssertTrue(pluginAddMenuUsesMenuSurface)
     }
 
     func testPermissionCopyAndMenuMetricsMatchDesktop() {

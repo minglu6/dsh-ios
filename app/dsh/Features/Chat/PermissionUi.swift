@@ -28,7 +28,7 @@ struct PermissionPickerSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
                     if forDefaults {
-                        Text(L.t("选择新会话的默认权限模式；自动审查仅适用于当前会话。", "Choose the default permission mode for new sessions. Auto-review applies only to the current session."))
+                        Text(permissionDefaultDescription(english: L.en))
                             .font(.footnote)
                             .foregroundStyle(T.text3)
                             .padding(.horizontal, 16)

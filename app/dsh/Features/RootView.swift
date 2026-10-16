@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 import DSHProtocol
 
 struct RootView: View {
@@ -13,6 +14,7 @@ struct RootView: View {
     @State private var showPermission = false
     @State private var riskPermission: String?
     @State private var showWorkspacePicker = false
+    @State private var showFileImporter = false
     @State private var composerFocus = 0
 
     var body: some View {
@@ -160,7 +162,7 @@ struct RootView: View {
                             consumeSlash: landingSlashTrigger != nil,
                             availableHeight: max(0, geo.size.height - 8),
                             onDismiss: { slashMenu.dismiss(trigger: landingSlashTrigger) },
-                            onFile: { model.createAndOpenSession() },
+                            onFile: { showFileImporter = true },
                             onGoal: { model.insertComposer("/goal ") },
                             onPlan: { model.executeCommand("/plan") },
                             onFeedback: { model.createAndOpenSession() },
@@ -210,6 +212,21 @@ struct RootView: View {
         .sheet(isPresented: $showWorkspacePicker) {
             WorkspaceDirectorySheet(model: model, onDismiss: { showWorkspacePicker = false })
         }
+        .fileImporter(isPresented: $showFileImporter, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
+            if case .success(let urls) = result {
+                for url in urls {
+                    _ = url.startAccessingSecurityScopedResource()
+                    defer { url.stopAccessingSecurityScopedResource() }
+                    guard let data = try? Data(contentsOf: url) else { continue }
+                    let type = UTType(filenameExtension: url.pathExtension)
+                    if type?.conforms(to: .image) == true {
+                        model.attachImage(name: url.lastPathComponent, mediaType: type?.preferredMIMEType ?? "image/jpeg", data: data)
+                    } else {
+                        model.attachFile(name: url.lastPathComponent, mediaType: type?.preferredMIMEType ?? "application/octet-stream", data: data)
+                    }
+                }
+            }
+        }
         .sheet(isPresented: $showPermission) {
             PermissionPickerSheet(
                 current: model.sessionPermission ?? model.draftPermission ?? model.defaultPermission,
@@ -250,37 +267,7 @@ struct RootView: View {
 
     private var landingWorkspaceRow: some View {
         HStack(spacing: 10) {
-            Menu {
-                ForEach(model.workspaces) { workspace in
-                    Button(
-                        workspaceDisplayTitle(
-                            title: workspace.title,
-                            path: workspace.path,
-                            localizedDefault: L.defaultWorkspace()
-                        )
-                    ) {
-                        model.draftWorkspaceId = workspace.workspaceId
-                    }
-                }
-                if model.ops.contains("workspace.create") {
-                    Button(L.selectWorkspaceDirectory()) { showWorkspacePicker = true }
-                }
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: model.landingWorkspaceLabel == nil ? "folder" : "folder.fill")
-                        .font(.system(size: 14))
-                    Text(model.landingWorkspaceLabel ?? landingChooseWorkspace(english: L.en))
-                        .font(.subheadline)
-                        .lineLimit(1)
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 11))
-                }
-                .foregroundStyle(T.text2)
-                .padding(.horizontal, 10)
-                .frame(minHeight: 36)
-                .background(T.fill, in: Capsule())
-            }
-            .accessibilityLabel(landingChooseWorkspace(english: L.en))
+            LandingWorkspaceChip(model: model, showDirectoryPicker: $showWorkspacePicker)
             AgentPresetSeat(model: model)
             Spacer()
         }

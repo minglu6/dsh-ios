@@ -1170,19 +1170,6 @@ struct ComposerView: View {
             VStack(alignment: .leading, spacing: CGFloat(composerInnerSpacingPoints)) {
                 if hasPending { attachList }
                 if !references.isEmpty { mentionChips }
-                if model.chat?.planMode == true {
-                    Button {
-                        model.executeCommand("/plan off")
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: D.plan).foregroundStyle(T.accent)
-                            Text(L.planChip()).foregroundStyle(T.accent)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .frame(minHeight: CGFloat(composerChipHeightPoints))
-                    .accessibilityLabel(L.planModeOn())
-                }
                 if let hint = claimedComposerHint(
                     text: model.composerText,
                     catalog: model.commandEntries,
@@ -1234,14 +1221,36 @@ struct ComposerView: View {
                             .frame(width: CGFloat(composerAddButtonPoints), height: CGFloat(composerAddButtonPoints))
                     }
                     .background(T.fill, in: Circle())
-                    if let perm = model.sessionPermission ?? model.draftPermission ?? (heroPlaceholder ? model.defaultPermission : nil), !perm.isEmpty {
-                        PermissionChipMenu(
-                            current: perm,
-                            catalog: model.permissionCatalog,
-                            loading: model.permissionCatalogLoading,
-                            enabled: model.isOnline && !model.permissionChanging,
-                            onSelect: onSelectPermission
-                        )
+                    .accessibilityLabel(composerCommandsAria(english: L.en))
+                    if !permissionChipRequiresCatalog || model.permissionCatalog != nil {
+                        if let perm = model.sessionPermission ?? model.draftPermission ?? (heroPlaceholder ? model.defaultPermission : nil), !perm.isEmpty {
+                            PermissionChipMenu(
+                                current: perm,
+                                catalog: model.permissionCatalog,
+                                loading: model.permissionCatalogLoading,
+                                enabled: model.isOnline && !model.permissionChanging,
+                                onSelect: onSelectPermission
+                            )
+                        }
+                    }
+                    if planChipLivesInComposerModesRow, model.chat?.planMode == true {
+                        Button {
+                            model.executeCommand("/plan off")
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: D.plan)
+                                    .font(.system(size: CGFloat(planChipIconSizePoints)))
+                                Text(L.planChip())
+                                    .font(.system(size: CGFloat(planChipFontSizePoints), weight: .medium))
+                            }
+                            .foregroundStyle(T.accent)
+                            .padding(.horizontal, 8)
+                            .frame(minHeight: CGFloat(planChipHeightPoints))
+                            .background(T.tint, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(L.planModeOn())
+                        .accessibilityHint(planChipTitle(english: L.en))
                     }
                     Spacer(minLength: 0)
                     ModelChipMenu(
