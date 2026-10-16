@@ -219,14 +219,16 @@ public let searchResultShowsWorkspaceContext = true
 /// Archived-only adds `empty.viewOthers`, which resets the filter to hide-archived.
 public enum DrawerEmptyKind: String, Equatable, Sendable {
     case offline
-    case none
-    case noneArchived
+    /// Desktop `empty.none`. Not named `none` — that collides with `Optional.none`.
+    case empty
+    /// Desktop `empty.noneArchived`.
+    case emptyArchived
 }
 
 public func drawerEmptyKind(online: Bool, archivedOnly: Bool, hasVisibleSessions: Bool) -> DrawerEmptyKind? {
     if hasVisibleSessions { return nil }
     if !online { return .offline }
-    return archivedOnly ? .noneArchived : .none
+    return archivedOnly ? .emptyArchived : .empty
 }
 
 /// Desktop `SessionTree` EmptySessions is `groups.length === 0`, not “no visible

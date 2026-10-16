@@ -170,11 +170,11 @@ final class ComposerPickerParityTests: XCTestCase {
         XCTAssertTrue(searchResultShowsWorkspaceContext)
         XCTAssertEqual(
             drawerEmptyKind(online: true, archivedOnly: true, hasVisibleSessions: false),
-            .noneArchived
+            .emptyArchived
         )
         XCTAssertEqual(
             drawerEmptyKind(online: true, archivedOnly: false, hasVisibleSessions: false),
-            .none
+            .empty
         )
         XCTAssertEqual(
             drawerEmptyKind(online: false, archivedOnly: true, hasVisibleSessions: false),

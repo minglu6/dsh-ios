@@ -260,7 +260,7 @@ struct SessionDrawer: View {
         VStack(spacing: 12) {
             Text(emptyCopy(kind))
                 .foregroundStyle(T.text3)
-            if kind == .noneArchived {
+            if kind == .emptyArchived {
                 Button(emptyArchivedViewOthers(english: L.en)) {
                     if emptyArchivedViewOthersResetsToHide {
                         model.setArchivedFilter(.hide)
@@ -276,9 +276,9 @@ struct SessionDrawer: View {
 
     private func emptyCopy(_ kind: DrawerEmptyKind?) -> String {
         switch kind {
-        case .offline, .none: return kind == .offline ? L.connectToViewSessions() : L.emptySessions()
-        case .noneArchived: return L.emptyArchivedSessions()
-        case nil: return L.emptySessions()
+        case .offline: return L.connectToViewSessions()
+        case .empty, nil: return L.emptySessions()
+        case .emptyArchived: return L.emptyArchivedSessions()
         }
     }
 

@@ -533,7 +533,7 @@ public func composerActivitySpeed(english: Bool) -> String {
 }
 
 /// Desktop `ui-chat` `stats.counts`.
-public func composerActivityCounts(turns: Int, steps: Int, english: Bool) -> String {
+public func composerActivityCounts(turns: Int64, steps: Int64, english: Bool) -> String {
     english ? "\(turns) turns \(steps) steps" : "\(turns) 轮 \(steps) 步"
 }
 
