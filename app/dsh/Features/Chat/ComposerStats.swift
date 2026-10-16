@@ -112,7 +112,8 @@ struct ComposerStats: View {
         action: @escaping () -> Void,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        Button(action: action) {
+        let panel = content()
+        return Button(action: action) {
             HStack(spacing: 4) {
                 Image(systemName: icon).font(.system(size: 12)).foregroundStyle(T.text3)
                 Text(text).font(.caption).foregroundStyle(T.text3).lineLimit(1)
@@ -122,7 +123,7 @@ struct ComposerStats: View {
         .buttonStyle(.plain)
         .disabled(!clickable)
         .popover(isPresented: open, attachmentAnchor: .rect(.bounds), arrowEdge: opensAbove ? .bottom : .top) {
-            content()
+            panel
         }
     }
 
