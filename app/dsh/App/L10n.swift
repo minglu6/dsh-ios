@@ -212,6 +212,9 @@ enum L {
         en ? "Too many entries, showing only some of them." : "条目太多，只显示了一部分。"
     }
     static func reload() -> String { en ? "Reload" : "重新读取" }
+    static func autoRefresh() -> String { autoRefreshLabel(english: en) }
+    static func autoRefreshEnable() -> String { autoRefreshEnableLabel(english: en) }
+    static func autoRefreshDisable() -> String { autoRefreshDisableLabel(english: en) }
     static func refresh() -> String { en ? "Refresh" : "刷新" }
     static func notFileOrDirectory() -> String {
         en ? "Not a file or a directory, so it cannot be opened." : "这不是文件或目录，没法打开。"

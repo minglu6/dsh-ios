@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import DSHProtocol
 
 struct QuestionDraft: Equatable {
@@ -486,6 +487,7 @@ struct PromptQueue: View {
     private func queueRow(_ prompt: QueuedPrompt, single: Bool) -> some View {
         let editing = editingId == prompt.id
         let actionable = enabled && !prompt.sending && busyId == nil
+        let preview = queuePreview(prompt)
         return HStack(spacing: 8) {
             if single {
                 Image(systemName: "text.line.first.and.arrowtriangle.forward").foregroundStyle(T.text3)
@@ -495,7 +497,21 @@ struct PromptQueue: View {
                     .lineLimit(1...5)
                     .disabled(!enabled || busyId != nil)
             } else {
-                Text(queuePreview(prompt)).font(.subheadline).foregroundStyle(T.text2).lineLimit(1)
+                HStack(spacing: 8) {
+                    if !prompt.attachments.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 4) {
+                                ForEach(prompt.attachments) { attachment in
+                                    queueAttachment(attachment)
+                                }
+                            }
+                        }
+                        .frame(maxWidth: 180)
+                    }
+                    if !preview.isEmpty {
+                        Text(preview).font(.subheadline).foregroundStyle(T.text2).lineLimit(1)
+                    }
+                }
             }
             Spacer(minLength: 4)
             if prompt.sending {
@@ -552,18 +568,68 @@ struct PromptQueue: View {
         .accessibilityHidden(label == nil)
     }
 
+    @ViewBuilder
+    private func queueAttachment(_ attachment: QueuedAttachment) -> some View {
+        switch attachment.kind {
+        case .image:
+            QueueThumb(sessionId: sessionId, attachment: attachment)
+        case .file:
+            HStack(spacing: 4) {
+                FileTypeIcon(path: attachment.name ?? "", type: "file", openable: true)
+                Text(attachment.name ?? "")
+                    .font(.caption)
+                    .foregroundStyle(T.text2)
+                    .lineLimit(1)
+                if let bytes = attachment.bytes {
+                    Text(fileSizeText(bytes))
+                        .font(.system(size: 10))
+                        .foregroundStyle(T.text3)
+                }
+            }
+            .padding(.horizontal, 6)
+            .frame(height: 24)
+            .background(T.bg, in: RoundedRectangle(cornerRadius: 4))
+            .overlay(RoundedRectangle(cornerRadius: 4).stroke(T.border, lineWidth: 0.5))
+            .accessibilityLabel(queueFileLabel(name: attachment.name ?? "", english: L.en))
+        }
+    }
+
     private func queuePreview(_ prompt: QueuedPrompt) -> String {
-        var parts: [String] = []
-        if prompt.images > 0 {
-            parts.append(L.en ? "\(prompt.images) image\(prompt.images == 1 ? "" : "s")" : "\(prompt.images) 张图片")
-        }
-        if prompt.files > 0 {
-            parts.append(L.en ? "\(prompt.files) file\(prompt.files == 1 ? "" : "s")" : "\(prompt.files) 个文件")
-        }
-        let text = prompt.text.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        prompt.text.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        if !text.isEmpty { parts.append(text) }
-        return parts.joined(separator: " · ")
+    }
+}
+
+private struct QueueThumb: View {
+    let sessionId: String
+    let attachment: QueuedAttachment
+    @State private var image: UIImage?
+
+    var body: some View {
+        Group {
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                T.fill
+            }
+        }
+        .frame(width: 24, height: 24)
+        .clipShape(RoundedRectangle(cornerRadius: 3))
+        .overlay(RoundedRectangle(cornerRadius: 3).stroke(T.border, lineWidth: 0.5))
+        .accessibilityLabel(queueImageLabel(english: L.en))
+        .task(id: attachment.id) {
+            if let data = attachment.previewData, let loaded = UIImage(data: data) {
+                image = loaded
+                return
+            }
+            guard let attachmentId = attachment.attachmentId else { return }
+            guard let data = await AppModel.shared.loadAttachmentBytes(sessionId: sessionId, attachmentId: attachmentId) else {
+                return
+            }
+            image = UIImage(data: data)
+        }
     }
 }
 

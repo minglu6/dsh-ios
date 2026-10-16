@@ -218,6 +218,27 @@ final class AndroidParityTests: XCTestCase {
         XCTAssertEqual(order, ["watch", "list", "render", "list", "render", "list", "render"])
     }
 
+    func testWorkspaceDirectorySkipsChangeWhileAutomaticRefreshIsOff() async throws {
+        var reads = 0
+        let changes = AsyncThrowingStream<JSONValue, Error> { continuation in
+            continuation.yield(jsonObject(["kind": .string("ready")]))
+            continuation.yield(jsonObject(["kind": .string("change")]))
+            continuation.yield(jsonObject(["kind": .string("change")]))
+            continuation.finish()
+        }
+        try await observeWorkspaceDirectory(
+            list: { _ in
+                reads += 1
+                return jsonObject(["version": .number(Double(reads))])
+            },
+            changes: changes,
+            automatic: { false },
+            onListing: { _ in },
+            onFailure: { XCTFail("unexpected \($0)") }
+        )
+        XCTAssertEqual(reads, 1)
+    }
+
     func testUnsupportedWatchKeepsListingWithoutError() async throws {
         var reads = 0
         var rendered = 0

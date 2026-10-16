@@ -407,9 +407,28 @@ final class AppModel: ObservableObject {
                 return
             }
         }
+        let queueAttachments: [QueuedAttachment] = pendingAttaches.compactMap { attach in
+            if attach.isImage {
+                return QueuedAttachment(
+                    id: attach.id.uuidString,
+                    kind: .image,
+                    name: attach.name,
+                    bytes: attach.data.count,
+                    mediaType: attach.mediaType,
+                    previewData: attach.data
+                )
+            }
+            guard attach.status == .ready else { return nil }
+            return QueuedAttachment(
+                id: attach.id.uuidString,
+                kind: .file,
+                name: attach.name,
+                bytes: attach.data.count
+            )
+        }
         composerText = ""
         pendingAttaches = []
-        Task { await sendPrompt(client, chat: chat, text: text, images: images, files: files) }
+        Task { await sendPrompt(client, chat: chat, text: text, images: images, files: files, attachments: queueAttachments) }
     }
 
     func stopRun() {
@@ -2005,12 +2024,20 @@ final class AppModel: ObservableObject {
         chat: ChatState,
         text: String,
         images: [PromptImage] = [],
-        files: [PromptFile] = []
+        files: [PromptFile] = [],
+        attachments: [QueuedAttachment] = []
     ) async {
         let target = reducer
         let requestId = UUID().uuidString
         let mode = chat.running ? busySend.mode : "queue"
-        target.echo(text: text, requestId: requestId, mode: mode, images: images.count, files: files.count)
+        target.echo(
+            text: text,
+            requestId: requestId,
+            mode: mode,
+            images: images.count,
+            files: files.count,
+            attachments: attachments
+        )
         publishChat()
         do {
             _ = try await client.prompt(

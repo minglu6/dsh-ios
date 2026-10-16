@@ -1054,6 +1054,17 @@ struct ComposerView: View {
                     .frame(minHeight: 48)
                     .accessibilityLabel(L.planModeOn())
                 }
+                if let hint = claimedComposerHint(
+                    text: model.composerText,
+                    catalog: model.commandEntries,
+                    hasGoal: model.chat?.goal != nil,
+                    english: L.en
+                ) {
+                    Text(hint)
+                        .font(.system(size: 13))
+                        .foregroundStyle(T.text3)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
                 ComposerTextView(
                     text: $model.composerText,
                     placeholder: composerPlaceholderText(planMode: model.chat?.planMode == true, english: L.en),
