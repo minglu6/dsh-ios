@@ -168,6 +168,70 @@ final class ComposerPickerParityTests: XCTestCase {
         XCTAssertEqual(sidebarRunningLabel(english: false), "进行中")
         XCTAssertEqual(sidebarRunningLabel(english: true), "Running")
         XCTAssertTrue(searchResultShowsWorkspaceContext)
+        XCTAssertEqual(
+            drawerEmptyKind(online: true, archivedOnly: true, hasVisibleSessions: false),
+            .noneArchived
+        )
+        XCTAssertEqual(
+            drawerEmptyKind(online: true, archivedOnly: false, hasVisibleSessions: false),
+            .none
+        )
+        XCTAssertEqual(
+            drawerEmptyKind(online: false, archivedOnly: true, hasVisibleSessions: false),
+            .offline
+        )
+        XCTAssertNil(drawerEmptyKind(online: true, archivedOnly: true, hasVisibleSessions: true))
+        XCTAssertFalse(
+            drawerShowsEmptySessions(
+                hasVisibleSessions: false,
+                groupByWorkspace: true,
+                hasWorkspaces: true,
+                archivedOnly: false
+            )
+        )
+        XCTAssertTrue(
+            drawerShowsEmptySessions(
+                hasVisibleSessions: false,
+                groupByWorkspace: true,
+                hasWorkspaces: true,
+                archivedOnly: true
+            )
+        )
+        XCTAssertTrue(
+            drawerShowsEmptySessions(
+                hasVisibleSessions: false,
+                groupByWorkspace: false,
+                hasWorkspaces: true,
+                archivedOnly: false
+            )
+        )
+        XCTAssertTrue(
+            drawerShowsEmptySessions(
+                hasVisibleSessions: false,
+                groupByWorkspace: true,
+                hasWorkspaces: false,
+                archivedOnly: false
+            )
+        )
+        XCTAssertFalse(
+            drawerShowsEmptySessions(
+                hasVisibleSessions: true,
+                groupByWorkspace: true,
+                hasWorkspaces: true,
+                archivedOnly: true
+            )
+        )
+        XCTAssertEqual(emptyArchivedViewOthers(english: false), "查看其他会话")
+        XCTAssertEqual(emptyArchivedViewOthers(english: true), "View other sessions")
+        XCTAssertTrue(emptyArchivedViewOthersResetsToHide)
+        XCTAssertEqual(
+            archivedNotOpenable(english: false),
+            "已归档对话暂时无法查看，请取消归档后查看"
+        )
+        XCTAssertEqual(
+            archivedNotOpenable(english: true),
+            "Archived sessions cannot be opened. Unarchive it to view."
+        )
     }
 
     func testAgentPresetSeatMetrics() {

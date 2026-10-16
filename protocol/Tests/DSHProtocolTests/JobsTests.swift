@@ -128,6 +128,7 @@ final class JobsTests: XCTestCase {
         XCTAssertEqual(jobKillConfirmLabel(english: false), "再次点击确认停止")
         XCTAssertEqual(jobKillConfirmAction(english: false), "确认停止")
         XCTAssertEqual(jobKillFailedLabel(english: false), "停止失败")
+        XCTAssertEqual(jobKillFailedLabel(english: true), "Stop failed")
         XCTAssertEqual(jobKillStopLabel(label: "build", english: false), "停止任务 build")
         XCTAssertEqual(jobSectionLive(english: false), "进行中")
         XCTAssertEqual(jobSectionSettled(count: 2, english: false), "已结束 2")

@@ -1,7 +1,7 @@
 import SwiftUI
 import DSHProtocol
 
-private enum StatisticsDialog { case activity, context }
+private enum StatisticsDialog { case activity, usage, context }
 
 private let statisticsContextColors: [Color] = [
     Color(red: 0.45, green: 0.55, blue: 0.72),
@@ -11,8 +11,9 @@ private let statisticsContextColors: [Color] = [
 
 struct ComposerStats: View {
     let metrics: ComposerMetrics
-    @State private var dialog: StatisticsDialog?
+    @State private var activityOpen = false
     @State private var usageOpen = false
+    @State private var contextOpen = false
 
     private var detailed: Bool { AppModel.shared.performanceUsage == .detailed }
     private var activity: ComposerActivity? { metrics.activity }
@@ -22,7 +23,11 @@ struct ComposerStats: View {
     private var cache: String? { usage?.cacheHitPercent.map { L.t("缓存命中 \($0)%", "Cache hit \($0)%") } }
     private var activityText: String? {
         if detailed {
-            return activity.flatMap { $0.steps > 0 ? [L.t("\($0.turns) 轮 \($0.steps) 步", "\($0.turns) turns \($0.steps) steps"), speed].compactMap { $0 }.joined(separator: " · ") : nil }
+            return activity.flatMap { $0.steps > 0
+                ? [composerActivityCounts(turns: $0.turns, steps: $0.steps, english: L.en), speed]
+                    .compactMap { $0 }
+                    .joined(separator: " · ")
+                : nil }
         }
         return speed
     }
@@ -44,79 +49,171 @@ struct ComposerStats: View {
             .lineLimit(1)
             .padding(.horizontal, 14)
             .padding(.vertical, 2)
-            .sheet(item: Binding(
-                get: { dialog.map { DialogBox($0) } },
-                set: { dialog = $0?.kind }
-            )) { box in
-                dialogView(box.kind)
-            }
         }
     }
 
     @ViewBuilder
     private var pills: some View {
         if let activityText {
-            pill(activityText, clickable: detailed && activityHasDetails) { dialog = .activity }
+            pill(
+                activityText,
+                icon: "gauge.with.dots.needle.67percent",
+                clickable: detailed && activityHasDetails,
+                open: $activityOpen,
+                opensAbove: composerActivityPopoverOpensAbove
+            ) { toggle(.activity) } content: {
+                activityPopover
+            }
         }
         if let usageText {
-            pill(usageText, clickable: detailed) { usageOpen.toggle() }
-                .popover(isPresented: $usageOpen, attachmentAnchor: .rect(.bounds), arrowEdge: composerUsagePopoverOpensAbove ? .bottom : .top) {
-                    if let usage { sessionUsagePopover(usage) }
-                }
+            pill(
+                usageText,
+                icon: composerUsagePillUsesDatabaseIcon ? "cylinder" : "gauge.with.dots.needle.67percent",
+                clickable: detailed,
+                open: $usageOpen,
+                opensAbove: composerUsagePopoverOpensAbove
+            ) { toggle(.usage) } content: {
+                if let usage { sessionUsagePopover(usage) }
+            }
         }
         if let context {
-            pill("\(context.percent)%", clickable: true) { dialog = .context }
+            contextMeter(context)
         }
     }
 
-    private func pill(_ text: String, clickable: Bool, action: @escaping () -> Void) -> some View {
+    private func exclusive(_ dialog: StatisticsDialog) {
+        activityOpen = dialog == .activity
+        usageOpen = dialog == .usage
+        contextOpen = dialog == .context
+    }
+
+    private func toggle(_ dialog: StatisticsDialog) {
+        let alreadyOpen: Bool
+        switch dialog {
+        case .activity: alreadyOpen = activityOpen
+        case .usage: alreadyOpen = usageOpen
+        case .context: alreadyOpen = contextOpen
+        }
+        if alreadyOpen {
+            activityOpen = false
+            usageOpen = false
+            contextOpen = false
+            return
+        }
+        exclusive(dialog)
+    }
+
+    private func pill<Content: View>(
+        _ text: String,
+        icon: String,
+        clickable: Bool,
+        open: Binding<Bool>,
+        opensAbove: Bool,
+        action: @escaping () -> Void,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
         Button(action: action) {
             HStack(spacing: 4) {
-                Image(systemName: "gauge.with.dots.needle.67percent").font(.system(size: 12)).foregroundStyle(T.text3)
+                Image(systemName: icon).font(.system(size: 12)).foregroundStyle(T.text3)
                 Text(text).font(.caption).foregroundStyle(T.text3).lineLimit(1)
             }
             .padding(.vertical, 5)
         }
         .buttonStyle(.plain)
         .disabled(!clickable)
+        .popover(isPresented: open, attachmentAnchor: .rect(.bounds), arrowEdge: opensAbove ? .bottom : .top) {
+            content()
+        }
     }
 
-    private func dialogView(_ kind: StatisticsDialog) -> some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    switch kind {
-                    case .activity:
-                        if let activity {
-                            if activity.llmMs > 0 { detail(L.t("模型用时", "LLM time"), statisticsDuration(activity.llmMs)) }
-                            if activity.toolMs > 0 { detail(L.t("工具调用用时", "Tool time"), statisticsDuration(activity.toolMs)) }
-                            if let ttft = activity.meanTtftMs { detail(L.t("首 token 平均（TTFT）", "Avg time to first token (TTFT)"), statisticsDuration(ttft)) }
-                            if let speed { detail(L.t("输出速度（TPS）", "Tokens per second (TPS)"), speed) }
-                        }
-                    case .context:
-                        if let context {
-                            detail(L.t("上下文已用 \(context.percent)%", "\(context.percent)% of context used"), "~\(statisticsTokens(context.usedTokens)) / \(statisticsTokens(context.contextWindow))")
-                            contextBar(context.percent)
-                            if let breakdown = metrics.contextBreakdown {
-                                detail(L.t("系统提示词", "System prompt"), "~\(statisticsTokens(breakdown.systemTokens))", statisticsContextColors[0])
-                                detail(L.t("工具", "Tools"), "~\(statisticsTokens(breakdown.toolsTokens))", statisticsContextColors[1])
-                                detail(L.t("对话", "Conversation"), "~\(statisticsTokens(breakdown.messageTokens))", statisticsContextColors[2])
-                            }
-                        }
-                    }
+    @ViewBuilder
+    private var activityPopover: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            UsagePopoverHeader(
+                icon: "gauge.with.dots.needle.67percent",
+                title: composerActivityTitle(english: L.en)
+            )
+            if let activity {
+                if activity.llmMs > 0 {
+                    detail(composerActivityLlmTime(english: L.en), statisticsDuration(activity.llmMs))
                 }
-                .padding(20)
+                if activity.toolMs > 0 {
+                    detail(composerActivityToolTime(english: L.en), statisticsDuration(activity.toolMs))
+                }
+                if let ttft = activity.meanTtftMs {
+                    detail(composerActivityTtft(english: L.en), statisticsDuration(ttft))
+                }
+                if let speed {
+                    detail(composerActivitySpeed(english: L.en), speed)
+                }
             }
-            .navigationTitle(dialogTitle(kind))
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(L.close()) { dialog = nil } } }
+        }
+        .padding(16)
+        .frame(minWidth: 240, maxWidth: 320)
+        .modifier(PopoverCompactAdaptation())
+    }
+
+    private func contextMeter(_ context: ComposerContext) -> some View {
+        let reading = "\(context.percent)%"
+        return Button { toggle(.context) } label: {
+            HStack(spacing: 4) {
+                ComposerContextRing(percent: context.percent)
+                Text(reading).font(.caption).foregroundStyle(T.text3).lineLimit(1)
+            }
+            .padding(.vertical, 5)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(composerContextAria(percent: reading, english: L.en))
+        .popover(
+            isPresented: $contextOpen,
+            attachmentAnchor: .rect(.bounds),
+            arrowEdge: composerContextPopoverOpensAbove ? .bottom : .top
+        ) {
+            contextPopover(context)
         }
     }
 
-    private func dialogTitle(_ kind: StatisticsDialog) -> String {
-        switch kind {
-        case .activity: return metrics.activityIsWholeSession ? L.t("会话统计", "Session statistics") : L.t("已加载历史统计", "Loaded history statistics")
-        case .context: return L.t("上下文用量", "Context usage")
+    private func contextPopover(_ context: ComposerContext) -> some View {
+        let headline = composerContextHeadline(english: L.en)
+        let reading = "\(context.percent)%"
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                if !headline.before.isEmpty {
+                    Text(headline.before).font(.subheadline.weight(.medium)).foregroundStyle(T.ink)
+                }
+                Text(reading).font(.subheadline.weight(.medium)).monospacedDigit().foregroundStyle(T.ink)
+                if !headline.after.isEmpty {
+                    Text(headline.after).font(.subheadline.weight(.medium)).foregroundStyle(T.ink)
+                }
+                Spacer(minLength: 12)
+                Text("~\(statisticsTokens(context.usedTokens)) / \(statisticsTokens(context.contextWindow))")
+                    .font(.subheadline.weight(.medium))
+                    .monospacedDigit()
+                    .foregroundStyle(T.text2)
+            }
+            .accessibilityLabel(composerContextUsed(english: L.en))
+            contextBar(context.percent)
+            if let breakdown = metrics.contextBreakdown {
+                detail(
+                    composerContextBreakdownLabel(.system, english: L.en),
+                    "~\(statisticsTokens(breakdown.systemTokens))",
+                    statisticsContextColors[0]
+                )
+                detail(
+                    composerContextBreakdownLabel(.tools, english: L.en),
+                    "~\(statisticsTokens(breakdown.toolsTokens))",
+                    statisticsContextColors[1]
+                )
+                detail(
+                    composerContextBreakdownLabel(.messages, english: L.en),
+                    "~\(statisticsTokens(breakdown.messageTokens))",
+                    statisticsContextColors[2]
+                )
+            }
         }
+        .padding(16)
+        .frame(minWidth: 240, maxWidth: 320)
+        .modifier(PopoverCompactAdaptation())
     }
 
     /// Desktop session usage chip: anchored above, icon + title left, total right.
@@ -266,28 +363,53 @@ struct TurnUsageAction: View {
     }
 }
 
-/// Desktop `stat-dialog` heading: database glyph + section name left, exact total right.
+/// Desktop `stat-dialog` heading: section icon + name left, exact total right.
 private struct UsagePopoverHeader: View {
+    var icon: String = "cylinder"
     let title: String
-    let value: String
+    var value: String? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .center, spacing: 6) {
-                Image(systemName: "cylinder").font(.system(size: 14)).foregroundStyle(T.ink)
+                Image(systemName: icon).font(.system(size: 14)).foregroundStyle(T.ink)
                 Text(title).font(.subheadline.weight(.medium)).foregroundStyle(T.ink)
                 Spacer(minLength: 16)
-                Text(value).font(.subheadline.weight(.medium)).monospacedDigit().foregroundStyle(T.ink)
+                if let value {
+                    Text(value).font(.subheadline.weight(.medium)).monospacedDigit().foregroundStyle(T.ink)
+                }
             }
             Divider()
         }
     }
 }
 
-private struct DialogBox: Identifiable {
-    let kind: StatisticsDialog
-    var id: String { String(describing: kind) }
-    init(_ kind: StatisticsDialog) { self.kind = kind }
+/// Desktop `ContextMeter` 14px ring (`r=5.5`, 2px stroke, start at 12 o'clock).
+private struct ComposerContextRing: View {
+    let percent: Int
+
+    var body: some View {
+        let size = CGFloat(composerContextRingSizePoints)
+        let stroke = CGFloat(composerContextRingStrokePoints)
+        let diameter = CGFloat(composerContextRingRadiusPoints) * 2
+        ZStack {
+            Circle()
+                .stroke(T.border, lineWidth: stroke)
+            Circle()
+                .trim(from: 0, to: CGFloat(min(100, max(0, percent))) / 100)
+                .stroke(
+                    T.ink,
+                    style: StrokeStyle(
+                        lineWidth: stroke,
+                        lineCap: composerContextRingFillLineCapRound ? .round : .butt
+                    )
+                )
+                .rotationEffect(.degrees(-90))
+        }
+        .frame(width: diameter, height: diameter)
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
+    }
 }
 
 func statisticsRounded(_ value: Double, decimals: Int) -> String {

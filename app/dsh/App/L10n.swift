@@ -57,9 +57,7 @@ enum L {
     static func sessionIdCopyFailed() -> String { en ? "Copy failed. Try again." : "复制失败，请重试" }
     static func emptyArchivedSessions() -> String { en ? "No archived sessions yet" : "暂无已归档会话" }
     static func archived() -> String { en ? "Archived" : "已归档" }
-    static func restoreArchivedBody() -> String {
-        en ? "Restore this archived session before opening it." : "已归档会话需先恢复才能打开。"
-    }
+    static func restoreArchivedBody() -> String { archivedNotOpenable(english: en) }
     static func archivedToast(stopped: Bool = false) -> String { archiveSuccessToast(stopped: stopped, english: en) }
     static func orderByLabel() -> String { en ? "Order by" : "排序方式" }
     static func orderByManual() -> String { en ? "Manual" : "手动排序" }
@@ -105,9 +103,6 @@ enum L {
             ? "Saved, but the remote host default is unchanged; a higher-priority override may be active"
             : "已保存，但远程主机当前默认值未改变，可能存在更高优先级覆盖"
     }
-    static func sessionStats() -> String { en ? "Session statistics" : "会话统计" }
-    static func loadedHistoryStats() -> String { en ? "Loaded history statistics" : "已加载历史统计" }
-    static func noHostStats() -> String { en ? "The remote host did not provide statistics" : "远程主机未提供统计数据" }
     static func renameSession() -> String { en ? "Rename session" : "重命名会话" }
     static func forkFromPrefix() -> String { en ? "Create a branch from the current session prefix" : "从当前会话前缀创建分支" }
     static func connectToViewSessions() -> String { en ? "Connect to view sessions" : "连接后显示会话" }
@@ -355,9 +350,6 @@ enum L {
     static func backgroundJobs() -> String { en ? "Background jobs" : "后台任务" }
     static func jobsUnavailable() -> String { en ? "Job status unavailable" : "任务状态不可用" }
     static func jobsZero() -> String { en ? "0 background jobs" : "0 个后台任务" }
-    static func killJob() -> String { en ? "Stop" : "终止" }
-    static func killBackgroundJobTitle() -> String { en ? "Stop background job?" : "终止后台任务？" }
-    static func killJobFailed() -> String { en ? "Stop failed, retry" : "终止失败，请重试" }
     static func backToJobs() -> String { en ? "Back to background jobs" : "返回后台任务" }
     static func waitingJobOutput() -> String { en ? "Waiting for job output…" : "等待任务输出…" }
     static func jobOutputExpired() -> String { jobOutputGap(english: en) }

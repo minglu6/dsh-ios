@@ -490,11 +490,107 @@ public let composerSessionUsageIsPopover = true
 /// Desktop `useStatDialog` (`side: 'top'`) places the panel above the chip.
 /// SwiftUI `arrowEdge: .bottom` puts the tip on the bottom edge (content above).
 public let composerUsagePopoverOpensAbove = true
+/// Desktop `ActivityPill` is the same `DialogPill` / `useStatDialog` (`side: 'top'`).
+public let composerActivityPopoverOpensAbove = true
+/// Desktop `ContextMeter` `useAnchoredPosition` (`side: "top"`).
+public let composerContextPopoverOpensAbove = true
+/// Desktop `StatsPills` usage trigger uses `IconDatabaseOutlineRegular`, not the gauge.
+public let composerUsagePillUsesDatabaseIcon = true
+/// Desktop `ContextMeter` trigger is a 14px ring + percent, not a gauge pill.
+public let composerContextUsesRingMeter = true
+/// Desktop `ContextMeter` ring: 14×14 viewBox, r=5.5, 2px stroke.
+public let composerContextRingSizePoints: Double = 14
+public let composerContextRingRadiusPoints: Double = 5.5
+public let composerContextRingStrokePoints: Double = 2
+/// Desktop fill circle uses `stroke-linecap: round`; the track does not.
+public let composerContextRingFillLineCapRound = true
 /// Desktop `stat-dialog` title row: section name left, headline value right.
 public let composerUsagePopoverHeaderSplitsTotal = true
 /// Desktop puts the session / turn total in the header, not a 「合计」 row.
 public let composerSessionUsageOmitsTotalRow = true
 public let composerTurnUsageOmitsTotalRow = true
+
+/// Desktop `ui-chat` `stats.dialog.title`. Activity never invents “loaded history”.
+public func composerActivityTitle(english: Bool) -> String {
+    english ? "Session statistics" : "会话统计"
+}
+
+/// Desktop `ui-chat` `stats.dialog.llmTime` / `toolTime` / `ttft` / `speed`.
+public func composerActivityLlmTime(english: Bool) -> String {
+    english ? "LLM time" : "模型用时"
+}
+
+public func composerActivityToolTime(english: Bool) -> String {
+    english ? "Tool time" : "工具调用用时"
+}
+
+public func composerActivityTtft(english: Bool) -> String {
+    english ? "Avg time to first token (TTFT)" : "首 token 平均（TTFT）"
+}
+
+public func composerActivitySpeed(english: Bool) -> String {
+    english ? "Tokens per second (TPS)" : "输出速度（TPS）"
+}
+
+/// Desktop `ui-chat` `stats.counts`.
+public func composerActivityCounts(turns: Int, steps: Int, english: Bool) -> String {
+    english ? "\(turns) turns \(steps) steps" : "\(turns) 轮 \(steps) 步"
+}
+
+/// Desktop `ContextMeter` splits `conversation` `context.aria` around the percent.
+public struct ComposerContextHeadline: Equatable, Sendable {
+    public var before: String
+    public var after: String
+
+    public init(before: String, after: String) {
+        self.before = before
+        self.after = after
+    }
+}
+
+public func composerContextHeadline(english: Bool) -> ComposerContextHeadline {
+    english
+        ? ComposerContextHeadline(before: "", after: "of context used")
+        : ComposerContextHeadline(before: "上下文已用", after: "")
+}
+
+/// Desktop `conversation` `context.aria`.
+public func composerContextAria(percent: String, english: Bool) -> String {
+    let headline = composerContextHeadline(english: english)
+    if headline.before.isEmpty { return "\(percent) \(headline.after)" }
+    if headline.after.isEmpty { return "\(headline.before) \(percent)" }
+    return "\(headline.before) \(percent) \(headline.after)"
+}
+
+/// Desktop `conversation` `context.used` (dialog aria).
+public func composerContextUsed(english: Bool) -> String {
+    english ? "of context used" : "上下文已用"
+}
+
+/// Desktop `conversation` `context.system` / `context.tools` / `context.messages`.
+public func composerContextSystem(english: Bool) -> String {
+    english ? "System prompt" : "系统提示词"
+}
+
+public func composerContextTools(english: Bool) -> String {
+    english ? "Tool definitions" : "工具定义"
+}
+
+public func composerContextMessages(english: Bool) -> String {
+    english ? "Messages" : "对话消息"
+}
+
+public enum ComposerContextBreakdownRow: String, Equatable, CaseIterable, Sendable {
+    case system, tools, messages
+}
+
+public func composerContextBreakdownLabel(_ row: ComposerContextBreakdownRow, english: Bool) -> String {
+    switch row {
+    case .system: return composerContextSystem(english: english)
+    case .tools: return composerContextTools(english: english)
+    case .messages: return composerContextMessages(english: english)
+    }
+}
 
 public enum ComposerSessionUsageRow: String, Equatable, Sendable {
     case cacheHit, uncachedInput, cacheRead, cacheWrite, output
