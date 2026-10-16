@@ -680,6 +680,8 @@ struct ChatRowView: View {
             )
         case .turnTrigger(let item):
             TurnTriggerRow(item: item)
+        case .compacted(let item):
+            CompactionRow(item: item)
         case .changes(let item):
             if changesCardMountsFetch(
                 seq: item.seq,
@@ -724,6 +726,79 @@ struct ChatRowView: View {
             return
         }
         onTool(tool)
+    }
+}
+
+/// Desktop `ui-chat` `CompactionItem`. Touch has no hover, so the context/API
+/// icon stays (desktop CSS swaps it for a chevron on hover).
+private struct CompactionRow: View {
+    let item: Item.Compacted
+    @State private var expanded = false
+
+    var body: some View {
+        let expandable = compactionRowIsExpandable(item)
+        let open = expandable && expanded
+        let title = compactionRowTitle(sourceCommandId: item.sourceCommandId, english: L.en)
+        let summary = compactionRowSummary(item: item, english: L.en)
+        VStack(alignment: .leading, spacing: 0) {
+            header(title: title, summary: summary, expandable: expandable)
+            if open, let text = item.summary {
+                MarkdownView(
+                    source: text,
+                    wrapCode: AppModel.shared.codeWordWrap,
+                    bodyColor: T.text3,
+                    variant: .compact
+                )
+                .padding(.leading, CGFloat(reasoningBodyLeadingPoints))
+                .padding(.vertical, CGFloat(reasoningBodyVerticalPaddingPoints))
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    @ViewBuilder
+    private func header(title: String, summary: String, expandable: Bool) -> some View {
+        let chrome = HStack(spacing: 0) {
+            Image(systemName: "curlybraces")
+                .font(.system(size: CGFloat(reasoningIconSizePoints)))
+                .foregroundStyle(T.text3)
+                .frame(
+                    width: CGFloat(reasoningLeadingBoxPoints),
+                    height: CGFloat(reasoningLeadingBoxPoints)
+                )
+                .padding(.trailing, CGFloat(reasoningRowGapPoints))
+                .accessibilityHidden(true)
+            Text(title)
+                .font(.system(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
+                .foregroundStyle(T.text3)
+                .fixedSize(horizontal: true, vertical: false)
+            Circle()
+                .fill(T.caption)
+                .frame(
+                    width: CGFloat(reasoningPreviewSeparatorSizePoints),
+                    height: CGFloat(reasoningPreviewSeparatorSizePoints)
+                )
+                .padding(.horizontal, CGFloat(reasoningPreviewSeparatorSpacingPoints))
+                .accessibilityHidden(true)
+            Text(summary)
+                .font(.system(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
+                .foregroundStyle(T.text3)
+                .lineLimit(1)
+            Spacer(minLength: 0)
+        }
+        .frame(minHeight: 24)
+        .contentShape(Rectangle())
+
+        if expandable {
+            Button { expanded.toggle() } label: { chrome }
+                .buttonStyle(.plain)
+                .accessibilityLabel(title)
+                .accessibilityValue(summary)
+        } else {
+            chrome
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("\(title) \(summary)")
+        }
     }
 }
 

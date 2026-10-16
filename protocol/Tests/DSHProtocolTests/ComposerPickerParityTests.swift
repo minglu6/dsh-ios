@@ -579,4 +579,251 @@ final class ComposerPickerParityTests: XCTestCase {
         XCTAssertEqual(goalPhaseLabel(phase: "active", activation: "disarmed", english: true), "Awaiting continuation")
         XCTAssertNotEqual(goalPhaseLabel(phase: "active", activation: "disarmed"), goalPhaseLabel(phase: "paused", activation: nil))
     }
+
+    func testCompactionItemCopyAndVisibilityMatchDesktopChatLocale() {
+        XCTAssertEqual(compactionRowTitle(sourceCommandId: nil, english: false), "上下文已压缩")
+        XCTAssertEqual(compactionRowTitle(sourceCommandId: nil, english: true), "Context compacted")
+        XCTAssertEqual(compactionRowTitle(sourceCommandId: "cmd-1", english: false), "compact")
+        XCTAssertEqual(compactionRowTitle(sourceCommandId: "cmd-1", english: true), "compact")
+
+        XCTAssertEqual(
+            compactionRowSummary(
+                shadowedItemCount: 12,
+                shadowedTokenCount: 3400,
+                fallbackSummary: nil,
+                hasSummary: true,
+                english: false
+            ),
+            "已压缩 12 条历史记录（约 3400 tokens）"
+        )
+        XCTAssertEqual(
+            compactionRowSummary(
+                shadowedItemCount: 12,
+                shadowedTokenCount: 3400,
+                fallbackSummary: nil,
+                hasSummary: true,
+                english: true
+            ),
+            "Compacted 12 history items (~3400 tokens)"
+        )
+        XCTAssertEqual(
+            compactionRowSummary(
+                shadowedItemCount: 12,
+                shadowedTokenCount: nil,
+                fallbackSummary: nil,
+                hasSummary: true,
+                english: false
+            ),
+            "点击查看压缩摘要"
+        )
+        XCTAssertEqual(
+            compactionRowSummary(
+                shadowedItemCount: nil,
+                shadowedTokenCount: nil,
+                fallbackSummary: nil,
+                hasSummary: false,
+                english: false
+            ),
+            "压缩摘要不可用"
+        )
+        XCTAssertEqual(
+            compactionRowSummary(
+                shadowedItemCount: nil,
+                shadowedTokenCount: nil,
+                fallbackSummary: nil,
+                hasSummary: true,
+                english: true
+            ),
+            "View compaction summary"
+        )
+        XCTAssertEqual(
+            compactionRowSummary(
+                shadowedItemCount: nil,
+                shadowedTokenCount: nil,
+                fallbackSummary: "kept the goal",
+                hasSummary: false,
+                english: false
+            ),
+            "kept the goal"
+        )
+
+        let running = Item.Compacted(key: "c1", compactionId: "id1", status: .running)
+        XCTAssertFalse(compactionItemIsVisible(running))
+        XCTAssertFalse(compactionRowIsExpandable(running))
+
+        let landed = Item.Compacted(
+            key: "c2", compactionId: "id2", status: .running, hasCheckpoint: true
+        )
+        XCTAssertTrue(compactionItemIsVisible(landed))
+
+        let done = Item.Compacted(
+            key: "c3",
+            compactionId: "id3",
+            status: .ok,
+            summary: "Kept the goal.",
+            shadowedItemCount: 4,
+            shadowedTokenCount: 800
+        )
+        XCTAssertTrue(compactionItemIsVisible(done))
+        XCTAssertTrue(compactionRowIsExpandable(done))
+        XCTAssertEqual(
+            compactionRowSummary(item: done, english: false),
+            "已压缩 4 条历史记录（约 800 tokens）"
+        )
+
+        let failed = Item.Compacted(key: "c4", compactionId: "id4", status: .error)
+        XCTAssertTrue(compactionItemIsVisible(failed))
+        XCTAssertEqual(compactionRowSummary(item: failed, english: true), "Compaction summary unavailable")
+    }
+
+    func testCompactionSummaryParsesDesktopArrayAndShadowedCounts() throws {
+        let data = try JSONValue.parse("""
+        {
+          "compactionId": "c1",
+          "summary": [
+            {"type":"text","text":"Keep "},
+            {"type":"ignore","text":"nope"},
+            {"type":"text","text":"the goal."}
+          ],
+          "shadowedSeqs": [1, 2, 3],
+          "shadowedTokenCount": 900
+        }
+        """)
+        XCTAssertEqual(compactionSummaryText(from: data["summary"]), "Keep the goal.")
+        XCTAssertEqual(compactionShadowedItemCount(from: data), 3)
+        XCTAssertEqual(compactionShadowedTokenCount(from: data), 900)
+
+        let stringSummary = try JSONValue.parse(#"{"summary":"Keep the goal."}"#)
+        XCTAssertNil(compactionSummaryText(from: stringSummary["summary"]))
+
+        let badSeqs = try JSONValue.parse(#"{"shadowedSeqs":[1,-1],"shadowedTokenCount":-3}"#)
+        XCTAssertNil(compactionShadowedItemCount(from: badSeqs))
+        XCTAssertNil(compactionShadowedTokenCount(from: badSeqs))
+    }
+
+    func testCompactionCheckpointIsReplacementUserMessage() throws {
+        let event = try JSONValue.parse("""
+        {"type":"user/message","surfaceOp":"replace","seq":9,"data":{
+          "source":{"kind":"compact-checkpoint","compactionId":"c1","sourceCommandId":"cmd-9"},
+          "content":[{"type":"text","text":"<compaction>"}]
+        }}
+        """)
+        XCTAssertTrue(isCompactionCheckpoint(event: event, data: event["data"]))
+        XCTAssertEqual(compactionCheckpointId(from: event["data"]), "c1")
+        XCTAssertEqual(compactionCheckpointCommandId(from: event["data"]), "cmd-9")
+
+        let append = try JSONValue.parse("""
+        {"type":"user/message","surfaceOp":"append","data":{
+          "source":{"kind":"compact-checkpoint","compactionId":"c1"}
+        }}
+        """)
+        XCTAssertFalse(isCompactionCheckpoint(event: append, data: append["data"]))
+
+        let human = try JSONValue.parse("""
+        {"type":"user/message","surfaceOp":"replace","data":{"source":{"kind":"user"}}}
+        """)
+        XCTAssertFalse(isCompactionCheckpoint(event: human, data: human["data"]))
+    }
+
+    func testFoldChatItemsUnhidesLandedCompactionItem() {
+        let running = Item.Compacted(key: "cmp-run", compactionId: "r1", status: .running)
+        let done = Item.Compacted(
+            key: "cmp-done",
+            compactionId: "d1",
+            status: .ok,
+            summary: "Kept the goal.",
+            shadowedItemCount: 2,
+            shadowedTokenCount: 40
+        )
+        let rows = foldChatItems(
+            [
+                .user(Item.User(key: "u", text: "hi")),
+                .compacted(running),
+                .compacted(done),
+            ],
+            policy: presentationPolicyFor(.detailed),
+            sessionRunning: false
+        )
+        XCTAssertFalse(rows.contains { if case .compacted(let item) = $0 { return item.key == "cmp-run" }; return false })
+        XCTAssertTrue(rows.contains { if case .compacted(let item) = $0 { return item.key == "cmp-done" }; return false })
+        XCTAssertTrue(rows.contains { if case .user = $0 { return true }; return false })
+    }
+
+    func testTranscriptReducerBuildsDesktopCompactionMarker() throws {
+        let reducer = TranscriptReducer()
+        XCTAssertTrue(reducer.apply(try JSONValue.parse(#"{"type":"snapshot","cursor":0,"records":[],"projections":{}}"#)))
+        XCTAssertTrue(reducer.apply(try JSONValue.parse("""
+        {"type":"event","event":{"type":"compaction/start","seq":1,"time":10,"data":{"compactionId":"c1","turn":1}}}
+        """)))
+        XCTAssertEqual(foldChatItems(reducer.items(), policy: presentationPolicyFor(.detailed), sessionRunning: false).count, 0)
+
+        XCTAssertTrue(reducer.apply(try JSONValue.parse("""
+        {"type":"event","event":{"type":"compaction/summary","seq":2,"time":11,"data":{
+          "compactionId":"c1",
+          "summary":[{"type":"text","text":"Kept the goal."}],
+          "shadowedSeqs":[1,2,3,4],
+          "shadowedTokenCount":1200
+        }}}
+        """)))
+        XCTAssertTrue(reducer.apply(try JSONValue.parse("""
+        {"type":"event","event":{"type":"user/message","seq":3,"time":12,"surfaceOp":"replace","data":{
+          "source":{"kind":"compact-checkpoint","compactionId":"c1"},
+          "content":[{"type":"text","text":"<envelope>"}]
+        }}}
+        """)))
+        XCTAssertTrue(reducer.apply(try JSONValue.parse("""
+        {"type":"event","event":{"type":"compaction/end","seq":4,"time":13,"data":{"compactionId":"c1"}}}
+        """)))
+
+        let compacted = reducer.items().compactMap { item -> Item.Compacted? in
+            if case .compacted(let value) = item { return value }
+            return nil
+        }
+        XCTAssertEqual(compacted.count, 1)
+        let marker = try XCTUnwrap(compacted.first)
+        XCTAssertEqual(marker.status, .ok)
+        XCTAssertEqual(marker.summary, "Kept the goal.")
+        XCTAssertEqual(marker.shadowedItemCount, 4)
+        XCTAssertEqual(marker.shadowedTokenCount, 1200)
+        XCTAssertTrue(marker.hasCheckpoint)
+        XCTAssertNil(marker.sourceCommandId)
+
+        let users = reducer.items().compactMap { item -> Item.User? in
+            if case .user(let user) = item { return user }
+            return nil
+        }
+        XCTAssertTrue(users.isEmpty)
+
+        let rows = foldChatItems(reducer.items(), policy: presentationPolicyFor(.detailed), sessionRunning: false)
+        guard case .compacted(let row) = try XCTUnwrap(rows.first) else {
+            return XCTFail("expected CompactionItem row")
+        }
+        XCTAssertEqual(compactionRowTitle(sourceCommandId: row.sourceCommandId, english: false), "上下文已压缩")
+        XCTAssertEqual(compactionRowSummary(item: row, english: false), "已压缩 4 条历史记录（约 1200 tokens）")
+    }
+
+    func testManualCompactCheckpointUsesCommandTitle() throws {
+        let reducer = TranscriptReducer()
+        XCTAssertTrue(reducer.apply(try JSONValue.parse(#"{"type":"snapshot","cursor":0,"records":[],"projections":{}}"#)))
+        XCTAssertTrue(reducer.apply(try JSONValue.parse("""
+        {"type":"event","event":{"type":"compaction/start","seq":1,"time":10,"data":{
+          "compactionId":"c2","sourceCommandId":"cmd-compact"
+        }}}
+        """)))
+        XCTAssertTrue(reducer.apply(try JSONValue.parse("""
+        {"type":"event","event":{"type":"user/message","seq":2,"time":11,"surfaceOp":"replace","data":{
+          "source":{"kind":"compact-checkpoint","compactionId":"c2","sourceCommandId":"cmd-compact"},
+          "content":[{"type":"text","text":"<envelope>"}]
+        }}}
+        """)))
+        XCTAssertTrue(reducer.apply(try JSONValue.parse("""
+        {"type":"event","event":{"type":"compaction/end","seq":3,"time":12,"data":{"compactionId":"c2"}}}
+        """)))
+        let marker = reducer.items().compactMap { item -> Item.Compacted? in
+            if case .compacted(let value) = item { return value }
+            return nil
+        }.first
+        XCTAssertEqual(marker?.sourceCommandId, "cmd-compact")
+        XCTAssertEqual(compactionRowTitle(sourceCommandId: marker?.sourceCommandId, english: true), "compact")
+    }
 }

@@ -448,6 +448,7 @@ public func inspectorGroupRows(_ st: InspectorChatState, policy: PresentationPol
         case .deliverable(let item): members = [.deliverable(item)]
         case .changes(let item): members = [.changes(item)]
         case .turnTrigger(let item): members = [.context(item)]
+        case .compacted(let item): members = [.compacted(item)]
         }
         covered.formUnion(members.map(\.key))
         let position = members.first.flatMap { positions[$0.key] } ?? controlAnchors[row.key] ?? lastPosition
@@ -616,6 +617,10 @@ private func inspectorItemRow(_ item: Item) -> InspectorRow {
             "startedAt": v.startedAt.map { .number(Double($0)) },
             "endedAt": v.endedAt.map { .number(Double($0)) },
             "turn": v.turn.map { .number(Double($0)) },
+            "shadowedItemCount": v.shadowedItemCount.map { .number(Double($0)) },
+            "shadowedTokenCount": v.shadowedTokenCount.map { .number(Double($0)) },
+            "sourceCommandId": v.sourceCommandId.map { .string($0) },
+            "hasCheckpoint": .bool(v.hasCheckpoint),
         ])
     case .deliverable(let v):
         type = "Item.Deliverable"
