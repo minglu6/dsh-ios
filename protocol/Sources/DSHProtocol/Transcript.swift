@@ -328,15 +328,25 @@ public enum Item: Sendable, Equatable, Identifiable {
         }
     }
 
+    public enum NoticeKind: String, Sendable, Equatable {
+        case generic
+        /// Desktop `TurnMaxTokensItem` (`message.maxTokens` + `message.maxTokens.hint`).
+        case maxTokens
+        /// Desktop interrupted-assistant `message.stopped`.
+        case stopped
+    }
+
     public struct Notice: Sendable, Equatable {
         public var key: String
         public var text: String
         public var turn: Int?
+        public var kind: NoticeKind
 
-        public init(key: String, text: String, turn: Int? = nil) {
+        public init(key: String, text: String, turn: Int? = nil, kind: NoticeKind = .generic) {
             self.key = key
             self.text = text
             self.turn = turn
+            self.kind = kind
         }
     }
 
@@ -361,6 +371,10 @@ public enum Item: Sendable, Equatable, Identifiable {
         public var messageId: String?
         /// Desktop `waking`: claimed from `inbox-next-turn`, or idle steer.
         public var waking: Bool
+        /// Desktop `ContentBlock` `tool-addition` names (`isVisibleChatNode`).
+        public var toolAdditions: [String]
+        /// Desktop `ContentBlock` `tool-removal` names.
+        public var toolRemovals: [String]
 
         public init(
             key: String,
@@ -369,7 +383,9 @@ public enum Item: Sendable, Equatable, Identifiable {
             at: Int64? = nil,
             messageSourceJson: String? = nil,
             messageId: String? = nil,
-            waking: Bool = false
+            waking: Bool = false,
+            toolAdditions: [String] = [],
+            toolRemovals: [String] = []
         ) {
             self.key = key
             self.text = text
@@ -378,6 +394,8 @@ public enum Item: Sendable, Equatable, Identifiable {
             self.messageSourceJson = messageSourceJson
             self.messageId = messageId
             self.waking = waking
+            self.toolAdditions = toolAdditions
+            self.toolRemovals = toolRemovals
         }
     }
 
@@ -1193,11 +1211,15 @@ public final class TranscriptReducer {
             case "aborted":
                 let hook = reason["reason"]
                 if hook["kind"].str() == "hook", hook["reason"].str() == "deepseek-account/signed-out" {
-                    committed.append(.notice(Item.Notice(key: "te\(seq)", text: "任务已因退出 DeepSeek 登录而停止。", turn: turn)))
+                    committed.append(.turnFailure(Item.TurnFailure(
+                        key: "te\(seq)",
+                        message: "",
+                        code: "ACCOUNT_SIGNED_OUT",
+                        turn: turn
+                    )))
                 }
             case "max-tokens", "max_tokens":
-                committed.append(.notice(Item.Notice(key: "mt\(seq)", text: "已达到输出 token 上限", turn: turn)))
-                committed.append(.notice(Item.Notice(key: "mth\(seq)", text: "回答被截断，已有输出保留在对话中。发送“继续”可让模型接着输出。", turn: turn)))
+                committed.append(.notice(Item.Notice(key: "mt\(seq)", text: "", turn: turn, kind: .maxTokens)))
             default:
                 break
             }
@@ -1359,7 +1381,7 @@ public final class TranscriptReducer {
             openRetryDelayMs = nil
             openLastAttemptError = nil
             if interrupted {
-                committed.append(.notice(Item.Notice(key: "i\(seq)", text: "已停止", turn: ownerTurn)))
+                committed.append(.notice(Item.Notice(key: "i\(seq)", text: "", turn: ownerTurn, kind: .stopped)))
             }
         case "system/message":
             upsertSystemPrompt(e, data: data, seq: seq)
@@ -1602,12 +1624,15 @@ public final class TranscriptReducer {
     }
 
     private func upsertContext(_ msg: JSONValue, key: String, at: Int64?) {
-        let text = (msg["content"].arr() ?? []).filter { $0["type"].str() == "text" }.map { $0["text"].str() ?? "" }.joined(separator: "\n")
-        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return }
+        let parsed = contextContentBlocks(msg["content"].arr() ?? [])
+        if parsed.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && parsed.added.isEmpty && parsed.removed.isEmpty {
+            return
+        }
         let messageId = msg["id"].str()?.nilIfBlank
         committed.append(.context(Item.Context(
             key: key,
-            text: text,
+            text: parsed.text,
             sourceKind: msg["source"]["kind"].str(),
             at: at,
             messageSourceJson: prettySource(msg["source"]),
@@ -1619,7 +1644,9 @@ public final class TranscriptReducer {
                 nextStep: nextStepClaim,
                 step: wakingTriggerStep(openStep: openStep, openTurn: openTurn),
                 turnStartSeq: openTurn.flatMap { turnFacts[$0]?.startSeq }
-            )
+            ),
+            toolAdditions: parsed.added,
+            toolRemovals: parsed.removed
         )))
     }
 

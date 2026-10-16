@@ -449,6 +449,7 @@ public func inspectorGroupRows(_ st: InspectorChatState, policy: PresentationPol
         case .changes(let item): members = [.changes(item)]
         case .turnTrigger(let item): members = [.context(item)]
         case .compacted(let item): members = [.compacted(item)]
+        case .context(let item): members = [.context(item)]
         }
         covered.formUnion(members.map(\.key))
         let position = members.first.flatMap { positions[$0.key] } ?? controlAnchors[row.key] ?? lastPosition
@@ -563,6 +564,8 @@ private func inspectorItemRow(_ item: Item) -> InspectorRow {
             "sourceKind": v.sourceKind.map { .string($0) },
             "at": v.at.map { .number(Double($0)) },
             "messageSourceJson": v.messageSourceJson.map { .string($0) },
+            "toolAdditions": .array(v.toolAdditions.map { .string($0) }),
+            "toolRemovals": .array(v.toolRemovals.map { .string($0) }),
         ])
     case .system(let v):
         type = "Item.System"
@@ -579,6 +582,7 @@ private func inspectorItemRow(_ item: Item) -> InspectorRow {
         fields = jsonObject([
             "text": .string(v.text),
             "turn": v.turn.map { .number(Double($0)) },
+            "kind": .string(v.kind.rawValue),
         ])
     case .retry(let v):
         type = "Item.Retry"

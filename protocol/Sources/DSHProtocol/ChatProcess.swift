@@ -85,6 +85,8 @@ public enum ChatRow: Equatable, Sendable {
     case changes(Item.Changes)
     case turnTrigger(Item.Context)
     case compacted(Item.Compacted)
+    /// Desktop `ContextInjectionRow` tool-addition / tool-removal notice.
+    case context(Item.Context)
 
     public var key: String {
         switch self {
@@ -100,6 +102,7 @@ public enum ChatRow: Equatable, Sendable {
         case .changes(let v): return v.key
         case .turnTrigger(let v): return v.key
         case .compacted(let v): return v.key
+        case .context(let v): return v.key
         }
     }
 
@@ -404,7 +407,7 @@ private func isBlankAssistant(_ item: Item) -> Bool {
 
 private func isHidden(_ item: Item) -> Bool {
     switch item {
-    case .context(let ctx): return !ctx.waking
+    case .context(let ctx): return !contextItemIsVisible(ctx)
     case .system: return true
     case .compacted(let compacted): return !compactionItemIsVisible(compacted)
     default: return isBlankAssistant(item)
@@ -539,8 +542,9 @@ public func foldChatItems(
                 if finalPosition == nil || (positions[row.key] ?? Int.max) < finalPosition! {
                     controlled.insert(row.key)
                 }
-            case .changes, .compacted:
-                // Desktop keeps WorkspaceChanges and CompactionItem outside the completed-turn fold.
+            case .changes, .compacted, .context:
+                // Desktop keeps WorkspaceChanges, CompactionItem, and context
+                // tool-change rows outside the completed-turn fold.
                 break
             default:
                 break
@@ -690,6 +694,8 @@ private func emitPlain(_ out: inout [ChatRow], _ item: Item) {
     case .compacted(let v): out.append(.compacted(v))
     case .context(let v) where v.waking:
         out.append(.turnTrigger(v))
+    case .context(let v) where contextHasToolChanges(v):
+        out.append(.context(v))
     default: break
     }
 }

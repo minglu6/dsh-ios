@@ -826,4 +826,146 @@ final class ComposerPickerParityTests: XCTestCase {
         XCTAssertEqual(marker?.sourceCommandId, "cmd-compact")
         XCTAssertEqual(compactionRowTitle(sourceCommandId: marker?.sourceCommandId, english: true), "compact")
     }
+
+    func testContextToolChangeCopyMatchesDesktopChatLocale() {
+        XCTAssertEqual(
+            contextToolChangeTitle(added: ["bash"], removed: [], english: false),
+            "已添加工具：bash"
+        )
+        XCTAssertEqual(
+            contextToolChangeTitle(added: [], removed: ["web_search"], english: true),
+            "Tool removed: web_search"
+        )
+        XCTAssertEqual(
+            contextToolChangeTitle(added: ["bash", "read"], removed: [], english: false),
+            "工具已更新"
+        )
+        XCTAssertEqual(
+            contextToolChangeSummary(added: ["bash", "read"], removed: [], english: false),
+            "新增 2 个"
+        )
+        XCTAssertEqual(
+            contextToolChangeSummary(added: ["bash"], removed: ["web_search"], english: true),
+            "1 added, 1 removed"
+        )
+        XCTAssertNil(contextToolChangeSummary(added: ["bash"], removed: [], english: false))
+        XCTAssertFalse(contextToolChangeIsExpandable(added: ["bash"], removed: []))
+        XCTAssertTrue(contextToolChangeIsExpandable(added: ["bash", "read"], removed: []))
+        XCTAssertEqual(contextToolChangeAddedLine(names: ["bash", "read"], english: false), "新增：bash, read")
+        XCTAssertEqual(contextToolChangeRemovedLine(names: ["web_search"], english: true), "Removed: web_search")
+        XCTAssertEqual(maxTokensTitle(english: false), "已达到输出 token 上限")
+        XCTAssertEqual(
+            maxTokensHint(english: false),
+            "回答被截断，已有输出保留在对话中。发送“继续”可让模型接着输出。"
+        )
+        XCTAssertEqual(maxTokensTitle(english: true), "Output token limit reached")
+        XCTAssertEqual(messageStopped(english: true), "Stopped")
+        XCTAssertEqual(
+            noticeChatTitle(Item.Notice(key: "mt", text: "", kind: .maxTokens), english: false),
+            "已达到输出 token 上限"
+        )
+    }
+
+    func testFoldChatItemsShowsToolChangeContextAndHidesOrdinaryInjection() {
+        let added = Item.Context(
+            key: "d1",
+            text: "",
+            sourceKind: "developer",
+            toolAdditions: ["bash"]
+        )
+        let mixed = Item.Context(
+            key: "d2",
+            text: "skills",
+            sourceKind: "skill-catalog",
+            toolAdditions: ["read"],
+            toolRemovals: ["web_search"]
+        )
+        let hidden = Item.Context(key: "inj", text: "skills", sourceKind: "skill-catalog")
+        let rows = foldChatItems(
+            [.context(added), .context(mixed), .context(hidden)],
+            policy: presentationPolicyFor(.detailed),
+            sessionRunning: false
+        )
+        XCTAssertTrue(rows.contains { if case .context(let item) = $0 { return item.key == "d1" }; return false })
+        XCTAssertTrue(rows.contains { if case .context(let item) = $0 { return item.key == "d2" }; return false })
+        XCTAssertFalse(rows.contains { if case .context(let item) = $0 { return item.key == "inj" }; return false })
+        XCTAssertFalse(rows.contains { if case .turnTrigger = $0 { return true }; return false })
+        XCTAssertTrue(contextItemIsVisible(added))
+        XCTAssertTrue(contextToolChangeIsExclusive(added))
+        XCTAssertFalse(contextToolChangeIsExclusive(mixed))
+        XCTAssertEqual(contextRowTitle(item: mixed, english: false), "上下文注入")
+        XCTAssertEqual(contextRowTitle(item: added, english: false), "已添加工具：bash")
+        XCTAssertFalse(contextItemIsVisible(hidden))
+    }
+
+    func testTranscriptReducerKeepsDeveloperToolChangeAndDropsEmptyText() throws {
+        let reducer = TranscriptReducer()
+        XCTAssertTrue(reducer.apply(try JSONValue.parse(#"{"type":"snapshot","cursor":0,"records":[],"projections":{}}"#)))
+        XCTAssertTrue(reducer.apply(try JSONValue.parse("""
+        {"type":"event","event":{"type":"developer/message","seq":1,"time":10,"data":{"message":{
+          "id":"dev-1",
+          "content":[{"type":"tool-addition","toolName":"bash"}],
+          "source":{"kind":"developer"}
+        }}}}
+        """)))
+        XCTAssertTrue(reducer.apply(try JSONValue.parse("""
+        {"type":"event","event":{"type":"developer/message","seq":2,"time":11,"data":{"message":{
+          "id":"dev-empty",
+          "content":[{"type":"text","text":"   "}],
+          "source":{"kind":"developer"}
+        }}}}
+        """)))
+        let contexts = reducer.items().compactMap { item -> Item.Context? in
+            if case .context(let value) = item { return value }
+            return nil
+        }
+        XCTAssertEqual(contexts.count, 1)
+        XCTAssertEqual(contexts[0].toolAdditions, ["bash"])
+        XCTAssertEqual(contexts[0].toolRemovals, [])
+        XCTAssertTrue(contexts[0].text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+        let rows = foldChatItems(reducer.items(), policy: presentationPolicyFor(.detailed), sessionRunning: false)
+        guard case .context(let row) = try XCTUnwrap(rows.first) else {
+            return XCTFail("expected ContextInjectionRow tool-change")
+        }
+        XCTAssertEqual(contextToolChangeTitle(item: row, english: false), "已添加工具：bash")
+        XCTAssertNil(contextToolChangeSummary(item: row, english: false))
+    }
+
+    func testTurnEndMaxTokensIsOneNoticeAndSignedOutIsTurnError() throws {
+        let reducer = TranscriptReducer()
+        XCTAssertTrue(reducer.apply(try JSONValue.parse(#"{"type":"snapshot","cursor":0,"records":[],"projections":{}}"#)))
+        XCTAssertTrue(reducer.apply(try JSONValue.parse("""
+        {"type":"event","event":{"type":"turn/end","seq":1,"time":10,"data":{"turn":1,"reason":{"kind":"max-tokens"}}}}
+        """)))
+        let maxTokens = reducer.items().compactMap { item -> Item.Notice? in
+            if case .notice(let value) = item { return value }
+            return nil
+        }
+        XCTAssertEqual(maxTokens.map(\.kind), [.maxTokens])
+        XCTAssertEqual(maxTokens.count, 1)
+
+        let signedOut = TranscriptReducer()
+        XCTAssertTrue(signedOut.apply(try JSONValue.parse(#"{"type":"snapshot","cursor":0,"records":[],"projections":{}}"#)))
+        XCTAssertTrue(signedOut.apply(try JSONValue.parse("""
+        {"type":"event","event":{"type":"turn/end","seq":1,"time":10,"data":{"turn":2,"reason":{
+          "kind":"aborted","reason":{"kind":"hook","reason":"deepseek-account/signed-out"}
+        }}}}
+        """)))
+        let failures = signedOut.items().compactMap { item -> Item.TurnFailure? in
+            if case .turnFailure(let value) = item { return value }
+            return nil
+        }
+        XCTAssertEqual(failures.count, 1)
+        XCTAssertEqual(failures[0].code, "ACCOUNT_SIGNED_OUT")
+        XCTAssertEqual(turnFailureTitle(code: failures[0].code, english: false), "任务已停止")
+        XCTAssertEqual(
+            chatFailureMessage(failures[0].message, code: failures[0].code, en: false),
+            "任务已因退出 DeepSeek 登录而停止。"
+        )
+        XCTAssertTrue(signedOut.items().allSatisfy { item in
+            if case .notice = item { return false }
+            return true
+        })
+    }
 }

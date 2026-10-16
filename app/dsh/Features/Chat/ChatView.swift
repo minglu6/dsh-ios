@@ -659,7 +659,16 @@ struct ChatRowView: View {
                 onOpenFeedback: onOpenFeedback
             )
         case .notice(let notice):
-            MessageRow(item: .notice(notice), model: model, onOpenFeedback: onOpenFeedback)
+            switch notice.kind {
+            case .maxTokens:
+                TurnMaxTokensRow()
+            case .stopped:
+                Text(messageStopped(english: L.en))
+                    .font(.footnote)
+                    .foregroundStyle(T.warnText)
+            case .generic:
+                MessageRow(item: .notice(notice), model: model, onOpenFeedback: onOpenFeedback)
+            }
         case .deliverable(let deliverable):
             MessageRow(item: .deliverable(deliverable), model: model, onOpenFeedback: onOpenFeedback)
         case .retry(let retry):
@@ -682,6 +691,8 @@ struct ChatRowView: View {
             TurnTriggerRow(item: item)
         case .compacted(let item):
             CompactionRow(item: item)
+        case .context(let item):
+            ContextToolChangeRow(item: item)
         case .changes(let item):
             if changesCardMountsFetch(
                 seq: item.seq,
@@ -798,6 +809,95 @@ private struct CompactionRow: View {
             chrome
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("\(title) \(summary)")
+        }
+    }
+}
+
+/// Desktop `ui-chat` `ContextInjectionRow` tool-addition / tool-removal chrome.
+/// Touch has no hover, so the browse icon stays.
+private struct ContextToolChangeRow: View {
+    let item: Item.Context
+    @State private var expanded = false
+
+    var body: some View {
+        let exclusive = contextToolChangeIsExclusive(item)
+        let added = item.toolAdditions
+        let removed = item.toolRemovals
+        let text = item.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let expandable = exclusive
+            ? contextToolChangeIsExpandable(added: added, removed: removed)
+            : !text.isEmpty
+        let open = expandable && expanded
+        let title = contextRowTitle(item: item, english: L.en)
+        let summary = exclusive ? contextToolChangeSummary(item: item, english: L.en) : nil
+        VStack(alignment: .leading, spacing: 0) {
+            header(title: title, summary: summary, expandable: expandable)
+            if open {
+                VStack(alignment: .leading, spacing: 2) {
+                    if exclusive {
+                        if let line = contextToolChangeAddedLine(names: added, english: L.en) {
+                            Text(line)
+                        }
+                        if let line = contextToolChangeRemovedLine(names: removed, english: L.en) {
+                            Text(line)
+                        }
+                    } else {
+                        Text(item.text)
+                    }
+                }
+                .font(.system(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
+                .foregroundStyle(T.text3)
+                .padding(.leading, CGFloat(reasoningBodyLeadingPoints))
+                .padding(.vertical, CGFloat(reasoningBodyVerticalPaddingPoints))
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    @ViewBuilder
+    private func header(title: String, summary: String?, expandable: Bool) -> some View {
+        let chrome = HStack(spacing: 0) {
+            Image(systemName: "doc.text.magnifyingglass")
+                .font(.system(size: CGFloat(reasoningIconSizePoints)))
+                .foregroundStyle(T.text3)
+                .frame(
+                    width: CGFloat(reasoningLeadingBoxPoints),
+                    height: CGFloat(reasoningLeadingBoxPoints)
+                )
+                .padding(.trailing, CGFloat(reasoningRowGapPoints))
+                .accessibilityHidden(true)
+            Text(title)
+                .font(.system(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
+                .foregroundStyle(T.text3)
+                .lineLimit(1)
+            if let summary {
+                Circle()
+                    .fill(T.caption)
+                    .frame(
+                        width: CGFloat(reasoningPreviewSeparatorSizePoints),
+                        height: CGFloat(reasoningPreviewSeparatorSizePoints)
+                    )
+                    .padding(.horizontal, CGFloat(reasoningPreviewSeparatorSpacingPoints))
+                    .accessibilityHidden(true)
+                Text(summary)
+                    .font(.system(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
+                    .foregroundStyle(T.text3)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(minHeight: 24)
+        .contentShape(Rectangle())
+
+        if expandable {
+            Button { expanded.toggle() } label: { chrome }
+                .buttonStyle(.plain)
+                .accessibilityLabel(title)
+                .accessibilityValue(summary ?? "")
+        } else {
+            chrome
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(summary.map { "\(title) \($0)" } ?? title)
         }
     }
 }
@@ -1174,7 +1274,7 @@ struct MessageRow: View {
         case .tool(let tool):
             ToolCard(tool: tool, onTap: {})
         case .notice(let notice):
-            Text(notice.text).font(.footnote).foregroundStyle(T.warnText)
+            Text(noticeChatTitle(notice, english: L.en)).font(.footnote).foregroundStyle(T.warnText)
         case .deliverable(let deliverable):
             VStack(alignment: .leading, spacing: 6) {
                 Text(L.presentFiles()).font(.caption).foregroundStyle(T.text3)
