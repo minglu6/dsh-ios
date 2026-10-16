@@ -702,11 +702,15 @@ public func chatFailureMessage(_ message: String, code: String?, en: Bool) -> St
     switch code {
     case "ACCOUNT_SIGNED_OUT":
         return en ? "Stopped because you signed out of DeepSeek." : "任务已因退出 DeepSeek 登录而停止。"
+    case "INTERRUPTED":
+        return en
+            ? "The DSH process exited before this turn finished (for example, it was killed, crashed, or timed out while shutting down), so the turn was closed when DSH restarted. Unfinished tool calls have unknown outcomes."
+            : "DSH 进程在本轮完成前退出（例如被强制结束、崩溃或关闭超时），重新启动后本轮已中止。未完成的工具调用结果未知。"
     case "ACCOUNT_SIGN_IN_REQUIRED":
         return en ? "Sign in to DeepSeek and ensure the request destination supports account authentication." : "请先登录 DeepSeek，并确认请求地址支持账号认证。"
-    case "QUOTA", "ACCOUNT_QUOTA", "QUOTA_EXCEEDED":
+    case "QUOTA", "ACCOUNT_QUOTA":
         return en ? "Request quota exhausted." : "当前请求的额度已用尽"
-    case "AUTH", "AUTH_ERROR", "INVALID_API_KEY":
+    case "AUTH":
         return en ? "API key is invalid" : "API 密钥无效"
     default:
         return message

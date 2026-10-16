@@ -339,4 +339,163 @@ final class ComposerPickerParityTests: XCTestCase {
         XCTAssertEqual(Set(loop.map(\.sessionId)), ["a", "b"])
         XCTAssertEqual(loop.count, 2)
     }
+
+    func testAskToolRowChromeMatchesDesktopAskQuestionRow() {
+        XCTAssertEqual(askRowTitle(english: false), "提问")
+        XCTAssertEqual(askRowTitle(english: true), "Ask question")
+        XCTAssertEqual(toolProcessSummary(
+            Item.Tool(key: "t", callId: "c1", name: "ask_user_question", arguments: #"{"q":"hi"}"#, status: .ok)
+        ).title, "提问")
+        XCTAssertEqual(toolProcessSummary(
+            Item.Tool(key: "t", callId: "c1", name: "request_user_input", arguments: "{}", status: .ok),
+            en: true
+        ).title, "Ask question")
+
+        let waiting = askToolRowChrome(
+            name: "ask_user_question",
+            status: .running,
+            error: nil,
+            result: nil,
+            answerable: true,
+            english: false
+        )
+        XCTAssertEqual(waiting?.title, "提问")
+        XCTAssertEqual(waiting?.summary, "等待回答")
+        XCTAssertEqual(waiting?.actionLabel, "回答")
+
+        let pending = askToolRowChrome(
+            name: "ask_user_question",
+            status: .ok,
+            error: nil,
+            result: #"{"pending":true,"callId":"c1"}"#,
+            answerable: true,
+            english: false
+        )
+        XCTAssertEqual(pending?.summary, "已继续工作，仍可回答")
+        XCTAssertEqual(pending?.actionLabel, "回答")
+        XCTAssertTrue(isAskPendingResult(#"{"pending":true,"callId":"c1"}"#))
+        XCTAssertFalse(isAskPendingResult(#"{"pending":false,"callId":"c1"}"#))
+        XCTAssertFalse(isAskPendingResult("not-json"))
+
+        let closed = askToolRowChrome(
+            name: "ask_user_question",
+            status: .ok,
+            error: nil,
+            result: #"{"pending":true,"callId":"c1"}"#,
+            answerable: false,
+            english: false
+        )
+        XCTAssertEqual(closed?.summary, "已结束")
+        XCTAssertNil(closed?.actionLabel)
+
+        XCTAssertEqual(
+            askToolRowChrome(
+                name: "ask_user_question",
+                status: .error,
+                error: "ASK_CANCELLED",
+                result: nil,
+                answerable: false,
+                english: false
+            )?.summary,
+            "已取消"
+        )
+        XCTAssertEqual(
+            askToolRowChrome(
+                name: "ask_user_question",
+                status: .error,
+                error: "ASK_ABORTED",
+                result: nil,
+                answerable: false,
+                english: true
+            )?.summary,
+            "interrupted"
+        )
+        XCTAssertNil(askToolRowChrome(
+            name: "bash",
+            status: .running,
+            error: nil,
+            result: nil,
+            answerable: true,
+            english: false
+        ))
+        XCTAssertTrue(askToolRowIsAnswerable(callId: "c1", questionId: "q1", activeCallIds: ["c1"]))
+        XCTAssertTrue(askToolRowIsAnswerable(callId: nil, questionId: "q1", activeCallIds: ["q1"]))
+        XCTAssertFalse(askToolRowIsAnswerable(callId: "c1", questionId: "q1", activeCallIds: []))
+    }
+
+    func testRetryAndTurnFailureMatchDesktopChatLocales() {
+        XCTAssertEqual(retryAttemptLabel(state: .scheduled, active: true, english: false), "正在重试模型请求")
+        XCTAssertEqual(retryAttemptLabel(state: .scheduled, active: false, english: false), "等待重试模型请求")
+        XCTAssertEqual(retryAttemptLabel(state: .started, active: false, english: true), "Retried model request")
+        XCTAssertEqual(retryAttemptLabel(state: .cancelled, active: false, english: false), "模型请求重试已取消")
+        XCTAssertTrue(retryAttemptIsActive(state: .scheduled, isLast: true))
+        XCTAssertFalse(retryAttemptIsActive(state: .scheduled, isLast: false))
+        XCTAssertFalse(retryAttemptIsActive(state: .started, isLast: true))
+        XCTAssertEqual(retryDelayMilliseconds(delayMs: 1500, english: false), "1500毫秒")
+        XCTAssertEqual(retryDelayMilliseconds(delayMs: 1500, english: true), "1500ms")
+
+        XCTAssertEqual(turnFailureTitle(code: "INTERRUPTED", english: false), "任务已停止")
+        XCTAssertEqual(turnFailureTitle(code: "ACCOUNT_SIGNED_OUT", english: true), "Task stopped")
+        XCTAssertEqual(turnFailureTitle(code: "MODEL", english: false), "本轮运行失败")
+        XCTAssertFalse(turnFailureShowsCode("INTERRUPTED"))
+        XCTAssertTrue(turnFailureShowsCode("ACCOUNT_SIGNED_OUT"))
+        XCTAssertFalse(turnFailureShowsCode(nil))
+        XCTAssertTrue(
+            chatFailureMessage("wire", code: "INTERRUPTED", en: false)
+                .contains("DSH 进程在本轮完成前退出")
+        )
+        XCTAssertEqual(chatFailureMessage("wire", code: "AUTH", en: false), "API 密钥无效")
+        XCTAssertEqual(chatFailureMessage("wire", code: "QUOTA_EXCEEDED", en: false), "wire")
+        XCTAssertEqual(chatFailureMessage("wire", code: "INVALID_API_KEY", en: false), "wire")
+    }
+
+    func testChangesDiffAndImageCopyMatchDesktopLocales() {
+        XCTAssertEqual(messageImageLoading(english: false), "加载图片…")
+        XCTAssertEqual(messageImageLoading(english: true), "Loading image…")
+        XCTAssertEqual(messageImageFailed(english: false), "图片无法预览")
+        XCTAssertEqual(messageImageFailed(english: true), "Image preview unavailable")
+
+        XCTAssertEqual(changesDiffNoticeKind(nil), .missing)
+        XCTAssertEqual(
+            changesDiffNoticeKind(WorkspaceFileDiff(kind: "binary", path: "a", display: "a")),
+            .binary
+        )
+        XCTAssertEqual(
+            changesDiffNoticeKind(WorkspaceFileDiff(kind: "oversized", path: "a", display: "a")),
+            .oversized
+        )
+        XCTAssertEqual(
+            changesDiffNoticeKind(WorkspaceFileDiff(kind: "text", path: "a", display: "a", before: false, after: true)),
+            .created
+        )
+        XCTAssertEqual(
+            changesDiffNoticeKind(WorkspaceFileDiff(kind: "text", path: "a", display: "a", before: true, after: false)),
+            .deleted
+        )
+        XCTAssertEqual(
+            changesDiffNoticeKind(WorkspaceFileDiff(kind: "text", path: "a", display: "a", before: true, after: true)),
+            .unchanged
+        )
+        XCTAssertEqual(
+            changesDiffNoticeKind(WorkspaceFileDiff(kind: "text", path: "a", display: "a", before: true, after: true, coarse: true)),
+            .coarse
+        )
+        XCTAssertNil(
+            changesDiffNoticeKind(WorkspaceFileDiff(
+                kind: "text",
+                path: "a",
+                display: "a",
+                hunks: [WorkspaceDiffHunk(oldStart: 1, newStart: 1, lines: [" same"])]
+            ))
+        )
+        XCTAssertEqual(changesDiffNoticeLabel(.missing, english: false), "这轮改动的内容已不可用")
+        XCTAssertEqual(changesDiffNoticeLabel(.binary, english: false), "二进制文件，无法显示改动")
+        XCTAssertEqual(changesDiffNoticeLabel(.oversized, english: false), "文件过大，无法显示改动")
+        XCTAssertEqual(changesDiffNoticeLabel(.created, english: false), "本轮新建的文件")
+        XCTAssertEqual(changesDiffNoticeLabel(.deleted, english: false), "本轮删除的文件")
+        XCTAssertEqual(changesDiffNoticeLabel(.unchanged, english: false), "两侧内容相同")
+        XCTAssertEqual(changesDiffNoticeLabel(.coarse, english: false), "逐行对比超时，按整个文件替换显示")
+        XCTAssertEqual(changesDiffTruncatedLabel(count: 5000, english: false), "只显示前 5000 行")
+        XCTAssertEqual(changesDiffTruncatedLabel(count: 5000, english: true), "Showing the first 5000 lines")
+    }
 }

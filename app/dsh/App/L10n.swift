@@ -72,8 +72,8 @@ enum L {
     static func sessionInspector() -> String { en ? "Session diagnostics" : "会话数据诊断" }
     static func sessionFeedback() -> String { en ? "Feedback" : "反馈" }
     static func sessionFeedbackHint() -> String { messageFeedbackHint(english: en) }
-    static func imageLoading() -> String { en ? "Loading image…" : "图片加载中…" }
-    static func imageLoadFailed() -> String { en ? "Failed to load image; click to retry" : "图片加载失败，点击重试" }
+    static func imageLoading() -> String { messageImageLoading(english: en) }
+    static func imageLoadFailed() -> String { messageImageFailed(english: en) }
     static func agentPresets() -> String { en ? "Agent presets" : "Agent 预设" }
     static func presetOnboarding() -> String {
         en
