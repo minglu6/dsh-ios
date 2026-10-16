@@ -2950,13 +2950,11 @@ final class AppModel: ObservableObject {
     }
 
     private func applyJobFrame(jobId: String, frame: JSONValue) {
-        switch JobFollowFrame.parse(frame) {
-        case .opened(let status), .status(let status):
-            if let index = jobs?.firstIndex(where: { $0.id == jobId }) {
-                jobs?[index].status = status
-            }
+        switch JobFollowFrame.parse(frame, fallbackId: jobId) {
+        case .opened(let job), .status(let job):
+            applyJobFollowProjection(&jobs, jobId: jobId, incoming: job)
             if selectedJobId == jobId {
-                jobDetail?.status = status
+                jobDetail?.status = job.status
             }
         case .output(let lossy, let chunks):
             guard selectedJobId == jobId else { return }

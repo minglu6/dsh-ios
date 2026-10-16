@@ -441,6 +441,26 @@ public func isWakingTurnTrigger(
 /// Desktop `JobListAction` anchors the list below the chip (`arrowEdge: .top`).
 public let jobsPopoverArrowPointsDown = true
 
+/// Desktop `MenuSurface` sizes to the roster, not a fixed 320×420 sheet.
+public let jobsPopoverSizesToContent = true
+public let jobsPopoverWidthPoints: Double = 320
+public let jobsPopoverMaxHeightPoints: Double = 360
+
+/// Desktop statistics row uses `tok`, not `tokens`.
+public let composerStatisticsTokenUnit = "tok"
+
+/// Desktop `message.ts` idle steer is `location.kind === "step" && step === 1`.
+/// A turn without a step is not step 1.
+public func wakingTriggerStep(openStep: Int?, openTurn _: Int?) -> Int? {
+    openStep
+}
+
+/// Desktop `RiskConfirmation` is a centered dialog, not a full-screen sheet.
+public let permissionRiskIsCenteredDialog = true
+
+/// Desktop keeps the conversation mounted while the in-app browser is open.
+public let chatPreservesPositionAcrossBrowser = true
+
 /// Desktop hero is already a blank session, so permission lives on the Host.
 /// iOS landing has no session: the draft stays in memory and is not persisted.
 public let landingPermissionPersistsAcrossLaunch = false

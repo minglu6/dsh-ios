@@ -1600,7 +1600,7 @@ public final class TranscriptReducer {
                 messageId: messageId,
                 nextTurn: nextTurnClaim,
                 nextStep: nextStepClaim,
-                step: openStep ?? (openTurn != nil ? 1 : nil),
+                step: wakingTriggerStep(openStep: openStep, openTurn: openTurn),
                 turnStartSeq: openTurn.flatMap { turnFacts[$0]?.startSeq }
             )
         )))

@@ -225,9 +225,9 @@ struct GeneralSettingsView: View {
                 }
             )
         }
-        .sheet(isPresented: Binding(get: { riskPermission != nil }, set: { if !$0 { riskPermission = nil } })) {
+        .overlay {
             if let value = riskPermission {
-                PermissionRiskSheet(
+                PermissionRiskDialog(
                     preset: value,
                     enabled: model.isOnline && shared.writable(.permission) && model.permissionCatalog?.allowsDefault(value) == true,
                     forDefaults: true,

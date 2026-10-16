@@ -153,10 +153,20 @@ final class JobsTests: XCTestCase {
     }
 
     func testFollowOutputFramesPreserveLossAndGaps() throws {
-        let opened = JobFollowFrame.parse(try JSONValue.parse(#"{"type":"opened","job":{"status":"running"}}"#))
-        XCTAssertEqual(opened, .opened(status: "running"))
-        let status = JobFollowFrame.parse(try JSONValue.parse(#"{"type":"status","job":{"status":"completed"}}"#))
-        XCTAssertEqual(status, .status(status: "completed"))
+        let opened = JobFollowFrame.parse(
+            try JSONValue.parse(#"{"type":"opened","job":{"id":"bash-1","status":"running","label":"sleep 300"}}"#),
+            fallbackId: "bash-1"
+        )
+        guard case .opened(let openedJob) = opened else { return XCTFail("expected opened") }
+        XCTAssertEqual(openedJob.status, "running")
+        XCTAssertTrue(openedJob.isLive)
+        let status = JobFollowFrame.parse(
+            try JSONValue.parse(#"{"type":"status","job":{"id":"bash-1","status":"completed"}}"#),
+            fallbackId: "bash-1"
+        )
+        guard case .status(let settled) = status else { return XCTFail("expected status") }
+        XCTAssertEqual(settled.status, "completed")
+        XCTAssertFalse(settled.isLive)
 
         let frame = try JSONValue.parse("""
         {"type":"output","lossy":true,"chunks":[
@@ -191,6 +201,81 @@ final class JobsTests: XCTestCase {
         XCTAssertFalse(jsonFlagTrue(.null))
         let stringy = JobFollowFrame.parse(try JSONValue.parse(#"{"type":"output","lossy":"true","chunks":[]}"#))
         XCTAssertEqual(stringy, .output(lossy: true, chunks: []))
+    }
+
+    func testRealisticHostKilledRosterMatchesDesktopJobView() throws {
+        let result = try JSONValue.parse("""
+        {"type":"rows","jobs":[
+          {"id":"bash-1","kind":"bash","label":"sleep 300","status":"killed","detail":"signal: SIGTERM; cancelled by the user","startedAt":1700000000000,"finishedAt":1700000070000,"output":{"total":0,"earliest":0}}
+        ]}
+        """)
+        let rows = parseJobRoster(result)
+        XCTAssertEqual(rows.count, 1)
+        let job = try XCTUnwrap(rows.first)
+        XCTAssertEqual(job.id, "bash-1")
+        XCTAssertEqual(job.kind, "bash")
+        XCTAssertEqual(job.title, "sleep 300")
+        XCTAssertEqual(job.status, "killed")
+        XCTAssertEqual(job.detail, "signal: SIGTERM; cancelled by the user")
+        XCTAssertNil(job.progress)
+        XCTAssertEqual(job.finishedAt, 1_700_000_070_000)
+        XCTAssertFalse(job.isLive)
+        XCTAssertFalse(job.canKill)
+        XCTAssertEqual(jobRowStatusText(job, english: false), "signal: SIGTERM; cancelled by the user")
+        XCTAssertEqual(jobElapsedMs(job, nowMs: 1_700_000_200_000), 70_000)
+        XCTAssertEqual(jobDurationText(elapsedMs: 70_000, english: false), "1分10秒")
+        XCTAssertEqual(JobsActionLabel.chip(jobs: rows, failed: false), .retained(1))
+        XCTAssertTrue(orderedJobRows(rows).allSatisfy { !$0.isLive })
+    }
+
+    func testKilledHostExitObjectProjectsJobViewStatusAndDetail() throws {
+        let result = try JSONValue.parse("""
+        {"type":"rows","jobs":[
+          {"id":"bash-1","kind":"bash","label":"sleep 300","status":"running","exit":{"signal":"SIGTERM","reason":"cancelled by the user"},"startedAt":1700000000000,"finishedAt":1700000061000,"progress":"running","output":{"total":0,"earliest":0}}
+        ]}
+        """)
+        let job = try XCTUnwrap(parseJobRoster(result).first)
+        XCTAssertEqual(job.status, "killed")
+        XCTAssertEqual(job.detail, "signal: SIGTERM; cancelled by the user")
+        XCTAssertNil(job.progress)
+        XCTAssertFalse(job.isLive)
+        XCTAssertFalse(job.canKill)
+        XCTAssertEqual(jobRowStatusText(job, english: true), "signal: SIGTERM; cancelled by the user")
+        XCTAssertEqual(jobElapsedMs(job, nowMs: 1_700_000_200_000), 61_000)
+        XCTAssertEqual(jobDurationText(elapsedMs: 61_000, english: false), "1分1秒")
+    }
+
+    func testFollowStatusReplacesFullJobViewAndDoesNotReviveSettledRow() throws {
+        var jobs: [JobRow]? = [
+            JobRow(
+                id: "bash-1",
+                status: "running",
+                title: "sleep 300",
+                kind: "bash",
+                startedAt: 1_700_000_000_000,
+                progress: "running"
+            ),
+        ]
+        let killed = try JSONValue.parse("""
+        {"type":"status","job":{"id":"bash-1","kind":"bash","label":"sleep 300","status":"killed","detail":"signal: SIGTERM; cancelled by the user","startedAt":1700000000000,"finishedAt":1700000070000,"output":{"total":0,"earliest":0}}}
+        """)
+        guard case .status(let incoming) = JobFollowFrame.parse(killed, fallbackId: "bash-1") else {
+            return XCTFail("expected status frame")
+        }
+        applyJobFollowProjection(&jobs, jobId: "bash-1", incoming: incoming)
+        let settled = try XCTUnwrap(jobs?.first)
+        XCTAssertEqual(settled.status, "killed")
+        XCTAssertEqual(settled.detail, "signal: SIGTERM; cancelled by the user")
+        XCTAssertEqual(settled.finishedAt, 1_700_000_070_000)
+        XCTAssertNil(settled.progress)
+        XCTAssertFalse(settled.isLive)
+        XCTAssertFalse(settled.canKill)
+
+        let staleOpened = JobRow(id: "bash-1", status: "running", title: "sleep 300", kind: "bash")
+        applyJobFollowProjection(&jobs, jobId: "bash-1", incoming: staleOpened)
+        XCTAssertEqual(jobs?.first?.status, "killed")
+        XCTAssertEqual(jobs?.first?.detail, "signal: SIGTERM; cancelled by the user")
+        XCTAssertFalse(jobs?.first?.isLive ?? true)
     }
 }
 
