@@ -402,7 +402,7 @@ private func isBlankAssistant(_ item: Item) -> Bool {
 
 private func isHidden(_ item: Item) -> Bool {
     switch item {
-    case .context(let ctx): return !isTurnTriggerKind(ctx.sourceKind)
+    case .context(let ctx): return !ctx.waking
     case .system, .compacted: return true
     default: return isBlankAssistant(item)
     }
@@ -683,7 +683,7 @@ private func emitPlain(_ out: inout [ChatRow], _ item: Item) {
     case .turnFailure(let v): out.append(.turnFailure(v))
     case .deliverable(let v): out.append(.deliverable(v))
     case .changes(let v): out.append(.changes(v))
-    case .context(let v) where isTurnTriggerKind(v.sourceKind):
+    case .context(let v) where v.waking:
         out.append(.turnTrigger(v))
     default: break
     }

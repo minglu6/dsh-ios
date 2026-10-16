@@ -12,6 +12,7 @@ struct RootView: View {
     @StateObject private var commandHost = CommandMenuHost()
     @State private var showModels = false
     @State private var showPermission = false
+    @State private var riskPermission: String?
     @State private var showWorkspacePicker = false
     @State private var composerFocus = 0
 
@@ -153,7 +154,8 @@ struct RootView: View {
                             onCompact: { model.executeCommand("/compact") },
                             onPerm: { if model.isOnline { showPermission = true } },
                             onModel: { if model.isOnline { showModels = true } },
-                            onExport: { model.createAndOpenSession() }
+                            onExport: { model.createAndOpenSession() },
+                            onSelectPermission: { applyLandingPermission($0) }
                         )
                         .padding(.horizontal, 14)
                         .padding(.bottom, 4)
@@ -173,9 +175,7 @@ struct RootView: View {
                         composerFocus += 1
                     }
                 },
-                onSelectPermission: { value in
-                    model.setPermission(value) { _ in }
-                },
+                onSelectPermission: { applyLandingPermission($0) },
                 onModel: { if model.isOnline { showModels = true } },
                 onSend: {
                     if landingCommandMenuVisible {
@@ -212,7 +212,7 @@ struct RootView: View {
         }
         .sheet(isPresented: $showPermission) {
             PermissionPickerSheet(
-                current: model.sessionPermission ?? "",
+                current: model.sessionPermission ?? model.draftPermission ?? model.defaultPermission,
                 catalog: model.permissionCatalog,
                 loading: model.permissionCatalogLoading,
                 error: model.permissionCatalogError,
@@ -221,9 +221,30 @@ struct RootView: View {
                 onRefresh: { model.reloadPermissionCatalog() },
                 onDismiss: { showPermission = false },
                 onPick: { value in
-                    model.setPermission(value) { _ in showPermission = false }
+                    showPermission = false
+                    applyLandingPermission(value)
                 }
             )
+        }
+        .sheet(isPresented: Binding(get: { riskPermission != nil }, set: { if !$0 { riskPermission = nil } })) {
+            if let value = riskPermission {
+                PermissionRiskSheet(
+                    preset: value,
+                    enabled: model.isOnline && !model.permissionChanging && model.permissionCatalog?.find(value) != nil,
+                    onDismiss: { riskPermission = nil },
+                    onConfirm: {
+                        model.setPermission(value) { _ in riskPermission = nil }
+                    }
+                )
+            }
+        }
+    }
+
+    private func applyLandingPermission(_ value: String) {
+        if value == "danger-full-access" || value == "auto" {
+            riskPermission = value
+        } else {
+            model.setPermission(value) { _ in }
         }
     }
 

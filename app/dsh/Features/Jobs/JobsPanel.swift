@@ -6,7 +6,7 @@ import DSHProtocol
 struct JobsAction: View {
     @ObservedObject var model: AppModel
     let sessionId: String
-    var onClick: () -> Void
+    @State private var open = false
 
     private var available: Bool { model.canShowJobs }
 
@@ -19,7 +19,7 @@ struct JobsAction: View {
                 )
                 .accessibilityHidden(true)
             if let chip = JobsActionLabel.chip(jobs: model.jobs, failed: model.jobsFailed) {
-                Button(action: onClick) {
+                Button(action: { open.toggle() }) {
                     HStack(spacing: 6) {
                         if case .live = chip {
                             Circle().fill(T.accent).frame(width: 6, height: 6)
@@ -35,6 +35,11 @@ struct JobsAction: View {
                 .buttonStyle(.plain)
                 .padding(.trailing, 4)
                 .accessibilityLabel(JobsActionLabel.text(chip, en: L.en))
+                .popover(isPresented: $open, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
+                    JobsPanel(model: model) { open = false }
+                        .frame(width: 320, height: 420)
+                        .modifier(PopoverCompactAdaptation())
+                }
             }
         }
         .task(id: "\(model.activeId ?? "")-\(sessionId)-\(available)") {
@@ -127,7 +132,7 @@ struct JobsPanel: View {
                 }
             }
         }
-        .background(T.bg.ignoresSafeArea())
+        .background(T.bg)
         .task(id: "panel-\(model.activeId ?? "")-\(sessionId ?? "")-\(model.canShowJobs)") {
             guard let sessionId else { return }
             await model.retainJobsWatch(hostId: model.activeId, sessionId: sessionId, available: model.canShowJobs)
@@ -254,9 +259,10 @@ struct JobsPanel: View {
                 }
             }
             .foregroundStyle(phase.stateName == "failed" ? T.err : T.text2)
-            .padding(.horizontal, phase.stateName == "armed" ? 8 : 6)
-            .padding(.vertical, 6)
+            .padding(.horizontal, phase.stateName == "armed" ? 10 : 8)
+            .frame(minWidth: 44, minHeight: 44)
             .background(phase.stateName == "armed" ? T.err.opacity(0.16) : T.fill, in: Capsule())
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(!canKill || phase.stateName == "pending")

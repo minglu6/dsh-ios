@@ -661,7 +661,10 @@ struct CommandMenuOverlay: View {
     var onPerm: () -> Void
     var onModel: () -> Void
     var onExport: () -> Void
+    /// Desktop `/permission` is a `popupSelect`: options replace the slash list in place.
+    var onSelectPermission: ((String) -> Void)? = nil
 
+    @State private var pickingPermission = false
     @State private var commands: [JSONValue] = []
     @State private var skills: [SkillEntry] = []
     @State private var loading = true
@@ -690,6 +693,19 @@ struct CommandMenuOverlay: View {
                 landing: landing
             )
         )
+    }
+
+    private var permissionOptions: [PermissionOption] { model.permissionCatalog?.options ?? [] }
+
+    private var currentPermission: String {
+        model.sessionPermission ?? model.draftPermission ?? model.defaultPermission
+    }
+
+    private func choosePermission(_ value: String) {
+        if consumeSlash { model.consumeComposerSlash() }
+        pickingPermission = false
+        if value != currentPermission { onSelectPermission?(value) }
+        onDismiss()
     }
 
     private var collision: String? { commandContributionCollision(candidates) }
@@ -723,13 +739,25 @@ struct CommandMenuOverlay: View {
                 }
                 highlight = commandMenuDefaultHighlight(rows)
             }
-            .onChange(of: query) { _ in highlight = commandMenuDefaultHighlight(rows) }
+            .onChange(of: query) { _ in
+                pickingPermission = false
+                highlight = commandMenuDefaultHighlight(rows)
+            }
             .onChange(of: rows.count) { _ in syncHighlight() }
             .onChange(of: host.enterRequest) { _ in
-                if host.enterRequest > 0 { activateHighlight() }
+                if host.enterRequest > 0 {
+                    if pickingPermission {
+                        if let h = highlight, permissionOptions.indices.contains(h) { choosePermission(permissionOptions[h].value) }
+                    } else {
+                        activateHighlight()
+                    }
+                }
             }
             .onChange(of: host.moveRequest) { _ in
-                if host.moveRequest > 0 {
+                if host.moveRequest > 0 && pickingPermission {
+                    let count = permissionOptions.count
+                    if count > 0 { highlight = ((highlight ?? -1) + host.moveDirection + count) % count }
+                } else if host.moveRequest > 0 {
                     highlight = commandMenuMoveHighlight(rows: rows, current: highlight, direction: host.moveDirection)
                 }
             }
@@ -737,8 +765,12 @@ struct CommandMenuOverlay: View {
 
     private var menuCard: some View {
         VStack(alignment: .leading, spacing: 0) {
-            statusBanner
-            menuList
+            if pickingPermission {
+                permissionList
+            } else {
+                statusBanner
+                menuList
+            }
         }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(T.settingsCard)
@@ -775,6 +807,31 @@ struct CommandMenuOverlay: View {
             Button(L.retry()) { attempt += 1 }.disabled(!model.isOnline)
         }
         .padding(12)
+    }
+
+    private var permissionList: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                if model.permissionCatalogLoading && permissionOptions.isEmpty { loadingRow }
+                ForEach(Array(permissionOptions.enumerated()), id: \.offset) { index, option in
+                    HStack(spacing: 10) {
+                        Image(systemName: permissionIcon(option.value)).foregroundStyle(T.text2)
+                        Text(permissionLabel(value: option.value, option: option)).foregroundStyle(T.ink)
+                        Spacer()
+                        if option.value == currentPermission {
+                            Image(systemName: "checkmark").font(.system(size: 12, weight: .semibold)).foregroundStyle(T.accent)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(highlight == index ? T.hoverBg : Color.clear)
+                    .contentShape(Rectangle())
+                    .onTapGesture { choosePermission(option.value) }
+                }
+            }
+        }
+        .frame(maxHeight: .infinity)
     }
 
     private var menuList: some View {
@@ -933,7 +990,14 @@ struct CommandMenuOverlay: View {
             consume()
             if name == "compact" { onCompact() } else { model.executeCommand("/\(name)") }
             onDismiss()
-        case "permission": consume(); onPerm(); onDismiss()
+        case "permission":
+            if onSelectPermission != nil {
+                model.reloadPermissionCatalog()
+                highlight = permissionOptions.firstIndex { $0.value == currentPermission } ?? 0
+                pickingPermission = true
+            } else {
+                consume(); onPerm(); onDismiss()
+            }
         case "export": consume(); onExport(); onDismiss()
         default:
             if command["input"].obj() != nil {

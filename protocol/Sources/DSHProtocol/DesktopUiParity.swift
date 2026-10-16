@@ -342,11 +342,41 @@ public let composerChipHeightPoints: Double = 28
 public let composerTextMinHeightPoints: Double = 36
 public let composerHeroTextMinHeightPoints: Double = 52
 public let composerTextMaxHeightPoints: Double = 132
+/// Card chrome around the text+toolbar (desktop InputBar padding).
+public let composerCardPaddingTopPoints: Double = 6
+public let composerCardPaddingBottomPoints: Double = 4
+public let composerCardPaddingHorizontalPoints: Double = 8
+public let composerInnerSpacingPoints: Double = 4
+
+/// Empty / short text uses the desktop floor, never the 132pt max. Growing to
+/// the cap is what left a tall blank field and squeezed the slash list to ~3 rows.
+public func composerTextFittedHeight(contentHeight: Double, hero: Bool) -> Double {
+    let floor = hero ? composerHeroTextMinHeightPoints : composerTextMinHeightPoints
+    return min(composerTextMaxHeightPoints, max(floor, contentHeight))
+}
+
+public func composerTextShouldScroll(fittedHeight: Double) -> Bool {
+    fittedHeight >= composerTextMaxHeightPoints
+}
 
 /// Desktop `ui-chat` turn-trigger kinds (`turn-trigger.ts`).
 public func isTurnTriggerKind(_ kind: String?) -> Bool {
     guard let kind, !kind.isEmpty, kind != "user", kind != "runtime-context" else { return false }
     return true
+}
+
+/// Desktop `ui-chat` client.js ~10470/10491: only a claimed next-turn (or idle
+/// steer) message is `waking` and becomes a turn-trigger. Injected skill-catalog
+/// / time-context / extra job notices stay hidden.
+public func isWakingTurnTrigger(
+    sourceKind: String?,
+    messageId: String?,
+    nextTurnClaimed: Set<String>,
+    idleSteerClaimed: Set<String>
+) -> Bool {
+    guard let kind = sourceKind, !kind.isEmpty, kind != "user" else { return false }
+    guard let messageId, !messageId.isEmpty else { return false }
+    return nextTurnClaimed.contains(messageId) || idleSteerClaimed.contains(messageId)
 }
 
 public enum TurnTriggerIcon: String, Equatable, Sendable {
