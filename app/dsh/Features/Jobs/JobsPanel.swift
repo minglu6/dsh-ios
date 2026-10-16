@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 import DSHProtocol
 
@@ -14,6 +15,9 @@ struct JobsAction: View {
             if let chip = JobsActionLabel.chip(jobs: model.jobs, failed: model.jobsFailed) {
                 Button(action: onClick) {
                     HStack(spacing: 6) {
+                        if case .live = chip {
+                            Circle().fill(T.accent).frame(width: 6, height: 6)
+                        }
                         Image(systemName: "clock")
                             .font(.system(size: 13))
                         Text(JobsActionLabel.text(chip, en: L.en))
@@ -33,27 +37,87 @@ struct JobsAction: View {
     }
 }
 
+/// Desktop `JobListAction`: live / settled sections, inline output, two-press kill.
 struct JobsPanel: View {
     @ObservedObject var model: AppModel
     var onDismiss: (() -> Void)?
-    @State private var stopping: JobRow?
-    @State private var killing = false
+
+    @State private var expandedKey: String?
+    @State private var settledOpen: Bool?
+    @State private var clearedKeys: Set<String> = []
+    @State private var killPhase: JobKillPhase = .idle
+    @State private var nowMs = Int64(Date().timeIntervalSince1970 * 1000)
 
     private var sessionId: String? { model.chat?.sessionId }
     private var online: Bool { model.isOnline }
-    private var canKill: Bool { online && !killing && model.ops.contains("jobs.kill") }
+    private var canKill: Bool { online && model.ops.contains("jobs.kill") }
+    private var rows: [JobRow] { orderedJobRows(model.jobs ?? []) }
+    private var liveRows: [JobRow] { rows.filter(\.isLive) }
+    private var settledRows: [JobRow] { rows.filter { !$0.isLive && !clearedKeys.contains($0.id) } }
+    private var settledExpanded: Bool { settledOpen ?? liveRows.isEmpty }
 
     var body: some View {
-        ZStack {
-            VStack(spacing: 0) {
-                if let detail = model.jobDetail, let job = currentJob(detail.jobId) ?? fallback(detail) {
-                    detailView(detail, job: job)
-                } else {
-                    roster
-                }
+        VStack(spacing: 0) {
+            header(L.backgroundJobs()) {
+                if let onDismiss { onDismiss() } else { model.pop() }
             }
-            if let job = stopping {
-                killOverlay(job)
+            if model.jobs == nil && !model.jobsFailed {
+                ProgressView().frame(maxWidth: .infinity).padding()
+            }
+            if let err = model.jobsPanelError {
+                Text(err).foregroundStyle(T.err).padding(22)
+            }
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    if liveRows.isEmpty && settledRows.isEmpty && model.jobs != nil && !model.jobsFailed && model.jobsPanelError == nil {
+                        Text(L.jobsZero()).foregroundStyle(T.text3).padding(22)
+                    }
+                    if !liveRows.isEmpty {
+                        Text(jobSectionLive(english: L.en))
+                            .font(.caption)
+                            .foregroundStyle(T.text3)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 12)
+                            .padding(.bottom, 4)
+                        ForEach(liveRows) { job in
+                            jobBlock(job)
+                        }
+                    }
+                    if !settledRows.isEmpty {
+                        HStack {
+                            Button {
+                                settledOpen = !settledExpanded
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: settledExpanded ? "chevron.down" : "chevron.right")
+                                        .font(.system(size: 11))
+                                    Text(jobSectionSettled(count: settledRows.count, english: L.en))
+                                }
+                                .font(.caption)
+                                .foregroundStyle(T.text3)
+                            }
+                            .buttonStyle(.plain)
+                            Spacer()
+                            Button(jobSectionClear(english: L.en)) {
+                                clearedKeys.formUnion(settledRows.map(\.id))
+                                if let expandedKey, settledRows.contains(where: { $0.id == expandedKey }) {
+                                    self.expandedKey = nil
+                                    model.clearJobSelection()
+                                }
+                            }
+                            .font(.caption)
+                            .foregroundStyle(T.text2)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 12)
+                        .padding(.bottom, 4)
+                        if settledExpanded {
+                            ForEach(settledRows) { job in
+                                jobBlock(job)
+                            }
+                        }
+                    }
+                }
             }
         }
         .background(T.bg.ignoresSafeArea())
@@ -61,169 +125,166 @@ struct JobsPanel: View {
             guard let sessionId else { return }
             await model.retainJobsWatch(hostId: model.activeId, sessionId: sessionId, available: model.canShowJobs)
         }
+        .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { date in
+            nowMs = Int64(date.timeIntervalSince1970 * 1000)
+            killPhase = jobKillTick(
+                phase: killPhase,
+                nowMs: nowMs,
+                runningKeys: Set(liveRows.filter { $0.status == "running" }.map(\.id))
+            )
+        }
+        .onChange(of: rows.map(\.id).joined(separator: ",")) { _ in
+            if let expandedKey, !rows.contains(where: { $0.id == expandedKey }) {
+                self.expandedKey = nil
+                model.clearJobSelection()
+            }
+        }
         .onDisappear { model.clearJobSelection() }
     }
 
-    private var roster: some View {
-        VStack(spacing: 0) {
-            header(L.backgroundJobs()) {
-                if let onDismiss { onDismiss() } else { model.pop() }
-            }
-            HStack {
-                Button(L.refresh()) { model.refreshJobs() }
-                    .disabled(!(online && sessionId != nil))
-                    .foregroundStyle(online ? T.accent : T.text3)
-                Spacer()
+    @ViewBuilder
+    private func jobBlock(_ job: JobRow) -> some View {
+        let expanded = expandedKey == job.id
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .center, spacing: 8) {
+                if job.isObservable {
+                    Button {
+                        if expanded {
+                            expandedKey = nil
+                            model.clearJobSelection()
+                        } else {
+                            expandedKey = job.id
+                            model.selectJob(job)
+                        }
+                    } label: {
+                        jobRow(job, expanded: expanded)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(
+                        L.t(
+                            expanded ? "收起 \(job.title) 的实时输出" : "展开 \(job.title) 的实时输出",
+                            expanded ? "Hide live output of \(job.title)" : "Show live output of \(job.title)"
+                        )
+                    )
+                } else {
+                    jobRow(job, expanded: false)
+                }
+                if job.canKill {
+                    killButton(job)
+                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
-            if model.jobs == nil && !model.jobsFailed {
-                ProgressView().frame(maxWidth: .infinity).padding()
-            }
-            if let err = model.jobsPanelError {
-                Text(err)
-                    .foregroundStyle(T.err)
-                    .padding(22)
-            }
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    if let jobs = model.jobs, jobs.isEmpty, !model.jobsFailed, model.jobsPanelError == nil {
-                        Text(L.jobsZero()).foregroundStyle(T.text3).padding(22)
-                    }
-                    ForEach(model.jobs ?? []) { job in
-                        HStack(spacing: 8) {
-                            Button {
-                                model.selectJob(job)
-                            } label: {
-                                HStack(spacing: 10) {
-                                    Image(systemName: "clock").foregroundStyle(T.text2).font(.system(size: 16))
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(job.title).foregroundStyle(T.ink).lineLimit(1)
-                                        if !job.status.isEmpty {
-                                            Text(job.status).font(.caption).foregroundStyle(T.text3)
-                                        }
-                                    }
-                                    Spacer()
-                                }
-                                .padding(.vertical, 10)
-                            }
-                            .buttonStyle(.plain)
-                            if job.canKill {
-                                Button(L.killJob()) { stopping = job }
-                                    .foregroundStyle(canKill ? T.err : T.caption)
-                                    .disabled(!canKill)
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                    }
-                }
+            if expanded, let detail = model.jobDetail, detail.jobId == job.id {
+                outputPanel(detail, job: job)
             }
         }
     }
 
-    /// Android JobsSheet detail: 「返回后台任务」+ title. No extra header close.
-    private func detailView(_ detail: JobDetailState, job: JobRow) -> some View {
-        VStack(spacing: 0) {
-            HStack {
-                Button(L.backToJobs()) { model.clearJobSelection() }
-                    .foregroundStyle(T.accent)
-                Spacer()
+    private func jobRow(_ job: JobRow, expanded: Bool) -> some View {
+        let duration = jobDurationText(elapsedMs: jobElapsedMs(job, nowMs: nowMs), english: L.en)
+        let status = job.qualifier ?? jobStatusLabel(job.status, english: L.en)
+        return HStack(alignment: .top, spacing: 8) {
+            Circle()
+                .fill(dotColor(job.status))
+                .frame(width: 7, height: 7)
+                .padding(.top, 5)
+            VStack(alignment: .leading, spacing: 2) {
+                if job.isLive {
+                    Text(job.title).foregroundStyle(T.ink).lineLimit(1)
+                    HStack(spacing: 6) {
+                        if !job.kind.isEmpty {
+                            Text(job.kind).font(.caption).foregroundStyle(T.text3)
+                        }
+                        Text(status).font(.caption).foregroundStyle(T.text3).lineLimit(1)
+                        Text(duration).font(.caption.monospacedDigit()).foregroundStyle(T.text3)
+                    }
+                } else {
+                    HStack(spacing: 6) {
+                        if !job.kind.isEmpty {
+                            Text(job.kind).font(.caption).foregroundStyle(T.text3)
+                        }
+                        Text(job.title).foregroundStyle(T.ink).lineLimit(1)
+                        Spacer(minLength: 8)
+                        Text(status).font(.caption).foregroundStyle(T.text3).lineLimit(1)
+                        Text(duration).font(.caption.monospacedDigit()).foregroundStyle(T.text3)
+                    }
+                }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-            .padding(.bottom, 4)
-            Text(job.title)
-                .font(.headline)
-                .foregroundStyle(T.ink)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 8)
-            if !detail.status.isEmpty {
-                Text(detail.status)
-                    .font(.caption)
+            if job.isObservable {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 11))
                     .foregroundStyle(T.text3)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 8)
+                    .rotationEffect(.degrees(expanded ? 180 : 0))
             }
-            if let extra = job.detail, !extra.isEmpty {
-                Text(extra)
-                    .font(.system(.footnote, design: .monospaced))
-                    .foregroundStyle(T.text2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 8)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+    }
+
+    private func killButton(_ job: JobRow) -> some View {
+        let phase = killPhase.key == job.id ? killPhase : .idle
+        let title: String = {
+            switch phase {
+            case .armed: return jobKillConfirmLabel(english: L.en)
+            case .failed: return jobKillFailedLabel(english: L.en)
+            default: return jobKillStopLabel(label: job.title, english: L.en)
             }
+        }()
+        return Button {
+            let next = jobKillPress(phase: killPhase, key: job.id, nowMs: nowMs)
+            killPhase = next
+            if case .pending = next {
+                model.killJob(jobId: job.id) { ok in
+                    killPhase = jobKillAdmit(phase: killPhase, key: job.id, ok: ok, nowMs: nowMs)
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "stop.fill").font(.system(size: 9))
+                if case .armed = phase {
+                    Text(jobKillConfirmAction(english: L.en)).font(.caption)
+                }
+            }
+            .foregroundStyle(phase.stateName == "failed" ? T.err : T.text2)
+            .padding(.horizontal, phase.stateName == "armed" ? 8 : 6)
+            .padding(.vertical, 6)
+            .background(phase.stateName == "armed" ? T.err.opacity(0.16) : T.fill, in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(!canKill || phase.stateName == "pending")
+        .accessibilityLabel(title)
+    }
+
+    private func outputPanel(_ detail: JobDetailState, job: JobRow) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
             if let error = detail.error {
-                Text(error).foregroundStyle(T.err).padding(.horizontal, 22).padding(.top, 8)
-                Button(L.retry()) { model.retryJobFollow() }
-                    .disabled(!online)
-                    .padding(.bottom, 8)
+                Text(error).foregroundStyle(T.err)
+                Button(L.retry()) { model.retryJobFollow() }.disabled(!online)
             }
             if detail.output.isEmpty && detail.error == nil {
-                Text(L.waitingJobOutput()).foregroundStyle(T.text3).padding(22)
-                Spacer()
+                Text(L.waitingJobOutput()).foregroundStyle(T.text3)
             } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 0) {
-                        ForEach(Array(detail.output.enumerated()), id: \.offset) { _, line in
-                            Text(line.isEmpty ? " " : line)
-                                .font(.system(.footnote, design: .monospaced))
-                                .foregroundStyle(T.text2)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .textSelection(.enabled)
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
+                ForEach(Array(detail.output.enumerated()), id: \.offset) { _, line in
+                    Text(line.isEmpty ? " " : line)
+                        .font(.system(.footnote, design: .monospaced))
+                        .foregroundStyle(T.text2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .textSelection(.enabled)
                 }
             }
         }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 12)
     }
 
-    private func killOverlay(_ job: JobRow) -> some View {
-        ZStack {
-            T.scrim.ignoresSafeArea()
-                .onTapGesture { if !killing { stopping = nil } }
-            VStack(alignment: .leading, spacing: 14) {
-                Text(L.killBackgroundJobTitle())
-                    .font(.headline)
-                    .foregroundStyle(T.ink)
-                Text(job.title)
-                    .foregroundStyle(T.text2)
-                if let err = model.jobsPanelError {
-                    Text(err).foregroundStyle(T.err)
-                }
-                HStack {
-                    Button(L.cancel()) {
-                        if !killing { stopping = nil }
-                    }
-                    .disabled(killing)
-                    .foregroundStyle(T.text2)
-                    Spacer()
-                    Button(L.killJob()) {
-                        killing = true
-                        model.killJob(jobId: job.id) { success in
-                            killing = false
-                            if success { stopping = nil }
-                        }
-                    }
-                    .disabled(!canKill)
-                    .foregroundStyle(canKill ? T.err : T.caption)
-                }
-            }
-            .padding(20)
-            .frame(maxWidth: 320)
-            .background(T.surface, in: RoundedRectangle(cornerRadius: 16))
-            .overlay(RoundedRectangle(cornerRadius: 16).stroke(T.border, lineWidth: 0.5))
+    private func dotColor(_ status: String) -> Color {
+        switch status {
+        case "running": return T.accent
+        case "stopping", "killed": return T.warnText
+        case "failed": return T.err
+        case "completed": return T.ok
+        default: return T.text3
         }
-    }
-
-    private func currentJob(_ id: String) -> JobRow? {
-        model.jobs?.first { $0.id == id }
-    }
-
-    private func fallback(_ detail: JobDetailState) -> JobRow? {
-        JobRow(id: detail.jobId, status: detail.status, title: detail.jobId)
     }
 }

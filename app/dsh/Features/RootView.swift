@@ -12,6 +12,7 @@ struct RootView: View {
     @StateObject private var commandHost = CommandMenuHost()
     @State private var showModels = false
     @State private var showPermission = false
+    @State private var showWorkspacePicker = false
     @State private var composerFocus = 0
 
     var body: some View {
@@ -150,22 +151,24 @@ struct RootView: View {
                             query: slashMenuQuery(model.composerText),
                             leading: slashMenuIsLeading(model.composerText),
                             consumeSlash: landingSlashTrigger != nil,
+                            availableHeight: max(0, geo.size.height - 8),
                             onDismiss: { slashMenu.dismiss(trigger: landingSlashTrigger) },
-                            onFile: {},
-                            onGoal: {},
-                            onPlan: {},
-                            onFeedback: {},
-                            onCompact: {},
+                            onFile: { model.createAndOpenSession() },
+                            onGoal: { model.insertComposer("/goal ") },
+                            onPlan: { model.executeCommand("/plan") },
+                            onFeedback: { model.createAndOpenSession() },
+                            onCompact: { model.executeCommand("/compact") },
                             onPerm: { if model.isOnline { showPermission = true } },
                             onModel: { if model.isOnline { showModels = true } },
-                            onExport: {}
+                            onExport: { model.createAndOpenSession() }
                         )
                         .padding(.horizontal, 14)
                         .padding(.bottom, 4)
-                        .frame(maxHeight: CGFloat(commandMenuAvailableHeight(containerHeight: Double(geo.size.height))), alignment: .bottom)
+                        .frame(maxHeight: max(0, geo.size.height - 8), alignment: .bottom)
                     }
                 }
             }
+            landingWorkspaceRow
             ComposerView(
                 model: model,
                 interceptKeys: landingCommandMenuVisible,
@@ -209,6 +212,9 @@ struct RootView: View {
             )
             .padding()
         }
+        .sheet(isPresented: $showWorkspacePicker) {
+            WorkspaceDirectorySheet(model: model, onDismiss: { showWorkspacePicker = false })
+        }
         .sheet(isPresented: $showPermission) {
             PermissionPickerSheet(
                 current: model.sessionPermission ?? "",
@@ -224,6 +230,45 @@ struct RootView: View {
                 }
             )
         }
+    }
+
+    private var landingWorkspaceRow: some View {
+        HStack(spacing: 10) {
+            Menu {
+                ForEach(model.workspaces) { workspace in
+                    Button(
+                        workspaceDisplayTitle(
+                            title: workspace.title,
+                            path: workspace.path,
+                            localizedDefault: L.defaultWorkspace()
+                        )
+                    ) {
+                        model.draftWorkspaceId = workspace.workspaceId
+                    }
+                }
+                if model.ops.contains("workspace.create") {
+                    Button(L.selectWorkspaceDirectory()) { showWorkspacePicker = true }
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: model.landingWorkspaceLabel == nil ? "folder" : "folder.fill")
+                        .font(.system(size: 14))
+                    Text(model.landingWorkspaceLabel ?? landingChooseWorkspace(english: L.en))
+                        .font(.subheadline)
+                        .lineLimit(1)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 11))
+                }
+                .foregroundStyle(T.text2)
+                .padding(.horizontal, 10)
+                .frame(minHeight: 36)
+                .background(T.fill, in: Capsule())
+            }
+            .accessibilityLabel(landingChooseWorkspace(english: L.en))
+            Spacer()
+        }
+        .padding(.horizontal, 14)
+        .padding(.bottom, 4)
     }
 
     private var homePresetLabel: String {

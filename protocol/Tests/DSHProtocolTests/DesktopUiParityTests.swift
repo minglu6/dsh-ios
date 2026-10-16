@@ -239,5 +239,47 @@ final class DesktopUiParityTests: XCTestCase {
             conversationHeaderTitle(sessionId: "n", title: "修 bug", blank: false, newSession: "新会话", untitled: "未命名"),
             "修 bug"
         )
+        XCTAssertEqual(
+            composerPlaceholderText(kind: .steerQueue, english: false),
+            "Cmd/Ctrl+Enter 插话发送全部排队消息"
+        )
+        XCTAssertEqual(
+            composerPlaceholderText(kind: .parentOffline, english: false),
+            "父会话已离线，无法继续发送；仍可停止当前运行"
+        )
+        XCTAssertEqual(composerPlaceholderText(kind: .unavailable, english: false), "会话不可用")
+        XCTAssertEqual(
+            composerPlaceholderKind(
+                parentOffline: false,
+                unavailable: false,
+                canSteerQueue: true,
+                planMode: true,
+                hero: true
+            ),
+            .steerQueue
+        )
+        XCTAssertEqual(resolveSubmitMode(preferred: "queue", running: true, gesture: .chord, steeringAvailable: true), "steer")
+        XCTAssertEqual(resolveSubmitMode(preferred: "steer", running: true, gesture: .chord, steeringAvailable: true), "queue")
+        XCTAssertEqual(resolveSubmitMode(preferred: "steer", running: false, gesture: .chord, steeringAvailable: true), "queue")
+        XCTAssertEqual(landingChooseWorkspace(english: false), "选择工作区")
+        XCTAssertEqual(pluginInfoLabel(english: false), "插件说明")
+        XCTAssertEqual(
+            pluginInfoDescription(english: false),
+            "在这里配置官方插件，安装和管理其他插件。内置插件列表及运行状态可在「设置 → 内置插件」中查看"
+        )
+        XCTAssertEqual(commandMenuDescriptionLineLimit, 2)
+        XCTAssertTrue(runningWhaleRestPath.hasPrefix("M8.844"))
+        XCTAssertTrue(composerParentOffline(origin: "subagent", parentSessionId: "p", parentListed: false, parentOffline: false))
+        XCTAssertFalse(composerParentOffline(origin: "user", parentSessionId: "p", parentListed: false, parentOffline: true))
+        XCTAssertEqual(chatLinkDestination(nil), .sidebar)
+        XCTAssertEqual(chatLinkDestination("new-tab"), .newTab)
+        XCTAssertTrue(isChatWebLink(URL(string: "https://example.com")!))
+        XCTAssertFalse(isChatWebLink(URL(string: "dshfile://open")!))
+        XCTAssertTrue(changesCardShouldFetch(seq: 10, hasSummaryOp: true))
+        XCTAssertFalse(changesCardShouldFetch(seq: nil, hasSummaryOp: true))
+        XCTAssertEqual(skillCatalogScopeKey(sessionId: nil, subagent: false), "landing")
+        XCTAssertEqual(skillCatalogScopeKey(sessionId: "s1", subagent: true), "subagent:s1")
+        XCTAssertEqual(listCatalogArgs(sessionId: nil), jsonObject([:]))
+        XCTAssertEqual(listCatalogArgs(sessionId: "s1")["sessionId"].str(), "s1")
     }
 }

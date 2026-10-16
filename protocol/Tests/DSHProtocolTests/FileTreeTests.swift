@@ -6,6 +6,12 @@ final class FileTreeTests: XCTestCase {
         WorkspaceFileEntry(name: name, type: type)
     }
 
+    func testCacheKeyScopesListingToSessionAndCwd() {
+        XCTAssertEqual(fileTreeCacheKey(sessionId: "s1", cwd: "/ws"), "s1|/ws")
+        XCTAssertEqual(fileTreeCacheKey(sessionId: nil, cwd: nil), "|")
+        XCTAssertNotEqual(fileTreeCacheKey(sessionId: "s1", cwd: "/a"), fileTreeCacheKey(sessionId: "s2", cwd: "/a"))
+    }
+
     func testChildPathJoinsWorkspaceRelativeSegments() {
         XCTAssertEqual(fileTreeChildPath(parent: "", name: "src"), "src")
         XCTAssertEqual(fileTreeChildPath(parent: "src", name: "app"), "src/app")

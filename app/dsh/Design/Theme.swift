@@ -87,3 +87,14 @@ func resolveDarkAppearance(_ appearance: Appearance, systemDark: Bool) -> Bool {
     case .system: return systemDark
     }
 }
+
+/// Keep iPhone popovers as popovers (desktop usage / plugin (i) chrome).
+struct PopoverCompactAdaptation: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 16.4, *) {
+            content.presentationCompactAdaptation(.popover)
+        } else {
+            content
+        }
+    }
+}

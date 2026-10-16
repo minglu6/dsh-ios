@@ -23,7 +23,10 @@ final class AndroidParityTests: XCTestCase {
             commandMenuRows(merged, query: "", leading: true).compactMap { $0["name"].str() },
             ["file", "feedback", "model", "export", "deploy"]
         )
-        XCTAssertTrue(commandMenuClientRows(ops: ["session.export"], sessionReady: false, subagent: false).isEmpty)
+        XCTAssertEqual(
+            commandMenuClientRows(ops: ["session.export"], sessionReady: false, subagent: false).compactMap { $0["name"].str() },
+            ["export"]
+        )
         XCTAssertEqual(
             commandContributionCollisionMessage("plan", english: false),
             "指令贡献 /plan 与远程主机指令冲突"

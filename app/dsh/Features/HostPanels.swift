@@ -25,6 +25,12 @@ struct HostPanelView: View {
             case .files: FilesPanel(model: model)
             case .terminal: TerminalPanel(model: model)
             case .jobs: JobsPanel(model: model) { model.pop() }
+            case .browser:
+                BrowserPanel(
+                    model: model,
+                    sessionKey: model.activeId ?? model.chat?.sessionId ?? "landing",
+                    onDismiss: { model.pop() }
+                )
             case .settings:
                 Color.clear
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -37,7 +43,7 @@ struct HostPanelView: View {
 
     private var showsSharedHeader: Bool {
         switch panel {
-        case .files, .terminal, .jobs, .plugins, .schedule: return false
+        case .files, .terminal, .jobs, .plugins, .schedule, .browser: return false
         default: return true
         }
     }
@@ -50,6 +56,7 @@ struct HostPanelView: View {
         case .terminal: return L.terminal()
         case .trajectory: return L.trajectory()
         case .jobs: return L.jobs()
+        case .browser: return L.t("浏览器", "Browser")
         case .settings: return L.settings()
         }
     }

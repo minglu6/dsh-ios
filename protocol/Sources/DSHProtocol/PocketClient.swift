@@ -404,13 +404,14 @@ public final class PocketClient: @unchecked Sendable {
         try await call("queue.update", args: queueUpdateArgs(sessionId: sessionId, itemId: itemId, action: action))
     }
 
-    public func listCommands(sessionId: String) async throws -> [JSONValue] {
-        try await call("commands.list", args: jsonObject(["sessionId": .string(sessionId)]))["commands"].arr() ?? []
+    public func listCommands(sessionId: String? = nil) async throws -> [JSONValue] {
+        try await call("commands.list", args: listCatalogArgs(sessionId: sessionId))["commands"].arr() ?? []
     }
 
     /// Host `skills/list` forwarded as pocket `skills.list` → `{skills: [...]}`.
-    public func listSkills(sessionId: String) async throws -> [JSONValue] {
-        try await call("skills.list", args: jsonObject(["sessionId": .string(sessionId)]))["skills"].arr() ?? []
+    /// `sessionId` is optional so the landing `/` menu can load the same catalog.
+    public func listSkills(sessionId: String? = nil) async throws -> [JSONValue] {
+        try await call("skills.list", args: listCatalogArgs(sessionId: sessionId))["skills"].arr() ?? []
     }
 
     public func executeCommand(sessionId: String, line: String) async throws -> JSONValue {
@@ -1052,4 +1053,10 @@ private final class ConflatedInbox: @unchecked Sendable {
             }
         }
     }
+}
+
+/// Pocket `commands.list` / `skills.list` args. Session id is omitted on landing.
+public func listCatalogArgs(sessionId: String?) -> JSONValue {
+    guard let sessionId, !sessionId.isEmpty else { return jsonObject([:]) }
+    return jsonObject(["sessionId": .string(sessionId)])
 }

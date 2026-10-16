@@ -33,7 +33,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | P2-visual | xterm Tango ANSI; terminal tab title / 关闭; file-icon 色; 设置 locales; 链接打开两项 | done (#20) |
 | tree/slash | 文件树原地展开；斜杠菜单贴输入框 | done (#21) |
 | R4 | collapseTiming 写回 Host；composer / 运行态 / 提问 / 任务输出 / 插件空态对齐桌面文案 | done (#22) |
-| R5 | 文件树去 chevron + 自动刷新；排队附件缩略图/芯片；claimed `/goal` `/plan` 提示条；变更卡 pocket JSON `false` 旗标；斜杠技能组 + 键盘高度；无会话 landing | this PR |
+| R5 | 文件树去 chevron + 自动刷新；排队附件缩略图/芯片；claimed `/goal` `/plan` 提示条；变更卡 pocket JSON `false` 旗标；斜杠技能组 + 键盘高度；无会话 landing | done (#23) |
+| R6 | 鲸尾 shimmer；任务双击停止；Cmd/Ctrl+Enter；插件 (i)；侧栏浏览器；landing `/` 无会话目录；技能按会话隔离 | this PR |
 
 ---
 
@@ -134,14 +135,14 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Open-in-desktop-editor | desktop only | — | **hide** | — |
 | WorkspaceChanges cards | `WorkspaceChanges.kt` | chat cards + review sheet (`workspaceChanges.summary/diff`); `workspace/changes` announcement; attached to last answer when visible, otherwise an independent card outside 「已完成」. Pocket JSON 的 `binary`/`oversized: false` 按 Android 接受（#19 只修了 `{summary:…}` 解包，运行时 Host 序列化带 false 仍整卡解析失败） | **missing** → **present** | **F** / P1 / **R5** |
 | File tree live updates | `files.follow` + `observeWorkspaceDirectory` | same; watch-unsupported 回退 list；工具栏 pause/play「自动刷新」按桌面 `DirectoryNode.setAutomatic`：关则保留 watch、不因 change 再 list | **partial** → **present** | **F** / **H** / **R5** |
-| Browser | `BrowserPanel.kt` + `BrowserTabs.kt` HTTP(S)-only, addresses-only checkpoints | implemented (multi-tab `{selected, pages:[{id,url,title}]}`); unexposed — desktop Start / ⋯ have no entry | **hide** | **P1** / **H** |
+| Browser | `BrowserPanel.kt` + `BrowserTabs.kt` HTTP(S)-only, addresses-only checkpoints | implemented (multi-tab `{selected, pages:[{id,url,title}]}`); chat HTTP(S) links open this panel when `linkOpening=sidebar` (desktop default). Start / ⋯ still have no entry | **present** | **P1** / **H** / **R6** |
 | Session Inspector | `SessionInspectorPanel` raw/grouped + pick | implemented, unexposed — desktop Start / ⋯ have no entry | **hide** | **P1** |
 
 ## 5. Jobs + unread
 
 | Item | Android | iOS | Tag | Batch |
 | --- | --- | --- | --- | --- |
-| Header jobs chip | `JobsAction.kt` | tabs-row chip (`jobs.list` advertised + non-empty / failed) | **present** | **C** |
+| Header jobs chip | `JobsAction.kt` / desktop `JobListAction` | tabs-row chip；面板为进行中 / 已结束 + 两点击停止（`kill.confirm`） | **present** | **C** / **R6** |
 | Failed refresh → 「任务状态不可用」 (not 0) | `JobsAction.kt:62-64` | same copy, stale running count discarded | **present** | **C** |
 | `jobs.list` / `follow` / `kill` | `Pocket.kt` | `PocketClient` + `JobsPanel`; list+live follow share one roster | **present** | **C** |
 | Unread green dot | `CompletionReminders` epoch+revision | epoch+revision; leading slot only | **present** | **C** |
@@ -260,20 +261,25 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 | 斜杠键盘高度 | `commandMenuAvailableHeight` | 贴 composer 上方的剩余视口 | 去掉 `max(240, 72%)` 地板（键盘升起后 240 会高于剩余高度） |
 | 无会话首页 | `RootView.emptyChat` | `conversation` landing：`hero.headline` / `hero.preview` / `placeholder.hero` | 「探索未至之境」+「预览版」+ composer「描述你想要构建的内容, / 调用指令, @ 文件或对话」；发送即 `sessions.create` 再 prompt。抽屉仍保留「新会话」。 |
 
+## Round 6 对照清单（桌面 `packages/client` @ current master）
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| 运行态鲸尾 | `RunningWhaleTail` + `TextShimmer` | `ui-chat` `RunningWhaleTail.tsx` / `TextShimmer` / APNG `running-whale@2x.png` | 60×50ms APNG 作 template mask；Reduce Motion 用 `REST_PATH` SVG |
+| 任务面板 | `JobsPanel` + `JobKillPhase` | `ui-jobs` `JobListAction.tsx` | 进行中 / 已结束 {n} / 清空；两点击停止 `kill.confirm` / `KILL_ARM_MS` 3s |
+| 占位与快捷键 | `composerPlaceholderKind` + `ComposerUITextView.keyCommands` | `ui-conversation` `InputBar` / `resolveSubmitMode` | `Cmd/Ctrl+Enter 插话发送全部排队消息`；硬件 Cmd/Ctrl+Enter |
+| 插件 (i) | `PluginsScreen` popover | `ui-plugin-manager` `infoLabel` / `infoDescription` | 点按 / 长按弹出官方说明，无自撰横幅 |
+| 链接 | `MarkdownView` + `openChatLink` | `ui-chat.linkOpening` | `sidebar` → 应用内 `BrowserPanel`；`new-tab` → 系统浏览器 |
+| landing `/` | `commands.list` / `skills.list` 可省略 sessionId | Host catalog；桌面 blank session | 无会话仍列出添加组；Host 目录走 pocket 无 session |
+| 技能隔离 | `skillCatalogScopeKey` | 会话 / 子智能体 | 不再回落到全局 `skillEntries` |
+
 ## Deferred / hide leftovers
 
-- Account / shortcuts / open config file / open-in-desktop-editor: desktop-local — **hide**.
-- Keyboard shortcut settings: desktop-local — **hide**. Touch Start also omits desktop chords (`⌘P` / `⌥⌘P` / Ctrl-`) next to 工作区文件 / 新建终端.
+- Account / shortcuts settings page / open config file / open-in-desktop-editor: desktop-local — **hide**.
+- Keyboard shortcut *settings* page: desktop-local — **hide**. Touch Start also omits desktop chords (`⌘P` / `⌥⌘P` / Ctrl-`) next to 工作区文件 / 新建终端. Composer Cmd/Ctrl+Enter is wired.
 - Android ForegroundService persistent “已连接” notification: iOS has no equivalent; `ConnectionKeeper` uses `beginBackgroundTask` + ping, then `BGAppRefreshTask` `dev.dsh.pocket.ios.refresh`. The WS is not guaranteed after the system expires those windows.
 - Nearby Wi-Fi (`NEARBY_WIFI_DEVICES`) is Android 13+; iOS uses Local Network + Bonjour (`NSLocalNetworkUsageDescription`).
 - CodePreview CSS names `DSH Meslo` at `/font/meslo.ttf`; `dsh-code-preview://` serves the same bundled Meslo Nerd TTF as `TerminalTypeface` (Android `@meslo` → `R.font.meslolgl_dz_nerd_regular`). WKWebView cannot intercept `https://`; assets load over `dsh-code-preview://` mapped to the same Android `https://code-preview.invalid` policy used in tests.
 - Embedded browser cannot intercept every subresource the way Android `shouldInterceptRequest` does; main-frame / navigation policy still uses `BrowserPolicy`. WKWebView cannot intercept `https://` for FortuneSheet; workbook assets load over `dsh-workbook-preview://` mapped to Android `https://workbook-preview.invalid`.
 - Foundation `JSONSerialization` object key order is not insertion-stable; protocol tests compare parsed `JSONValue`, not pretty strings.
 - Desktop `ui-sidebar-files` auto-refresh control is in the DOM but `hidden` (tests assert it has no accessible name). iOS shows pause/play so the same `setAutomatic` gesture is reachable on touch.
-- `placeholder.steerQueue` / `parentOffline` still omit desktop Cmd/Ctrl+Enter (touch, same as #15).
-- Plugin `infoDescription` stays a desktop (i) tooltip; no invented banner.
-- Jobs panel stays a full-screen sheet + confirm (narrow-screen); desktop popover + double-click 「再次点击确认停止」 not copied.
-- RunningStatus 鲸尾 shimmer / `TextShimmer` not ported (heavy); copy + elapsed clock already match `RunningStatus.tsx`.
-- Link opening values write Host `sidebar` / `new-tab`; iOS still opens in the system browser (platform).
-- Task panel / file-tree scroll restore / 轨迹「无计时数据」 / Think 图标展开后是否仍用 Think：需真机截图。
-- 用量 pill「（其中推理 n）」括号、Turn usage 锚定气泡 vs sheet：语义在，形态不同。

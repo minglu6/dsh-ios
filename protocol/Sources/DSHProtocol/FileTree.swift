@@ -80,6 +80,11 @@ public func fileTreeChildPath(parent: String, name: String) -> String {
     parent.isEmpty ? name : "\(parent)/\(name)"
 }
 
+/// Persist listing + scroll when the files panel is left and reopened.
+public func fileTreeCacheKey(sessionId: String?, cwd: String?) -> String {
+    "\(sessionId ?? "")|\(cwd ?? "")"
+}
+
 public func fileTreeToggle(_ state: inout FileTreeState, path: String) {
     if path.isEmpty { return }
     if state.expanded.contains(path) {

@@ -10,7 +10,11 @@ struct ChangesCard: View {
     @State private var selected: Int?
 
     var body: some View {
-        Group {
+        ZStack(alignment: .topLeading) {
+            Color.clear
+                .frame(maxWidth: .infinity)
+                .frame(height: 0)
+                .accessibilityHidden(true)
             if let summary, !summary.files.isEmpty {
                 ChangesSummaryCard(
                     summary: summary,
@@ -19,10 +23,15 @@ struct ChangesCard: View {
                 )
             }
         }
-        .task(id: "\(model.activeId ?? "")-\(sessionId)-\(item.seq.map(String.init) ?? "")-\(model.ops.contains("workspaceChanges.summary"))") {
+        .task(id: changesCardFetchIdentity(
+            hostId: model.activeId,
+            sessionId: sessionId,
+            seq: item.seq,
+            hasSummaryOp: model.ops.contains("workspaceChanges.summary")
+        )) {
             summary = nil
             let hasOp = model.ops.contains("workspaceChanges.summary")
-            guard let seq = item.seq, hasOp else {
+            guard changesCardShouldFetch(seq: item.seq, hasSummaryOp: hasOp), let seq = item.seq else {
                 #if DEBUG
                 print("[dsh.changes] card skip session=\(sessionId) seq=\(item.seq.map(String.init) ?? "nil") op=\(hasOp)")
                 #endif

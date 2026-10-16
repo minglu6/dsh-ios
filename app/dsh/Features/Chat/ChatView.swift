@@ -317,7 +317,7 @@ struct ChatView: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     if commandMenuVisible {
-                        commandMenuLayer(maxHeight: CGFloat(commandMenuAvailableHeight(containerHeight: Double(geo.size.height))))
+                        commandMenuLayer(maxHeight: max(0, geo.size.height - 8))
                     }
                 }
             }
@@ -335,7 +335,7 @@ struct ChatView: View {
             Color.clear
                 .contentShape(Rectangle())
                 .onTapGesture { dismissCommandMenu() }
-            commandMenu
+            commandMenu(maxHeight: maxHeight)
                 .padding(.horizontal, 14)
                 .padding(.bottom, 4)
                 .frame(maxHeight: maxHeight, alignment: .bottom)
@@ -343,13 +343,14 @@ struct ChatView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private var commandMenu: some View {
+    private func commandMenu(maxHeight: CGFloat) -> some View {
         CommandMenuOverlay(
             model: model,
             host: commandHost,
             query: slashMenuQuery(model.composerText),
             leading: slashMenuIsLeading(model.composerText),
             consumeSlash: slashTrigger != nil,
+            availableHeight: maxHeight,
             onDismiss: { dismissCommandMenu() },
             onFile: { showFileImporter = true },
             onGoal: { showGoal = true },
@@ -573,12 +574,16 @@ private struct RunningStatusRow: View {
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             let nowMs = Int64(context.date.timeIntervalSince1970 * 1000)
-            Text(deepDivingLabel(startedAtMs: startedAtMs, nowMs: nowMs, english: L.en))
-                .font(.subheadline)
-                .foregroundStyle(T.accent)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 4)
-                .accessibilityLabel(L.t("深度求索中", "Deep diving"))
+            let label = deepDivingLabel(startedAtMs: startedAtMs, nowMs: nowMs, english: L.en)
+            HStack(alignment: .center, spacing: 8) {
+                RunningWhaleTail()
+                TextShimmer(text: label, active: true)
+                    .font(.subheadline)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.top, 4)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(L.t("深度求索中", "Deep diving"))
         }
     }
 }
@@ -843,6 +848,8 @@ struct MessageRow: View {
             VStack(alignment: .leading, spacing: 6) {
                 MarkdownView(source: text.text, streaming: text.live, wrapCode: model.codeWordWrap, onFile: { path in
                     model.openFilePreview(path: path)
+                }, onLink: { url in
+                    model.openChatLink(url)
                 })
                 if showAssistantActions(text), model.showCodeWorkView, let changes, let sessionId = model.chat?.sessionId {
                     InspectorChatTarget(itemKey: changes.key, reveal: highlightedChanges) {
@@ -1069,15 +1076,21 @@ struct ComposerView: View {
                 ComposerTextView(
                     text: $model.composerText,
                     placeholder: composerPlaceholderText(
-                        planMode: model.chat?.planMode == true,
-                        english: L.en,
-                        hero: heroPlaceholder
+                        kind: composerPlaceholderKind(
+                            parentOffline: model.isParentOffline,
+                            unavailable: model.chat != nil && !model.isOnline,
+                            canSteerQueue: model.canSteerQueue,
+                            planMode: model.chat?.planMode == true,
+                            hero: heroPlaceholder
+                        ),
+                        english: L.en
                     ),
                     interceptKeys: interceptKeys,
                     focusToken: focusToken,
                     onReturn: onCommandReturn,
                     onMove: onCommandMove,
-                    onEscape: onCommandEscape
+                    onEscape: onCommandEscape,
+                    onChord: { model.submitComposer(gesture: .chord) }
                 )
                     .frame(minHeight: 22, maxHeight: 132, alignment: .topLeading)
                     .onChange(of: model.composerText) { value in
@@ -1095,7 +1108,7 @@ struct ComposerView: View {
                         Image(systemName: "plus").foregroundStyle(T.ink).frame(width: 48, height: 48)
                     }
                     .background(T.fill, in: Circle())
-                    if let perm = model.sessionPermission, !perm.isEmpty {
+                    if let perm = model.sessionPermission ?? (heroPlaceholder ? model.defaultPermission : nil), !perm.isEmpty {
                         Button(action: onPerm) {
                             HStack(spacing: 4) {
                                 Image(systemName: permissionIcon(perm))
@@ -1258,6 +1271,7 @@ private struct ComposerTextView: UIViewRepresentable {
     var onReturn: () -> Void
     var onMove: (Int) -> Void
     var onEscape: () -> Void
+    var onChord: () -> Void = {}
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -1292,6 +1306,7 @@ private struct ComposerTextView: UIViewRepresentable {
         context.coordinator.parent = self
         view.onMove = onMove
         view.onEscape = onEscape
+        view.onChord = onChord
         view.lockFirstResponder = interceptKeys
         view.interceptArrows = interceptKeys
         if view.text != text && view.markedTextRange == nil {
@@ -1345,28 +1360,48 @@ private struct ComposerTextView: UIViewRepresentable {
 private final class ComposerUITextView: UITextView {
     var onMove: ((Int) -> Void)?
     var onEscape: (() -> Void)?
+    var onChord: (() -> Void)?
     var lockFirstResponder = false
     var interceptArrows = false
+
+    override var keyCommands: [UIKeyCommand]? {
+        let title = L.t("Cmd/Ctrl+Enter 插话发送全部排队消息", "Cmd/Ctrl+Enter steers all queued messages")
+        return [
+            UIKeyCommand(title: title, action: #selector(chordEnter), input: "\r", modifierFlags: .command),
+            UIKeyCommand(title: title, action: #selector(chordEnter), input: "\r", modifierFlags: .control),
+        ]
+    }
 
     override func resignFirstResponder() -> Bool {
         if lockFirstResponder { return false }
         return super.resignFirstResponder()
     }
 
+    @objc private func chordEnter() {
+        onChord?()
+    }
+
     override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
-        if interceptArrows, let key = presses.first?.key {
-            switch key.keyCode {
-            case .keyboardUpArrow:
-                onMove?(-1)
+        if let key = presses.first?.key {
+            let chord = key.modifierFlags.contains(.command) || key.modifierFlags.contains(.control)
+            if chord && (key.keyCode == .keyboardReturn || key.keyCode == .keyboardReturnOrEnter) {
+                onChord?()
                 return
-            case .keyboardDownArrow:
-                onMove?(1)
-                return
-            case .keyboardEscape:
-                onEscape?()
-                return
-            default:
-                break
+            }
+            if interceptArrows {
+                switch key.keyCode {
+                case .keyboardUpArrow:
+                    onMove?(-1)
+                    return
+                case .keyboardDownArrow:
+                    onMove?(1)
+                    return
+                case .keyboardEscape:
+                    onEscape?()
+                    return
+                default:
+                    break
+                }
             }
         }
         super.pressesBegan(presses, with: event)

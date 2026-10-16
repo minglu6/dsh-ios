@@ -33,20 +33,23 @@ public let commandOrderedNames = commandAddNames + ["compact", "permission", "mo
 
 /// Client-injected `/` and `+` rows. Desktop puts feedback/export here, not on a
 /// conversation header ⋯ menu. Skip a kind already present from `commands.list`.
+/// Landing (no session yet) still lists the same client rows a blank desktop
+/// session would — `sessionReady` is only for execution, not catalog membership.
 public func commandMenuClientRows(ops: Set<String>, sessionReady: Bool, subagent: Bool) -> [JSONValue] {
     var rows: [JSONValue] = []
-    if sessionReady && ops.contains("attachments.upload") {
+    if ops.contains("attachments.upload") {
         rows.append(jsonObject(["name": .string("file"), "client": .string("file")]))
     }
-    if sessionReady && !subagent && ops.contains("models.catalog") {
+    if !subagent && ops.contains("models.catalog") {
         rows.append(jsonObject(["name": .string("model"), "client": .string("model")]))
     }
-    if sessionReady && ops.contains("sessionFeedback.record") {
+    if ops.contains("sessionFeedback.record") {
         rows.append(jsonObject(["name": .string("feedback"), "client": .string("feedback")]))
     }
-    if sessionReady && ops.contains("session.export") {
+    if ops.contains("session.export") {
         rows.append(jsonObject(["name": .string("export"), "client": .string("export")]))
     }
+    _ = sessionReady
     return rows
 }
 

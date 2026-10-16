@@ -7,6 +7,7 @@ struct MarkdownView: View {
     var wrapCode = false
     var bodyColor: Color = T.ink
     var onFile: ((String) -> Void)? = nil
+    var onLink: ((URL) -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -15,12 +16,17 @@ struct MarkdownView: View {
             }
         }
         .environment(\.openURL, OpenURLAction { url in
-            guard url.scheme == "dshfile",
-                  let path = URLComponents(url: url, resolvingAgainstBaseURL: false)?
-                    .queryItems?.first(where: { $0.name == "p" })?.value
-            else { return .systemAction }
-            onFile?(path)
-            return .handled
+            if url.scheme == "dshfile",
+               let path = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                    .queryItems?.first(where: { $0.name == "p" })?.value {
+                onFile?(path)
+                return .handled
+            }
+            if isChatWebLink(url) {
+                onLink?(url)
+                return .handled
+            }
+            return .systemAction
         })
     }
 }
@@ -137,6 +143,13 @@ private struct MdBlockView: View {
         case .link(let text, let dest):
             if let path = parseFileLink(dest) {
                 return fileChip(path: path, label: text)
+            }
+            if let url = URL(string: dest), isChatWebLink(url) {
+                var attributed = AttributedString(text)
+                attributed.link = url
+                attributed.foregroundColor = T.link
+                attributed.underlineStyle = .single
+                return Text(attributed)
             }
             return Text(text).foregroundColor(T.link).underline()
         case .fileChip(let path, let label):
