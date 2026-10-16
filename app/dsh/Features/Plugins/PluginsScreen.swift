@@ -30,6 +30,7 @@ struct PluginsScreen: View {
     @State private var checking = false
     @State private var cancelling = false
     @State private var uninstall: JSONValue?
+    @State private var showPluginInfo = false
 
     var body: some View {
         if let config {
@@ -145,6 +146,20 @@ struct PluginsScreen: View {
             Button(action: back) { Image(systemName: "chevron.left").foregroundStyle(T.ink) }
             Text(title).font(.headline).foregroundStyle(T.ink).lineLimit(1).minimumScaleFactor(0.8)
             Spacer(minLength: 8)
+            if selected == nil {
+                Button { showPluginInfo.toggle() } label: {
+                    Image(systemName: "info.circle").foregroundStyle(T.ink)
+                }
+                .accessibilityLabel(pluginInfoLabel(english: L.en))
+                .popover(isPresented: $showPluginInfo, arrowEdge: .bottom) {
+                    Text(pluginInfoDescription(english: L.en))
+                        .font(.subheadline)
+                        .foregroundStyle(T.ink)
+                        .padding(16)
+                        .frame(maxWidth: 300)
+                        .modifier(PopoverCompactAdaptation())
+                }
+            }
             Button(action: reload) {
                 Image(systemName: "arrow.clockwise").foregroundStyle(T.ink)
             }

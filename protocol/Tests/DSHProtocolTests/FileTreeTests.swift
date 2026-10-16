@@ -6,6 +6,20 @@ final class FileTreeTests: XCTestCase {
         WorkspaceFileEntry(name: name, type: type)
     }
 
+    func testCacheKeyScopesListingToSessionAndCwd() {
+        XCTAssertEqual(fileTreeCacheKey(sessionId: "s1", cwd: "/ws"), "s1|/ws")
+        XCTAssertEqual(fileTreeCacheKey(sessionId: nil, cwd: nil), "|")
+        XCTAssertNotEqual(fileTreeCacheKey(sessionId: "s1", cwd: "/a"), fileTreeCacheKey(sessionId: "s2", cwd: "/a"))
+    }
+
+    func testScrollRestoreWaitsForContentAndDoesNotClobberSavedOffset() {
+        XCTAssertNil(fileTreeRestoredOffset(saved: 240, contentHeight: 100, viewportHeight: 400))
+        XCTAssertEqual(fileTreeRestoredOffset(saved: 240, contentHeight: 800, viewportHeight: 400), 240)
+        XCTAssertEqual(fileTreeRestoredOffset(saved: 500, contentHeight: 800, viewportHeight: 400), 400)
+        XCTAssertTrue(fileTreeShouldKeepSavedOffset(current: 0, saved: 240, contentHeight: 100, viewportHeight: 400))
+        XCTAssertFalse(fileTreeShouldKeepSavedOffset(current: 0, saved: 240, contentHeight: 800, viewportHeight: 400))
+    }
+
     func testChildPathJoinsWorkspaceRelativeSegments() {
         XCTAssertEqual(fileTreeChildPath(parent: "", name: "src"), "src")
         XCTAssertEqual(fileTreeChildPath(parent: "src", name: "app"), "src/app")

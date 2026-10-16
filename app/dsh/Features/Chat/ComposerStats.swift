@@ -184,36 +184,33 @@ struct TurnUsageAction: View {
         }
         .buttonStyle(.plain)
         .frame(maxWidth: 180, minHeight: 48)
-        .sheet(isPresented: $expanded) {
-            NavigationStack {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
-                        row(L.t("合计", "Total"), "\(statisticsExact(usage.totalTokens)) tok")
-                        if let routes = usage.routes, !routes.isEmpty {
-                            Text(L.t("模型", "Model")).foregroundStyle(T.text2)
-                            ForEach(routes, id: \.self) { route in
-                                Text("\(route.provider)/\(route.model)").foregroundStyle(T.ink)
-                            }
-                        }
-                        let promptTokens = usage.totalTokens - usage.outputTokens
-                        if let cached = usage.cacheReadTokens, promptTokens > 0 {
-                            row(L.t("缓存命中率", "Cache hit"), String(format: "%.1f%%", Double(cached) / Double(promptTokens) * 100))
-                        }
-                        row(L.t("未缓存输入", "Uncached input"), "\(statisticsExact(usage.uncachedInputTokens)) tok")
-                        if let read = usage.cacheReadTokens { row(L.t("缓存读取", "Cache read"), "\(statisticsExact(read)) tok") }
-                        if let write = usage.cacheWriteTokens { row(L.t("缓存写入", "Cache write"), "\(statisticsExact(write)) tok") }
-                        row(L.t("输出", "Output"), "\(statisticsExact(usage.outputTokens)) tok")
-                        if let reasoning = usage.reasoningTokens {
-                            row(L.t("其中推理输出", "Of which reasoning"), "\(statisticsExact(reasoning)) tok")
-                                .padding(.leading, 12)
-                        }
+        .popover(isPresented: $expanded, attachmentAnchor: .rect(.bounds), arrowEdge: .top) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(L.t("本轮用量", "Turn usage")).font(.subheadline.weight(.medium)).foregroundStyle(T.ink)
+                row(L.t("合计", "Total"), "\(statisticsExact(usage.totalTokens)) tok")
+                if let routes = usage.routes, !routes.isEmpty {
+                    Text(L.t("模型", "Model")).foregroundStyle(T.text2)
+                    ForEach(routes, id: \.self) { route in
+                        Text("\(route.provider)/\(route.model)").foregroundStyle(T.ink)
                     }
-                    .font(.subheadline)
-                    .padding(20)
                 }
-                .navigationTitle(L.t("本轮用量", "Turn usage"))
-                .toolbar { ToolbarItem(placement: .confirmationAction) { Button(L.close()) { expanded = false } } }
+                let promptTokens = usage.totalTokens - usage.outputTokens
+                if let cached = usage.cacheReadTokens, promptTokens > 0 {
+                    row(L.t("缓存命中率", "Cache hit"), String(format: "%.1f%%", Double(cached) / Double(promptTokens) * 100))
+                }
+                row(L.t("未缓存输入", "Uncached input"), "\(statisticsExact(usage.uncachedInputTokens)) tok")
+                if let read = usage.cacheReadTokens { row(L.t("缓存读取", "Cache read"), "\(statisticsExact(read)) tok") }
+                if let write = usage.cacheWriteTokens { row(L.t("缓存写入", "Cache write"), "\(statisticsExact(write)) tok") }
+                row(L.t("输出", "Output"), "\(statisticsExact(usage.outputTokens)) tok")
+                if let reasoning = usage.reasoningTokens {
+                    row(L.t("其中推理输出", "Of which reasoning"), "\(statisticsExact(reasoning)) tok")
+                        .padding(.leading, 12)
+                }
             }
+            .font(.subheadline)
+            .padding(16)
+            .frame(minWidth: 240, maxWidth: 320)
+            .modifier(PopoverCompactAdaptation())
         }
         .onChange(of: turn) { _ in expanded = false }
     }

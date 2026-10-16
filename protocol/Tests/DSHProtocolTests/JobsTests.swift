@@ -18,7 +18,8 @@ final class JobsTests: XCTestCase {
         XCTAssertEqual(rows[2].detail, "exit 1")
         XCTAssertTrue(rows[0].isLive)
         XCTAssertFalse(rows[1].isLive)
-        XCTAssertTrue(JobRow(id: "p", status: "pending", title: "p").canKill)
+        XCTAssertFalse(JobRow(id: "p", status: "pending", title: "p").canKill)
+        XCTAssertTrue(JobRow(id: "r", status: "running", title: "r").canKill)
         XCTAssertFalse(rows[1].canKill)
     }
 
@@ -87,6 +88,45 @@ final class JobsTests: XCTestCase {
         XCTAssertFalse(encoded.contains("from"))
         let resumed = JobFollowRequest.args(sessionId: "S", jobId: "J", from: 40)
         XCTAssertEqual(resumed["from"].long(), 40)
+    }
+
+    func testTwoPressKillArmsThenConfirmsAndDisarms() {
+        let armed = jobKillPress(phase: .idle, key: "j1", nowMs: 1_000)
+        XCTAssertEqual(armed, .armed(key: "j1", untilMs: 4_000))
+        XCTAssertEqual(jobKillPress(phase: armed, key: "j1", nowMs: 2_000), .pending(key: "j1"))
+        XCTAssertEqual(jobKillPress(phase: armed, key: "j2", nowMs: 2_000), .armed(key: "j2", untilMs: 5_000))
+        XCTAssertEqual(jobKillTick(phase: armed, nowMs: 4_000, runningKeys: ["j1"]), .idle)
+        XCTAssertEqual(jobKillTick(phase: .pending(key: "j1"), nowMs: 9_000, runningKeys: ["j1"]), .pending(key: "j1"))
+        XCTAssertEqual(jobKillTick(phase: .pending(key: "j1"), nowMs: 9_000, runningKeys: []), .idle)
+        XCTAssertEqual(jobKillAdmit(phase: .pending(key: "j1"), key: "j1", ok: false, nowMs: 3_000), .failed(key: "j1", untilMs: 7_000))
+        XCTAssertEqual(jobKillAdmit(phase: .pending(key: "j1"), key: "j1", ok: true, nowMs: 3_000), .pending(key: "j1"))
+        XCTAssertEqual(jobKillArmMs, 3_000)
+        XCTAssertEqual(jobKillFailedMs, 4_000)
+        XCTAssertEqual(jobKillConfirmLabel(english: false), "再次点击确认停止")
+        XCTAssertEqual(jobKillConfirmAction(english: false), "确认停止")
+        XCTAssertEqual(jobKillFailedLabel(english: false), "停止失败")
+        XCTAssertEqual(jobKillStopLabel(label: "build", english: false), "停止任务 build")
+        XCTAssertEqual(jobSectionLive(english: false), "进行中")
+        XCTAssertEqual(jobSectionSettled(count: 2, english: false), "已结束 2")
+        XCTAssertEqual(jobDurationText(elapsedMs: 5_000, english: false), "5秒")
+        XCTAssertEqual(jobDurationText(elapsedMs: 65_000, english: false), "1分5秒")
+        XCTAssertEqual(jobDurationText(elapsedMs: 3_661_000, english: true), "1h 1m")
+    }
+
+    func testJobRosterOrdersLiveFirstThenSettledNewest() throws {
+        let result = try JSONValue.parse("""
+        {"jobs":[
+          {"id":"old","status":"completed","label":"old","startedAt":1,"finishedAt":10,"kind":"shell","output":{"total":2}},
+          {"id":"live-b","status":"running","label":"b","startedAt":30,"kind":"shell"},
+          {"id":"live-a","status":"running","label":"a","startedAt":20,"kind":"shell"},
+          {"id":"new","status":"failed","label":"new","startedAt":5,"finishedAt":40,"kind":"shell"}
+        ]}
+        """)
+        let rows = orderedJobRows(parseJobRoster(result))
+        XCTAssertEqual(rows.map(\.id), ["live-a", "live-b", "new", "old"])
+        XCTAssertEqual(rows[0].kind, "shell")
+        XCTAssertTrue(rows[3].isObservable)
+        XCTAssertEqual(jobStatusLabel("killed", english: false), "已取消")
     }
 
     func testFollowOutputFramesPreserveLossAndGaps() throws {

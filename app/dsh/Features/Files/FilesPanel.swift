@@ -17,8 +17,13 @@ struct FilesPanel: View {
     private var canWatch: Bool { canList && model.ops.contains("files.follow") }
     private var rows: [FileTreeRow] { fileTreeVisibleRows(tree) }
 
+    private var cacheKey: String { fileTreeCacheKey(sessionId: sessionId, cwd: cwd) }
+
     var body: some View {
-        Group {
+        ZStack {
+            listing
+                .opacity(previewPath == nil ? 1 : 0)
+                .allowsHitTesting(previewPath == nil)
             if let previewPath {
                 FilePreviewView(
                     model: model,
@@ -26,11 +31,13 @@ struct FilesPanel: View {
                     path: previewPath,
                     onBack: { self.previewPath = nil }
                 )
-            } else {
-                listing
             }
         }
-        .onAppear { consumePreview() }
+        .onAppear {
+            restoreTree()
+            consumePreview()
+        }
+        .onDisappear { persistTree() }
         .onChange(of: model.filePreview) { _ in consumePreview() }
     }
 
@@ -49,6 +56,12 @@ struct FilesPanel: View {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     content
                 }
+                .background {
+                    ScrollOffsetBridge(offset: Binding(
+                        get: { model.fileTreeOffsets[cacheKey] ?? 0 },
+                        set: { model.fileTreeOffsets[cacheKey] = $0 }
+                    ))
+                }
             }
         }
         .background(T.bg)
@@ -56,6 +69,7 @@ struct FilesPanel: View {
         .onChange(of: sessionId) { _ in resetTree() }
         .onChange(of: cwd) { _ in resetTree() }
         .onChange(of: model.filesRevision) { _ in refreshToken += 1 }
+        .onChange(of: tree) { _ in persistTree() }
     }
 
     private var toolbar: some View {
@@ -198,13 +212,28 @@ struct FilesPanel: View {
             .padding(.vertical, 6)
     }
 
+    private func persistTree() {
+        model.fileTreeStates[cacheKey] = tree
+    }
+
+    private func restoreTree() {
+        if let stored = model.fileTreeStates[cacheKey] {
+            tree = stored
+        }
+    }
+
     private func resetTree() {
-        tree = FileTreeState.root
+        persistTree()
+        if let stored = model.fileTreeStates[fileTreeCacheKey(sessionId: sessionId, cwd: cwd)] {
+            tree = stored
+        } else {
+            tree = FileTreeState.root
+        }
         refreshToken += 1
     }
 
     private func fetch(_ path: String) async {
-        guard canList, let sessionId, previewPath == nil else { return }
+        guard canList, let sessionId else { return }
         guard let cwd, !cwd.isEmpty else { return }
         await MainActor.run { fileTreeMarkLoading(&tree, path: path) }
         do {
@@ -249,6 +278,85 @@ struct FilesPanel: View {
             await MainActor.run {
                 fileTreeApplyFailure(&tree, path: path, message: filesFailureMessage(error: error, english: L.en))
             }
+        }
+    }
+}
+
+private struct ScrollOffsetBridge: UIViewRepresentable {
+    @Binding var offset: CGFloat
+
+    func makeCoordinator() -> Coordinator { Coordinator(offset: $offset) }
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView(frame: .zero)
+        view.isUserInteractionEnabled = false
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        context.coordinator.offset = $offset
+        DispatchQueue.main.async { context.coordinator.attach(from: uiView) }
+    }
+
+    final class Coordinator: NSObject {
+        var offset: Binding<CGFloat>
+        weak var scroll: UIScrollView?
+        var restoring = false
+
+        init(offset: Binding<CGFloat>) { self.offset = offset }
+
+        func attach(from view: UIView) {
+            guard scroll == nil else {
+                restoreIfNeeded()
+                return
+            }
+            var current: UIView? = view
+            while let next = current?.superview {
+                if let found = next as? UIScrollView {
+                    scroll = found
+                    found.addObserver(self, forKeyPath: "contentOffset", options: [.new], context: nil)
+                    found.addObserver(self, forKeyPath: "contentSize", options: [.new], context: nil)
+                    restoreIfNeeded()
+                    return
+                }
+                current = next
+            }
+        }
+
+        func restoreIfNeeded() {
+            guard let scroll, !restoring else { return }
+            guard let target = fileTreeRestoredOffset(
+                saved: Double(offset.wrappedValue),
+                contentHeight: Double(scroll.contentSize.height),
+                viewportHeight: Double(scroll.bounds.height)
+            ) else { return }
+            if abs(scroll.contentOffset.y - CGFloat(target)) > 1 {
+                restoring = true
+                scroll.setContentOffset(CGPoint(x: 0, y: target), animated: false)
+                restoring = false
+            }
+        }
+
+        override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey: Any]?, context: UnsafeMutableRawPointer?) {
+            if keyPath == "contentSize" {
+                restoreIfNeeded()
+                return
+            }
+            guard keyPath == "contentOffset", let scroll, !restoring else { return }
+            if fileTreeShouldKeepSavedOffset(
+                current: Double(scroll.contentOffset.y),
+                saved: Double(offset.wrappedValue),
+                contentHeight: Double(scroll.contentSize.height),
+                viewportHeight: Double(scroll.bounds.height)
+            ) {
+                return
+            }
+            offset.wrappedValue = scroll.contentOffset.y
+        }
+
+        deinit {
+            scroll?.removeObserver(self, forKeyPath: "contentOffset")
+            scroll?.removeObserver(self, forKeyPath: "contentSize")
         }
     }
 }

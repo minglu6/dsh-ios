@@ -183,18 +183,158 @@ public func linkOpeningDescription(english: Bool) -> String {
     english ? "Choose where to open web links" : "对话中网页链接的打开位置"
 }
 
-public func composerPlaceholderText(planMode: Bool, english: Bool, hero: Bool = false) -> String {
-    if planMode {
+/// Desktop `conversation` placeholder keys, including Cmd/Ctrl+Enter hints.
+public enum ComposerPlaceholderKind: String, Equatable, Sendable {
+    case parentOffline
+    case unavailable
+    case steerQueue
+    case plan
+    case hero
+    case defaultMessage
+}
+
+/// Desktop InputBar order: parentOffline → unavailable → steerQueue → plan → hero/default.
+public func composerPlaceholderKind(
+    parentOffline: Bool,
+    unavailable: Bool,
+    canSteerQueue: Bool,
+    planMode: Bool,
+    hero: Bool
+) -> ComposerPlaceholderKind {
+    if parentOffline { return .parentOffline }
+    if unavailable { return .unavailable }
+    if canSteerQueue { return .steerQueue }
+    if planMode { return .plan }
+    if hero { return .hero }
+    return .defaultMessage
+}
+
+public func composerPlaceholderText(kind: ComposerPlaceholderKind, english: Bool) -> String {
+    switch kind {
+    case .parentOffline:
+        return english
+            ? "Parent session offline; sending is unavailable but you can still stop the run"
+            : "父会话已离线，无法继续发送；仍可停止当前运行"
+    case .unavailable:
+        return english ? "Session unavailable" : "会话不可用"
+    case .steerQueue:
+        return english
+            ? "Cmd/Ctrl+Enter steers all queued messages"
+            : "Cmd/Ctrl+Enter 插话发送全部排队消息"
+    case .plan:
         return english ? "describe your task to generate plan" : "描述你的任务以生成计划"
-    }
-    if hero {
+    case .hero:
         return english
             ? "Describe what you want to build, / commands, @ files or sessions"
             : "描述你想要构建的内容, / 调用指令, @ 文件或对话"
+    case .defaultMessage:
+        return english
+            ? "Message or run a task, / commands, @ files or sessions"
+            : "发消息或创建任务, / 调用指令, @ 文件或对话"
     }
-    return english
-        ? "Message or run a task, / commands, @ files or sessions"
-        : "发消息或创建任务, / 调用指令, @ 文件或对话"
+}
+
+public func composerPlaceholderText(planMode: Bool, english: Bool, hero: Bool = false) -> String {
+    composerPlaceholderText(
+        kind: composerPlaceholderKind(
+            parentOffline: false,
+            unavailable: false,
+            canSteerQueue: false,
+            planMode: planMode,
+            hero: hero
+        ),
+        english: english
+    )
+}
+
+/// Desktop `ui-conversation` `resolveSubmitMode`.
+public enum ComposerSubmitGesture: String, Equatable, Sendable {
+    case enter
+    case chord
+}
+
+public func resolveSubmitMode(
+    preferred: String,
+    running: Bool,
+    gesture: ComposerSubmitGesture,
+    steeringAvailable: Bool
+) -> String {
+    if !running || !steeringAvailable { return "queue" }
+    if gesture == .enter { return preferred }
+    return preferred == "queue" ? "steer" : "queue"
+}
+
+/// Desktop `conversation` `hero.chooseWorkspace`.
+public func landingChooseWorkspace(english: Bool) -> String {
+    english ? "Choose workspace" : "选择工作区"
+}
+
+/// Desktop `ui-plugin-manager` `infoLabel` / `infoDescription`.
+public func pluginInfoLabel(english: Bool) -> String {
+    english ? "About plugins" : "插件说明"
+}
+
+public func pluginInfoDescription(english: Bool) -> String {
+    english
+        ? "Configure official plugins and install or manage other plugins here. View the built-in plugin list and runtime status in Settings → Built-in plugins."
+        : "在这里配置官方插件，安装和管理其他插件。内置插件列表及运行状态可在「设置 → 内置插件」中查看"
+}
+
+/// Desktop slash-menu description clamp (`InputBar.module.css` line-clamp: 2).
+public let commandMenuDescriptionLineLimit = 2
+
+/// Desktop `ui-chat` `RunningWhaleTail` rest silhouette (16×16 viewBox).
+public let runningWhaleRestPath = "M8.844 13.742C8.967 12.328 8.45 10.4 8.45 9.65C8.45 8.94 8.88 8.43 9.6 8.43C11.285 8.43 12.106 8.281 12.685 8.104C13.71 7.791 14.585 6.768 15.055 5.945C15.137 5.803 14.99 5.641 14.829 5.671C13.829 5.86 12.828 5.376 11.827 4.978C10.659 4.514 9.491 4.707 8.935 4.876C8.805 4.915 8.658 4.819 8.636 4.686C8.468 3.643 7.405 2.615 5.498 2.238C4.54 2.048 3.748 1.574 3.347 1.202C3.252 1.113 3.088 1.125 3.03 1.242C2.628 2.059 2.168 3.82 5.248 6.115C5.82 6.494 6.31 6.785 6.574 7.637C6.72 8.104 6.157 9.168 6.061 9.368C5.157 11.27 5.089 12.19 4.926 13.742"
+
+/// Subagent whose parent row is missing or marked offline cannot send.
+public func composerParentOffline(origin: String?, parentSessionId: String?, parentListed: Bool, parentOffline: Bool) -> Bool {
+    guard origin == "subagent", let parentSessionId, !parentSessionId.isEmpty else { return false }
+    return !parentListed || parentOffline
+}
+
+/// Chat HTTP(S) links follow Host `ui-chat.linkOpening` (`sidebar` | `new-tab`).
+public enum ChatLinkDestination: String, Equatable, Sendable {
+    case sidebar
+    case newTab = "new-tab"
+}
+
+public func chatLinkDestination(_ raw: String?) -> ChatLinkDestination {
+    raw == ChatLinkDestination.newTab.rawValue ? .newTab : .sidebar
+}
+
+public func isChatWebLink(_ url: URL) -> Bool {
+    guard let scheme = url.scheme?.lowercased() else { return false }
+    return scheme == "http" || scheme == "https"
+}
+
+/// Always-present fetch identity so SwiftUI `.task` is not tied to a summary Group.
+public func changesCardFetchIdentity(hostId: String?, sessionId: String, seq: Int64?, hasSummaryOp: Bool) -> String {
+    "\(hostId ?? "")-\(sessionId)-\(seq.map(String.init) ?? "")-\(hasSummaryOp)"
+}
+
+public func changesCardShouldFetch(seq: Int64?, hasSummaryOp: Bool) -> Bool {
+    seq != nil && hasSummaryOp
+}
+
+/// Non-zero layout so a `LazyVStack` mounts the card and runs `.task` before a
+/// summary exists. Zero-height `Color.clear` / empty `Group` is skipped (R5 P1).
+public let changesCardFetchAnchorPoints: Double = 1
+
+/// Mount the fetch host whenever the transcript would show the card — even if
+/// `workspaceChanges.summary` has not returned yet.
+public func changesCardMountsFetch(
+    seq: Int64?,
+    turnClosed: Bool,
+    codeWork: Bool,
+    hasSummaryOp: Bool
+) -> Bool {
+    turnClosed && codeWork && changesCardShouldFetch(seq: seq, hasSummaryOp: hasSummaryOp)
+}
+
+/// Slash catalog cache is per session (and never shared with a subagent).
+public func skillCatalogScopeKey(sessionId: String?, subagent: Bool) -> String {
+    if subagent { return "subagent:\(sessionId ?? "")" }
+    return sessionId ?? "landing"
 }
 
 /// Desktop `conversation` `hero.headline`.

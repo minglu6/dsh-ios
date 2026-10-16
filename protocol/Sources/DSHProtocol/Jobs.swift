@@ -6,15 +6,37 @@ public struct JobRow: Sendable, Equatable, Identifiable {
     public var status: String
     public var title: String
     public var detail: String?
+    public var kind: String
+    public var startedAt: Int64
+    public var finishedAt: Int64?
+    public var progress: String?
+    public var outputTotal: Int
 
     public var isLive: Bool { status == "running" || status == "stopping" }
-    public var canKill: Bool { status == "running" || status == "pending" }
+    public var canKill: Bool { status == "running" }
+    public var isObservable: Bool { isLive || outputTotal > 0 }
+    public var qualifier: String? { progress ?? detail }
 
-    public init(id: String, status: String, title: String, detail: String? = nil) {
+    public init(
+        id: String,
+        status: String,
+        title: String,
+        detail: String? = nil,
+        kind: String = "",
+        startedAt: Int64 = 0,
+        finishedAt: Int64? = nil,
+        progress: String? = nil,
+        outputTotal: Int = 0
+    ) {
         self.id = id
         self.status = status
         self.title = title
         self.detail = detail
+        self.kind = kind
+        self.startedAt = startedAt
+        self.finishedAt = finishedAt
+        self.progress = progress
+        self.outputTotal = outputTotal
     }
 
     public static func parse(_ element: JSONValue) -> JobRow? {
@@ -24,8 +46,147 @@ public struct JobRow: Sendable, Equatable, Identifiable {
             ?? element["command"].str()?.nilIfBlank
             ?? element["name"].str()?.nilIfBlank
             ?? id
-        return JobRow(id: id, status: status, title: title, detail: element["detail"].str())
+        let output = element["output"]
+        let outputTotal = output["total"].int() ?? output["bytes"].int() ?? 0
+        return JobRow(
+            id: id,
+            status: status,
+            title: title,
+            detail: element["detail"].str(),
+            kind: element["kind"].str() ?? "",
+            startedAt: element["startedAt"].long() ?? 0,
+            finishedAt: element["finishedAt"].long(),
+            progress: element["progress"].str(),
+            outputTotal: outputTotal
+        )
     }
+}
+
+/// Desktop `JobListAction` two-press kill: one armed row at a time.
+public enum JobKillPhase: Equatable, Sendable {
+    case idle
+    case armed(key: String, untilMs: Int64)
+    case pending(key: String)
+    case failed(key: String, untilMs: Int64)
+
+    public var key: String? {
+        switch self {
+        case .idle: return nil
+        case .armed(let key, _), .pending(let key), .failed(let key, _): return key
+        }
+    }
+
+    public var stateName: String {
+        switch self {
+        case .idle: return "idle"
+        case .armed: return "armed"
+        case .pending: return "pending"
+        case .failed: return "failed"
+        }
+    }
+}
+
+public let jobKillArmMs: Int64 = 3_000
+public let jobKillFailedMs: Int64 = 4_000
+
+public func jobKillPress(phase: JobKillPhase, key: String, nowMs: Int64) -> JobKillPhase {
+    if case .armed(let armed, let until) = phase, armed == key, nowMs < until {
+        return .pending(key: key)
+    }
+    return .armed(key: key, untilMs: nowMs + jobKillArmMs)
+}
+
+public func jobKillTick(phase: JobKillPhase, nowMs: Int64, runningKeys: Set<String>) -> JobKillPhase {
+    switch phase {
+    case .idle:
+        return .idle
+    case .armed(let key, let until):
+        if !runningKeys.contains(key) || nowMs >= until { return .idle }
+        return phase
+    case .pending(let key):
+        if !runningKeys.contains(key) { return .idle }
+        return phase
+    case .failed(let key, let until):
+        if !runningKeys.contains(key) || nowMs >= until { return .idle }
+        return phase
+    }
+}
+
+public func jobKillAdmit(phase: JobKillPhase, key: String, ok: Bool, nowMs: Int64) -> JobKillPhase {
+    guard case .pending(let pending) = phase, pending == key else { return phase }
+    return ok ? phase : .failed(key: key, untilMs: nowMs + jobKillFailedMs)
+}
+
+/// Live rows first in start order, then settled rows newest-first.
+public func orderedJobRows(_ jobs: [JobRow]) -> [JobRow] {
+    jobs.sorted { left, right in
+        if left.isLive != right.isLive { return left.isLive }
+        if left.isLive { return left.startedAt < right.startedAt }
+        let leftDone = left.finishedAt ?? left.startedAt
+        let rightDone = right.finishedAt ?? right.startedAt
+        if leftDone != rightDone { return leftDone > rightDone }
+        return left.startedAt < right.startedAt
+    }
+}
+
+public func jobElapsedMs(_ job: JobRow, nowMs: Int64) -> Int64 {
+    if job.isLive { return max(0, nowMs - job.startedAt) }
+    return max(0, (job.finishedAt ?? job.startedAt) - job.startedAt)
+}
+
+/// Desktop `ui-jobs` `duration.*` (at most two adjacent units).
+public func jobDurationText(elapsedMs: Int64, english: Bool) -> String {
+    let total = max(0, elapsedMs / 1_000)
+    let seconds = total % 60
+    let minutes = (total / 60) % 60
+    let hours = total / 3_600
+    if english {
+        if hours > 0 { return "\(hours)h \(minutes)m" }
+        if minutes > 0 { return "\(minutes)m \(seconds)s" }
+        return "\(seconds)s"
+    }
+    if hours > 0 { return "\(hours)小时\(minutes)分" }
+    if minutes > 0 { return "\(minutes)分\(seconds)秒" }
+    return "\(seconds)秒"
+}
+
+public func jobStatusLabel(_ status: String, english: Bool) -> String {
+    switch status {
+    case "running": return english ? "running" : "运行中"
+    case "stopping": return english ? "stopping" : "正在停止"
+    case "completed": return english ? "completed" : "已完成"
+    case "killed": return english ? "cancelled" : "已取消"
+    case "failed": return english ? "failed" : "已失败"
+    default: return status
+    }
+}
+
+public func jobKillStopLabel(label: String, english: Bool) -> String {
+    english ? "Stop task \(label)" : "停止任务 \(label)"
+}
+
+public func jobKillConfirmLabel(english: Bool) -> String {
+    english ? "Click again to confirm" : "再次点击确认停止"
+}
+
+public func jobKillConfirmAction(english: Bool) -> String {
+    english ? "Confirm stop" : "确认停止"
+}
+
+public func jobKillFailedLabel(english: Bool) -> String {
+    english ? "Stop failed" : "停止失败"
+}
+
+public func jobSectionLive(english: Bool) -> String {
+    english ? "Running" : "进行中"
+}
+
+public func jobSectionSettled(count: Int, english: Bool) -> String {
+    english ? "Finished \(count)" : "已结束 \(count)"
+}
+
+public func jobSectionClear(english: Bool) -> String {
+    english ? "Clear" : "清空"
 }
 
 public enum JobChip: Sendable, Equatable {

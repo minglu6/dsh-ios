@@ -165,6 +165,34 @@ final class SlashMenuTests: XCTestCase {
         })
     }
 
+    func testLandingInjectsClientRowsWithoutASession() {
+        let rows = commandMenuClientRows(
+            ops: [],
+            sessionReady: false,
+            subagent: false,
+            landing: true
+        )
+        XCTAssertEqual(rows.compactMap { $0["name"].str() }, ["file", "model"])
+        XCTAssertTrue(commandMenuClientRows(ops: ["models.catalog"], sessionReady: false, subagent: true, landing: true).isEmpty)
+        let displayed = commandMenuDisplayRows(
+            commands: commandMenuMerge(host: [], injected: rows),
+            skills: [],
+            query: "",
+            leading: true,
+            english: false
+        )
+        XCTAssertEqual(
+            displayed.compactMap { row -> String? in
+                switch row {
+                case .section(let title): return title
+                case .command(let command): return command["name"].str()
+                case .skill(let skill): return skill.name
+                }
+            },
+            ["添加", "file", "指令", "model"]
+        )
+    }
+
     func testChineseCopyWritesRemoteHostNotHost() {
         XCTAssertEqual(commandContributionCollisionMessage("plan", english: false), "指令贡献 /plan 与远程主机指令冲突")
         XCTAssertFalse(commandContributionCollisionMessage("plan", english: false).contains("Host"))

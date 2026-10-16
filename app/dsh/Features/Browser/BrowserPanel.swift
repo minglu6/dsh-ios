@@ -48,7 +48,15 @@ private struct BrowserPanelContent: View {
         .onChange(of: model.profiles) { profiles in
             tabs.updatePolicy(Self.policy(for: profiles))
         }
+        .onAppear { consumePendingURL() }
+        .onChange(of: model.pendingBrowserURL) { _ in consumePendingURL() }
         .onDisappear { tabs.dispose() }
+    }
+
+    private func consumePendingURL() {
+        guard let url = model.pendingBrowserURL else { return }
+        model.pendingBrowserURL = nil
+        tabs.open(url.absoluteString)
     }
 
     private var tabStrip: some View {
@@ -308,6 +316,15 @@ private final class BrowserTabsStore: ObservableObject {
     func updatePolicy(_ value: BrowserPolicy) {
         policy = value
         pages.forEach { $0.policy = value }
+    }
+
+    func open(_ url: String) {
+        if selected.url.isEmpty && !selected.started {
+            selected.navigate(url)
+        } else {
+            let page = add()
+            page.navigate(url)
+        }
     }
 
     @discardableResult

@@ -60,7 +60,7 @@ struct ModelChoice: Equatable {
 }
 
 enum DrawerPanel: String, Identifiable {
-    case plugins, schedule, files, terminal, trajectory, jobs, settings
+    case plugins, schedule, files, terminal, trajectory, jobs, settings, browser
     var id: String { rawValue }
 }
 
@@ -148,6 +148,11 @@ final class AppModel: ObservableObject {
     @Published var pendingAttaches: [PendingAttach] = []
     @Published var commandEntries: [JSONValue] = []
     @Published var skillEntries: [SkillEntry] = []
+    private var skillEntriesByScope: [String: [SkillEntry]] = [:]
+    @Published var draftWorkspaceId: String?
+    @Published var pendingBrowserURL: URL?
+    var fileTreeStates: [String: FileTreeState] = [:]
+    var fileTreeOffsets: [String: CGFloat] = [:]
     private var appearanceOverride: Appearance?
     @Published var hiddenQuestionId: String?
     @Published var nearby: [DiscoveredHost] = []
@@ -288,6 +293,7 @@ final class AppModel: ObservableObject {
         pendingAttaches = []
         commandEntries = []
         skillEntries = []
+        skillEntriesByScope = [:]
         ops = []
         presetRoster = []
         searchHits = []
@@ -380,7 +386,10 @@ final class AppModel: ObservableObject {
             guard let client else { return }
             do {
                 let chosen = preset ?? pendingCreatorPreset ?? draftPreset.nilIfBlank
-                let id = try await client.createSession(agentPreset: chosen, workspaceId: workspaceId)
+                let id = try await client.createSession(
+                    agentPreset: chosen,
+                    workspaceId: workspaceId ?? draftWorkspaceId ?? workspaces.first?.workspaceId
+                )
                 pendingCreatorPreset = nil
                 openSession(id)
             } catch {
@@ -389,7 +398,72 @@ final class AppModel: ObservableObject {
         }
     }
 
+    var isParentOffline: Bool {
+        let current = sessions.first { $0.sessionId == chat?.sessionId }
+        let parentId = current?.parentSessionId
+        let parent = parentId.flatMap { id in sessions.first { $0.sessionId == id } }
+        return composerParentOffline(
+            origin: current?.origin,
+            parentSessionId: parentId,
+            parentListed: parent != nil,
+            parentOffline: parent == nil
+        )
+    }
+
+    var canSteerQueue: Bool {
+        chat?.running == true
+            && !(chat?.queuedPrompts.isEmpty ?? true)
+            && ops.contains("queue.update")
+    }
+
+    var landingWorkspaceLabel: String? {
+        if let id = draftWorkspaceId, let workspace = workspaces.first(where: { $0.workspaceId == id }) {
+            return workspaceDisplayTitle(title: workspace.title, path: workspace.path, localizedDefault: L.defaultWorkspace())
+        }
+        if let first = workspaces.first {
+            return workspaceDisplayTitle(title: first.title, path: first.path, localizedDefault: L.defaultWorkspace())
+        }
+        return nil
+    }
+
+    func skillEntries(for scope: String) -> [SkillEntry]? {
+        skillEntriesByScope[scope]
+    }
+
+    func submitComposer(gesture: ComposerSubmitGesture) {
+        if gesture == .chord, canSteerQueue, composerText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, pendingAttaches.isEmpty {
+            steerQueuedPrompts()
+            return
+        }
+        sendCurrent(gesture: gesture)
+    }
+
+    func steerQueuedPrompts() {
+        guard let prompts = chat?.queuedPrompts, !prompts.isEmpty else { return }
+        for prompt in prompts where !prompt.sending {
+            updateQueuedPrompt(itemId: prompt.id, action: .steer) { _ in }
+        }
+    }
+
+    func openChatLink(_ url: URL) {
+        guard isChatWebLink(url) else { return }
+        switch chatLinkDestination(hostSettings.value(.linkOpening)?.str()) {
+        case .newTab:
+            UIApplication.shared.open(url)
+        case .sidebar:
+            pendingBrowserURL = url
+            if case .panel(.browser) = currentRoute {
+                return
+            }
+            push(.panel(.browser))
+        }
+    }
+
     func sendCurrent() {
+        sendCurrent(gesture: .enter)
+    }
+
+    func sendCurrent(gesture: ComposerSubmitGesture) {
         let text = composerText.trimmingCharacters(in: .whitespacesAndNewlines)
         let images = pendingAttaches.compactMap { attach -> PromptImage? in
             guard attach.isImage, attach.status == .ready || attach.status == .pending else { return nil }
@@ -429,10 +503,10 @@ final class AppModel: ObservableObject {
         composerText = ""
         pendingAttaches = []
         if let chat {
-            Task { await sendPrompt(client, chat: chat, text: text, images: images, files: files, attachments: queueAttachments) }
+            Task { await sendPrompt(client, chat: chat, text: text, images: images, files: files, attachments: queueAttachments, gesture: gesture) }
             return
         }
-        Task { await createSessionAndSend(client, text: text, images: images, files: files, attachments: queueAttachments) }
+        Task { await createSessionAndSend(client, text: text, images: images, files: files, attachments: queueAttachments, gesture: gesture) }
     }
 
     private func createSessionAndSend(
@@ -440,17 +514,19 @@ final class AppModel: ObservableObject {
         text: String,
         images: [PromptImage],
         files: [PromptFile],
-        attachments: [QueuedAttachment]
+        attachments: [QueuedAttachment],
+        gesture: ComposerSubmitGesture
     ) async {
         do {
             let chosen = pendingCreatorPreset ?? draftPreset.nilIfBlank
-            let id = try await client.createSession(agentPreset: chosen)
+            let workspaceId = draftWorkspaceId ?? workspaces.first?.workspaceId
+            let id = try await client.createSession(agentPreset: chosen, workspaceId: workspaceId)
             pendingCreatorPreset = nil
             openSession(id)
             guard let chat, chat.sessionId == id else {
                 throw PocketError(code: "session", message: L.t("未能打开新会话", "Could not open the new session"))
             }
-            await sendPrompt(client, chat: chat, text: text, images: images, files: files, attachments: attachments)
+            await sendPrompt(client, chat: chat, text: text, images: images, files: files, attachments: attachments, gesture: gesture)
         } catch {
             emit(error.localizedDescription)
         }
@@ -759,7 +835,27 @@ final class AppModel: ObservableObject {
 
     func executeCommand(_ line: String, onResult: ((Bool) -> Void)? = nil) {
         Task {
-            guard let client, let sessionId = chat?.sessionId else {
+            guard let client else {
+                onResult?(false)
+                return
+            }
+            var sessionId = chat?.sessionId
+            if sessionId == nil {
+                do {
+                    let created = try await client.createSession(
+                        agentPreset: pendingCreatorPreset ?? draftPreset.nilIfBlank,
+                        workspaceId: draftWorkspaceId ?? workspaces.first?.workspaceId
+                    )
+                    pendingCreatorPreset = nil
+                    openSession(created)
+                    sessionId = created
+                } catch {
+                    emit(error.localizedDescription)
+                    onResult?(false)
+                    return
+                }
+            }
+            guard let sessionId else {
                 onResult?(false)
                 return
             }
@@ -781,22 +877,31 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func commandCatalog(sessionId: String) async throws -> [JSONValue] {
+    func commandCatalog(sessionId: String?) async throws -> [JSONValue] {
         guard let client else { throw PocketError(code: "transport", message: L.t("未连接", "Not connected")) }
         let entries = try await client.listCommands(sessionId: sessionId)
-        if chat?.sessionId == sessionId { commandEntries = entries }
+        if sessionId == nil || chat?.sessionId == sessionId { commandEntries = entries }
         return entries
     }
 
-    func skillCatalog(sessionId: String) async throws -> [SkillEntry] {
+    func skillCatalog(sessionId: String?) async throws -> [SkillEntry] {
         guard ops.contains("skills.list") else { return [] }
         guard let client else { throw PocketError(code: "transport", message: L.t("未连接", "Not connected")) }
         let raw = try await client.listSkills(sessionId: sessionId)
         let entries = raw.compactMap(SkillEntry.parse)
+        let scope = skillCatalogScopeKey(
+            sessionId: sessionId,
+            subagent: sessions.first { $0.sessionId == sessionId }?.origin == "subagent"
+        )
         #if DEBUG
-        print("[dsh.skills] session=\(sessionId) raw=\(raw.count) parsed=\(entries.count)")
+        print("[dsh.skills] scope=\(scope) raw=\(raw.count) parsed=\(entries.count)")
         #endif
-        if chat?.sessionId == sessionId { skillEntries = entries }
+        skillEntriesByScope[scope] = entries
+        if chat?.sessionId == sessionId {
+            skillEntries = entries
+        } else if sessionId == nil, chat == nil {
+            skillEntries = entries
+        }
         return entries
     }
 
@@ -1784,6 +1889,7 @@ final class AppModel: ObservableObject {
             modelPending = nil
             commandEntries = []
             skillEntries = []
+            skillEntriesByScope = [:]
             pendingAttaches = []
             followEpoch += 1
             detachFollow()
@@ -2063,11 +2169,17 @@ final class AppModel: ObservableObject {
         text: String,
         images: [PromptImage] = [],
         files: [PromptFile] = [],
-        attachments: [QueuedAttachment] = []
+        attachments: [QueuedAttachment] = [],
+        gesture: ComposerSubmitGesture = .enter
     ) async {
         let target = reducer
         let requestId = UUID().uuidString
-        let mode = chat.running ? busySend.mode : "queue"
+        let mode = resolveSubmitMode(
+            preferred: busySend.mode,
+            running: chat.running,
+            gesture: gesture,
+            steeringAvailable: ops.contains("queue.update")
+        )
         target.echo(
             text: text,
             requestId: requestId,
