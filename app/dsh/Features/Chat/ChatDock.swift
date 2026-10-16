@@ -601,8 +601,9 @@ struct CommandMenuOverlay: View {
         )
     }
 
+    private var collision: String? { commandContributionCollision(candidates) }
+
     private var rows: [CommandMenuRow] {
-        let collision = commandContributionCollision(candidates)
         if collision != nil { return [] }
         return commandMenuDisplayRows(
             commands: candidates,
@@ -613,78 +614,104 @@ struct CommandMenuOverlay: View {
         )
     }
 
+    private var catalogTaskId: String {
+        "\(model.activeId ?? "")-\(model.chat?.sessionId ?? "")-\(sessionReady)-\(attempt)-\(model.isOnline)-\(model.ops.sorted().joined())-\(subagent)"
+    }
+
     var body: some View {
+        menuCard
+            .task(id: catalogTaskId) { await load() }
+            .onAppear { highlight = commandMenuDefaultHighlight(rows) }
+            .onChange(of: query) { _ in highlight = commandMenuDefaultHighlight(rows) }
+            .onChange(of: rows.count) { _ in syncHighlight() }
+            .onChange(of: host.enterRequest) { _ in
+                if host.enterRequest > 0 { activateHighlight() }
+            }
+            .onChange(of: host.moveRequest) { _ in
+                if host.moveRequest > 0 {
+                    highlight = commandMenuMoveHighlight(rows: rows, current: highlight, direction: host.moveDirection)
+                }
+            }
+    }
+
+    private var menuCard: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if loading {
-                HStack {
-                    ProgressView().controlSize(.mini)
-                    Text(L.t("正在加载选项…", "Loading options…")).font(.caption).foregroundStyle(T.text3)
-                }
-                .padding(12)
-            }
-            if let error {
-                HStack(alignment: .top, spacing: 8) {
-                    Text(error).font(.caption).foregroundStyle(T.err)
-                    Button(L.retry()) { attempt += 1 }.disabled(!model.isOnline)
-                }
-                .padding(12)
-            }
-            if let collision = commandContributionCollision(candidates) {
-                Text(commandContributionCollisionMessage(collision, english: L.en))
-                    .font(.caption)
-                    .foregroundStyle(T.err)
-                    .padding(12)
-            }
-            if !loading && error == nil && rows.isEmpty {
-                Text(L.noOptions()).font(.caption).foregroundStyle(T.text3).padding(12)
-            }
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 0) {
-                        ForEach(Array(rows.enumerated()), id: \.offset) { index, item in
-                            switch item {
-                            case .section(let title):
-                                Text(title)
-                                    .font(.caption)
-                                    .foregroundStyle(T.text3)
-                                    .padding(.horizontal, 12)
-                                    .padding(.top, 10)
-                                    .padding(.bottom, 4)
-                            case .command(let command):
-                                commandRow(command, name: command["name"].str() ?? "", kind: commandMenuKind(command), index: index)
-                            case .skill(let skill):
-                                skillRow(skill, index: index)
-                            }
-                        }
-                    }
-                }
-                .frame(maxHeight: .infinity)
-                .onChange(of: highlight) { value in
-                    if let value { proxy.scrollTo(value, anchor: .nearest) }
-                }
-            }
+            statusBanner
+            menuList
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(T.settingsCard)
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 0.5))
         .clipShape(RoundedRectangle(cornerRadius: 12))
-        .task(id: "\(model.activeId ?? "")-\(model.chat?.sessionId ?? "")-\(sessionReady)-\(attempt)-\(model.isOnline)-\(model.ops.sorted().joined())-\(subagent)") {
-            await load()
+    }
+
+    @ViewBuilder
+    private var statusBanner: some View {
+        if loading { loadingRow }
+        if let error { errorRow(error) }
+        if let collision {
+            Text(commandContributionCollisionMessage(collision, english: L.en))
+                .font(.caption)
+                .foregroundStyle(T.err)
+                .padding(12)
         }
-        .onAppear { highlight = commandMenuDefaultHighlight(rows) }
-        .onChange(of: query) { _ in highlight = commandMenuDefaultHighlight(rows) }
-        .onChange(of: rows.count) { _ in
-            if highlight.flatMap({ rows.indices.contains($0) && rows[$0].isSelectable }) != true {
-                highlight = commandMenuDefaultHighlight(rows)
+        if !loading && error == nil && rows.isEmpty {
+            Text(L.noOptions()).font(.caption).foregroundStyle(T.text3).padding(12)
+        }
+    }
+
+    private var loadingRow: some View {
+        HStack {
+            ProgressView().controlSize(.mini)
+            Text(L.t("正在加载选项…", "Loading options…")).font(.caption).foregroundStyle(T.text3)
+        }
+        .padding(12)
+    }
+
+    private func errorRow(_ message: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text(message).font(.caption).foregroundStyle(T.err)
+            Button(L.retry()) { attempt += 1 }.disabled(!model.isOnline)
+        }
+        .padding(12)
+    }
+
+    private var menuList: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(rows.enumerated()), id: \.offset) { index, item in
+                        menuItem(item, index: index)
+                    }
+                }
+            }
+            .frame(maxHeight: .infinity)
+            .onChange(of: highlight) { value in
+                if let value { proxy.scrollTo(value, anchor: .nearest) }
             }
         }
-        .onChange(of: host.enterRequest) { _ in
-            if host.enterRequest > 0 { activateHighlight() }
+    }
+
+    @ViewBuilder
+    private func menuItem(_ item: CommandMenuRow, index: Int) -> some View {
+        switch item {
+        case .section(let title):
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(T.text3)
+                .padding(.horizontal, 12)
+                .padding(.top, 10)
+                .padding(.bottom, 4)
+        case .command(let command):
+            commandRow(command, name: command["name"].str() ?? "", kind: commandMenuKind(command), index: index)
+        case .skill(let skill):
+            skillRow(skill, index: index)
         }
-        .onChange(of: host.moveRequest) { _ in
-            if host.moveRequest > 0 {
-                highlight = commandMenuMoveHighlight(rows: rows, current: highlight, direction: host.moveDirection)
-            }
+    }
+
+    private func syncHighlight() {
+        if highlight.flatMap({ rows.indices.contains($0) && rows[$0].isSelectable }) != true {
+            highlight = commandMenuDefaultHighlight(rows)
         }
     }
 

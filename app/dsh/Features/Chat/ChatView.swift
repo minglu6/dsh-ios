@@ -39,30 +39,7 @@ struct ChatView: View {
             header
             tabs
             if tab == 0 {
-                GeometryReader { geo in
-                    ZStack(alignment: .bottom) {
-                        VStack(spacing: 0) {
-                            transcript
-                            dock
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                        if commandMenuVisible {
-                            Color.clear
-                                .contentShape(Rectangle())
-                                .onTapGesture { dismissCommandMenu() }
-                            commandMenu
-                                .padding(.horizontal, 14)
-                                .padding(.bottom, 4)
-                                .frame(maxHeight: max(240, geo.size.height * 0.72), alignment: .bottom)
-                        }
-                    }
-                }
-                if !questionVisible && sessionApproval == nil {
-                    composer
-                }
-                if let metrics = model.chat?.composerMetrics {
-                    ComposerStats(metrics: metrics)
-                }
+                chatTab
             } else if model.showCodeWorkView {
                 TrajectoryView(model: model)
             }
@@ -328,6 +305,42 @@ struct ChatView: View {
     private var slashTrigger: ComposerTrigger? { slashMenuTrigger(model.composerText) }
 
     private var commandMenuVisible: Bool { slashMenu.isVisible(trigger: slashTrigger) }
+
+    private var chatTab: some View {
+        VStack(spacing: 0) {
+            GeometryReader { geo in
+                ZStack(alignment: .bottom) {
+                    VStack(spacing: 0) {
+                        transcript
+                        dock
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    if commandMenuVisible {
+                        commandMenuLayer(maxHeight: max(240, geo.size.height * 0.72))
+                    }
+                }
+            }
+            if !questionVisible && sessionApproval == nil {
+                composer
+            }
+            if let metrics = model.chat?.composerMetrics {
+                ComposerStats(metrics: metrics)
+            }
+        }
+    }
+
+    private func commandMenuLayer(maxHeight: CGFloat) -> some View {
+        ZStack(alignment: .bottom) {
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture { dismissCommandMenu() }
+            commandMenu
+                .padding(.horizontal, 14)
+                .padding(.bottom, 4)
+                .frame(maxHeight: maxHeight, alignment: .bottom)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
 
     private var commandMenu: some View {
         CommandMenuOverlay(
