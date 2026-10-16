@@ -246,7 +246,7 @@ struct FilePreviewView: View {
     }
 }
 
-private struct PreviewPathLabel: View {
+struct PreviewPathLabel: View {
     let path: String
     var body: some View {
         let cut: String.Index? = {
