@@ -153,10 +153,10 @@ private struct MdBlockView: View {
         guard let url = components.url else {
             preconditionFailure("dshfile URL")
         }
-        var attributed = AttributedString(display)
+        var attributed = AttributedString(" \(display)")
         attributed.link = url
         attributed.foregroundColor = T.link
-        attributed.underlineStyle = .single
-        return Text(attributed)
+        attributed.underlineStyle = NSUnderlineStyle()
+        return Text(Image(systemName: "doc")).foregroundColor(T.link) + Text(attributed)
     }
 }

@@ -1,6 +1,6 @@
 import Foundation
 
-/// Device-independent sRGB used by the Tokyo Night PTY palette.
+/// Device-independent sRGB used by the terminal palette.
 public struct TermRGB: Equatable, Sendable {
     public var r: Double
     public var g: Double
@@ -28,35 +28,31 @@ public struct TermRGB: Equatable, Sendable {
     }
 }
 
-/// Syntax/ANSI palette. Terminal default foreground and background follow live DSH aliases.
-public enum TokyoNight {
-    public static let bg = TermRGB.rgb(0x1A1B26)
-    public static let fg = TermRGB.rgb(0xC0CAF5)
-    public static let cursor = TermRGB.rgb(0xC0CAF5)
-    public static let selection = TermRGB.rgb(0x33467C)
-    /// ANSI 0–15.
+/// Desktop xterm.js Tango ANSI 16. Default fg/bg follow the live appearance, not these slots.
+public enum Tango {
+    /// ANSI 0–15 (black / chromatic / white + bright).
     public static let ansi: [TermRGB] = [
-        .rgb(0x15161E),
-        .rgb(0xF7768E),
-        .rgb(0x9ECE6A),
-        .rgb(0xE0AF68),
-        .rgb(0x7AA2F7),
-        .rgb(0xBB9AF7),
-        .rgb(0x7DCFFF),
-        .rgb(0xA9B1D6),
-        .rgb(0x414868),
-        .rgb(0xF7768E),
-        .rgb(0x9ECE6A),
-        .rgb(0xE0AF68),
-        .rgb(0x7AA2F7),
-        .rgb(0xBB9AF7),
-        .rgb(0x7DCFFF),
-        .rgb(0xC0CAF5),
+        .rgb(0x2E3436),
+        .rgb(0xCC0000),
+        .rgb(0x4E9A06),
+        .rgb(0xC4A000),
+        .rgb(0x3465A4),
+        .rgb(0x75507B),
+        .rgb(0x06989A),
+        .rgb(0xD3D7CF),
+        .rgb(0x555753),
+        .rgb(0xEF2929),
+        .rgb(0x8AE234),
+        .rgb(0xFCE94F),
+        .rgb(0x729FCF),
+        .rgb(0xAD7FA8),
+        .rgb(0x34E2E2),
+        .rgb(0xEEEEEC),
     ]
 }
 
 public func xterm256(_ n: Int) -> TermRGB {
-    if n < 16 { return TokyoNight.ansi[n] }
+    if n < 16 { return Tango.ansi[n] }
     if n < 232 {
         let i = n - 16
         func c(_ v: Int) -> Double { Double(v == 0 ? 0 : 55 + v * 40) / 255 }

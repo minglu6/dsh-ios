@@ -709,17 +709,7 @@ struct CommandSheet: View {
     }
 
     private func commandIcon(_ kind: String?) -> String {
-        switch kind {
-        case "file": return "paperclip"
-        case "model": return "cylinder.split.1x2"
-        case "goal": return "flag"
-        case "plan": return "checklist"
-        case "feedback": return D.paperPlane
-        case "compact": return "arrow.down.right.and.arrow.up.left"
-        case "permission": return "hand.raised"
-        case "export": return D.download
-        default: return "chevron.left.forwardslash.chevron.right"
-        }
+        commandMenuIconSymbol(kind)
     }
 
     @ViewBuilder

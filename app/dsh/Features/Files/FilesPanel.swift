@@ -139,9 +139,7 @@ struct FilesPanel: View {
                     if directory { load(child) } else { previewPath = child }
                 } label: {
                     HStack(spacing: 10) {
-                        Image(systemName: fileIcon(entry))
-                            .foregroundStyle(openable ? T.text2 : T.text3)
-                            .frame(width: 20)
+                        FileTypeIcon(path: entry.name, directory: directory, openable: openable)
                         Text(entry.name)
                             .font(.system(size: 13))
                             .foregroundStyle(enabled ? T.ink : T.text3)
@@ -159,17 +157,6 @@ struct FilesPanel: View {
             if truncated {
                 Text(L.filesTruncated()).font(.system(size: 12)).foregroundStyle(T.text3).padding(20)
             }
-        }
-    }
-
-    private func fileIcon(_ entry: WorkspaceFileEntry) -> String {
-        if entry.isDirectory { return "folder" }
-        if !entry.isFile { return "exclamationmark.triangle" }
-        switch classifyFileType(entry.name) {
-        case "image": return "photo"
-        case "markdown": return "doc.richtext"
-        case "pdf": return "doc.fill"
-        default: return "doc"
         }
     }
 

@@ -260,7 +260,7 @@ struct ChatView: View {
                 }
             }
             Button { showStart = true } label: {
-                Image(systemName: "safari").foregroundStyle(T.ink)
+                Image(systemName: D.panelRight).foregroundStyle(T.ink)
             }
             .accessibilityLabel(L.startPanel())
             Button { if model.isOnline { showModels = true } } label: {

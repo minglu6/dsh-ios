@@ -104,6 +104,29 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertFalse(ConversationHeaderPolicy.includesOverflowMenu)
     }
 
+    func testGeneralSettingsCopyMatchesDesktopLocale() {
+        XCTAssertEqual(transcriptViewLabel(.compact, english: false), "简洁")
+        XCTAssertEqual(transcriptViewLabel(.verbose, english: false), "完全展开")
+        XCTAssertEqual(transcriptViewLabel(.compact, english: true), "Compact")
+        XCTAssertEqual(transcriptViewLabel(.verbose, english: true), "Verbose")
+        XCTAssertEqual(collapseTimingLabel(.completion, english: false), "回答结束后")
+        XCTAssertEqual(collapseTimingLabel(.nextInput, english: false), "下次有新消息时")
+        XCTAssertEqual(collapseTimingLabel(.completion, english: true), "On completion")
+        XCTAssertEqual(collapseTimingLabel(.nextInput, english: true), "On next message")
+        XCTAssertEqual(linkOpeningLabel("sidebar", english: false), "侧栏")
+        XCTAssertEqual(linkOpeningLabel("sidebar", english: true), "Sidebar")
+        XCTAssertEqual(linkOpeningLabel("in-app", english: false), "应用内")
+        XCTAssertEqual(linkOpeningLabel("system", english: true), "System browser")
+        XCTAssertEqual(workDetailsDescription(english: false), "选择希望看到多少工具调用细节")
+        XCTAssertEqual(commandMenuIconSymbol("goal"), "target")
+        XCTAssertEqual(commandMenuIconSymbol("plan"), "doc.text")
+        XCTAssertEqual(commandMenuIconSymbol("compact"), "circle.circle")
+        XCTAssertEqual(commandMenuIconSymbol("permission"), "shield")
+        XCTAssertEqual(terminalTabTitle("zsh"), "zsh")
+        XCTAssertEqual(terminalTabTitle("  "), "Terminal")
+        XCTAssertEqual(terminalTabTitle(nil), "Terminal")
+    }
+
     func testConversationHeaderTitleMatchesDrawerUntitledRules() {
         XCTAssertEqual(
             conversationHeaderTitle(sessionId: nil, title: nil, blank: false, newSession: "新会话", untitled: "未命名"),

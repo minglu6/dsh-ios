@@ -269,14 +269,14 @@ enum L {
     static func terminalSessions() -> String { en ? "Terminal sessions" : "终端会话" }
     static func terminalOffline() -> String { en ? "Offline" : "离线" }
     static func terminalConnecting() -> String { en ? "Connecting" : "连接中" }
-    static func terminalExiting() -> String { en ? "Exiting" : "退出中" }
+    static func terminalExiting() -> String { en ? "Closing" : "关闭中" }
     static func terminalRunning() -> String { en ? "Running" : "运行中" }
     static func terminalStopped() -> String { en ? "Stopped" : "已停止" }
     static func connectToSwitchSessions() -> String { en ? "Connect to switch sessions" : "连接后可切换会话" }
     static func noRetainedSessions() -> String { en ? "No retained sessions" : "暂无保留的会话" }
     static func newTerminal() -> String { en ? "New terminal" : "新建终端" }
-    static func exitTerminal() -> String { en ? "Exit" : "退出" }
-    static func exitTerminalTitle() -> String { en ? "Exit terminal?" : "退出终端？" }
+    static func exitTerminal() -> String { en ? "Close" : "关闭" }
+    static func exitTerminalTitle() -> String { en ? "Close terminal?" : "关闭终端？" }
     static func exitTerminalBody() -> String {
         en
             ? "This ends the current shell and its running commands. Collapsing the panel keeps the session."
@@ -286,7 +286,7 @@ enum L {
         en ? "Disconnected; reattaching when the connection returns." : "连接已断开；连接恢复后会重新附加。"
     }
     static func terminalConnectingEllipsis() -> String { en ? "Connecting…" : "正在连接…" }
-    static func terminalExitingEllipsis() -> String { en ? "Exiting…" : "正在退出…" }
+    static func terminalExitingEllipsis() -> String { en ? "Closing…" : "正在关闭…" }
     static func terminalExitedHint() -> String {
         en
             ? "Terminal exited. Switch sessions or create a terminal from the menu."

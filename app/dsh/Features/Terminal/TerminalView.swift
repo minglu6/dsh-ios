@@ -240,8 +240,11 @@ private struct TerminalCanvas: View {
                         (r * cols + c) >= min(selectionAnchor, selectionEnd) &&
                         (r * cols + c) <= max(selectionAnchor, selectionEnd)
                     if selected {
-                        bg = TokyoNight.selection
-                        fg = TermRGB(r: 1, g: 1, b: 1)
+                        if ThemeStateHolder.shared.dark {
+                            bg = TermRGB(r: 1, g: 1, b: 1, a: 0.22)
+                        } else {
+                            bg = TermRGB(r: 0, g: 0, b: 0, a: 0.12)
+                        }
                     }
                     let rect = CGRect(x: CGFloat(c) * cellW + inset, y: CGFloat(r) * cellH + inset, width: cellW * CGFloat(w), height: cellH)
                     if bg != background {

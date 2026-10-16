@@ -238,7 +238,7 @@ private struct PresetCard: View {
                 }
                 .padding(14)
             }
-            .disabled(!writable || busy || active || broken != nil)
+            .disabled(!writable || busy || broken != nil)
             .buttonStyle(.plain)
             Divider()
             HStack {

@@ -117,3 +117,86 @@ public func modelsSettingsIntro(english: Bool) -> String {
         ? "Enter your API keys to use models from the following providers."
         : "填入各提供商的 API 密钥即可使用其模型。"
 }
+
+/// Desktop `ui-settings` / `ui-chat` locales for General.
+public func transcriptViewLabel(_ mode: TranscriptView, english: Bool) -> String {
+    switch mode {
+    case .compact: return english ? "Compact" : "简洁"
+    case .standard: return english ? "Standard" : "标准"
+    case .detailed: return english ? "Detailed" : "详细"
+    case .verbose: return english ? "Verbose" : "完全展开"
+    }
+}
+
+public func collapseTimingLabel(_ mode: CollapseTiming, english: Bool) -> String {
+    switch mode {
+    case .completion: return english ? "On completion" : "回答结束后"
+    case .nextInput: return english ? "On next message" : "下次有新消息时"
+    }
+}
+
+public func performanceUsageLabel(detailed: Bool, english: Bool) -> String {
+    if detailed { return english ? "Detailed" : "详细" }
+    return english ? "Compact" : "简洁"
+}
+
+public func linkOpeningLabel(_ value: String, english: Bool) -> String {
+    switch value {
+    case "sidebar": return english ? "Sidebar" : "侧栏"
+    case "in-app": return english ? "In-app" : "应用内"
+    case "system": return english ? "System browser" : "系统浏览器"
+    default:
+        preconditionFailure("unlocalized linkOpening value: \(value)")
+    }
+}
+
+public let linkOpeningValues = ["sidebar", "in-app", "system"]
+
+public func workDetailsDescription(english: Bool) -> String {
+    english ? "Choose how much detail to show for tool calls" : "选择希望看到多少工具调用细节"
+}
+
+public func collapseTimingDescription(english: Bool) -> String {
+    english ? "Choose when to automatically collapse work details" : "选择何时自动收起工作步骤"
+}
+
+public func permissionDefaultDescription(english: Bool) -> String {
+    english ? "Choose the default permission mode for new sessions" : "选择新会话的默认权限模式"
+}
+
+public func performanceUsageDescription(english: Bool) -> String {
+    english
+        ? "Choose how much performance and usage information to show"
+        : "选择性能与用量信息展示的详细程度"
+}
+
+public func busySendDescription(english: Bool) -> String {
+    english
+        ? "What Enter and the Send button do while the agent is running; Cmd/Ctrl+Enter uses the other behavior"
+        : "智能体运行时 Enter 键和发送按钮的行为；Cmd/Ctrl+Enter 使用另一行为"
+}
+
+public func linkOpeningDescription(english: Bool) -> String {
+    english ? "Choose where links open" : "选择在哪里打开链接"
+}
+
+/// Desktop terminal tab title: shell name only, never a truncated id.
+public func terminalTabTitle(_ title: String?) -> String {
+    let trimmed = title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    return trimmed.isEmpty ? "Terminal" : trimmed
+}
+
+/// Desktop slash-menu glyphs, mapped to SF Symbols on iOS.
+public func commandMenuIconSymbol(_ kind: String?) -> String {
+    switch kind {
+    case "file": return "paperclip"
+    case "model": return "cylinder.split.1x2"
+    case "goal": return "target"
+    case "plan": return "doc.text"
+    case "feedback": return "paperplane"
+    case "compact": return "circle.circle"
+    case "permission": return "shield"
+    case "export": return "square.and.arrow.down"
+    default: return "chevron.left.forwardslash.chevron.right"
+    }
+}

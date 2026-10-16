@@ -162,6 +162,27 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertEqual(classifyFileType("Dockerfile.dev"), "docker")
         XCTAssertEqual(classifyFileType("README"), "markdown")
         XCTAssertEqual(classifyFileType(#"C:\project\Main.kt"#), "kotlin")
+        XCTAssertEqual(classifyFileType("app.component.ts"), "angular")
+        XCTAssertEqual(classifyFileType("notes.mdx"), "markdown")
+        XCTAssertEqual(fileTypeAccent("pdf"), 0xEC1313)
+        XCTAssertEqual(fileTypeAccent("folder"), 0xF7AD31)
+        XCTAssertEqual(fileTypeAccent("python"), 0x3776AB)
+        XCTAssertEqual(Tango.ansi[1], TermRGB.rgb(0xCC0000))
+        XCTAssertEqual(Tango.ansi[2], TermRGB.rgb(0x4E9A06))
+        XCTAssertEqual(Tango.ansi[3], TermRGB.rgb(0xC4A000))
+        XCTAssertEqual(Tango.ansi[4], TermRGB.rgb(0x3465A4))
+        XCTAssertEqual(Tango.ansi[5], TermRGB.rgb(0x75507B))
+        XCTAssertEqual(Tango.ansi[6], TermRGB.rgb(0x06989A))
+        XCTAssertEqual(Tango.ansi[9], TermRGB.rgb(0xEF2929))
+        XCTAssertEqual(Tango.ansi[10], TermRGB.rgb(0x8AE234))
+        XCTAssertEqual(Tango.ansi[11], TermRGB.rgb(0xFCE94F))
+        XCTAssertEqual(Tango.ansi[12], TermRGB.rgb(0x729FCF))
+        XCTAssertEqual(Tango.ansi[13], TermRGB.rgb(0xAD7FA8))
+        XCTAssertEqual(Tango.ansi[14], TermRGB.rgb(0x34E2E2))
+        XCTAssertEqual(xterm256(1), Tango.ansi[1])
+        for path in ["README.md", "main.py", "app.go", "Cargo.toml", "Makefile", ".gitignore", "photo.svg"] {
+            _ = fileTypeAccent(classifyFileType(path))
+        }
     }
 
     func testDelimitedPreview() throws {
