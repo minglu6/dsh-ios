@@ -189,7 +189,8 @@ struct RootView: View {
             landingWorkspaceRow
             ComposerView(
                 model: model,
-                interceptKeys: landingCommandMenuVisible,
+                interceptKeys: landingCommandMenuVisible && riskPermission == nil,
+                resignKeyboard: riskPermission != nil,
                 focusToken: composerFocus,
                 heroPlaceholder: true,
                 onPlus: {

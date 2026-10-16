@@ -445,9 +445,48 @@ public let jobsPopoverArrowPointsDown = true
 public let jobsPopoverSizesToContent = true
 public let jobsPopoverWidthPoints: Double = 320
 public let jobsPopoverMaxHeightPoints: Double = 360
+/// Settled `detail` (`signal: SIGTERM; cancelled by the user`) is never ellipsized.
+public let jobsPopoverSettledDetailWraps = true
+
+public func jobsPopoverWidth(screenWidth: Double) -> Double {
+    min(max(jobsPopoverWidthPoints, screenWidth - 24), 520)
+}
 
 /// Desktop statistics row uses `tok`, not `tokens`.
 public let composerStatisticsTokenUnit = "tok"
+
+/// Desktop usage chip opens an anchored popover, not a full-screen sheet.
+public let composerSessionUsageIsPopover = true
+/// Desktop puts the session total in the header (`Token 用量 34,185 tok`), not a 「合计」 row.
+public let composerSessionUsageOmitsTotalRow = true
+
+public enum ComposerSessionUsageRow: String, Equatable, Sendable {
+    case cacheHit, uncachedInput, cacheRead, cacheWrite, output
+}
+
+/// Desktop `ui-conversation` usage popover header and row labels.
+public func composerSessionUsageTitle(exactTotal: String, english: Bool) -> String {
+    english
+        ? "Token usage \(exactTotal) \(composerStatisticsTokenUnit)"
+        : "Token 用量 \(exactTotal) \(composerStatisticsTokenUnit)"
+}
+
+public func composerSessionUsageRowLabel(_ row: ComposerSessionUsageRow, english: Bool) -> String {
+    switch row {
+    case .cacheHit: return english ? "Cache hit" : "缓存命中"
+    case .uncachedInput: return english ? "Uncached input" : "未缓存输入"
+    case .cacheRead: return english ? "Cache read" : "缓存读取"
+    case .cacheWrite: return english ? "Cache write" : "缓存写入"
+    case .output: return english ? "Output" : "输出"
+    }
+}
+
+public func composerSessionUsageTokenValue(exact: String) -> String {
+    "\(exact) \(composerStatisticsTokenUnit)"
+}
+
+/// Desktop `RiskConfirmation` blurs the composer first.
+public let permissionRiskDismissesKeyboard = true
 
 /// Desktop `message.ts` idle steer is `location.kind === "step" && step === 1`.
 /// A turn without a step is not step 1.

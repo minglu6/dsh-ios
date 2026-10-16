@@ -38,7 +38,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R7 | 后台任务 chip 空 Group `.task`；「后台任务状态更新」；标题随 `sessions.list` / title projection 更新；权限 chip 锚定菜单；landing「标准模式」；composer 高度对齐桌面；去掉标题旁 spinner | done (#25) |
 | R8 | waking 触发行；`/permission` popupSelect；composer 按内容测高；任务 popover；权限菜单固定顺序；统计单行；landing 权限写入新会话；停止为两次点按 | done (#26) |
 | R9 | composer `sizeThatFits -> CGSize?`；任务 popover `arrowEdge: .top` 且无返回箭头；landing 风险文案跟桌面 hero；waking 与 `inbox.ts`/`message.ts` 对齐 | done (#27) |
-| R10 | 已停止任务按 `JobView`/`exit` 投影；任务 popover 按内容收缩；底栏 `tok`；触发行灰卡；完全权限居中确认；浏览器关闭后保留对话位置；waking step 仅 `openStep` | this PR |
+| R10 | 已停止任务按 `JobView`/`exit` 投影；任务 popover 按内容收缩；底栏 `tok`；触发行灰卡；完全权限居中确认；浏览器关闭后保留对话位置；waking step 仅 `openStep` | done (#28) |
+| R11 | 底栏 Token 用量贴 chip 的 popover；已结束任务 SIGTERM 整句；完全权限确认先收键盘 | this PR |
 
 ---
 
@@ -82,7 +83,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Markdown / code block / tables | `Markdown.kt` | AST + GFM tables / code / file chips | **present** | **D** |
 | Copy / like / dislike / share | `MessageActions` + `FeedbackCategory` | desktop row is share (not branch); branch stays on the session row menu | **present** | **A** / **P1** |
 | Turn usage pill | `ComposerStats.kt` `TurnUsageAction` | same; only `PerformanceUsage.Detailed` | **missing** → **present** | **E** |
-| Composer statistics | Activity / Usage / Context pills | `ComposerStats` 单行 HStack（不再 `ViewThatFits` 折成 3 行） | **missing** → **present** | **E** / **R8** |
+| Composer statistics | Activity / Usage / Context pills | `ComposerStats` 单行 HStack；Token 用量为贴 chip 的 popover（表头含合计 tok，无「合计」行，「缓存命中」+ tok） | **missing** → **present** | **E** / **R8** / **R11** |
 | Composer queue / steer | busyEnter + `queue.update` | `busySend` + `PromptQueue` edit/remove/steer；排队行按桌面 `QueueDock` 画图片缩略图 / 文件芯片（有 `session.attachment` 或本地 preview） | **partial** → **present** | **E** / **R5** |
 | `@` mentions | `MentionMenu.kt` official `@path` / `@"path"` / `@[title](dsh-session:…)` | same tokens + chip row + mention panel | **partial** → **present** | **E** |
 | `/` commands | `CommandPopupSheet` `commands.list/execute` | 贴输入框弹层（#21）；`+` 与 `/` 同菜单；不接受附件的指令先 toast 官方句再执行；claimed `/goal` `/plan` 空参数时输入框上方 hint strip。R8：`ComposerTextView` `fixedSize` + 关滚动测高，空文本走 36/52 地板而不是 132 | **missing** → **present** | **E** / **P2** / **#21** / **R4** / **R5** / **R7** / **R8** |
@@ -148,7 +149,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 
 | Item | Android | iOS | Tag | Batch |
 | --- | --- | --- | --- | --- |
-| Header jobs chip | `JobsAction.kt` / desktop `JobListAction` | tabs-row chip；面板为进行中 / 已结束 + 两点击停止（`kill.confirm`）。R6 实机：空 `Group` 上的 `.task` 不跑、从不 `jobs.list`；R7 把 watch 挂在 1pt 常驻锚点（同变更卡）。插件 `jobs.list` / `follow` / `kill` 已转发，Host `{type:rows, jobs:[…], output.lossy:false}` 可解析。R10：行状态按桌面 `JobView`（`status`/`detail`/`progress`/`finishedAt`，必要时从 `exit` 投影）；killed 为橙点 + `signal: SIGTERM; cancelled by the user` 单行、无停止按钮 | **present** | **C** / **R6** / **R7** / **R10** |
+| Header jobs chip | `JobsAction.kt` / desktop `JobListAction` | tabs-row chip；面板为进行中 / 已结束 + 两点击停止（`kill.confirm`）。R6 实机：空 `Group` 上的 `.task` 不跑、从不 `jobs.list`；R7 把 watch 挂在 1pt 常驻锚点（同变更卡）。插件 `jobs.list` / `follow` / `kill` 已转发，Host `{type:rows, jobs:[…], output.lossy:false}` 可解析。R10：行状态按桌面 `JobView`（`status`/`detail`/`progress`/`finishedAt`，必要时从 `exit` 投影）；killed 为橙点 + `signal: SIGTERM; cancelled by the user` 单行、无停止按钮。R11：popover 随屏宽放宽，已结束 detail 换行而不截成 `SIGTER…` | **present** | **C** / **R6** / **R7** / **R10** / **R11** |
 | Failed refresh → 「任务状态不可用」 (not 0) | `JobsAction.kt:62-64` | same copy, stale running count discarded | **present** | **C** |
 | `jobs.list` / `follow` / `kill` | `Pocket.kt` | `PocketClient` + `JobsPanel`; list+live follow share one roster | **present** | **C** |
 | Unread green dot | `CompletionReminders` epoch+revision | epoch+revision; leading slot only | **present** | **C** |
@@ -341,3 +342,11 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 | 完全权限确认 | `PermissionRiskDialog` | `RiskConfirmation` 居中对话框 | landing / 会话 / 设置同一套文案，不再整屏 sheet 把内容顶上去 |
 | 应用内浏览器 | `keepsChatMounted` + `ChatView` 不卸载 | 桌面 sidebar 叠在会话上 | 关闭浏览器后滚动位置还在；会话仍按最后一行贴底 |
 | waking step | `wakingTriggerStep` | `message.ts` `location.kind === "step" && step === 1` | 只有 `openStep`，不再把「有 turn 无 step」当成 step 1 |
+
+## Round 11 对照清单（桌面 `packages/client` + Round 10 实机 `REPORT_b874`）
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| Token 用量 | `ComposerStats` session usage `.popover` | desktop statistics chip `MenuSurface` | 贴 chip 的小气泡；表头 `Token 用量 {exact} tok`；无「合计」行；「缓存命中」不是「缓存命中率」；token 值带 `tok` |
+| 已结束任务 SIGTERM | `jobsPopoverWidth(screenWidth:)` + `jobsPopoverSettledDetailWraps` | `JobListAction` 整句 `signal: SIGTERM; cancelled by the user` | 窄屏换行，不再 `SIGTER…` |
+| 完全权限确认键盘 | `permissionRiskDismissesKeyboard` + composer `resignKeyboard` | desktop `RiskConfirmation` 先 blur composer | 对话框出现前收起键盘（slash 菜单的 lockFirstResponder 也放开） |

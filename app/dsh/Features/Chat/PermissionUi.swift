@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import DSHProtocol
 
 func permissionIcon(_ value: String) -> String {
@@ -220,6 +221,10 @@ struct PermissionRiskDialog: View {
                 onDismiss: onDismiss,
                 onConfirm: onConfirm
             )
+        }
+        .onAppear {
+            guard permissionRiskDismissesKeyboard else { return }
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
     }
 }
