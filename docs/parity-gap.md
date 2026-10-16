@@ -26,7 +26,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | G | session search/export, Agent presets, NSD, notifications, unarchive, drag reorder, NavigationPolicy | done (#9) |
 | P0 | Brand wordmark + official plugin market | done (#12) |
 | P1 | Chat share row, composer model/permission chips, Start IA, settings shell | done (#13) |
-| H | Android `d1d7ef8…729ef2e`: Qoder / command menu / files.follow / browser tabs / Office·PDF·XLS / offline gray-out / archived rename·fork | this PR |
+| H | Android `d1d7ef8…729ef2e`: Qoder / command menu / files.follow / browser tabs / Office·PDF·XLS / offline gray-out / archived rename·fork | done (#11) |
 
 ---
 
