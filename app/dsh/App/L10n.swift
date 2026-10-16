@@ -386,7 +386,7 @@ enum L {
     static func automation() -> String { en ? "Scheduled tasks" : "自动化任务" }
     static func tool() -> String { en ? "Tool" : "工具" }
     static func composerPlaceholder() -> String { composerPlaceholderText(planMode: false, english: en) }
-    static func landingHeadline() -> String { landingHeadline(english: en) }
+    static func landingHeadline() -> String { DSHProtocol.landingHeadline(english: en) }
     static func landingPreview() -> String { landingPreviewBadge(english: en) }
     static func landingPlaceholder() -> String { composerPlaceholderText(planMode: false, english: en, hero: true) }
     static func planReview() -> String { en ? "Plan review" : "计划待审" }
