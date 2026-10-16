@@ -73,11 +73,15 @@ struct TerminalView: View {
                 .onSizeChange { size in
                     viewport = size
                     guard enabled, size.width > 0, size.height > 0 else { return }
-                    let font = TerminalTypeface.uiFont(ofSize: CGFloat(model.terminalFontSize))
-                    let cellW = max("M".size(withAttributes: [.font: font]).width, 1)
-                    let cellH = max(font.lineHeight * 1.35, cellW * 1.6)
-                    let cols = max(2, Int((size.width - 16) / cellW))
-                    let rows = max(1, Int((size.height - 16) / cellH))
+                    let face = TerminalTypeface.resolved(ofSize: CGFloat(model.terminalFontSize))
+                    let cols = TerminalCellLayout.columns(
+                        viewportWidth: Double(size.width),
+                        cellWidth: Double(face.cellWidth)
+                    )
+                    let rows = TerminalCellLayout.rows(
+                        viewportHeight: Double(size.height),
+                        cellHeight: Double(face.cellHeight)
+                    )
                     if cols != model.terminal.cols || rows != model.terminal.rows {
                         model.resizeTerminal(cols: cols, rows: rows)
                     }
@@ -215,9 +219,10 @@ private struct TerminalCanvas: View {
     var body: some View {
         Canvas { context, size in
             _ = revision
-            let font = TerminalTypeface.uiFont(ofSize: CGFloat(fontSize))
-            let cellW = max("M".size(withAttributes: [.font: font]).width, 1)
-            let cellH = max(CGFloat(font.lineHeight) * 1.35, cellW * 1.6)
+            let face = TerminalTypeface.resolved(ofSize: CGFloat(fontSize))
+            let cellW = face.cellWidth
+            let cellH = face.cellHeight
+            let inset = CGFloat(TerminalCellLayout.inset)
             let rows = selection?.rows ?? terminal.rows
             let cols = selection?.cols ?? terminal.cols
             let foreground = TermRGB(r: T.ink.components.r, g: T.ink.components.g, b: T.ink.components.b, a: 1)
@@ -238,7 +243,7 @@ private struct TerminalCanvas: View {
                         bg = TokyoNight.selection
                         fg = TermRGB(r: 1, g: 1, b: 1)
                     }
-                    let rect = CGRect(x: CGFloat(c) * cellW + 8, y: CGFloat(r) * cellH + 8, width: cellW * CGFloat(w), height: cellH)
+                    let rect = CGRect(x: CGFloat(c) * cellW + inset, y: CGFloat(r) * cellH + inset, width: cellW * CGFloat(w), height: cellH)
                     if bg != background {
                         context.fill(Path(rect), with: .color(color(bg)))
                     }
@@ -248,7 +253,7 @@ private struct TerminalCanvas: View {
                         fg = bg
                     }
                     if cell.ch != " ", !cell.ch.isEmpty {
-                        var text = Text(cell.ch).font(TerminalTypeface.font(ofSize: CGFloat(fontSize))).foregroundColor(color(fg))
+                        var text = Text(cell.ch).font(face.font).foregroundColor(color(fg))
                         if cell.bold { text = text.bold() }
                         context.draw(text, at: CGPoint(x: rect.minX, y: rect.minY), anchor: .topLeading)
                         if cell.underline {
@@ -306,11 +311,9 @@ private struct TerminalCanvas: View {
     }
 
     private func cellAt(_ point: CGPoint, cols: Int? = nil) -> (row: Int, col: Int) {
-        let font = TerminalTypeface.uiFont(ofSize: CGFloat(fontSize))
-        let cellW = max("M".size(withAttributes: [.font: font]).width, 1)
-        let cellH = max(CGFloat(font.lineHeight) * 1.35, cellW * 1.6)
-        let col = Int(floor((point.x - 8) / cellW))
-        let row = Int(floor((point.y - 8) / cellH))
+        let face = TerminalTypeface.resolved(ofSize: CGFloat(fontSize))
+        let col = TerminalCellLayout.column(x: Double(point.x), cellWidth: Double(face.cellWidth))
+        let row = TerminalCellLayout.row(y: Double(point.y), cellHeight: Double(face.cellHeight))
         return (row, col)
     }
 
