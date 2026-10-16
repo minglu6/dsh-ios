@@ -142,15 +142,14 @@ public func performanceUsageLabel(detailed: Bool, english: Bool) -> String {
 
 public func linkOpeningLabel(_ value: String, english: Bool) -> String {
     switch value {
-    case "sidebar": return english ? "Sidebar" : "侧栏"
-    case "in-app": return english ? "In-app" : "应用内"
-    case "system": return english ? "System browser" : "系统浏览器"
+    case "sidebar": return english ? "In-App Sidebar" : "应用内侧边栏"
+    case "new-tab": return english ? "Default Browser" : "默认浏览器"
     default:
-        preconditionFailure("unlocalized linkOpening value: \(value)")
+        return value
     }
 }
 
-public let linkOpeningValues = ["sidebar", "in-app", "system"]
+public let linkOpeningValues = ["sidebar", "new-tab"]
 
 public func workDetailsDescription(english: Bool) -> String {
     english ? "Choose how much detail to show for tool calls" : "选择希望看到多少工具调用细节"
@@ -177,7 +176,7 @@ public func busySendDescription(english: Bool) -> String {
 }
 
 public func linkOpeningDescription(english: Bool) -> String {
-    english ? "Choose where links open" : "选择在哪里打开链接"
+    english ? "Where web links in the conversation open" : "对话中网页链接的打开位置"
 }
 
 /// Desktop terminal tab title: shell name only, never a truncated id.

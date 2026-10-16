@@ -469,5 +469,15 @@ final class PresetPolicyTests: XCTestCase {
         XCTAssertEqual(PresetPolicy.visibleRows([try JSONValue.parse(#"{"id":"ptc"}"#)], codingTools: false).count, 0)
         XCTAssertEqual(PresetPolicy.visibleRows([try JSONValue.parse(#"{"id":"ptc"}"#)], codingTools: true).count, 1)
     }
+
+    func testSelectingTheCurrentDefaultCardIsANoOp() throws {
+        let current = try JSONValue.parse(#"{"id":"standard","isDefault":true}"#)
+        let other = try JSONValue.parse(#"{"id":"ptc","isDefault":false}"#)
+        let broken = try JSONValue.parse(#"{"id":"custom","broken":"invalid YAML"}"#)
+        XCTAssertFalse(PresetPolicy.canSelectAsDefault(current))
+        XCTAssertTrue(PresetPolicy.canSelectAsDefault(other))
+        XCTAssertFalse(PresetPolicy.canSelectAsDefault(broken))
+        XCTAssertFalse(PresetPolicy.canSelectAsDefault(try JSONValue.parse(#"{"id":"standard","isDefault":true,"broken":"invalid YAML"}"#)))
+    }
 }
 

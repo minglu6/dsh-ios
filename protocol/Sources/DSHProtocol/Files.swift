@@ -115,6 +115,16 @@ public func classifyFileType(_ path: String) -> String {
     return fileTypeExtensions[extensionName] ?? "other"
 }
 
+/// Workspace listing `type` → file-icon kind. Non-file/non-directory entries
+/// (`socket`, `fifo`, Host `other`, …) use the desktop warning glyph.
+public func fileTypeKind(path: String, type: String) -> String {
+    switch type {
+    case "directory": return "folder"
+    case "file": return classifyFileType(path)
+    default: return "warning"
+    }
+}
+
 /// Desktop file-icon fill (`#rrggbb`) for the classified kind.
 public func fileTypeAccent(_ kind: String) -> UInt32 {
     switch kind {
@@ -125,7 +135,7 @@ public func fileTypeAccent(_ kind: String) -> UInt32 {
     case "word": return 0x5686FE
     case "image", "video": return 0x8B76F6
     case "markdown", "html", "code": return 0x4176E6
-    case "other": return 0xCFD3D6
+    case "other", "warning": return 0xCFD3D6
     case "javascript": return 0xF0DB4F
     case "typescript": return 0x007ACC
     case "python": return 0x3776AB
@@ -174,7 +184,34 @@ public func fileTypeAccent(_ kind: String) -> UInt32 {
     case "objective-c": return 0x438EFF
     case "clojure": return 0x91DC47
     default:
-        preconditionFailure("unmapped file-icon kind: \(kind)")
+        return 0xCFD3D6
+    }
+}
+
+/// SF Symbol for a file-icon kind. Unknown kinds share the generic document glyph.
+public func fileTypeSymbol(_ kind: String) -> String {
+    switch kind {
+    case "folder": return "folder.fill"
+    case "markdown": return "doc.richtext"
+    case "image": return "photo"
+    case "pdf": return "doc.fill"
+    case "excel": return "tablecells"
+    case "word": return "doc.text.fill"
+    case "ppt": return "rectangle.on.rectangle"
+    case "video": return "film"
+    case "html", "code", "xml": return "chevron.left.forwardslash.chevron.right"
+    case "javascript", "typescript", "json": return "curlybraces"
+    case "warning": return "exclamationmark.triangle"
+    case "other": return "doc"
+    case "python", "go", "rust", "java", "kotlin", "swift", "ruby", "docker",
+         "git", "node", "react", "vue", "css", "yaml", "shell", "c", "cpp",
+         "csharp", "php", "sql", "toml", "ini", "env", "angular", "svelte",
+         "dart", "elixir", "erlang", "haskell", "lua", "perl", "r", "scala",
+         "solidity", "zig", "wasm", "graphql", "cmake", "makefile",
+         "powershell", "protobuf", "objective-c", "clojure":
+        return "doc.fill"
+    default:
+        return "doc"
     }
 }
 

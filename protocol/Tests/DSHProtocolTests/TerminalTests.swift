@@ -167,6 +167,18 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertEqual(fileTypeAccent("pdf"), 0xEC1313)
         XCTAssertEqual(fileTypeAccent("folder"), 0xF7AD31)
         XCTAssertEqual(fileTypeAccent("python"), 0x3776AB)
+        XCTAssertEqual(fileTypeKind(path: "notes.md", type: "directory"), "folder")
+        XCTAssertEqual(fileTypeKind(path: "notes.md", type: "file"), "markdown")
+        XCTAssertEqual(fileTypeKind(path: "docker.sock", type: "other"), "warning")
+        XCTAssertEqual(fileTypeKind(path: "pipe", type: "fifo"), "warning")
+        XCTAssertEqual(fileTypeSymbol("folder"), "folder.fill")
+        XCTAssertEqual(fileTypeSymbol("markdown"), "doc.richtext")
+        XCTAssertEqual(fileTypeSymbol("warning"), "exclamationmark.triangle")
+        XCTAssertEqual(fileTypeSymbol("other"), "doc")
+        XCTAssertEqual(fileTypeSymbol("flutter"), "doc")
+        XCTAssertEqual(fileTypeAccent("warning"), 0xCFD3D6)
+        XCTAssertEqual(fileTypeAccent("flutter"), 0xCFD3D6)
+        XCTAssertEqual(fileTypeAccent("unknown-kind"), fileTypeAccent("other"))
         XCTAssertEqual(Tango.ansi[1], TermRGB.rgb(0xCC0000))
         XCTAssertEqual(Tango.ansi[2], TermRGB.rgb(0x4E9A06))
         XCTAssertEqual(Tango.ansi[3], TermRGB.rgb(0xC4A000))
@@ -181,7 +193,9 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertEqual(Tango.ansi[14], TermRGB.rgb(0x34E2E2))
         XCTAssertEqual(xterm256(1), Tango.ansi[1])
         for path in ["README.md", "main.py", "app.go", "Cargo.toml", "Makefile", ".gitignore", "photo.svg"] {
-            _ = fileTypeAccent(classifyFileType(path))
+            let kind = classifyFileType(path)
+            _ = fileTypeAccent(kind)
+            _ = fileTypeSymbol(kind)
         }
     }
 

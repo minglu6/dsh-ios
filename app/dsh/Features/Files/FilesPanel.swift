@@ -139,7 +139,7 @@ struct FilesPanel: View {
                     if directory { load(child) } else { previewPath = child }
                 } label: {
                     HStack(spacing: 10) {
-                        FileTypeIcon(path: entry.name, directory: directory, openable: openable)
+                        FileTypeIcon(path: entry.name, type: entry.type, openable: openable)
                         Text(entry.name)
                             .font(.system(size: 13))
                             .foregroundStyle(enabled ? T.ink : T.text3)
