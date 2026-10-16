@@ -228,6 +228,23 @@ final class JobsTests: XCTestCase {
         XCTAssertTrue(orderedJobRows(rows).allSatisfy { !$0.isLive })
     }
 
+    func testSettledSectionMatchesDesktopJobListActionFold() {
+        XCTAssertFalse(jobsSettledSectionExpanded(explicit: nil, liveCount: 1))
+        XCTAssertTrue(jobsSettledSectionExpanded(explicit: nil, liveCount: 0))
+        XCTAssertTrue(jobsSettledSectionExpanded(explicit: true, liveCount: 2))
+        XCTAssertFalse(jobsSettledSectionExpanded(explicit: false, liveCount: 0))
+        XCTAssertTrue(jobsSettledSectionToggled(explicit: nil, liveCount: 1))
+        XCTAssertFalse(jobsSettledSectionToggled(explicit: nil, liveCount: 0))
+        XCTAssertFalse(jobsSettledSectionToggled(explicit: true, liveCount: 4))
+        XCTAssertTrue(jobsSettledSectionToggled(explicit: false, liveCount: 0))
+        XCTAssertEqual(jobsToggledExpandedKey(current: nil, jobId: "bash-2"), "bash-2")
+        XCTAssertNil(jobsToggledExpandedKey(current: "bash-2", jobId: "bash-2"))
+        XCTAssertEqual(jobsToggledExpandedKey(current: "bash-1", jobId: "bash-2"), "bash-2")
+        XCTAssertTrue(jobsPopoverClockRuns(open: true, liveCount: 1))
+        XCTAssertFalse(jobsPopoverClockRuns(open: true, liveCount: 0))
+        XCTAssertFalse(jobsPopoverClockRuns(open: false, liveCount: 3))
+    }
+
     func testKilledHostExitObjectProjectsJobViewStatusAndDetail() throws {
         let result = try JSONValue.parse("""
         {"type":"rows","jobs":[

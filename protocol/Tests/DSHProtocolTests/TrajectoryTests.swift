@@ -236,6 +236,21 @@ final class TrajectoryBuilderTests: XCTestCase {
         XCTAssertTrue(trajectorySearchMatches(turns, query: "read")?.contains("t1") == true)
     }
 
+    func testThroughputZeroWindowUsesOfficialUnavailableCopy() {
+        let row = TrajRow(
+            key: "a1",
+            depth: 1,
+            kind: TrajL.kindAssistant,
+            title: "hi",
+            firstTokenTime: 1_000,
+            startedAt: 1_000,
+            timeSeconds: 0,
+            outputTokens: 80
+        )
+        XCTAssertEqual(formatThroughput(row), TrajL.timingNotAvailable)
+        XCTAssertFalse(formatThroughput(row).contains("时长过短"))
+    }
+
     func testFollowSetFeedbackPayloadKeepsNullRating() {
         // Host clears a rating with explicit JSON null, not an omitted key.
         let encoded = try? JSONValue.object([

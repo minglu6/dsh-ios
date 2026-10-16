@@ -928,7 +928,7 @@ public func formatThroughput(_ row: TrajRow) -> String {
     }()
     guard let end else { return TrajL.timingNotAvailable }
     let seconds = Double(end - first) / 1000.0
-    if seconds <= 0 { return "时长过短" }
+    if seconds <= 0 { return TrajL.timingNotAvailable }
     guard let tokens = row.outputTokens else { return TrajL.timingNotAvailable }
     return TrajL.unitTokensPerSecond(String(format: "%.1f", locale: posix, Double(tokens) / seconds))
 }

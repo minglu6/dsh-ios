@@ -429,6 +429,35 @@ public func jobsActionShouldWatch(online: Bool, hasListOp: Bool) -> Bool {
     online && hasListOp
 }
 
+/// Desktop `JobListAction`: an explicit user toggle wins; before one, the
+/// settled tail folds only while live work exists (a settled-only list opens
+/// expanded). `ui-jobs` `job-list-action.client.spec.tsx` clicks the section
+/// once and the rows appear.
+public func jobsSettledSectionExpanded(explicit: Bool?, liveCount: Int) -> Bool {
+    if liveCount < 0 {
+        preconditionFailure("jobsSettledSectionExpanded liveCount must be >= 0, got \(liveCount)")
+    }
+    return explicit ?? (liveCount == 0)
+}
+
+/// Desktop `setSettledOpen(!settledExpanded)`.
+public func jobsSettledSectionToggled(explicit: Bool?, liveCount: Int) -> Bool {
+    !jobsSettledSectionExpanded(explicit: explicit, liveCount: liveCount)
+}
+
+/// Desktop `setExpandedKey(current => current === id ? undefined : id)`.
+public func jobsToggledExpandedKey(current: String?, jobId: String) -> String? {
+    current == jobId ? nil : jobId
+}
+
+/// Desktop clock only runs while an open list is showing something that moves.
+public func jobsPopoverClockRuns(open: Bool, liveCount: Int) -> Bool {
+    if liveCount < 0 {
+        preconditionFailure("jobsPopoverClockRuns liveCount must be >= 0, got \(liveCount)")
+    }
+    return open && liveCount > 0
+}
+
 /// kotlinx `JsonElement.toString() == "true"` for boolean or string primitives.
 public func jsonFlagTrue(_ value: JSONValue) -> Bool {
     if value.bool() == true { return true }
