@@ -1016,6 +1016,7 @@ private struct ToolCard: View {
         }
         .buttonStyle(.plain)
         .disabled(tool.status == .preparing)
+        .accessibilityValue(toolRowStateStatus(tool.status, english: L.en) ?? "")
     }
 
     private func toolSymbol(_ icon: ToolProcessIcon) -> String {

@@ -660,9 +660,14 @@ final class BatchEPolicyTests: XCTestCase {
     }
 
     func testGoalPhaseAndQueueArgs() throws {
-        XCTAssertEqual(goalPhaseLabel(phase: "active", activation: "armed"), "进行中的目标")
-        XCTAssertEqual(goalPhaseLabel(phase: "active", activation: "disarmed"), "已暂停的目标")
-        XCTAssertEqual(goalPhaseLabel(phase: "paused", activation: nil), "已暂停的目标")
+        XCTAssertEqual(goalPhaseLabel(phase: "active", activation: "armed"), "进行中")
+        XCTAssertEqual(goalPhaseLabel(phase: "active", activation: "disarmed"), "等待继续")
+        XCTAssertEqual(goalPhaseLabel(phase: "paused", activation: nil), "已暂停")
+        XCTAssertEqual(goalPhaseLabel(phase: "blocked", activation: nil), "受阻")
+        XCTAssertEqual(goalPhaseLabel(phase: "complete", activation: nil), "已完成")
+        XCTAssertEqual(goalPhaseLabel(phase: nil, activation: nil, english: true), "No goal")
+        XCTAssertEqual(goalPhaseLabel(phase: "active", activation: "disarmed", english: true), "Awaiting continuation")
+        XCTAssertEqual(goalPhaseLabel(phase: "paused", activation: nil, english: true), "Paused")
         let args = queueUpdateArgs(sessionId: "s", itemId: "q1", action: .edit("hello"))
         XCTAssertEqual(args["action"]["kind"].str(), "edit")
         XCTAssertEqual(args["action"]["content"].arr()?.first?["text"].str(), "hello")

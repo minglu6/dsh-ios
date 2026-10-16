@@ -310,7 +310,7 @@ struct GoalBar: View {
                 HStack(spacing: 8) {
                     Image(systemName: D.goal).foregroundStyle(T.text3)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(goalPhaseLabel(phase: goal["phase"].str(), activation: activation))
+                        Text(goalPhaseLabel(phase: goal["phase"].str(), activation: activation, english: L.en))
                             .font(.caption)
                             .foregroundStyle(T.text3)
                         Text(goal["objective"].str() ?? "")
@@ -343,7 +343,7 @@ struct GoalSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     if let goal {
-                        Text(goalPhaseLabel(phase: goal["phase"].str(), activation: model.goalActivation))
+                        Text(goalPhaseLabel(phase: goal["phase"].str(), activation: model.goalActivation, english: L.en))
                             .font(.caption)
                             .foregroundStyle(T.text3)
                         if let reason = goal["blockedReason"]["message"].str() {

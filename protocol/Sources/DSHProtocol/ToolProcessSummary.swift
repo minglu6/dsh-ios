@@ -16,42 +16,95 @@ public struct ToolProcessSummary: Equatable, Sendable {
     }
 }
 
-/// Official ui-tool title registry; unknown tools keep their wire name in the generic summary.
-private let toolTitles: [String: (zh: String, en: String)] = [
-    "bash": ("运行命令", "Bash"), "pwsh": ("运行命令", "PowerShell"),
-    "read": ("读取", "Read"), "read_image": ("读取图片", "Read image"),
-    "web_fetch": ("读取", "Read"), "web_search": ("搜索", "Search"),
-    "grep": ("搜索", "Search"), "glob": ("搜索", "Search"),
-    "write": ("写入", "Write"), "edit": ("编辑", "Edit"), "run_code": ("代码", "Code"),
-    "cordis_package_inspect": ("查询 Cordis 环境", "Query Cordis environment"),
-    "cordis_runtime_inspect": ("查询 Cordis 环境", "Query Cordis environment"),
-    "cordis_run": ("运行 Cordis 插件", "Run Cordis Plugin"),
-    "cordis_stop": ("停止 Cordis 插件", "Stop Cordis Plugin"),
-    "cordis_undefine": ("移除 Cordis 插件", "Remove Cordis Plugin"),
-    "todo_write": ("更新任务清单", "Update todo list"),
-    "ask_user_question": ("提问", "Ask question"),
-    "request_user_input": ("提问", "Ask question"),
-    "create_goal": ("创建目标", "Create goal"), "get_goal": ("查看目标", "Get goal"),
-    "update_goal": ("更新目标", "Update goal"),
-    "schedule_create": ("创建定时任务", "Create schedule"), "schedule_list": ("查看定时任务", "List schedules"),
-    "schedule_delete": ("删除定时任务", "Delete schedule"), "schedule_update": ("修改定时任务", "Update schedule"),
-    "cordis_inspect_list": ("检查提供方", "Inspect providers"), "cordis_inspect_query": ("查询运行时", "Query runtime"),
-    "cordis_inspect_self": ("检查动态插件", "Inspect dynamic plugins"),
-    "workflow": ("运行工作流", "Run workflow"), "ralph": ("运行循环工作流", "Run loop workflow"),
-    "session_event_read": ("读取事件", "Read event"), "session_event_search": ("搜索事件", "Search events"),
-    "session_event_trace": ("追踪事件", "Trace event"), "session_search": ("搜索会话", "Search sessions"),
-    "session_trace": ("追踪会话", "Trace session"), "list_subagent_models": ("查看可用模型", "List available models"),
-    "subagent": ("创建子智能体", "Create subagent"), "list_agents": ("查看子智能体", "List subagents"),
-    "send_message": ("发送消息", "Send message"), "interrupt_agent": ("中断智能体", "Interrupt agent"),
-    "job_list": ("查看后台任务", "List background jobs"), "job_output": ("读取任务输出", "Read job output"),
-    "job_kill": ("取消后台任务", "Cancel background job"), "terminal_open": ("创建终端", "Open terminal"),
-    "terminal_read": ("读取终端", "Read terminal"), "terminal_list": ("查看终端", "List terminals"),
-    "terminal_signal": ("发送终端信号", "Signal terminal"), "terminal_close": ("关闭终端", "Close terminal"),
-    "lsp": ("查询代码符号", "Query code symbols"), "spawn_teammate": ("创建队友", "Spawn teammate"),
-    "team_task_create": ("创建团队任务", "Create team task"), "team_task_get": ("读取团队任务", "Read team task"),
-    "team_task_update": ("更新团队任务", "Update team task"), "team_task_list": ("查看团队任务", "List team tasks"),
-    "wait_agent": ("等待子智能体", "Wait for subagent"),
-]
+/// Desktop `ui-conversation` `tool.title.*` / `todo.rowTitle` / `ask.rowTitle`.
+/// `ui-tool` SearchRow / WebRow / DetailsRow refine grep, glob, web_*, lsp operations.
+public func toolRowTitle(name: String, arguments: String? = nil, english: Bool) -> String {
+    if name == "lsp", let operation = parseToolJson(arguments)?["operation"].str() {
+        switch operation {
+        case "goToDefinition": return english ? "Find definition" : "查找定义"
+        case "findReferences": return english ? "Find references" : "查找引用"
+        case "goToImplementation": return english ? "Find implementation" : "查找实现"
+        case "hover": return english ? "Inspect symbol" : "查看符号信息"
+        default: break
+        }
+    }
+    let pair: (zh: String, en: String)? = {
+        switch name {
+        case "bash": return ("运行命令", "Bash")
+        case "pwsh": return ("运行命令", "Pwsh")
+        case "read": return ("读取", "Read")
+        case "read_image": return ("读取图片", "Read image")
+        case "web_fetch": return ("网页获取", "Fetch")
+        case "web_search": return ("网页搜索", "Search")
+        case "grep": return ("搜索文件内容", "Grep")
+        case "glob": return ("查找文件", "Glob")
+        case "write": return ("写入", "Write")
+        case "edit": return ("编辑", "Edit")
+        case "run_code": return ("代码", "Code")
+        case "cordis_package_inspect", "cordis_runtime_inspect":
+            return ("查询 Cordis 环境", "Query Cordis environment")
+        case "cordis_run": return ("运行 Cordis 插件", "Run Cordis Plugin")
+        case "cordis_stop": return ("停止 Cordis 插件", "Stop Cordis Plugin")
+        case "cordis_undefine": return ("移除 Cordis 插件", "Remove Cordis Plugin")
+        case "todo_write": return ("更新任务清单", "Update to-do list")
+        case "ask_user_question", "request_user_input": return ("提问", "Ask question")
+        case "create_goal": return ("创建目标", "Create goal")
+        case "get_goal": return ("查看目标", "View goal")
+        case "update_goal": return ("更新目标", "Update goal")
+        case "schedule_create": return ("创建定时任务", "Create reminder")
+        case "schedule_list": return ("查看定时任务", "List reminders")
+        case "schedule_delete": return ("删除定时任务", "Delete reminder")
+        case "schedule_update": return ("修改定时任务", "Update reminder")
+        case "cordis_inspect_list": return ("检查提供方", "Inspect providers")
+        case "cordis_inspect_query": return ("查询运行时", "Query runtime")
+        case "cordis_inspect_self": return ("检查动态插件", "Inspect plugins")
+        case "workflow": return ("运行工作流", "Run workflow")
+        case "ralph": return ("运行循环工作流", "Run ralph loop")
+        case "session_event_read": return ("读取事件", "Read event")
+        case "session_event_search": return ("搜索事件", "Search events")
+        case "session_event_trace": return ("追踪事件", "Trace event")
+        case "session_search": return ("搜索会话", "Search sessions")
+        case "session_trace": return ("追踪会话", "Trace session")
+        case "list_subagent_models": return ("查看可用模型", "List models")
+        case "subagent": return ("创建子智能体", "Create subagent")
+        case "list_agents": return ("查看子智能体", "List subagents")
+        case "send_message": return ("发送消息", "Send message")
+        case "interrupt_agent": return ("中断智能体", "Interrupt agent")
+        case "job_list": return ("查看后台任务", "List background jobs")
+        case "job_output": return ("读取任务输出", "Read job output")
+        case "job_kill": return ("取消后台任务", "Cancel background job")
+        case "terminal_open": return ("创建终端", "Open terminal")
+        case "terminal_read": return ("读取终端", "Read terminal")
+        case "terminal_list": return ("查看终端", "List terminals")
+        case "terminal_signal": return ("发送终端信号", "Signal terminal")
+        case "terminal_close": return ("关闭终端", "Close terminal")
+        case "lsp": return ("查询代码符号", "Query code symbols")
+        case "spawn_teammate": return ("创建队友", "Create teammate")
+        case "team_task_create": return ("创建团队任务", "Create team task")
+        case "team_task_get": return ("读取团队任务", "Read team task")
+        case "team_task_update": return ("更新团队任务", "Update team task")
+        case "team_task_list": return ("查看团队任务", "List team tasks")
+        case "wait_agent": return ("等待子智能体", "Wait for subagent")
+        default: return nil
+        }
+    }()
+    if let pair { return english ? pair.en : pair.zh }
+    return english ? "Tool call" : "工具调用"
+}
+
+/// Desktop `ToolRow` `stateStatus`: visually hidden; title stays `tool.title.*`.
+public func toolRowStateStatus(_ status: ToolStatus, english: Bool) -> String? {
+    switch status {
+    case .preparing: return english ? "Preparing tool call" : "正在准备调用"
+    case .running: return english ? "Running" : "运行中"
+    case .error: return english ? "Failed" : "失败"
+    case .awaitingApproval, .ok: return nil
+    }
+}
+
+private func toolRowHasOfficialTitle(_ name: String) -> Bool {
+    name == "ask_user_question" || name == "request_user_input" || toolRowTitle(name: name, english: false) != "工具调用"
+}
 private let agentLine = try! NSRegularExpression(pattern: #"^(\S+) \[([^\]]+)\](?: parent=(\S+) depth=(\d+))?(?: — (.*))?$"#)
 private let jobLine = try! NSRegularExpression(pattern: #"^(\S+) \[([^\]]+)\] (\S+) — (.*)$"#)
 private let jobStatusSuffix = try! NSRegularExpression(pattern: #"\n\[status: ([^,\n\]]+)(?:, [^\]\n]+)?\]$"#)
@@ -82,7 +135,7 @@ private func matches(_ regex: NSRegularExpression, _ text: String) -> Bool {
 public func toolProcessSummary(_ tool: Item.Tool, en: Bool = false) -> ToolProcessSummary {
     func tr(_ zh: String, _ english: String) -> String { en ? english : zh }
     let args = parseToolJson(tool.arguments)?.obj().map { JSONValue.object($0) }
-    let title = toolTitles[tool.name].map { en ? $0.en : $0.zh } ?? tr("工具调用", "Tool call")
+    let title = toolRowTitle(name: tool.name, arguments: tool.arguments, english: en)
     let icon: ToolProcessIcon = {
         if teammateTools.contains(tool.name) { return .users }
         if tool.name.hasPrefix("schedule_") { return .clock }
@@ -101,9 +154,6 @@ public func toolProcessSummary(_ tool: Item.Tool, en: Bool = false) -> ToolProce
         if tool.name == "run_code" { return .code }
         return .generic
     }()
-    if tool.status == .preparing {
-        return ToolProcessSummary(title: preparingToolTitle(tool.name, en: en), summary: nil, icon: icon)
-    }
     if tool.status == .error {
         return ToolProcessSummary(
             title: title,
@@ -141,9 +191,9 @@ public func toolProcessSummary(_ tool: Item.Tool, en: Bool = false) -> ToolProce
             ?? args?.obj()?.values.compactMap { $0.str()?.isEmpty == false ? $0.str() : nil }.first
         argumentSummary = picked.map(firstToolLine) ?? ""
     }
-    let summary = toolTitles[tool.name] == nil
-        ? tool.name + (argumentSummary.isEmpty ? "" : " · \(argumentSummary)")
-        : argumentSummary
+    let summary = toolRowHasOfficialTitle(tool.name)
+        ? argumentSummary
+        : tool.name + (argumentSummary.isEmpty ? "" : " · \(argumentSummary)")
     return ToolProcessSummary(title: title, summary: summary.isEmpty ? nil : summary, icon: icon)
 }
 
