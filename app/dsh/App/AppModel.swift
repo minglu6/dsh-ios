@@ -147,6 +147,7 @@ final class AppModel: ObservableObject {
     @Published var goalActivation: String?
     @Published var pendingAttaches: [PendingAttach] = []
     @Published var commandEntries: [JSONValue] = []
+    @Published var skillEntries: [SkillEntry] = []
     private var appearanceOverride: Appearance?
     @Published var hiddenQuestionId: String?
     @Published var nearby: [DiscoveredHost] = []
@@ -286,6 +287,7 @@ final class AppModel: ObservableObject {
         goalActivation = nil
         pendingAttaches = []
         commandEntries = []
+        skillEntries = []
         ops = []
         presetRoster = []
         searchHits = []
@@ -735,6 +737,18 @@ final class AppModel: ObservableObject {
         return entries
     }
 
+    func skillCatalog(sessionId: String) async throws -> [SkillEntry] {
+        guard ops.contains("skills.list") else { return [] }
+        guard let client else { throw PocketError(code: "transport", message: L.t("未连接", "Not connected")) }
+        let raw = try await client.listSkills(sessionId: sessionId)
+        let entries = raw.compactMap(SkillEntry.parse)
+        #if DEBUG
+        print("[dsh.skills] session=\(sessionId) raw=\(raw.count) parsed=\(entries.count)")
+        #endif
+        if chat?.sessionId == sessionId { skillEntries = entries }
+        return entries
+    }
+
     func attachImage(name: String, mediaType: String, data: Data) {
         pendingAttaches.append(PendingAttach(
             name: name,
@@ -1018,6 +1032,11 @@ final class AppModel: ObservableObject {
         refreshPairedStatus()
         resumeTask?.cancel()
         resumeTask = Task { await resumeForegroundSession() }
+        Task { await refreshSessionRoster() }
+    }
+
+    func refreshSessionsWhenVisible() {
+        Task { await refreshSessionRoster() }
     }
 
     func onEnteredBackground() {
@@ -1130,12 +1149,7 @@ final class AppModel: ObservableObject {
     func clientOrNull() -> PocketClient? { client }
 
     var transcriptView: TranscriptView {
-        switch hostSettings.value(.transcript)?.str() {
-        case "compact": return .compact
-        case "detailed", "normal", "expanded": return .detailed
-        case "verbose": return .verbose
-        default: return .standard
-        }
+        transcriptViewFromHost(hostSettings.value(.transcript)?.str())
     }
 
     var performanceUsage: PerformanceUsage {
@@ -1357,9 +1371,18 @@ final class AppModel: ObservableObject {
     }
 
     func fetchChangesSummary(sessionId: String, seq: Int64) async throws -> WorkspaceChangesSummary? {
-        guard ops.contains("workspaceChanges.summary") else { return nil }
+        let hasOp = ops.contains("workspaceChanges.summary")
+        guard hasOp else {
+            logChanges("skip fetch op missing session=\(sessionId) seq=\(seq)")
+            return nil
+        }
         guard let client else { throw PocketError(code: "transport", message: "not connected") }
-        return WorkspaceChangesSummary.parse(try await client.workspaceChangesSummary(sessionId: sessionId, seq: seq)["summary"])
+        let result = try await client.workspaceChangesSummary(sessionId: sessionId, seq: seq)
+        let parsed = WorkspaceChangesSummary.parsePocketResult(result)
+        logChanges(
+            "summary session=\(sessionId) seq=\(seq) parsed=\(parsed != nil) files=\(parsed.map { String($0.files.count) } ?? "nil") raw=\(result)"
+        )
+        return parsed
     }
 
     func fetchChangesDiff(sessionId: String, seq: Int64, index: Int) async throws -> WorkspaceFileDiff? {
@@ -1708,6 +1731,7 @@ final class AppModel: ObservableObject {
             permissionChanging = false
             modelPending = nil
             commandEntries = []
+            skillEntries = []
             pendingAttaches = []
             followEpoch += 1
             detachFollow()
@@ -1853,6 +1877,7 @@ final class AppModel: ObservableObject {
         completionReadySession = nil
         pendingAttaches = []
         commandEntries = []
+        skillEntries = []
         hiddenQuestionId = nil
         goalActivation = nil
         goalActivationEpoch += 1
@@ -2143,6 +2168,9 @@ final class AppModel: ObservableObject {
             case "added":
                 if let s = SessionSummary.parse(m["summary"]) {
                     sessions = [s] + sessions.filter { $0.sessionId != s.sessionId }
+                } else {
+                    logSession("added parse failed raw=\(m)")
+                    Task { await refreshSessionRoster() }
                 }
             case "removed":
                 let removedId = m["sessionId"].str()
@@ -2903,6 +2931,18 @@ extension ConnectionDot {
         case .unauthorized: self = .unauthorized
         }
     }
+}
+
+private func logChanges(_ message: String) {
+    #if DEBUG
+    print("[dsh.changes] \(message)")
+    #endif
+}
+
+private func logSession(_ message: String) {
+    #if DEBUG
+    print("[dsh.session] \(message)")
+    #endif
 }
 
 extension Dot {

@@ -70,32 +70,45 @@ public struct WorkspaceChangesSummary: Sendable, Equatable {
         files.reserveCapacity(entries.count)
         // Never drop malformed entries: doing so would shift every later Host diff index.
         for entry in entries {
-            guard let file = entry.obj() else { return nil }
-            guard let path = file["path"]?.str() else { return nil }
-            guard let display = file["display"]?.str() else { return nil }
-            guard let fileAdded = file["added"]?.changeCount() else { return nil }
-            guard let fileDeleted = file["deleted"]?.changeCount() else { return nil }
-            let binary: Bool
-            if file["binary"] != nil {
-                guard let value = file["binary"]?.bool() else { return nil }
-                binary = value
-            } else {
-                binary = false
-            }
-            let oversized: Bool
-            if file["oversized"] != nil {
-                guard let value = file["oversized"]?.bool() else { return nil }
-                oversized = value
-            } else {
-                oversized = false
-            }
-            files.append(WorkspaceChangedFile(
-                path: path, display: display, added: fileAdded, deleted: fileDeleted,
-                binary: binary, oversized: oversized
-            ))
+            guard let file = WorkspaceChangedFile.parse(entry) else { return nil }
+            files.append(file)
         }
         return WorkspaceChangesSummary(turn: turn, cwd: cwd, files: files, total: total, added: added, deleted: deleted)
     }
+
+    /// Pocket `workspaceChanges.summary` result after `call` unwraps `{ok,result}`.
+    /// Plugin returns `{summary: HostSummary | null}`; Host object may include `cwd` and `snapshot`.
+    public static func parsePocketResult(_ result: JSONValue?) -> WorkspaceChangesSummary? {
+        guard let result, !result.isNull else { return nil }
+        let summary = result["summary"]
+        if summary.isNull { return nil }
+        return parse(summary)
+    }
+}
+
+extension WorkspaceChangedFile {
+    /// Desktop `isChangedFile`: non-empty path/display, integer counts, `binary`/`oversized` only `true` or absent.
+    public static func parse(_ value: JSONValue) -> WorkspaceChangedFile? {
+        guard let file = value.obj() else { return nil }
+        guard let path = file["path"]?.str(), !path.isEmpty else { return nil }
+        guard let display = file["display"]?.str(), !display.isEmpty else { return nil }
+        guard let fileAdded = file["added"]?.changeCount() else { return nil }
+        guard let fileDeleted = file["deleted"]?.changeCount() else { return nil }
+        guard let binary = trueOnlyFlag(file["binary"]) else { return nil }
+        guard let oversized = trueOnlyFlag(file["oversized"]) else { return nil }
+        return WorkspaceChangedFile(
+            path: path, display: display, added: fileAdded, deleted: fileDeleted,
+            binary: binary, oversized: oversized
+        )
+    }
+}
+
+/// Desktop flags are `undefined | true`. JSON `false` / `null` / other types fail the whole summary.
+private func trueOnlyFlag(_ value: JSONValue?) -> Bool? {
+    guard let value else { return false }
+    if value.isNull { return nil }
+    guard let flag = value.bool(), flag else { return nil }
+    return true
 }
 
 public struct WorkspaceDiffHunk: Sendable, Equatable {

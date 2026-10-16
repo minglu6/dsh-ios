@@ -124,6 +124,65 @@ final class WorkspaceChangesTests: XCTestCase {
         XCTAssertEqual(capped.count, 5000)
     }
 
+    func testPocketSummaryEnvelopeParsesHostObjectWithSnapshot() throws {
+        let envelope = try j("""
+        {"ok":true,"result":{"summary":{
+            "turn":1,
+            "cwd":"/Users/luming/project",
+            "total":1,
+            "added":2,
+            "deleted":0,
+            "snapshot":{"before":"aaa111","after":"bbb222"},
+            "files":[{"path":"parity-r3-card.txt","display":"parity-r3-card.txt","added":2,"deleted":0}]
+        }}}
+        """)
+        XCTAssertEqual(envelope["ok"].bool(), true)
+        let parsed = try XCTUnwrap(WorkspaceChangesSummary.parsePocketResult(envelope["result"]))
+        XCTAssertEqual(parsed.turn, 1)
+        XCTAssertEqual(parsed.cwd, "/Users/luming/project")
+        XCTAssertEqual(parsed.total, 1)
+        XCTAssertEqual(parsed.added, 2)
+        XCTAssertEqual(parsed.deleted, 0)
+        XCTAssertEqual(parsed.files.single, WorkspaceChangedFile(
+            path: "parity-r3-card.txt", display: "parity-r3-card.txt", added: 2, deleted: 0
+        ))
+    }
+
+    func testPocketSummaryNullAndMalformedFlagsStayUnavailable() throws {
+        XCTAssertNil(try WorkspaceChangesSummary.parsePocketResult(j(#"{"summary":null}"#)))
+        XCTAssertNil(WorkspaceChangesSummary.parsePocketResult(nil))
+        XCTAssertNil(try WorkspaceChangesSummary.parsePocketResult(j(#"{"summary":{"turn":1,"total":1,"added":2,"deleted":0,"files":[{"path":"a","display":"a","added":2,"deleted":0,"binary":false}]}}"#)))
+        XCTAssertNil(try WorkspaceChangesSummary.parsePocketResult(j(#"{"summary":{"turn":1,"total":1,"added":2,"deleted":0,"files":[{"path":"","display":"a","added":2,"deleted":0}]}}"#)))
+        let http = try XCTUnwrap(WorkspaceChangesSummary.parsePocketResult(j("""
+        {"summary":{"turn":1,"total":1,"added":1,"deleted":1,"files":[
+            {"path":"parity-r3-card.txt","display":"parity-r3-card.txt","added":1,"deleted":1}
+        ]}}
+        """)))
+        XCTAssertEqual(http.cwd, "")
+        XCTAssertEqual(http.files.single.deleted, 1)
+    }
+
+    func testTrailingBlankAssistantKeepsTurnTailChangesAttachment() throws {
+        let answer = Item.Text(key: "a1", text: "已创建文件", live: false, turn: 1, step: 2)
+        let blank = Item.Text(key: "a-blank", text: "  \n", live: false, turn: 1, step: 2)
+        let changes = Item.Changes(key: "ch10", turn: 1, seq: 10)
+        let items: [Item] = [
+            .user(Item.User(key: "u", text: "edit")),
+            .text(answer),
+            .text(blank),
+            .changes(changes),
+        ]
+        XCTAssertEqual(ChatActionKeys.lastCommittedAnswerKeys(items)[1], "a1")
+        let rows: [ChatRow] = [.answer(answer), .changes(changes)]
+        XCTAssertEqual(lastCommittedAnswerKeys(in: rows)[1], "a1")
+        let visible = chatTranscriptRows(rows)
+        XCTAssertFalse(visible.contains { if case .changes = $0 { return true }; return false })
+        XCTAssertEqual(
+            changesAttachedToAnswer(answer, lastCommittedAnswerKeys: ChatActionKeys.lastCommittedAnswerKeys(items), changesByTurn: [1: changes])?.seq,
+            10
+        )
+    }
+
     func testSummaryAndDiffArgsKeepHostFieldNames() throws {
         let summary = workspaceChangesSummaryArgs(sessionId: "specified-session", seq: 42)
         XCTAssertEqual(summary["sessionId"].str(), "specified-session")

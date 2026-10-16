@@ -192,6 +192,58 @@ public func commandContributionCollisionMessage(_ name: String, english: Bool) -
         : "指令贡献 /\(name) 与远程主机指令冲突"
 }
 
+/// Slash-menu skill row from Host `skills/list` / pocket `skills.list`.
+public struct SkillEntry: Equatable, Sendable, Identifiable {
+    public var name: String
+    public var description: String
+    public var modelInvocable: Bool
+    public var id: String { name }
+
+    public init(name: String, description: String, modelInvocable: Bool) {
+        self.name = name
+        self.description = description
+        self.modelInvocable = modelInvocable
+    }
+
+    public static func parse(_ element: JSONValue) -> SkillEntry? {
+        guard let name = element["name"].str(), !name.isEmpty else { return nil }
+        let description = element["description"].str() ?? ""
+        let modelInvocable = element["modelInvocable"].bool()
+            ?? element["invocation"]["modelInvocable"].bool()
+            ?? false
+        return SkillEntry(name: name, description: description, modelInvocable: modelInvocable)
+    }
+
+    /// Desktop ui-skill: `modelInvocable: false` wears the user-only marker as a description prefix.
+    public func menuDescription(english: Bool) -> String {
+        if modelInvocable { return description }
+        let prefix = english ? "user-only" : "仅用户"
+        return description.isEmpty ? prefix : "\(prefix) · \(description)"
+    }
+}
+
+public func skillMenuRows(_ skills: [SkillEntry], query: String) -> [SkillEntry] {
+    if query.isEmpty { return skills }
+    let lowerQuery = query.lowercased()
+    struct Match {
+        var skill: SkillEntry
+        var index: Int
+        var prefix: Bool
+        var score: Int
+    }
+    var matches: [Match] = []
+    for (index, skill) in skills.enumerated() {
+        let name = skill.name.lowercased()
+        guard let score = commandAlignmentScore(name, query: lowerQuery) else { continue }
+        matches.append(Match(skill: skill, index: index, prefix: name.hasPrefix(lowerQuery), score: score))
+    }
+    return matches.sorted {
+        if $0.prefix != $1.prefix { return $0.prefix && !$1.prefix }
+        if $0.score != $1.score { return $0.score > $1.score }
+        return $0.index < $1.index
+    }.map(\.skill)
+}
+
 public func todoProgressLabel(_ todos: [TodoItem], en: Bool) -> String {
     var done = 0
     var active = 0

@@ -21,13 +21,24 @@ struct ChangesCard: View {
         }
         .task(id: "\(model.activeId ?? "")-\(sessionId)-\(item.seq.map(String.init) ?? "")-\(model.ops.contains("workspaceChanges.summary"))") {
             summary = nil
-            guard let seq = item.seq, model.ops.contains("workspaceChanges.summary") else { return }
+            let hasOp = model.ops.contains("workspaceChanges.summary")
+            guard let seq = item.seq, hasOp else {
+                #if DEBUG
+                print("[dsh.changes] card skip session=\(sessionId) seq=\(item.seq.map(String.init) ?? "nil") op=\(hasOp)")
+                #endif
+                return
+            }
             do {
                 summary = try await model.fetchChangesSummary(sessionId: sessionId, seq: seq)
+                #if DEBUG
+                print("[dsh.changes] card session=\(sessionId) seq=\(seq) files=\(summary?.files.count ?? 0) turnClosed")
+                #endif
             } catch is CancellationError {
                 return
             } catch {
-                // Like desktop, unavailable summaries do not produce a fabricated empty card.
+                #if DEBUG
+                print("[dsh.changes] card fetch failed session=\(sessionId) seq=\(seq) error=\(error)")
+                #endif
             }
         }
         .sheet(isPresented: Binding(get: { selected != nil }, set: { if !$0 { selected = nil } })) {

@@ -82,6 +82,44 @@ final class AndroidParityTests: XCTestCase {
         )
     }
 
+    func testSkillMenuParsesHostListAndRanksLikeDesktop() throws {
+        let payload = try json("""
+        {"skills":[
+            {"name":"agent-browser","description":"Drive a browser","modelInvocable":true},
+            {"name":"local-notes","description":"Private notes","invocation":{"modelInvocable":false}},
+            {"name":"","description":"ignored"}
+        ]}
+        """)
+        let skills = (payload["skills"].arr() ?? []).compactMap(SkillEntry.parse)
+        XCTAssertEqual(skills.map(\.name), ["agent-browser", "local-notes"])
+        XCTAssertTrue(skills[0].modelInvocable)
+        XCTAssertEqual(skills[0].menuDescription(english: false), "Drive a browser")
+        XCTAssertFalse(skills[1].modelInvocable)
+        XCTAssertEqual(skills[1].menuDescription(english: false), "仅用户 · Private notes")
+        XCTAssertEqual(skills[1].menuDescription(english: true), "user-only · Private notes")
+        XCTAssertEqual(skillMenuRows(skills, query: "agent").map(\.name), ["agent-browser"])
+        XCTAssertEqual(skillMenuRows(skills, query: "").map(\.name), ["agent-browser", "local-notes"])
+    }
+
+    func testSlimSessionAddedEventParsesTitleFromProjections() throws {
+        let added = try json("""
+        {"ev":"session","kind":"added","summary":{
+            "sessionId":"session-desktop-new",
+            "updatedAt":1710000000000,
+            "running":false,
+            "blank":true,
+            "cwd":"/Users/luming/project",
+            "origin":"user",
+            "projections":{"values":{"title":"写入 parity 测试文件"}}
+        }}
+        """)
+        let summary = try XCTUnwrap(SessionSummary.parse(added["summary"]))
+        XCTAssertEqual(summary.sessionId, "session-desktop-new")
+        XCTAssertEqual(summary.title, "写入 parity 测试文件")
+        XCTAssertEqual(summary.cwd, "/Users/luming/project")
+        XCTAssertTrue(summary.blank)
+    }
+
     func testOfficePreviewWritesAllPagesOnce() async throws {
         let bytes = Data((0..<(128 * 1024 * 3 + 7)).map { UInt8($0 % 251) })
         let metadata = jsonObject([

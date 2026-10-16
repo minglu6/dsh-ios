@@ -571,6 +571,7 @@ struct CommandSheet: View {
 
     @State private var query = ""
     @State private var commands: [JSONValue] = []
+    @State private var skills: [SkillEntry] = []
     @State private var loading = true
     @State private var error: String?
     @State private var attempt = 0
@@ -605,7 +606,8 @@ struct CommandSheet: View {
                             .foregroundStyle(T.err)
                     }
                     let rows = collision == nil ? commandMenuRows(candidates, query: query, leading: leading, english: L.en) : []
-                    if !loading && error == nil && rows.isEmpty {
+                    let skillRows = skillMenuRows(skills, query: query)
+                    if !loading && error == nil && rows.isEmpty && skillRows.isEmpty {
                         Text(L.noOptions()).foregroundStyle(T.text3)
                     }
                     if !query.isEmpty && !rows.isEmpty {
@@ -618,6 +620,17 @@ struct CommandSheet: View {
                         case .command(let command):
                             let name = command["name"].str() ?? ""
                             commandRow(command, name: name, kind: commandMenuKind(command))
+                        }
+                    }
+                    if !query.isEmpty && !skillRows.isEmpty {
+                        Text(L.sectionSkills()).font(.caption).foregroundStyle(T.text3)
+                    }
+                    ForEach(Array(skillSections(skillRows).enumerated()), id: \.offset) { _, item in
+                        switch item {
+                        case .section(let title):
+                            Text(title).font(.caption).foregroundStyle(T.text3)
+                        case .skill(let skill):
+                            skillRow(skill)
                         }
                     }
                 }
@@ -709,9 +722,39 @@ struct CommandSheet: View {
         }
     }
 
+    @ViewBuilder
+    private func skillRow(_ skill: SkillEntry) -> some View {
+        let enabled = model.isOnline && sessionReady
+        Button {
+            guard enabled else { return }
+            model.insertComposer("/\(skill.name) ")
+            onDismiss()
+        } label: {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Image(systemName: "sparkle").foregroundStyle(enabled ? T.text2 : T.text3)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(skill.name).foregroundStyle(enabled ? T.ink : T.text3)
+                    let detail = skill.menuDescription(english: L.en)
+                    if !detail.isEmpty {
+                        Text(detail).font(.caption).foregroundStyle(T.text3)
+                    }
+                }
+                Spacer()
+            }
+            .padding(.vertical, 8)
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+    }
+
     private enum CommandListItem {
         case section(String)
         case command(JSONValue)
+    }
+
+    private enum SkillListItem {
+        case section(String)
+        case skill(SkillEntry)
     }
 
     private func commandSections(_ rows: [JSONValue]) -> [CommandListItem] {
@@ -730,6 +773,18 @@ struct CommandSheet: View {
         return items
     }
 
+    private func skillSections(_ rows: [SkillEntry]) -> [SkillListItem] {
+        guard !rows.isEmpty else { return [] }
+        var items: [SkillListItem] = []
+        if query.isEmpty {
+            items.append(.section(L.sectionSkills()))
+        }
+        for skill in rows {
+            items.append(.skill(skill))
+        }
+        return items
+    }
+
     private func load() async {
         if !model.isOnline || !sessionReady {
             loading = model.isOnline && !sessionReady
@@ -743,6 +798,20 @@ struct CommandSheet: View {
                 commands = []
             } else {
                 commands = try await model.commandCatalog(sessionId: id!)
+            }
+            if id == nil || subagent || !model.ops.contains("skills.list") {
+                skills = []
+            } else {
+                do {
+                    skills = try await model.skillCatalog(sessionId: id!)
+                } catch is CancellationError {
+                    return
+                } catch {
+                    #if DEBUG
+                    print("[dsh.skills] list failed session=\(id ?? "") error=\(error)")
+                    #endif
+                    skills = []
+                }
             }
         } catch is CancellationError {
             return
