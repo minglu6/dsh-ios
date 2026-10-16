@@ -85,6 +85,11 @@ public enum PresetPolicy {
     public static func parseRoster(_ result: JSONValue) -> [JSONValue] {
         result["presets"].arr() ?? []
     }
+
+    /// Desktop/Android: the current default card is not rewritten on tap.
+    public static func canSelectAsDefault(_ row: JSONValue) -> Bool {
+        row["broken"].str() == nil && row["isDefault"].bool() != true
+    }
 }
 
 public enum WorkspaceOrder {

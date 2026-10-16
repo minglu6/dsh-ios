@@ -129,7 +129,7 @@ struct TerminalPanel: View {
                     .disabled(!(model.isOnline && !opening && !terminating))
                 }
                 if current != nil, model.ops.contains("terminal.close") {
-                    Button(L.exitTerminal()) { exitTarget = current }
+                    Button(L.close()) { exitTarget = current }
                         .disabled(!(model.isOnline && !opening && !terminating))
                 }
             } label: {
@@ -194,8 +194,7 @@ struct TerminalPanel: View {
     }
 
     private func entryLabel(_ entry: TerminalSessionEntry) -> String {
-        let title = entry.title?.nilIfBlank ?? "Terminal"
-        return "\(title) · \(entry.id.prefix(8))"
+        terminalTabTitle(entry.title)
     }
 
     private func attach() {

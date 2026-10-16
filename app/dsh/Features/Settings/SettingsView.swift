@@ -88,10 +88,12 @@ struct GeneralSettingsView: View {
                     }
                     card {
                         if model.ops.contains("permissions.catalog") {
-                            nav(L.t("权限", "Permission"), "hand.raised", value: defaultPermissionLabel, divider: true) {
-                                sheet = "perm"
-                            }
-                            .disabled(!model.isOnline || !shared.writable(.permission))
+                            preferenceRow(
+                                L.t("权限", "Permission"),
+                                permissionDefaultDescription(english: L.en),
+                                value: defaultPermissionLabel,
+                                enabled: model.isOnline && shared.writable(.permission)
+                            ) { sheet = "perm" }
                         }
                         picker(L.language(), selection: Binding(
                             get: { model.language },
@@ -112,14 +114,18 @@ struct GeneralSettingsView: View {
                         .padding(.vertical, 12)
                         Divider().padding(.leading, 16)
                         fontRow
-                        nav(L.workDetails(), "list.bullet", value: transcriptText(model.transcriptView)) {
-                            sheet = "transcript"
-                        }
-                        .disabled(!shared.writable(.transcript))
-                        nav(L.collapseTiming(), "rectangle.compress.vertical", value: collapseText(model.collapseTiming)) {
-                            sheet = "collapse"
-                        }
-                        .disabled(!model.isOnline)
+                        preferenceRow(
+                            L.workDetails(),
+                            workDetailsDescription(english: L.en),
+                            value: transcriptText(model.transcriptView),
+                            enabled: shared.writable(.transcript)
+                        ) { sheet = "transcript" }
+                        preferenceRow(
+                            L.collapseTiming(),
+                            collapseTimingDescription(english: L.en),
+                            value: collapseText(model.collapseTiming),
+                            enabled: model.isOnline
+                        ) { sheet = "collapse" }
                         HStack {
                             VStack(alignment: .leading) {
                                 Text(L.t("显示代码工作视图", "Show coding view")).foregroundStyle(T.ink)
@@ -137,14 +143,18 @@ struct GeneralSettingsView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)
                         Divider().padding(.leading, 16)
-                        nav(L.t("繁忙时的发送行为", "Send behavior while busy"), "paperplane", value: model.busySend == .steer ? L.steerSend() : L.queueSend()) {
-                            sheet = "busy"
-                        }
-                        .disabled(!shared.writable(.busySend))
-                        nav(L.performanceUsage(), "speedometer", value: model.performanceUsage == .detailed ? L.detailed() : L.compact()) {
-                            sheet = "perf"
-                        }
-                        .disabled(!shared.writable(.performance))
+                        preferenceRow(
+                            L.t("繁忙时的发送行为", "Send behavior while busy"),
+                            busySendDescription(english: L.en),
+                            value: model.busySend == .steer ? L.steerSend() : L.queueSend(),
+                            enabled: shared.writable(.busySend)
+                        ) { sheet = "busy" }
+                        preferenceRow(
+                            L.performanceUsage(),
+                            performanceUsageDescription(english: L.en),
+                            value: performanceUsageLabel(detailed: model.performanceUsage == .detailed, english: L.en),
+                            enabled: shared.writable(.performance)
+                        ) { sheet = "perf" }
                         if shared.namespace(.sessionLog) != nil {
                             HStack {
                                 VStack(alignment: .leading) {
@@ -164,10 +174,14 @@ struct GeneralSettingsView: View {
                             Divider().padding(.leading, 16)
                         }
                         if shared.hasField(.linkOpening) {
-                            nav(L.linkOpening(), "link", value: shared.value(.linkOpening)?.str() ?? "") {
-                                sheet = "links"
-                            }
-                            .disabled(!shared.writable(.linkOpening))
+                            preferenceRow(
+                                L.linkOpening(),
+                                linkOpeningDescription(english: L.en),
+                                value: shared.value(.linkOpening)?.str().flatMap { value in
+                                    value.isEmpty ? nil : linkOpeningLabel(value, english: L.en)
+                                },
+                                enabled: shared.writable(.linkOpening)
+                            ) { sheet = "links" }
                         }
                         HStack {
                             Text(L.t("代码自动换行", "Wrap code")).foregroundStyle(T.ink)
@@ -316,7 +330,7 @@ struct GeneralSettingsView: View {
                     Button(L.steerSend()) { model.setBusySend(.steer); sheet = nil }
                 case "perf":
                     ForEach(PerformanceUsage.allCases, id: \.rawValue) { mode in
-                        Button(mode == .detailed ? L.detailed() : L.compact()) {
+                        Button(performanceUsageLabel(detailed: mode == .detailed, english: L.en)) {
                             shared.write(.performance, value: .string(mode.rawValue)) { sheet = nil }
                         }
                     }
@@ -324,8 +338,8 @@ struct GeneralSettingsView: View {
                     EmptyView()
                 case "links":
                     let current = shared.value(.linkOpening)?.str()
-                    ForEach(["in-app", "system"], id: \.self) { value in
-                        Button(value == "system" ? L.t("系统浏览器", "System browser") : L.t("应用内", "In-app")) {
+                    ForEach(linkOpeningValues, id: \.self) { value in
+                        Button(linkOpeningLabel(value, english: L.en)) {
                             shared.write(.linkOpening, value: .string(value)) { sheet = nil }
                         }
                         .disabled(current == value)
@@ -353,18 +367,42 @@ struct GeneralSettingsView: View {
 }
 
 func transcriptText(_ mode: TranscriptView) -> String {
-    switch mode {
-    case .compact: return L.t("精简", "Compact")
-    case .standard: return L.t("标准", "Standard")
-    case .detailed: return L.t("详细", "Detailed")
-    case .verbose: return L.t("完整", "Verbose")
-    }
+    transcriptViewLabel(mode, english: L.en)
 }
 
 func collapseText(_ mode: CollapseTiming) -> String {
-    switch mode {
-    case .completion: return L.t("本轮完成后", "After the turn completes")
-    case .nextInput: return L.t("下次发送后", "After the next send")
+    collapseTimingLabel(mode, english: L.en)
+}
+
+func preferenceRow(
+    _ title: String,
+    _ description: String? = nil,
+    value: String? = nil,
+    divider: Bool = true,
+    enabled: Bool = true,
+    action: @escaping () -> Void
+) -> some View {
+    VStack(spacing: 0) {
+        Button(action: action) {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title).foregroundStyle(T.ink)
+                    if let description, !description.isEmpty {
+                        Text(description).font(.caption).foregroundStyle(T.text3)
+                    }
+                }
+                Spacer()
+                if let value, !value.isEmpty {
+                    Text(value).font(.subheadline).foregroundStyle(T.text3).lineLimit(2)
+                }
+                Image(systemName: "chevron.down").font(.caption).foregroundStyle(T.text2)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .opacity(enabled ? 1 : 0.5)
+        }
+        .disabled(!enabled)
+        if divider { Divider().padding(.leading, 16) }
     }
 }
 

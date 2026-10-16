@@ -146,7 +146,7 @@ struct AgentPresetSettingsView: View {
 
     private func makeDefault(_ row: JSONValue) async {
         let id = row["id"].str() ?? ""
-        guard writable, !busy, !loading, row["broken"].str() == nil, row["isDefault"].bool() != true, let expected = revision else { return }
+        guard writable, !busy, !loading, PresetPolicy.canSelectAsDefault(row), let expected = revision else { return }
         busy = true
         error = nil
         var writeFailure: Error?
@@ -238,7 +238,8 @@ private struct PresetCard: View {
                 }
                 .padding(14)
             }
-            .disabled(!writable || busy || active || broken != nil)
+            .disabled(!writable || busy || broken != nil)
+            .allowsHitTesting(PresetPolicy.canSelectAsDefault(row))
             .buttonStyle(.plain)
             Divider()
             HStack {

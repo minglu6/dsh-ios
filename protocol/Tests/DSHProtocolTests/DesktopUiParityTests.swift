@@ -104,6 +104,35 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertFalse(ConversationHeaderPolicy.includesOverflowMenu)
     }
 
+    func testGeneralSettingsCopyMatchesDesktopLocale() {
+        XCTAssertEqual(transcriptViewLabel(.compact, english: false), "简洁")
+        XCTAssertEqual(transcriptViewLabel(.verbose, english: false), "完全展开")
+        XCTAssertEqual(transcriptViewLabel(.compact, english: true), "Compact")
+        XCTAssertEqual(transcriptViewLabel(.verbose, english: true), "Verbose")
+        XCTAssertEqual(collapseTimingLabel(.completion, english: false), "回答结束后")
+        XCTAssertEqual(collapseTimingLabel(.nextInput, english: false), "下次有新消息时")
+        XCTAssertEqual(collapseTimingLabel(.completion, english: true), "On completion")
+        XCTAssertEqual(collapseTimingLabel(.nextInput, english: true), "On next message")
+        XCTAssertEqual(linkOpeningLabel("sidebar", english: false), "应用内侧边栏")
+        XCTAssertEqual(linkOpeningLabel("sidebar", english: true), "In-App Sidebar")
+        XCTAssertEqual(linkOpeningLabel("new-tab", english: false), "默认浏览器")
+        XCTAssertEqual(linkOpeningLabel("new-tab", english: true), "Default Browser")
+        XCTAssertEqual(linkOpeningValues, ["sidebar", "new-tab"])
+        XCTAssertEqual(linkOpeningDescription(english: false), "对话中网页链接的打开位置")
+        XCTAssertEqual(linkOpeningDescription(english: true), "Where web links in the conversation open")
+        XCTAssertEqual(linkOpeningLabel("in-app", english: false), "in-app")
+        XCTAssertEqual(linkOpeningLabel("system", english: true), "system")
+        XCTAssertEqual(linkOpeningLabel("mystery", english: false), "mystery")
+        XCTAssertEqual(workDetailsDescription(english: false), "选择希望看到多少工具调用细节")
+        XCTAssertEqual(commandMenuIconSymbol("goal"), "target")
+        XCTAssertEqual(commandMenuIconSymbol("plan"), "doc.text")
+        XCTAssertEqual(commandMenuIconSymbol("compact"), "circle.circle")
+        XCTAssertEqual(commandMenuIconSymbol("permission"), "shield")
+        XCTAssertEqual(terminalTabTitle("zsh"), "zsh")
+        XCTAssertEqual(terminalTabTitle("  "), "Terminal")
+        XCTAssertEqual(terminalTabTitle(nil), "Terminal")
+    }
+
     func testConversationHeaderTitleMatchesDrawerUntitledRules() {
         XCTAssertEqual(
             conversationHeaderTitle(sessionId: nil, title: nil, blank: false, newSession: "新会话", untitled: "未命名"),

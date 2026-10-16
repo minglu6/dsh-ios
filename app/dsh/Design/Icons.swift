@@ -3,6 +3,11 @@ import SwiftUI
 /// Official desktop / Android `D.*` mapping onto SF Symbols. Layout-only; semantics stay the same.
 enum D {
     static let panelLeft = "sidebar.left"
+    static let panelRight = "sidebar.right"
+    static let goal = "target"
+    static let plan = "doc.text"
+    static let compact = "circle.circle"
+    static let shield = "shield"
     static let search = "magnifyingglass"
     static let sliders = "slider.horizontal.3"
     static let projectAdd = "plus"

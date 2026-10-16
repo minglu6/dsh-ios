@@ -36,7 +36,7 @@ public struct TermCell: Equatable, Sendable {
     public func fgColor(defaultForeground: TermRGB) -> TermRGB {
         let base: TermRGB
         if (0...15).contains(fg) {
-            base = TokyoNight.ansi[fg]
+            base = Tango.ansi[fg]
         } else if (16...255).contains(fg) {
             base = xterm256(fg)
         } else {
@@ -46,7 +46,7 @@ public struct TermCell: Equatable, Sendable {
     }
 
     public func bgColor(defaultBackground: TermRGB) -> TermRGB {
-        if (0...15).contains(bg) { return TokyoNight.ansi[bg] }
+        if (0...15).contains(bg) { return Tango.ansi[bg] }
         if (16...255).contains(bg) { return xterm256(bg) }
         return defaultBackground
     }
