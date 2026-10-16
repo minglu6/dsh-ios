@@ -12,8 +12,10 @@ struct ChangesCard: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             Color.clear
-                .frame(maxWidth: .infinity)
-                .frame(height: 0)
+                .frame(
+                    width: CGFloat(changesCardFetchAnchorPoints),
+                    height: CGFloat(changesCardFetchAnchorPoints)
+                )
                 .accessibilityHidden(true)
             if let summary, !summary.files.isEmpty {
                 ChangesSummaryCard(

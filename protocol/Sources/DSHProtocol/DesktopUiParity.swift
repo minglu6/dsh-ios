@@ -316,6 +316,21 @@ public func changesCardShouldFetch(seq: Int64?, hasSummaryOp: Bool) -> Bool {
     seq != nil && hasSummaryOp
 }
 
+/// Non-zero layout so a `LazyVStack` mounts the card and runs `.task` before a
+/// summary exists. Zero-height `Color.clear` / empty `Group` is skipped (R5 P1).
+public let changesCardFetchAnchorPoints: Double = 1
+
+/// Mount the fetch host whenever the transcript would show the card — even if
+/// `workspaceChanges.summary` has not returned yet.
+public func changesCardMountsFetch(
+    seq: Int64?,
+    turnClosed: Bool,
+    codeWork: Bool,
+    hasSummaryOp: Bool
+) -> Bool {
+    turnClosed && codeWork && changesCardShouldFetch(seq: seq, hasSummaryOp: hasSummaryOp)
+}
+
 /// Slash catalog cache is per session (and never shared with a subagent).
 public func skillCatalogScopeKey(sessionId: String?, subagent: Bool) -> String {
     if subagent { return "subagent:\(sessionId ?? "")" }

@@ -668,6 +668,7 @@ struct CommandMenuOverlay: View {
     @State private var error: String?
     @State private var attempt = 0
     @State private var highlight: Int?
+    @State private var loadedScope: String?
 
     private var sessionReady: Bool { model.chat?.loaded == true }
     private var landing: Bool { model.chat == nil }
@@ -682,7 +683,12 @@ struct CommandMenuOverlay: View {
     private var candidates: [JSONValue] {
         commandMenuMerge(
             host: commands,
-            injected: commandMenuClientRows(ops: model.ops, sessionReady: sessionReady, subagent: subagent)
+            injected: commandMenuClientRows(
+                ops: model.ops,
+                sessionReady: sessionReady,
+                subagent: subagent,
+                landing: landing
+            )
         )
     }
 
@@ -705,7 +711,11 @@ struct CommandMenuOverlay: View {
 
     var body: some View {
         menuCard
-            .frame(maxHeight: availableHeight > 0 ? availableHeight : nil, alignment: .bottom)
+            .frame(
+                minHeight: availableHeight > 0 ? availableHeight : nil,
+                maxHeight: availableHeight > 0 ? availableHeight : nil,
+                alignment: .bottom
+            )
             .task(id: catalogTaskId) { await load() }
             .onAppear {
                 if skills.isEmpty, let scoped = model.skillEntries(for: skillScope), !scoped.isEmpty {
@@ -809,7 +819,7 @@ struct CommandMenuOverlay: View {
     @ViewBuilder
     private func commandRow(_ command: JSONValue, name: String, kind: String?, index: Int) -> some View {
         let label = commandMenuLabel(command, english: L.en)
-        let enabled = model.isOnline && catalogReady && commandMenuAvailable(kind: kind, ops: model.ops)
+        let enabled = model.isOnline && catalogReady && (landing || commandMenuAvailable(kind: kind, ops: model.ops))
         let active = highlight == index
         menuRow(
             index: index,
@@ -903,7 +913,7 @@ struct CommandMenuOverlay: View {
     }
 
     private func activate(_ command: JSONValue, name: String, kind: String?) {
-        let enabled = model.isOnline && catalogReady && commandMenuAvailable(kind: kind, ops: model.ops)
+        let enabled = model.isOnline && catalogReady && (landing || commandMenuAvailable(kind: kind, ops: model.ops))
         guard enabled else { return }
         if kind != "file", !model.pendingAttaches.isEmpty, commandRefusesAttachments(name: name, catalogRow: command) {
             model.toast = commandAttachmentsUnsupportedNotice(command: name, english: L.en)
@@ -945,6 +955,11 @@ struct CommandMenuOverlay: View {
             loading = true
             return
         }
+        if loadedScope != skillScope {
+            commands = []
+            skills = []
+            loadedScope = skillScope
+        }
         loading = true
         error = nil
         let id = model.chat?.sessionId
@@ -957,8 +972,10 @@ struct CommandMenuOverlay: View {
         } catch is CancellationError {
             return
         } catch {
-            self.error = error.localizedDescription.isEmpty ? (L.en ? "Could not load commands" : "无法加载指令") : error.localizedDescription
             commands = []
+            if !landing {
+                self.error = error.localizedDescription.isEmpty ? (L.en ? "Could not load commands" : "无法加载指令") : error.localizedDescription
+            }
         }
         if !subagent, model.ops.contains("skills.list") {
             do {
@@ -969,7 +986,7 @@ struct CommandMenuOverlay: View {
                 #if DEBUG
                 print("[dsh.skills] list failed scope=\(skillScope) error=\(error)")
                 #endif
-                skills = model.skillEntries(for: skillScope) ?? []
+                skills = []
             }
         } else {
             skills = []

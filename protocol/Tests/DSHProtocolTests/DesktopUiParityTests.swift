@@ -275,11 +275,30 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertEqual(chatLinkDestination("new-tab"), .newTab)
         XCTAssertTrue(isChatWebLink(URL(string: "https://example.com")!))
         XCTAssertFalse(isChatWebLink(URL(string: "dshfile://open")!))
-        XCTAssertTrue(changesCardShouldFetch(seq: 10, hasSummaryOp: true))
-        XCTAssertFalse(changesCardShouldFetch(seq: nil, hasSummaryOp: true))
         XCTAssertEqual(skillCatalogScopeKey(sessionId: nil, subagent: false), "landing")
         XCTAssertEqual(skillCatalogScopeKey(sessionId: "s1", subagent: true), "subagent:s1")
         XCTAssertEqual(listCatalogArgs(sessionId: nil), jsonObject([:]))
         XCTAssertEqual(listCatalogArgs(sessionId: "s1")["sessionId"].str(), "s1")
+    }
+
+    /// Round 5 real device: `workspace/changes` seq 29, turn 1 closed, codeWork on,
+    /// lastAnswerKeys `[1:"t27.0"]` — fetch must be requested before any summary exists.
+    func testChangesCardFetchDoesNotDependOnSummary() {
+        XCTAssertTrue(changesCardShouldFetch(seq: 10, hasSummaryOp: true))
+        XCTAssertFalse(changesCardShouldFetch(seq: nil, hasSummaryOp: true))
+        XCTAssertFalse(changesCardShouldFetch(seq: 29, hasSummaryOp: false))
+        XCTAssertTrue(changesCardMountsFetch(seq: 29, turnClosed: true, codeWork: true, hasSummaryOp: true))
+        XCTAssertFalse(changesCardMountsFetch(seq: 29, turnClosed: false, codeWork: true, hasSummaryOp: true))
+        XCTAssertFalse(changesCardMountsFetch(seq: 29, turnClosed: true, codeWork: false, hasSummaryOp: true))
+        XCTAssertEqual(
+            changesCardFetchIdentity(hostId: "h", sessionId: "s", seq: 29, hasSummaryOp: true),
+            "h-s-29-true"
+        )
+        XCTAssertEqual(
+            changesCardFetchIdentity(hostId: "h", sessionId: "s", seq: 29, hasSummaryOp: true),
+            changesCardFetchIdentity(hostId: "h", sessionId: "s", seq: 29, hasSummaryOp: true)
+        )
+        XCTAssertGreaterThan(changesCardFetchAnchorPoints, 0)
+        XCTAssertEqual(changesCardFetchAnchorPoints, 1)
     }
 }

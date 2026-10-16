@@ -85,6 +85,19 @@ public func fileTreeCacheKey(sessionId: String?, cwd: String?) -> String {
     "\(sessionId ?? "")|\(cwd ?? "")"
 }
 
+/// Restore a saved offset only after the listing is tall enough. A clamped 0
+/// must not overwrite the saved value while content is still shorter than the viewport.
+public func fileTreeRestoredOffset(saved: Double, contentHeight: Double, viewportHeight: Double) -> Double? {
+    guard saved > 0 else { return nil }
+    let maxOffset = max(0, contentHeight - viewportHeight)
+    guard maxOffset > 0 else { return nil }
+    return min(saved, maxOffset)
+}
+
+public func fileTreeShouldKeepSavedOffset(current: Double, saved: Double, contentHeight: Double, viewportHeight: Double) -> Bool {
+    current <= 0 && saved > 0 && contentHeight <= viewportHeight
+}
+
 public func fileTreeToggle(_ state: inout FileTreeState, path: String) {
     if path.isEmpty { return }
     if state.expanded.contains(path) {

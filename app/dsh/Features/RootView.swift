@@ -164,7 +164,7 @@ struct RootView: View {
                         )
                         .padding(.horizontal, 14)
                         .padding(.bottom, 4)
-                        .frame(maxHeight: max(0, geo.size.height - 8), alignment: .bottom)
+                        .frame(height: max(0, geo.size.height - 8), alignment: .bottom)
                     }
                 }
             }

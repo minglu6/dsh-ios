@@ -315,6 +315,7 @@ private struct ScrollOffsetBridge: UIViewRepresentable {
                 if let found = next as? UIScrollView {
                     scroll = found
                     found.addObserver(self, forKeyPath: "contentOffset", options: [.new], context: nil)
+                    found.addObserver(self, forKeyPath: "contentSize", options: [.new], context: nil)
                     restoreIfNeeded()
                     return
                 }
@@ -324,8 +325,12 @@ private struct ScrollOffsetBridge: UIViewRepresentable {
 
         func restoreIfNeeded() {
             guard let scroll, !restoring else { return }
-            let target = offset.wrappedValue
-            if target > 0, abs(scroll.contentOffset.y - target) > 1 {
+            guard let target = fileTreeRestoredOffset(
+                saved: Double(offset.wrappedValue),
+                contentHeight: Double(scroll.contentSize.height),
+                viewportHeight: Double(scroll.bounds.height)
+            ) else { return }
+            if abs(scroll.contentOffset.y - CGFloat(target)) > 1 {
                 restoring = true
                 scroll.setContentOffset(CGPoint(x: 0, y: target), animated: false)
                 restoring = false
@@ -333,12 +338,25 @@ private struct ScrollOffsetBridge: UIViewRepresentable {
         }
 
         override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey: Any]?, context: UnsafeMutableRawPointer?) {
+            if keyPath == "contentSize" {
+                restoreIfNeeded()
+                return
+            }
             guard keyPath == "contentOffset", let scroll, !restoring else { return }
+            if fileTreeShouldKeepSavedOffset(
+                current: Double(scroll.contentOffset.y),
+                saved: Double(offset.wrappedValue),
+                contentHeight: Double(scroll.contentSize.height),
+                viewportHeight: Double(scroll.bounds.height)
+            ) {
+                return
+            }
             offset.wrappedValue = scroll.contentOffset.y
         }
 
         deinit {
             scroll?.removeObserver(self, forKeyPath: "contentOffset")
+            scroll?.removeObserver(self, forKeyPath: "contentSize")
         }
     }
 }

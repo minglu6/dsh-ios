@@ -167,12 +167,13 @@ final class SlashMenuTests: XCTestCase {
 
     func testLandingInjectsClientRowsWithoutASession() {
         let rows = commandMenuClientRows(
-            ops: ["attachments.upload", "models.catalog", "sessionFeedback.record", "session.export"],
+            ops: [],
             sessionReady: false,
-            subagent: false
+            subagent: false,
+            landing: true
         )
-        XCTAssertEqual(rows.compactMap { $0["name"].str() }, ["file", "model", "feedback", "export"])
-        XCTAssertTrue(commandMenuClientRows(ops: ["models.catalog"], sessionReady: false, subagent: true).isEmpty)
+        XCTAssertEqual(rows.compactMap { $0["name"].str() }, commandOrderedNames)
+        XCTAssertTrue(commandMenuClientRows(ops: ["models.catalog"], sessionReady: false, subagent: true, landing: true).isEmpty)
         let displayed = commandMenuDisplayRows(
             commands: commandMenuMerge(host: [], injected: rows),
             skills: [],
@@ -188,7 +189,7 @@ final class SlashMenuTests: XCTestCase {
                 case .skill(let skill): return skill.name
                 }
             },
-            ["添加", "file", "feedback", "指令", "model", "export"]
+            ["添加", "file", "goal", "plan", "feedback", "指令", "compact", "permission", "model", "export"]
         )
     }
 

@@ -338,7 +338,7 @@ struct ChatView: View {
             commandMenu(maxHeight: maxHeight)
                 .padding(.horizontal, 14)
                 .padding(.bottom, 4)
-                .frame(maxHeight: maxHeight, alignment: .bottom)
+                .frame(height: maxHeight, alignment: .bottom)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -664,9 +664,12 @@ struct ChatRowView: View {
         case .process(let proc):
             ProcessGroupView(proc: proc, openTurns: $openTurns, openProcesses: $openProcesses, onTool: onTool)
         case .changes(let item):
-            if model.showCodeWorkView,
-               model.chat?.turns.contains(where: { $0.turn == item.turn && $0.closed }) == true,
-               let sessionId = model.chat?.sessionId {
+            if changesCardMountsFetch(
+                seq: item.seq,
+                turnClosed: model.chat?.turns.contains(where: { $0.turn == item.turn && $0.closed }) == true,
+                codeWork: model.showCodeWorkView,
+                hasSummaryOp: model.ops.contains("workspaceChanges.summary")
+            ), let sessionId = model.chat?.sessionId {
                 ChangesCard(model: model, sessionId: sessionId, item: item)
             }
         }
@@ -851,7 +854,15 @@ struct MessageRow: View {
                 }, onLink: { url in
                     model.openChatLink(url)
                 })
-                if showAssistantActions(text), model.showCodeWorkView, let changes, let sessionId = model.chat?.sessionId {
+                if showAssistantActions(text),
+                   let changes,
+                   let sessionId = model.chat?.sessionId,
+                   changesCardMountsFetch(
+                       seq: changes.seq,
+                       turnClosed: true,
+                       codeWork: model.showCodeWorkView,
+                       hasSummaryOp: model.ops.contains("workspaceChanges.summary")
+                   ) {
                     InspectorChatTarget(itemKey: changes.key, reveal: highlightedChanges) {
                         ChangesCard(model: model, sessionId: sessionId, item: changes)
                     }

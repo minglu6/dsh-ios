@@ -34,7 +34,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | tree/slash | 文件树原地展开；斜杠菜单贴输入框 | done (#21) |
 | R4 | collapseTiming 写回 Host；composer / 运行态 / 提问 / 任务输出 / 插件空态对齐桌面文案 | done (#22) |
 | R5 | 文件树去 chevron + 自动刷新；排队附件缩略图/芯片；claimed `/goal` `/plan` 提示条；变更卡 pocket JSON `false` 旗标；斜杠技能组 + 键盘高度；无会话 landing | done (#23) |
-| R6 | 鲸尾 shimmer；任务双击停止；Cmd/Ctrl+Enter；插件 (i)；侧栏浏览器；landing `/` 无会话目录；技能按会话隔离 | this PR |
+| R6 | 鲸尾 shimmer；任务双击停止；Cmd/Ctrl+Enter；插件 (i)；侧栏浏览器；landing `/` 完整目录；变更卡 `.task` 锚点；技能按会话隔离；用量 popover；文件树滚动恢复 | this PR |
 
 ---
 
@@ -133,7 +133,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Workspace / session reorder | Host `insertBefore` / `insertSessionBefore` (Android UI is local Manual) | drag/drop calls Host ops when advertised; Manual order still local | **missing** → **present** | **G** |
 | NavigationPolicy | `workspaceDisplayTitle` / `visibleDrawerSession` / `reconcileSessionOrder` / `workspaceBranches` / `archiveActivityDescription` | same Swift ports in `Workspace.swift` | **partial** → **present** | **G** |
 | Open-in-desktop-editor | desktop only | — | **hide** | — |
-| WorkspaceChanges cards | `WorkspaceChanges.kt` | chat cards + review sheet (`workspaceChanges.summary/diff`); `workspace/changes` announcement; attached to last answer when visible, otherwise an independent card outside 「已完成」. Pocket JSON 的 `binary`/`oversized: false` 按 Android 接受（#19 只修了 `{summary:…}` 解包，运行时 Host 序列化带 false 仍整卡解析失败） | **missing** → **present** | **F** / P1 / **R5** |
+| WorkspaceChanges cards | `WorkspaceChanges.kt` | chat cards + review sheet (`workspaceChanges.summary/diff`); `workspace/changes` announcement; attached to last answer when visible, otherwise an independent card outside 「已完成」. Pocket JSON 的 `binary`/`oversized: false` 按 Android 接受（#19 只修了 `{summary:…}` 解包，运行时 Host 序列化带 false 仍整卡解析失败）。R5 实机：空 `Group` 上的 `.task` 不跑；R6 把 fetch 挂在 1pt 常驻锚点 | **missing** → **present** | **F** / P1 / **R5** / **R6** |
 | File tree live updates | `files.follow` + `observeWorkspaceDirectory` | same; watch-unsupported 回退 list；工具栏 pause/play「自动刷新」按桌面 `DirectoryNode.setAutomatic`：关则保留 watch、不因 change 再 list | **partial** → **present** | **F** / **H** / **R5** |
 | Browser | `BrowserPanel.kt` + `BrowserTabs.kt` HTTP(S)-only, addresses-only checkpoints | implemented (multi-tab `{selected, pages:[{id,url,title}]}`); chat HTTP(S) links open this panel when `linkOpening=sidebar` (desktop default). Start / ⋯ still have no entry | **present** | **P1** / **H** / **R6** |
 | Session Inspector | `SessionInspectorPanel` raw/grouped + pick | implemented, unexposed — desktop Start / ⋯ have no entry | **hide** | **P1** |
@@ -270,8 +270,14 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 | 占位与快捷键 | `composerPlaceholderKind` + `ComposerUITextView.keyCommands` | `ui-conversation` `InputBar` / `resolveSubmitMode` | `Cmd/Ctrl+Enter 插话发送全部排队消息`；硬件 Cmd/Ctrl+Enter |
 | 插件 (i) | `PluginsScreen` popover | `ui-plugin-manager` `infoLabel` / `infoDescription` | 点按 / 长按弹出官方说明，无自撰横幅 |
 | 链接 | `MarkdownView` + `openChatLink` | `ui-chat.linkOpening` | `sidebar` → 应用内 `BrowserPanel`；`new-tab` → 系统浏览器 |
-| landing `/` | `commands.list` / `skills.list` 可省略 sessionId | Host catalog；桌面 blank session | 无会话仍列出添加组；Host 目录走 pocket 无 session |
-| 技能隔离 | `skillCatalogScopeKey` | 会话 / 子智能体 | 不再回落到全局 `skillEntries` |
+| landing `/` | `commandMenuClientRows(landing:)` + 无 session 的 `commands.list` / `skills.list` | Host catalog；桌面 blank session | 无会话也列出 添加 file/goal/plan/feedback → 指令 compact/permission/model/export → 技能；不再「无选项」 |
+| 变更卡 fetch | `ChangesCard` 1pt 锚点 + `changesCardMountsFetch` | `workspace/changes` → summary | `.task` 不依赖 summary；R5 seq 29 / turn closed / codeWork 会拉卡 |
+| 斜杠高度 | `frame(height: availableHeight)` | composer 上方剩余视口 | 不再只露约 3 行 |
+| 技能描述 | `commandMenuDescriptionLineLimit` = 2 | `InputBar.module.css` `line-clamp: 2` | 与桌面截断一致 |
+| landing chip | `landingWorkspaceRow` + composer `defaultPermission` | `EmptyHero` WorkspaceChip | 「选择工作区」+「工作区内修改」 |
+| 本轮用量 | `TurnUsageAction` `.popover` | desktop usage pill popover | 不再全屏 sheet |
+| 文件树滚动 | `fileTreeOffsets` + `contentSize` 再恢复 | desktop sidebar files | 离开再进恢复 offset，内容未就绪时不把 0 写回 |
+| 技能隔离 | `skillCatalogScopeKey` | 会话 / 子智能体 | 切会话先清空；失败置空；不回落全局 `skillEntries` |
 
 ## Deferred / hide leftovers
 
