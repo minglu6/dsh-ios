@@ -1,4 +1,5 @@
 import SwiftUI
+import DSHProtocol
 
 /// Desktop `--dsw-alias-*` tokens from `@deepseek-ai/dsh-client-ui-theme` @ d743267 (0.2.1-alpha.2).
 struct DswColors {
@@ -35,6 +36,7 @@ struct DswColors {
     let stateWarnSecondary: Color
     let stateWarnTertiary: Color
     let specificBubble: Color
+    let specificSelector: Color
     let specificInputMajor: Color
     let specificLoginInput: Color
     let specificSidebarFill: Color
@@ -75,6 +77,7 @@ struct DswColors {
         stateWarnSecondary: Color(hex: 0xFFF7AD31),
         stateWarnTertiary: Color(hex: 0xFFFEF5E7),
         specificBubble: Color(hex: 0xFFEDF3FE),
+        specificSelector: Color(hex: composerAddButtonSelectorLightHex),
         specificInputMajor: Color(hex: 0xFFFFFFFF),
         specificLoginInput: Color(hex: 0xFFF9FAFB),
         specificSidebarFill: Color(hex: 0xFFF9FAFB),
@@ -116,6 +119,7 @@ struct DswColors {
         stateWarnSecondary: Color(hex: 0xFFF7AD31),
         stateWarnTertiary: Color(hex: 0xFF27241F),
         specificBubble: Color(hex: 0xFF2C2C2E),
+        specificSelector: Color(hex: composerAddButtonSelectorDarkHex),
         specificInputMajor: Color(hex: 0xFF2C2C2E),
         specificLoginInput: Color(hex: 0xFF1B1B1C),
         specificSidebarFill: Color(hex: 0xFF1B1B1C),

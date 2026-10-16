@@ -217,19 +217,26 @@ public let searchResultShowsWorkspaceContext = true
 
 /// Desktop `EmptySessions` copy when the tree/flat body has no rows.
 /// Archived-only adds `empty.viewOthers`, which resets the filter to hide-archived.
+/// Desktop has no offline-specific roster sentence (`empty.none` / `empty.noneArchived` only).
 public enum DrawerEmptyKind: String, Equatable, Sendable {
-    case offline
     /// Desktop `empty.none`. Not named `none` — that collides with `Optional.none`.
     case empty
     /// Desktop `empty.noneArchived`.
     case emptyArchived
 }
 
-public func drawerEmptyKind(online: Bool, archivedOnly: Bool, hasVisibleSessions: Bool) -> DrawerEmptyKind? {
+public func drawerEmptyKind(online _: Bool, archivedOnly: Bool, hasVisibleSessions: Bool) -> DrawerEmptyKind? {
     if hasVisibleSessions { return nil }
-    if !online { return .offline }
     return archivedOnly ? .emptyArchived : .empty
 }
+
+/// Desktop `ui-workspace` `empty.none`.
+public func emptySessionsNone(english: Bool) -> String {
+    english ? "No sessions yet" : "暂无会话"
+}
+
+/// Desktop `EmptySessions` never invents Batch H 「连接后显示会话」.
+public let drawerEmptyIgnoresOnline = true
 
 /// Desktop `SessionTree` EmptySessions is `groups.length === 0`, not “no visible
 /// sessions”. `groupByWorkspace` still emits a group per workspace unless the
@@ -331,6 +338,111 @@ public let permissionChipRequiresCatalog = true
 /// Desktop `conversation` `input.commands` (plus button aria / tooltip).
 public func composerCommandsAria(english: Bool) -> String {
     english ? "Add files or run commands" : "添加文件或调用指令"
+}
+
+/// Desktop InputBar `.add`: 28px filled circle, `--dsw-specific-selector` fill.
+public let composerAddButtonUsesFilledCircle = true
+public let composerAddButtonUsesSelectorFill = true
+public let composerAddButtonSelectorLightHex: UInt32 = 0xFFF5F6F7
+public let composerAddButtonSelectorDarkHex: UInt32 = 0xFF353638
+
+/// Desktop `conversation.input.left` has no occupant. Ask reopen lives on
+/// `ui-tool` `AskQuestionRow` (`ask.reopen`), not a composer chip.
+public let composerShowsAskChip = false
+
+public func isAskUserQuestionTool(_ name: String) -> Bool {
+    name == "ask_user_question" || name == "request_user_input"
+}
+
+/// Desktop `AskQuestionRow` `rowAction` when the question is still answerable.
+public func askToolRowReopensComposer(toolName: String, callId: String?, hiddenQuestionCallId: String?) -> Bool {
+    guard isAskUserQuestionTool(toolName), let callId, !callId.isEmpty else { return false }
+    return callId == hiddenQuestionCallId
+}
+
+/// Collapse stores the tool `callId` so `AskQuestionRow` can match the transcript row.
+public func userQuestionCollapseId(questionId: String, callId: String?) -> String {
+    callId ?? questionId
+}
+
+public func userQuestionIsCollapsed(questionId: String, callId: String?, hiddenId: String?) -> Bool {
+    guard let hiddenId, !hiddenId.isEmpty else { return false }
+    if hiddenId == questionId { return true }
+    if let callId, hiddenId == callId { return true }
+    return false
+}
+
+/// Desktop hero is a blank Host session, so `addFiles` is wired. iOS landing
+/// has no session: keep local draft files and upload after `sessions.create`.
+public let landingAllowsDraftFileAttachments = true
+public let landingFileAttachRequiresSession = false
+
+/// Desktop `ConversationSessionHeader` `deriveAncestry`: walk parents while
+/// `origin === "subagent"`. A regular session is a single current crumb.
+public struct ConversationHeaderCrumb: Equatable, Sendable {
+    public var sessionId: String
+    public var title: String
+    public var subagent: Bool
+    public var current: Bool
+
+    public init(sessionId: String, title: String, subagent: Bool, current: Bool) {
+        self.sessionId = sessionId
+        self.title = title
+        self.subagent = subagent
+        self.current = current
+    }
+}
+
+public func conversationHeaderAncestry(
+    sessions: [SessionSummary],
+    sessionId: String?,
+    currentTitle: String,
+    newSession: String,
+    untitled: String
+) -> [ConversationHeaderCrumb] {
+    guard let sessionId else { return [] }
+    var chain: [(id: String, title: String, subagent: Bool)] = []
+    var seen = Set<String>()
+    var cursor: String? = sessionId
+    while let id = cursor {
+        if seen.contains(id) { break }
+        seen.insert(id)
+        let summary = sessions.first { $0.sessionId == id }
+        let subagent = summary?.origin == "subagent"
+        let title: String
+        if id == sessionId {
+            title = currentTitle
+        } else {
+            title = drawerSessionTitle(
+                summary ?? SessionSummary(sessionId: id),
+                current: sessionId,
+                newSession: newSession,
+                untitled: untitled
+            )
+        }
+        chain.insert((id, title, subagent), at: 0)
+        if !subagent { break }
+        cursor = summary?.parentSessionId
+    }
+    return chain.enumerated().map { index, item in
+        ConversationHeaderCrumb(
+            sessionId: item.id,
+            title: item.title,
+            subagent: item.subagent,
+            current: index == chain.count - 1
+        )
+    }
+}
+
+/// Drawer hides subagent rows; the header still shows crumbs when the current
+/// session is a subagent (desktop `session.hierarchy`).
+public func conversationHeaderShowsCrumbs(_ crumbs: [ConversationHeaderCrumb]) -> Bool {
+    crumbs.count > 1
+}
+
+/// Desktop `conversation` `session.hierarchy`.
+public func sessionHierarchyAria(english: Bool) -> String {
+    english ? "Session hierarchy" : "会话层级"
 }
 
 /// Desktop `ui-commands` `status.loading` / `status.empty`.

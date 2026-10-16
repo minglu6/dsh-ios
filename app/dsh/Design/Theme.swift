@@ -44,6 +44,8 @@ enum T {
     static var text3: Color { colors.labelTertiary }
     static var caption: Color { colors.labelCaption }
     static var fill: Color { colors.interactiveBgHoverSolid }
+    /// Desktop `--dsw-specific-selector` (InputBar plus circle).
+    static var selector: Color { colors.specificSelector }
     static var fill2: Color { colors.bgModulePlatform }
     static var drawer: Color { colors.specificSidebarFill }
     static var border: Color { colors.borderL2 }

@@ -105,14 +105,13 @@ enum L {
     }
     static func renameSession() -> String { en ? "Rename session" : "重命名会话" }
     static func forkFromPrefix() -> String { en ? "Create a branch from the current session prefix" : "从当前会话前缀创建分支" }
-    static func connectToViewSessions() -> String { en ? "Connect to view sessions" : "连接后显示会话" }
     static func closeSearch() -> String { en ? "Close search" : "关闭搜索" }
     static func approvalNotify(_ tool: String) -> String { ApprovalNotifyTexts.title(toolName: tool, english: en) }
     static func allowOnceAction() -> String { en ? "Allow once" : "允许一次" }
     static func rejectAction() -> String { en ? "Reject" : "拒绝" }
     static func connectedNamed(_ name: String) -> String { en ? "Connected to \(name)" : "已连接 \(name)" }
     static func offlineReconnecting() -> String { en ? "Offline, reconnecting" : "离线，重连中" }
-    static func emptySessions() -> String { en ? "No sessions yet" : "暂无会话" }
+    static func emptySessions() -> String { emptySessionsNone(english: en) }
     static func sectionSessions() -> String { en ? "Sessions" : "会话" }
     static func sectionWorkspaces() -> String { en ? "Workspaces" : "工作区" }
     static func ungrouped() -> String { en ? "Ungrouped" : "未分组" }

@@ -276,8 +276,7 @@ struct SessionDrawer: View {
 
     private func emptyCopy(_ kind: DrawerEmptyKind?) -> String {
         switch kind {
-        case .offline: return L.connectToViewSessions()
-        case .empty, nil: return L.emptySessions()
+        case .empty, nil: return emptySessionsNone(english: L.en)
         case .emptyArchived: return L.emptyArchivedSessions()
         }
     }

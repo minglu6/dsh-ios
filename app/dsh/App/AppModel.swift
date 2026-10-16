@@ -495,7 +495,10 @@ final class AppModel: ObservableObject {
             guard !attach.isImage, attach.status == .ready, let receipt = attach.receiptId else { return nil }
             return PromptFile(receiptId: receipt)
         }
-        guard (!text.isEmpty || !images.isEmpty || !files.isEmpty), let client else { return }
+        let draftFiles = pendingAttaches.filter { attach in
+            !attach.isImage && attach.receiptId == nil
+        }
+        guard (!text.isEmpty || !images.isEmpty || !files.isEmpty || !draftFiles.isEmpty), let client else { return }
         if chat == nil, landingComposerNeedsWorkspace(
             selectedWorkspaceId: draftWorkspaceId ?? workspaces.first?.workspaceId,
             workspaceCount: workspaces.count
@@ -535,7 +538,17 @@ final class AppModel: ObservableObject {
             Task { await sendPrompt(client, chat: chat, text: text, images: images, files: files, attachments: queueAttachments, gesture: gesture) }
             return
         }
-        Task { await createSessionAndSend(client, text: text, images: images, files: files, attachments: queueAttachments, gesture: gesture) }
+        Task {
+            await createSessionAndSend(
+                client,
+                text: text,
+                images: images,
+                files: files,
+                attachments: queueAttachments,
+                draftFiles: draftFiles,
+                gesture: gesture
+            )
+        }
     }
 
     private func createSessionAndSend(
@@ -544,6 +557,7 @@ final class AppModel: ObservableObject {
         images: [PromptImage],
         files: [PromptFile],
         attachments: [QueuedAttachment],
+        draftFiles: [PendingAttach] = [],
         gesture: ComposerSubmitGesture
     ) async {
         do {
@@ -557,7 +571,28 @@ final class AppModel: ObservableObject {
             }
             await applyDraftPermission(sessionId: id)
             await applyDraftModel(sessionId: id)
-            await sendPrompt(client, chat: chat, text: text, images: images, files: files, attachments: attachments, gesture: gesture)
+            var uploaded = files
+            if landingAllowsDraftFileAttachments, !draftFiles.isEmpty {
+                pendingAttaches.append(contentsOf: draftFiles)
+                for attach in draftFiles {
+                    await uploadAttach(attach.id)
+                }
+                let failed = pendingAttaches.contains { attach in
+                    draftFiles.contains { $0.id == attach.id } && attach.status == .failed
+                }
+                uploaded = pendingAttaches.compactMap { attach in
+                    guard !attach.isImage, attach.status == .ready, let receipt = attach.receiptId else { return nil }
+                    return PromptFile(receiptId: receipt)
+                }
+                if failed {
+                    pendingAttaches.removeAll { attach in
+                        draftFiles.contains { $0.id == attach.id } && attach.status != .failed
+                    }
+                    return
+                }
+                pendingAttaches.removeAll { attach in draftFiles.contains { $0.id == attach.id } }
+            }
+            await sendPrompt(client, chat: chat, text: text, images: images, files: uploaded, attachments: attachments, gesture: gesture)
         } catch {
             emit(error.localizedDescription)
         }
@@ -1012,17 +1047,18 @@ final class AppModel: ObservableObject {
     }
 
     func attachFile(name: String, mediaType: String, data: Data) {
-        guard chat?.sessionId != nil else { return }
         let attach = PendingAttach(
             name: name,
             isImage: false,
             mediaType: mediaType,
             data: data,
             receiptId: nil,
-            status: .uploading
+            status: chat?.sessionId == nil ? .ready : .uploading
         )
         pendingAttaches.append(attach)
-        Task { await uploadAttach(attach.id) }
+        if chat?.sessionId != nil {
+            Task { await uploadAttach(attach.id) }
+        }
     }
 
     func retryAttach(_ id: UUID) {
@@ -2512,7 +2548,13 @@ final class AppModel: ObservableObject {
             }
         case "user-question.closed":
             userQuestions.removeAll { $0.questionId == m["questionId"].str() }
-            if hiddenQuestionId == m["questionId"].str() { hiddenQuestionId = nil }
+            if userQuestionIsCollapsed(
+                questionId: m["questionId"].str() ?? "",
+                callId: m["callId"].str(),
+                hiddenId: hiddenQuestionId
+            ) {
+                hiddenQuestionId = nil
+            }
         case "goal.activation":
             if m["sessionId"].str() == chat?.sessionId {
                 goalActivationEpoch += 1
