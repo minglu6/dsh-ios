@@ -73,7 +73,7 @@ struct TerminalView: View {
                 .onSizeChange { size in
                     viewport = size
                     guard enabled, size.width > 0, size.height > 0 else { return }
-                    let font = UIFont.monospacedSystemFont(ofSize: CGFloat(model.terminalFontSize), weight: .regular)
+                    let font = TerminalTypeface.uiFont(ofSize: CGFloat(model.terminalFontSize))
                     let cellW = max("M".size(withAttributes: [.font: font]).width, 1)
                     let cellH = max(font.lineHeight * 1.35, cellW * 1.6)
                     let cols = max(2, Int((size.width - 16) / cellW))
@@ -215,7 +215,7 @@ private struct TerminalCanvas: View {
     var body: some View {
         Canvas { context, size in
             _ = revision
-            let font = UIFont.monospacedSystemFont(ofSize: CGFloat(fontSize), weight: .regular)
+            let font = TerminalTypeface.uiFont(ofSize: CGFloat(fontSize))
             let cellW = max("M".size(withAttributes: [.font: font]).width, 1)
             let cellH = max(CGFloat(font.lineHeight) * 1.35, cellW * 1.6)
             let rows = selection?.rows ?? terminal.rows
@@ -248,7 +248,7 @@ private struct TerminalCanvas: View {
                         fg = bg
                     }
                     if cell.ch != " ", !cell.ch.isEmpty {
-                        var text = Text(cell.ch).font(.system(size: CGFloat(fontSize), design: .monospaced)).foregroundColor(color(fg))
+                        var text = Text(cell.ch).font(TerminalTypeface.font(ofSize: CGFloat(fontSize))).foregroundColor(color(fg))
                         if cell.bold { text = text.bold() }
                         context.draw(text, at: CGPoint(x: rect.minX, y: rect.minY), anchor: .topLeading)
                         if cell.underline {
@@ -306,7 +306,7 @@ private struct TerminalCanvas: View {
     }
 
     private func cellAt(_ point: CGPoint, cols: Int? = nil) -> (row: Int, col: Int) {
-        let font = UIFont.monospacedSystemFont(ofSize: CGFloat(fontSize), weight: .regular)
+        let font = TerminalTypeface.uiFont(ofSize: CGFloat(fontSize))
         let cellW = max("M".size(withAttributes: [.font: font]).width, 1)
         let cellH = max(CGFloat(font.lineHeight) * 1.35, cellW * 1.6)
         let col = Int(floor((point.x - 8) / cellW))
