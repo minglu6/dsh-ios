@@ -510,10 +510,13 @@ public func foldChatItems(
                 controlled.insert(row.key)
             case .answer:
                 if !finalAnswerKeys.contains(row.key) { controlled.insert(row.key) }
-            case .deliverable, .changes:
+            case .deliverable:
                 if finalPosition == nil || (positions[row.key] ?? Int.max) < finalPosition! {
                     controlled.insert(row.key)
                 }
+            case .changes:
+                // Desktop keeps the WorkspaceChanges card outside the completed-turn fold.
+                break
             default:
                 break
             }
@@ -588,6 +591,22 @@ public func visibleChatRows(_ rows: [ChatRow], openTurns: [String: Bool] = [:]) 
         }
     }
     return hidden.isEmpty ? rows : rows.filter { !hidden.contains($0.key) }
+}
+
+/// Attach the change card to a visible answer; otherwise keep an independent row
+/// so a collapsed 「已完成」 fold does not swallow the desktop WorkspaceChanges card.
+public func chatTranscriptRows(_ rows: [ChatRow], openTurns: [String: Bool] = [:]) -> [ChatRow] {
+    let visible = visibleChatRows(rows, openTurns: openTurns)
+    var answerTurns = Set<Int>()
+    for row in visible {
+        if case .answer(let text) = row, let turn = text.turn {
+            answerTurns.insert(turn)
+        }
+    }
+    return visible.filter { row in
+        if case .changes(let item) = row { return !answerTurns.contains(item.turn) }
+        return true
+    }
 }
 
 public func inspectorRowIndex(_ rows: [ChatRow], itemKey: String) -> Int {

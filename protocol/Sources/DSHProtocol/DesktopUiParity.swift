@@ -32,12 +32,16 @@ public enum StartPanelPolicy {
     public static var includesBrowser: Bool { false }
     public static var includesSessionInspector: Bool { false }
 
-    public static func shortcut(_ entry: StartPanelEntry) -> String? {
+    /// Desktop Start labels still use these; the phone controller must not render them.
+    public static func desktopShortcut(_ entry: StartPanelEntry) -> String? {
         switch entry {
         case .workspaceFiles: return "⌘P"
         case .newTerminal: return nil
         }
     }
+
+    /// Touch Start rows never append desktop chords (⌘P / ⌥⌘P / ^`).
+    public static func shortcut(_: StartPanelEntry) -> String? { nil }
 
     public static func showsChevron(_ entry: StartPanelEntry) -> Bool {
         entry == .newTerminal

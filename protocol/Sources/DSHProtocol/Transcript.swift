@@ -1291,6 +1291,18 @@ public final class TranscriptReducer {
             if !files.isEmpty {
                 committed.append(.deliverable(Item.Deliverable(key: "dl\(seq)", files: files, turn: data["turn"].int())))
             }
+        case "workspace/changes":
+            // Official event carries only turn; statistics come exclusively from Host summary.
+            guard let turn = data["turn"].int(), turn >= 0 else { break }
+            let change = Item.changes(Item.Changes(key: "ch\(seq)", turn: turn, seq: seq))
+            if let previous = committed.lastIndex(where: {
+                if case .changes(let item) = $0 { return item.turn == turn }
+                return false
+            }) {
+                committed[previous] = change
+            } else {
+                committed.append(change)
+            }
         default:
             break
         }
