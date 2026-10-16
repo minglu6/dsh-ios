@@ -443,6 +443,9 @@ public let jobsPopoverArrowPointsDown = true
 
 /// Desktop `MenuSurface` sizes to the roster, not a fixed 320×420 sheet.
 public let jobsPopoverSizesToContent = true
+/// Desktop portals one `MenuSurface` identity. `ViewThatFits` remounting
+/// `jobList` ↔ `ScrollView { jobList }` drops the first 「已结束」 press.
+public let jobsPopoverKeepsRosterIdentity = true
 public let jobsPopoverWidthPoints: Double = 320
 public let jobsPopoverMaxHeightPoints: Double = 360
 /// Settled `detail` (`signal: SIGTERM; cancelled by the user`) is never ellipsized.

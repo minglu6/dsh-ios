@@ -40,7 +40,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R9 | composer `sizeThatFits -> CGSize?`；任务 popover `arrowEdge: .top` 且无返回箭头；landing 风险文案跟桌面 hero；waking 与 `inbox.ts`/`message.ts` 对齐 | done (#27) |
 | R10 | 已停止任务按 `JobView`/`exit` 投影；任务 popover 按内容收缩；底栏 `tok`；触发行灰卡；完全权限居中确认；浏览器关闭后保留对话位置；waking step 仅 `openStep` | done (#28) |
 | R11 | 底栏 Token 用量贴 chip 的 popover；已结束任务 SIGTERM 整句；完全权限确认先收键盘 | done (#29) |
-| R12 | Token 用量弹层在 chip 上方；表头图标 + 合计右对齐；本轮用量对齐 `message.turnUsage`；Think 展开保留图标；轨迹吞吐空窗用官方「不可用」 | this PR |
+| R12 | Token 用量弹层在 chip 上方；表头图标 + 合计右对齐；本轮用量对齐 `message.turnUsage`；Think 展开保留图标；轨迹吞吐空窗用官方「不可用」；「已结束」一次点按展开 | this PR |
 
 ---
 
@@ -150,7 +150,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 
 | Item | Android | iOS | Tag | Batch |
 | --- | --- | --- | --- | --- |
-| Header jobs chip | `JobsAction.kt` / desktop `JobListAction` | tabs-row chip；面板为进行中 / 已结束 + 两点击停止（`kill.confirm`）。R6 实机：空 `Group` 上的 `.task` 不跑、从不 `jobs.list`；R7 把 watch 挂在 1pt 常驻锚点（同变更卡）。插件 `jobs.list` / `follow` / `kill` 已转发，Host `{type:rows, jobs:[…], output.lossy:false}` 可解析。R10：行状态按桌面 `JobView`（`status`/`detail`/`progress`/`finishedAt`，必要时从 `exit` 投影）；killed 为橙点 + `signal: SIGTERM; cancelled by the user` 单行、无停止按钮。R11：popover 随屏宽放宽，已结束 detail 换行而不截成 `SIGTER…` | **present** | **C** / **R6** / **R7** / **R10** / **R11** |
+| Header jobs chip | `JobsAction.kt` / desktop `JobListAction` | tabs-row chip；面板为进行中 / 已结束 + 两点击停止（`kill.confirm`）。R6 实机：空 `Group` 上的 `.task` 不跑、从不 `jobs.list`；R7 把 watch 挂在 1pt 常驻锚点（同变更卡）。插件 `jobs.list` / `follow` / `kill` 已转发，Host `{type:rows, jobs:[…], output.lossy:false}` 可解析。R10：行状态按桌面 `JobView`（`status`/`detail`/`progress`/`finishedAt`，必要时从 `exit` 投影）；killed 为橙点 + `signal: SIGTERM; cancelled by the user` 单行、无停止按钮。R11：popover 随屏宽放宽，已结束 detail 换行而不截成 `SIGTER…`。R12：「已结束」按桌面 `settledOpen ?? liveCount===0`，一次点按展开；popover 花名册保持同一 identity，不再 `ViewThatFits` 重挂载吃掉首点 | **present** | **C** / **R6** / **R7** / **R10** / **R11** / **R12** |
 | Failed refresh → 「任务状态不可用」 (not 0) | `JobsAction.kt:62-64` | same copy, stale running count discarded | **present** | **C** |
 | `jobs.list` / `follow` / `kill` | `Pocket.kt` | `PocketClient` + `JobsPanel`; list+live follow share one roster | **present** | **C** |
 | Unread green dot | `CompletionReminders` epoch+revision | epoch+revision; leading slot only | **present** | **C** |
@@ -362,6 +362,7 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 | Token 用量表头 | `UsagePopoverHeader` | `StatsPills.tsx` `DialogPill` + `stat-dialog.module.css` `.title` / `.titleLabel` / `.titleValue` | 左侧数据库图标 +「Token 用量」；合计 `34,185 tok` 右对齐；无「合计」行 |
 | 本轮用量 | `TurnUsageAction` | `TurnUsagePanel.tsx` + `locale.ts` `message.turnUsage.*` | 同样在 pill 上方；表头「本轮用量」+ 合计右对齐；`提供方 / 模型`；`缓存命中`；输出行后缀 `（其中推理 {n} tok）`；EN `Cached input` |
 | Think 展开 | `ReasoningRow` | `ReasoningRow.tsx` + `DisclosureRow` `icon={THINK_ICON}` | 展开仍画 Think 图标，右侧 chevron，不再用 chevron 替换 brain |
+| 已结束展开 | `jobsSettledSectionExpanded` + `JobsPopoverRoster` | `JobListAction.tsx` `settledOpen ?? liveRows.length === 0`；`job-list-action.client.spec.tsx` 一次 click 展开 | 显式 toggle 优先；有 live 时默认折叠；点一次展开。popover 测高后同一 `ScrollView`，不再 `ViewThatFits` 在 `jobList` ↔ 滚动层之间重挂载。时钟只在有 live 行时走 |
 | 轨迹吞吐空窗 | `formatThroughput` | `ui-trajectory` `timingNotAvailable` | `seconds <= 0` →「不可用」/ `Not available`，删除自撰「时长过短」 |
 
 本轮源码对照后**不改**、留给实机 / 平台的项：

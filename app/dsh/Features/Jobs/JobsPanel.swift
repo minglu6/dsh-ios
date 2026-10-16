@@ -71,7 +71,12 @@ struct JobsPanel: View {
     private var rows: [JobRow] { orderedJobRows(model.jobs ?? []) }
     private var liveRows: [JobRow] { rows.filter(\.isLive) }
     private var settledRows: [JobRow] { rows.filter { !$0.isLive && !clearedKeys.contains($0.id) } }
-    private var settledExpanded: Bool { settledOpen ?? liveRows.isEmpty }
+    private var settledExpanded: Bool {
+        jobsSettledSectionExpanded(explicit: settledOpen, liveCount: liveRows.count)
+    }
+    private var clockRuns: Bool {
+        jobsPopoverClockRuns(open: true, liveCount: liveRows.count) || killPhase != .idle
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -89,9 +94,8 @@ struct JobsPanel: View {
             if showsNavigationHeader {
                 ScrollView { jobList }
             } else {
-                ViewThatFits(in: .vertical) {
+                JobsPopoverRoster(maxHeight: CGFloat(jobsPopoverMaxHeightPoints)) {
                     jobList
-                    ScrollView { jobList }
                 }
             }
         }
@@ -100,14 +104,7 @@ struct JobsPanel: View {
             guard let sessionId else { return }
             await model.retainJobsWatch(hostId: model.activeId, sessionId: sessionId, available: model.canShowJobs)
         }
-        .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { date in
-            nowMs = Int64(date.timeIntervalSince1970 * 1000)
-            killPhase = jobKillTick(
-                phase: killPhase,
-                nowMs: nowMs,
-                runningKeys: Set(liveRows.filter { $0.status == "running" }.map(\.id))
-            )
-        }
+        .background(clockSubscription)
         .onChange(of: rows.map(\.id).joined(separator: ",")) { _ in
             if let expandedKey, !rows.contains(where: { $0.id == expandedKey }) {
                 self.expandedKey = nil
@@ -115,6 +112,23 @@ struct JobsPanel: View {
             }
         }
         .onDisappear { model.clearJobSelection() }
+    }
+
+    @ViewBuilder
+    private var clockSubscription: some View {
+        if clockRuns {
+            Color.clear
+                .frame(width: 0, height: 0)
+                .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { date in
+                    nowMs = Int64(date.timeIntervalSince1970 * 1000)
+                    killPhase = jobKillTick(
+                        phase: killPhase,
+                        nowMs: nowMs,
+                        runningKeys: Set(liveRows.filter { $0.status == "running" }.map(\.id))
+                    )
+                }
+                .accessibilityHidden(true)
+        }
     }
 
     private var jobList: some View {
@@ -136,7 +150,7 @@ struct JobsPanel: View {
             if !settledRows.isEmpty {
                 HStack {
                     Button {
-                        settledOpen = !settledExpanded
+                        settledOpen = jobsSettledSectionToggled(explicit: settledOpen, liveCount: liveRows.count)
                     } label: {
                         HStack(spacing: 6) {
                             Image(systemName: settledExpanded ? "chevron.down" : "chevron.right")
@@ -177,12 +191,12 @@ struct JobsPanel: View {
             HStack(alignment: .center, spacing: 8) {
                 if job.isObservable {
                     Button {
-                        if expanded {
-                            expandedKey = nil
-                            model.clearJobSelection()
-                        } else {
-                            expandedKey = job.id
+                        let next = jobsToggledExpandedKey(current: expandedKey, jobId: job.id)
+                        expandedKey = next
+                        if next != nil {
                             model.selectJob(job)
+                        } else {
+                            model.clearJobSelection()
                         }
                     } label: {
                         jobRow(job, expanded: expanded)
@@ -327,5 +341,40 @@ struct JobsPanel: View {
         case "completed": return T.ok
         default: return T.text3
         }
+    }
+}
+
+/// One roster identity: measure height, scroll only when taller than the
+/// desktop `MenuSurface` viewport cap. `ViewThatFits` swapped `jobList` for
+/// `ScrollView { jobList }` and dropped the first 「已结束」 press.
+private struct JobsPopoverRoster<Content: View>: View {
+    var maxHeight: CGFloat
+    @ViewBuilder var content: () -> Content
+    @State private var contentHeight: CGFloat = 0
+
+    var body: some View {
+        ScrollView {
+            content()
+                .background(
+                    GeometryReader { geo in
+                        Color.clear.preference(key: JobsRosterHeightKey.self, value: geo.size.height)
+                    }
+                )
+        }
+        .frame(maxHeight: min(measuredHeight, maxHeight), alignment: .top)
+        .onPreferenceChange(JobsRosterHeightKey.self) { next in
+            if next != contentHeight { contentHeight = next }
+        }
+    }
+
+    private var measuredHeight: CGFloat {
+        contentHeight > 0 ? contentHeight : maxHeight
+    }
+}
+
+private struct JobsRosterHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }
