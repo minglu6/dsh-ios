@@ -496,8 +496,8 @@ public func changesDiffNoticeKind(_ diff: WorkspaceFileDiff?) -> ChangesDiffNoti
     if diff.kind == "oversized" { return .oversized }
     if !diff.before { return .created }
     if !diff.after { return .deleted }
-    if diff.hunks.isEmpty { return .unchanged }
     if diff.coarse { return .coarse }
+    if diff.hunks.isEmpty { return .unchanged }
     return nil
 }
 
