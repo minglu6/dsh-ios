@@ -186,6 +186,13 @@ final class DesktopUiParityTests: XCTestCase {
             turnStartSeq: 5
         ))
         XCTAssertTrue(jobsPopoverArrowPointsDown)
+        XCTAssertTrue(jobsPopoverSizesToContent)
+        XCTAssertLessThan(jobsPopoverMaxHeightPoints, 420)
+        XCTAssertEqual(composerStatisticsTokenUnit, "tok")
+        XCTAssertNil(wakingTriggerStep(openStep: nil, openTurn: 1))
+        XCTAssertEqual(wakingTriggerStep(openStep: 1, openTurn: 1), 1)
+        XCTAssertTrue(permissionRiskIsCenteredDialog)
+        XCTAssertTrue(chatPreservesPositionAcrossBrowser)
         XCTAssertFalse(landingPermissionPersistsAcrossLaunch)
         XCTAssertEqual(
             permissionFullAccessRiskDescription(audience: .currentSession, english: false),

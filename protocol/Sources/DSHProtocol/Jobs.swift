@@ -12,7 +12,7 @@ public struct JobRow: Sendable, Equatable, Identifiable {
     public var progress: String?
     public var outputTotal: Int
 
-    public var isLive: Bool { status == "running" || status == "stopping" }
+    public var isLive: Bool { jobStatusIsLive(status) }
     public var canKill: Bool { status == "running" }
     public var isObservable: Bool { isLive || outputTotal > 0 }
     public var qualifier: String? { progress ?? detail }
@@ -39,9 +39,9 @@ public struct JobRow: Sendable, Equatable, Identifiable {
         self.outputTotal = outputTotal
     }
 
-    public static func parse(_ element: JSONValue) -> JobRow? {
-        guard let id = jobIdentity(element) else { return nil }
-        let status = element["status"].str() ?? element["state"].str() ?? ""
+    public static func parse(_ element: JSONValue, fallbackId: String? = nil) -> JobRow? {
+        guard let id = jobIdentity(element) ?? fallbackId?.nilIfBlank else { return nil }
+        let projected = jobViewProjection(element)
         let title = element["label"].str()?.nilIfBlank
             ?? element["command"].str()?.nilIfBlank
             ?? element["name"].str()?.nilIfBlank
@@ -50,16 +50,109 @@ public struct JobRow: Sendable, Equatable, Identifiable {
         let outputTotal = output["total"].int() ?? output["bytes"].int() ?? 0
         return JobRow(
             id: id,
-            status: status,
+            status: projected.status,
             title: title,
-            detail: element["detail"].str(),
+            detail: projected.detail,
             kind: element["kind"].str() ?? "",
             startedAt: element["startedAt"].long() ?? 0,
-            finishedAt: element["finishedAt"].long(),
-            progress: element["progress"].str(),
+            finishedAt: projected.finishedAt,
+            progress: projected.progress,
             outputTotal: outputTotal
         )
     }
+}
+
+/// Desktop `@deepseek-ai/dsh-jobs/view` `JobView`: live `progress`, terminal `detail`,
+/// `finishedAt` only once settled. Host `job.list` / follow frames carry this shape;
+/// some producers also leave an `exit` object that ui-jobs never sees because the
+/// registry already merged it. Pocket JSON may still include `exit` beside a stale
+/// live `status` — project the same closed status set either way.
+public struct JobViewProjection: Sendable, Equatable {
+    public var status: String
+    public var detail: String?
+    public var progress: String?
+    public var finishedAt: Int64?
+
+    public init(status: String, detail: String? = nil, progress: String? = nil, finishedAt: Int64? = nil) {
+        self.status = status
+        self.detail = detail
+        self.progress = progress
+        self.finishedAt = finishedAt
+    }
+}
+
+public func jobViewProjection(_ element: JSONValue) -> JobViewProjection {
+    var status = element["status"].str() ?? element["state"].str() ?? ""
+    var detail = element["detail"].str()?.nilIfBlank
+    var progress = element["progress"].str()?.nilIfBlank
+    var finishedAt = element["finishedAt"].long()
+    let exit = element["exit"]
+    let exitDetail = jobExitDetail(exit)
+    let exitStatus = jobExitStatus(exit)
+    if detail == nil { detail = exitDetail }
+    if jobStatusIsLive(status), let exitStatus {
+        status = exitStatus
+        if finishedAt == nil { finishedAt = element["endedAt"].long() }
+    } else if status.isEmpty, let exitStatus {
+        status = exitStatus
+    }
+    if !jobStatusIsLive(status) {
+        progress = nil
+    }
+    return JobViewProjection(status: status, detail: detail, progress: progress, finishedAt: finishedAt)
+}
+
+public func jobStatusIsLive(_ status: String) -> Bool {
+    status == "running" || status == "stopping"
+}
+
+/// Desktop bash settlement: `signal: SIGTERM` plus a recorded kill reason.
+public func jobExitDetail(_ exit: JSONValue) -> String? {
+    var parts: [String] = []
+    if let signal = exit["signal"].str()?.nilIfBlank ?? exit.str()?.nilIfBlank {
+        parts.append("signal: \(signal)")
+    } else if let code = exit["code"].int() ?? exit["code"].long().map(Int.init) {
+        parts.append("exit code: \(code)")
+    }
+    let reason = exit["reason"].str()?.nilIfBlank
+        ?? exit["message"].str()?.nilIfBlank
+        ?? exit["killedReason"].str()?.nilIfBlank
+    if let reason { parts.append(reason) }
+    return parts.isEmpty ? nil : parts.joined(separator: "; ")
+}
+
+public func jobExitStatus(_ exit: JSONValue) -> String? {
+    if exit.isNull { return nil }
+    if exit["signal"].str()?.nilIfBlank != nil || exit.str()?.nilIfBlank != nil { return "killed" }
+    if let code = exit["code"].int() ?? exit["code"].long().map(Int.init) {
+        return code == 0 ? "completed" : "failed"
+    }
+    if exit.obj() != nil { return "failed" }
+    return nil
+}
+
+/// Desktop `JobListAction` `jobDetail`: live progress, otherwise the terminal reason.
+public func jobRowStatusText(_ job: JobRow, english: Bool) -> String {
+    job.qualifier ?? jobStatusLabel(job.status, english: english)
+}
+
+/// Follow `opened`/`status` carry a full `JobView`. A later live `opened` must not
+/// revive a row the roster already settled.
+public func applyJobFollowProjection(_ jobs: inout [JobRow]?, jobId: String, incoming: JobRow) {
+    guard var rows = jobs, let index = rows.firstIndex(where: { $0.id == jobId }) else { return }
+    let current = rows[index]
+    if !current.isLive && incoming.isLive { return }
+    var next = incoming
+    next.id = jobId
+    if next.title == next.id && current.title != current.id { next.title = current.title }
+    if next.kind.isEmpty { next.kind = current.kind }
+    if next.startedAt == 0 { next.startedAt = current.startedAt }
+    if next.detail == nil { next.detail = current.detail }
+    if next.finishedAt == nil { next.finishedAt = current.finishedAt }
+    if next.outputTotal == 0 { next.outputTotal = current.outputTotal }
+    if !next.isLive { next.progress = nil }
+    rows[index] = next
+    jobs = rows
 }
 
 /// Desktop `JobListAction` two-press kill: one armed row at a time.
@@ -233,19 +326,21 @@ public struct JobOutputChunk: Sendable, Equatable {
 }
 
 public enum JobFollowKind: Sendable, Equatable {
-    case opened(status: String)
-    case status(status: String)
+    case opened(JobRow)
+    case status(JobRow)
     case output(lossy: Bool, chunks: [JobOutputChunk])
     case other
 }
 
 public enum JobFollowFrame {
-    public static func parse(_ frame: JSONValue) -> JobFollowKind {
+    public static func parse(_ frame: JSONValue, fallbackId: String? = nil) -> JobFollowKind {
         switch frame["type"].str() {
         case "opened":
-            return .opened(status: frame["job"]["status"].str() ?? "")
+            guard let job = JobRow.parse(frame["job"], fallbackId: fallbackId) else { return .other }
+            return .opened(job)
         case "status":
-            return .status(status: frame["job"]["status"].str() ?? "")
+            guard let job = JobRow.parse(frame["job"], fallbackId: fallbackId) else { return .other }
+            return .status(job)
         case "output":
             let chunks = (frame["chunks"].arr() ?? []).map { chunk in
                 JobOutputChunk(text: chunk["text"].str() ?? "", gapBefore: jsonFlagTrue(chunk["gapBefore"]))
@@ -316,7 +411,7 @@ public func applyJobOutputFrames(
 
 public func parseJobRoster(_ result: JSONValue) -> [JobRow] {
     let rows = result["jobs"].arr() ?? result["rows"].arr() ?? result.arr() ?? []
-    return rows.compactMap(JobRow.parse)
+    return rows.compactMap { JobRow.parse($0) }
 }
 
 /// Host `job.list` rows use string ids (`bash-1`); pocket JSON may also send a number.

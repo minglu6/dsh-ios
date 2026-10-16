@@ -37,7 +37,9 @@ struct JobsAction: View {
                 .accessibilityLabel(JobsActionLabel.text(chip, en: L.en))
                 .popover(isPresented: $open, attachmentAnchor: .rect(.bounds), arrowEdge: jobsPopoverArrowPointsDown ? .top : .bottom) {
                     JobsPanel(model: model, showsNavigationHeader: false) { open = false }
-                        .frame(width: 320, height: 420)
+                        .frame(width: CGFloat(jobsPopoverWidthPoints))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxHeight: CGFloat(jobsPopoverMaxHeightPoints), alignment: .top)
                         .modifier(PopoverCompactAdaptation())
                 }
             }
@@ -83,56 +85,12 @@ struct JobsPanel: View {
             if let err = model.jobsPanelError {
                 Text(err).foregroundStyle(T.err).padding(22)
             }
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    if liveRows.isEmpty && settledRows.isEmpty && model.jobs != nil && !model.jobsFailed && model.jobsPanelError == nil {
-                        Text(L.jobsZero()).foregroundStyle(T.text3).padding(22)
-                    }
-                    if !liveRows.isEmpty {
-                        Text(jobSectionLive(english: L.en))
-                            .font(.caption)
-                            .foregroundStyle(T.text3)
-                            .padding(.horizontal, 16)
-                            .padding(.top, 12)
-                            .padding(.bottom, 4)
-                        ForEach(liveRows) { job in
-                            jobBlock(job)
-                        }
-                    }
-                    if !settledRows.isEmpty {
-                        HStack {
-                            Button {
-                                settledOpen = !settledExpanded
-                            } label: {
-                                HStack(spacing: 6) {
-                                    Image(systemName: settledExpanded ? "chevron.down" : "chevron.right")
-                                        .font(.system(size: 11))
-                                    Text(jobSectionSettled(count: settledRows.count, english: L.en))
-                                }
-                                .font(.caption)
-                                .foregroundStyle(T.text3)
-                            }
-                            .buttonStyle(.plain)
-                            Spacer()
-                            Button(jobSectionClear(english: L.en)) {
-                                clearedKeys.formUnion(settledRows.map(\.id))
-                                if let expandedKey, settledRows.contains(where: { $0.id == expandedKey }) {
-                                    self.expandedKey = nil
-                                    model.clearJobSelection()
-                                }
-                            }
-                            .font(.caption)
-                            .foregroundStyle(T.text2)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 12)
-                        .padding(.bottom, 4)
-                        if settledExpanded {
-                            ForEach(settledRows) { job in
-                                jobBlock(job)
-                            }
-                        }
-                    }
+            if showsNavigationHeader {
+                ScrollView { jobList }
+            } else {
+                ViewThatFits(in: .vertical) {
+                    jobList
+                    ScrollView { jobList }
                 }
             }
         }
@@ -156,6 +114,59 @@ struct JobsPanel: View {
             }
         }
         .onDisappear { model.clearJobSelection() }
+    }
+
+    private var jobList: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if liveRows.isEmpty && settledRows.isEmpty && model.jobs != nil && !model.jobsFailed && model.jobsPanelError == nil {
+                Text(L.jobsZero()).foregroundStyle(T.text3).padding(22)
+            }
+            if !liveRows.isEmpty {
+                Text(jobSectionLive(english: L.en))
+                    .font(.caption)
+                    .foregroundStyle(T.text3)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                    .padding(.bottom, 4)
+                ForEach(liveRows) { job in
+                    jobBlock(job)
+                }
+            }
+            if !settledRows.isEmpty {
+                HStack {
+                    Button {
+                        settledOpen = !settledExpanded
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: settledExpanded ? "chevron.down" : "chevron.right")
+                                .font(.system(size: 11))
+                            Text(jobSectionSettled(count: settledRows.count, english: L.en))
+                        }
+                        .font(.caption)
+                        .foregroundStyle(T.text3)
+                    }
+                    .buttonStyle(.plain)
+                    Spacer()
+                    Button(jobSectionClear(english: L.en)) {
+                        clearedKeys.formUnion(settledRows.map(\.id))
+                        if let expandedKey, settledRows.contains(where: { $0.id == expandedKey }) {
+                            self.expandedKey = nil
+                            model.clearJobSelection()
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(T.text2)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 4)
+                if settledExpanded {
+                    ForEach(settledRows) { job in
+                        jobBlock(job)
+                    }
+                }
+            }
+        }
     }
 
     @ViewBuilder
@@ -199,7 +210,7 @@ struct JobsPanel: View {
 
     private func jobRow(_ job: JobRow, expanded: Bool) -> some View {
         let duration = jobDurationText(elapsedMs: jobElapsedMs(job, nowMs: nowMs), english: L.en)
-        let status = job.qualifier ?? jobStatusLabel(job.status, english: L.en)
+        let status = jobRowStatusText(job, english: L.en)
         return HStack(alignment: .top, spacing: 8) {
             Circle()
                 .fill(dotColor(job.status))
@@ -221,7 +232,6 @@ struct JobsPanel: View {
                             Text(job.kind).font(.caption).foregroundStyle(T.text3)
                         }
                         Text(job.title).foregroundStyle(T.ink).lineLimit(1)
-                        Spacer(minLength: 8)
                         Text(status).font(.caption).foregroundStyle(T.text3).lineLimit(1)
                         Text(duration).font(.caption.monospacedDigit()).foregroundStyle(T.text3)
                     }

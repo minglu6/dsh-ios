@@ -26,7 +26,7 @@ struct ComposerStats: View {
         return speed
     }
     private var usageText: String? {
-        if detailed { return usage.map { [ "\(statisticsTokens(Double($0.totalTokens))) tokens", cache].compactMap { $0 }.joined(separator: " · ") } }
+        if detailed { return usage.map { [ "\(statisticsTokens(Double($0.totalTokens))) \(composerStatisticsTokenUnit)", cache].compactMap { $0 }.joined(separator: " · ") } }
         return cache
     }
     private var activityHasDetails: Bool {

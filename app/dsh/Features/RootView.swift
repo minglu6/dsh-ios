@@ -70,39 +70,62 @@ struct RootView: View {
 
     @ViewBuilder
     private var content: some View {
-        switch model.currentRoute {
-        case .connections, .pair:
-            ConnectionsView(model: model)
-        case .settings:
-            SettingsView(model: model)
-        case .general:
-            GeneralSettingsView(model: model)
-        case .models:
-            ModelsSettingsView(model: model)
-        case .builtinPlugins:
-            PluginInventoryView(model: model)
-        case .presets:
-            AgentPresetSettingsView(model: model, onCreator: {
-                model.pendingCreatorPreset = "cordis"
-                model.pop()
-                model.showDrawer = false
-                model.createAndOpenSession(preset: "cordis")
-            })
-        case .diagnostics:
-            ConnectionsView(model: model)
-        case .panel(let panel):
-            HostPanelView(model: model, panel: panel)
-        case .chat:
-            ChatView(model: model)
-        case .sessions:
-            if model.chat != nil {
-                ChatView(model: model)
-            } else if model.profiles.isEmpty {
+        ZStack {
+            if keepsChatMounted {
+                persistentChat
+            }
+            switch model.currentRoute {
+            case .chat, .sessions:
+                EmptyView()
+            case .connections, .pair:
                 ConnectionsView(model: model)
-            } else {
-                emptyChat
+            case .settings:
+                SettingsView(model: model)
+            case .general:
+                GeneralSettingsView(model: model)
+            case .models:
+                ModelsSettingsView(model: model)
+            case .builtinPlugins:
+                PluginInventoryView(model: model)
+            case .presets:
+                AgentPresetSettingsView(model: model, onCreator: {
+                    model.pendingCreatorPreset = "cordis"
+                    model.pop()
+                    model.showDrawer = false
+                    model.createAndOpenSession(preset: "cordis")
+                })
+            case .diagnostics:
+                ConnectionsView(model: model)
+            case .panel(let panel):
+                HostPanelView(model: model, panel: panel)
             }
         }
+    }
+
+    /// Desktop keeps the conversation mounted while the in-app browser sidebar is open.
+    private var keepsChatMounted: Bool {
+        switch model.currentRoute {
+        case .chat, .sessions: return true
+        case .panel(.browser): return true
+        default: return false
+        }
+    }
+
+    @ViewBuilder
+    private var persistentChat: some View {
+        if model.chat != nil {
+            ChatView(model: model)
+                .allowsHitTesting(!isBrowserOnTop)
+        } else if model.profiles.isEmpty {
+            ConnectionsView(model: model)
+        } else {
+            emptyChat
+        }
+    }
+
+    private var isBrowserOnTop: Bool {
+        if case .panel(.browser) = model.currentRoute { return true }
+        return false
     }
 
     private var landingSlashTrigger: ComposerTrigger? { slashMenuTrigger(model.composerText) }
@@ -226,9 +249,9 @@ struct RootView: View {
                 }
             )
         }
-        .sheet(isPresented: Binding(get: { riskPermission != nil }, set: { if !$0 { riskPermission = nil } })) {
+        .overlay {
             if let value = riskPermission {
-                PermissionRiskSheet(
+                PermissionRiskDialog(
                     preset: value,
                     enabled: model.isOnline && !model.permissionChanging && model.permissionCatalog?.find(value) != nil,
                     onDismiss: { riskPermission = nil },

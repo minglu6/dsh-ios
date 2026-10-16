@@ -124,9 +124,9 @@ struct ChatView: View {
                 }
             )
         }
-        .sheet(isPresented: Binding(get: { riskPermission != nil }, set: { if !$0 { riskPermission = nil } })) {
+        .overlay {
             if let value = riskPermission {
-                PermissionRiskSheet(
+                PermissionRiskDialog(
                     preset: value,
                     enabled: model.isOnline && !model.permissionChanging && model.permissionCatalog?.find(value) != nil,
                     onDismiss: { riskPermission = nil },
@@ -504,6 +504,10 @@ struct ChatView: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
             }
+            .onAppear {
+                if inspectorNav.picking { return }
+                proxy.scrollTo("bottom", anchor: .bottom)
+            }
             .onChange(of: chatRows.last?.key) { _ in
                 if inspectorNav.picking { return }
                 withAnimation { proxy.scrollTo("bottom", anchor: .bottom) }
@@ -698,6 +702,7 @@ private struct TurnTriggerRow: View {
                         .font(.system(size: 13))
                         .foregroundStyle(T.text3)
                     Text(title).font(.subheadline).foregroundStyle(T.text2)
+                    Spacer(minLength: 8)
                     if let at = item.at {
                         Text(formatMessageClock(at)).font(.caption).foregroundStyle(T.text3)
                     }
@@ -705,7 +710,6 @@ private struct TurnTriggerRow: View {
                         .font(.system(size: 11))
                         .foregroundStyle(T.text3)
                         .rotationEffect(.degrees(open ? 180 : 0))
-                    Spacer()
                 }
             }
             .buttonStyle(.plain)
@@ -719,6 +723,9 @@ private struct TurnTriggerRow: View {
                 }
             }
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(T.fill2, in: RoundedRectangle(cornerRadius: 10))
     }
 
     private func triggerSymbol(_ icon: TurnTriggerIcon) -> String {

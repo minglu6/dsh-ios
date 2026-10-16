@@ -131,55 +131,55 @@ struct PermissionRiskSheet: View {
     private var interactive: Bool { enabled && supported && !submitted }
 
     var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 16) {
-                Circle()
-                    .fill(T.warnTint)
-                    .frame(width: 44, height: 44)
-                    .overlay(Image(systemName: "exclamationmark.triangle").foregroundStyle(T.warnText))
-                Text(auto
-                     ? L.t("确认启用自动审查（实验）？", "Enable auto-review (experimental)?")
-                     : L.t("确认启用完全权限？", "Enable full access?"))
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(T.ink)
-                Text(description)
-                    .font(.subheadline)
-                    .foregroundStyle(T.text2)
-                    .lineSpacing(4)
-                Button { if interactive { acknowledged.toggle() } } label: {
-                    HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: acknowledged ? "checkmark.square.fill" : "square")
-                            .foregroundStyle(acknowledged ? T.ink : T.text3)
-                        Text(auto
-                             ? L.t("我已了解这些风险，并愿意继续", "I understand these risks and want to continue")
-                             : L.t("我已了解风险，并愿意继续", "I understand the risks and want to continue"))
-                            .foregroundStyle(T.ink)
-                            .multilineTextAlignment(.leading)
-                    }
+        VStack(alignment: .leading, spacing: 16) {
+            Circle()
+                .fill(T.warnTint)
+                .frame(width: 44, height: 44)
+                .overlay(Image(systemName: "exclamationmark.triangle").foregroundStyle(T.warnText))
+            Text(auto
+                 ? L.t("确认启用自动审查（实验）？", "Enable auto-review (experimental)?")
+                 : L.t("确认启用完全权限？", "Enable full access?"))
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(T.ink)
+            Text(description)
+                .font(.subheadline)
+                .foregroundStyle(T.text2)
+                .lineSpacing(4)
+            Button { if interactive { acknowledged.toggle() } } label: {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: acknowledged ? "checkmark.square.fill" : "square")
+                        .foregroundStyle(acknowledged ? T.ink : T.text3)
+                    Text(auto
+                         ? L.t("我已了解这些风险，并愿意继续", "I understand these risks and want to continue")
+                         : L.t("我已了解风险，并愿意继续", "I understand the risks and want to continue"))
+                        .foregroundStyle(T.ink)
+                        .multilineTextAlignment(.leading)
                 }
-                .buttonStyle(.plain)
-                .disabled(!interactive)
-                HStack(spacing: 10) {
-                    Button(L.cancel(), action: onDismiss)
-                        .frame(maxWidth: .infinity, minHeight: 50)
-                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 1))
-                    Button(auto ? L.t("启用自动审查", "Enable auto-review") : L.t("启用完全权限", "Enable full access")) {
-                        if interactive && acknowledged {
-                            submitted = true
-                            acknowledged = false
-                            onConfirm()
-                        }
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 50)
-                    .foregroundStyle(T.onPrimary)
-                    .background(T.primaryButton.opacity(interactive && acknowledged ? 1 : 0.4), in: RoundedRectangle(cornerRadius: 12))
-                    .disabled(!(interactive && acknowledged))
-                }
-                Spacer()
             }
-            .padding(22)
-            .navigationBarTitleDisplayMode(.inline)
+            .buttonStyle(.plain)
+            .disabled(!interactive)
+            HStack(spacing: 10) {
+                Button(L.cancel(), action: onDismiss)
+                    .frame(maxWidth: .infinity, minHeight: 50)
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 1))
+                Button(auto ? L.t("启用自动审查", "Enable auto-review") : L.t("启用完全权限", "Enable full access")) {
+                    if interactive && acknowledged {
+                        submitted = true
+                        acknowledged = false
+                        onConfirm()
+                    }
+                }
+                .frame(maxWidth: .infinity, minHeight: 50)
+                .foregroundStyle(T.onPrimary)
+                .background(T.primaryButton.opacity(interactive && acknowledged ? 1 : 0.4), in: RoundedRectangle(cornerRadius: 12))
+                .disabled(!(interactive && acknowledged))
+            }
         }
+        .padding(22)
+        .frame(maxWidth: 400)
+        .background(T.surface, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(T.border, lineWidth: 1))
+        .padding(24)
         .onChange(of: enabled) { value in
             if !value { acknowledged = false }
         }
@@ -198,6 +198,29 @@ struct PermissionRiskSheet: View {
             audience: forDefaults ? .newSessionDefault : .currentSession,
             english: L.en
         )
+    }
+}
+
+/// Desktop `RiskConfirmation`: centered dialog over a scrim, not a full-screen sheet.
+struct PermissionRiskDialog: View {
+    let preset: String
+    var enabled: Bool = true
+    var forDefaults: Bool = false
+    var onDismiss: () -> Void
+    var onConfirm: () -> Void
+
+    var body: some View {
+        ZStack {
+            T.scrim.ignoresSafeArea()
+                .onTapGesture(perform: onDismiss)
+            PermissionRiskSheet(
+                preset: preset,
+                enabled: enabled,
+                forDefaults: forDefaults,
+                onDismiss: onDismiss,
+                onConfirm: onConfirm
+            )
+        }
     }
 }
 

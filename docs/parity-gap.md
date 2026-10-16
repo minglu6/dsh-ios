@@ -37,7 +37,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R6 | 鲸尾 shimmer；任务双击停止；Cmd/Ctrl+Enter；插件 (i)；侧栏浏览器；landing `/` 完整目录；变更卡 `.task` 锚点；技能按会话隔离；用量 popover；文件树滚动恢复 | done (#24) |
 | R7 | 后台任务 chip 空 Group `.task`；「后台任务状态更新」；标题随 `sessions.list` / title projection 更新；权限 chip 锚定菜单；landing「标准模式」；composer 高度对齐桌面；去掉标题旁 spinner | done (#25) |
 | R8 | waking 触发行；`/permission` popupSelect；composer 按内容测高；任务 popover；权限菜单固定顺序；统计单行；landing 权限写入新会话；停止为两次点按 | done (#26) |
-| R9 | composer `sizeThatFits -> CGSize?`；任务 popover `arrowEdge: .top` 且无返回箭头；landing 风险文案跟桌面 hero；waking 与 `inbox.ts`/`message.ts` 对齐 | this PR |
+| R9 | composer `sizeThatFits -> CGSize?`；任务 popover `arrowEdge: .top` 且无返回箭头；landing 风险文案跟桌面 hero；waking 与 `inbox.ts`/`message.ts` 对齐 | done (#27) |
+| R10 | 已停止任务按 `JobView`/`exit` 投影；任务 popover 按内容收缩；底栏 `tok`；触发行灰卡；完全权限居中确认；浏览器关闭后保留对话位置；waking step 仅 `openStep` | this PR |
 
 ---
 
@@ -147,7 +148,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 
 | Item | Android | iOS | Tag | Batch |
 | --- | --- | --- | --- | --- |
-| Header jobs chip | `JobsAction.kt` / desktop `JobListAction` | tabs-row chip；面板为进行中 / 已结束 + 两点击停止（`kill.confirm`）。R6 实机：空 `Group` 上的 `.task` 不跑、从不 `jobs.list`；R7 把 watch 挂在 1pt 常驻锚点（同变更卡）。插件 `jobs.list` / `follow` / `kill` 已转发，Host `{type:rows, jobs:[…], output.lossy:false}` 可解析 | **present** | **C** / **R6** / **R7** |
+| Header jobs chip | `JobsAction.kt` / desktop `JobListAction` | tabs-row chip；面板为进行中 / 已结束 + 两点击停止（`kill.confirm`）。R6 实机：空 `Group` 上的 `.task` 不跑、从不 `jobs.list`；R7 把 watch 挂在 1pt 常驻锚点（同变更卡）。插件 `jobs.list` / `follow` / `kill` 已转发，Host `{type:rows, jobs:[…], output.lossy:false}` 可解析。R10：行状态按桌面 `JobView`（`status`/`detail`/`progress`/`finishedAt`，必要时从 `exit` 投影）；killed 为橙点 + `signal: SIGTERM; cancelled by the user` 单行、无停止按钮 | **present** | **C** / **R6** / **R7** / **R10** |
 | Failed refresh → 「任务状态不可用」 (not 0) | `JobsAction.kt:62-64` | same copy, stale running count discarded | **present** | **C** |
 | `jobs.list` / `follow` / `kill` | `Pocket.kt` | `PocketClient` + `JobsPanel`; list+live follow share one roster | **present** | **C** |
 | Unread green dot | `CompletionReminders` epoch+revision | epoch+revision; leading slot only | **present** | **C** |
@@ -328,3 +329,15 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 | landing 完全权限确认 | `permission.access` / `currentSession` | `PermissionSelect` 用 `confirm.description`（智能体 / 当前任务）；`settings.permission` 的「新会话 / 后续任务」只给设置默认档。桌面 hero 已是空白会话 | landing 与会话同一套 |
 | landing 草稿持久化 | `landingPermissionPersistsAcrossLaunch = false` | InputBar 仅在 `sessionId !== undefined` 时画权限；hero 的选择写在 Host 会话上 | 不写 UserDefaults；杀进程后回默认档 |
 | waking | `InboxClaimState` + `applyInboxClaim` + `isWakingTurnTrigger` | `ui-chat` `inbox.ts` / `message.ts`（client.js ~10360–10491） | claim **替换** `currentClaimed`；idle steer 要求 step 1、`claimSeq > turnStart`、`claimedHuman == false`；id 不用 rpcId |
+
+## Round 10 对照清单（桌面 `packages/client` + Round 9 实机 `REPORT_e133`）
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| 已停止任务行 | `jobViewProjection` + `applyJobFollowProjection` | `dsh-jobs/view` `JobView`；`ui-jobs` `JobListAction` `isLive` / `jobDetail` / `dotState` / kill 仅 `running` | Host `job.list` / follow 的 killed `JobView`（`status`+`detail`+`finishedAt`，progress 清空）投影为橙点 + `signal: SIGTERM; cancelled by the user` 单行、无停止按钮。`exit.signal` 仍写成 live `status` 时同样投影。follow `opened` 不得把已结算行救回 running |
+| 任务 popover 尺寸 | `jobsPopoverSizesToContent` + `ViewThatFits` | `JobListAction` `MenuSurface` + `useAnchoredPosition` | 按内容收缩，不再固定 320×420 |
+| 底栏统计 | `composerStatisticsTokenUnit` | desktop statistics `tok` | 「25.4K tok · 缓存命中 48%」，不再用会被截断的 `tokens` |
+| 触发行 | `TurnTriggerRow` `T.fill2` 圆角卡 | `TurnTriggerNodeView` 灰底圆角卡 | 左图标、右时间 + chevron |
+| 完全权限确认 | `PermissionRiskDialog` | `RiskConfirmation` 居中对话框 | landing / 会话 / 设置同一套文案，不再整屏 sheet 把内容顶上去 |
+| 应用内浏览器 | `keepsChatMounted` + `ChatView` 不卸载 | 桌面 sidebar 叠在会话上 | 关闭浏览器后滚动位置还在；会话仍按最后一行贴底 |
+| waking step | `wakingTriggerStep` | `message.ts` `location.kind === "step" && step === 1` | 只有 `openStep`，不再把「有 turn 无 step」当成 step 1 |
