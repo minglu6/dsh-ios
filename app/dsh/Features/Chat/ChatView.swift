@@ -554,7 +554,8 @@ struct ChatView: View {
     private var composer: some View {
         ComposerView(
             model: model,
-            interceptKeys: commandMenuVisible,
+            interceptKeys: commandMenuVisible && riskPermission == nil,
+            resignKeyboard: riskPermission != nil,
             focusToken: composerFocus,
             onPlus: {
                 slashMenu.togglePlus(trigger: slashTrigger)
@@ -1094,6 +1095,7 @@ private struct MessageActions: View {
 struct ComposerView: View {
     @ObservedObject var model: AppModel
     var interceptKeys = false
+    var resignKeyboard = false
     var focusToken = 0
     var heroPlaceholder = false
     var onPlus: () -> Void = {}
@@ -1164,6 +1166,7 @@ struct ComposerView: View {
                         english: L.en
                     ),
                     interceptKeys: interceptKeys,
+                    resignKeyboard: resignKeyboard,
                     heroPlaceholder: heroPlaceholder,
                     focusToken: focusToken,
                     onReturn: onCommandReturn,
@@ -1345,6 +1348,7 @@ private struct ComposerTextView: UIViewRepresentable {
     @Binding var text: String
     var placeholder: String
     var interceptKeys: Bool
+    var resignKeyboard: Bool = false
     var heroPlaceholder: Bool = false
     var focusToken: Int
     var onReturn: () -> Void
@@ -1388,13 +1392,15 @@ private struct ComposerTextView: UIViewRepresentable {
         view.onMove = onMove
         view.onEscape = onEscape
         view.onChord = onChord
-        view.lockFirstResponder = interceptKeys
+        view.lockFirstResponder = interceptKeys && !resignKeyboard
         view.interceptArrows = interceptKeys
         if view.text != text && view.markedTextRange == nil {
             view.text = text
         }
         context.coordinator.applyPlaceholder(view)
-        if focusToken != context.coordinator.focusToken {
+        if resignKeyboard, view.isFirstResponder {
+            _ = view.resignFirstResponder()
+        } else if focusToken != context.coordinator.focusToken {
             context.coordinator.focusToken = focusToken
             if focusToken > 0 {
                 view.becomeFirstResponder()

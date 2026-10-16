@@ -1,7 +1,7 @@
 import SwiftUI
 import DSHProtocol
 
-private enum StatisticsDialog { case activity, usage, context }
+private enum StatisticsDialog { case activity, context }
 
 private let statisticsContextColors: [Color] = [
     Color(red: 0.45, green: 0.55, blue: 0.72),
@@ -12,6 +12,7 @@ private let statisticsContextColors: [Color] = [
 struct ComposerStats: View {
     let metrics: ComposerMetrics
     @State private var dialog: StatisticsDialog?
+    @State private var usageOpen = false
 
     private var detailed: Bool { AppModel.shared.performanceUsage == .detailed }
     private var activity: ComposerActivity? { metrics.activity }
@@ -58,7 +59,10 @@ struct ComposerStats: View {
             pill(activityText, clickable: detailed && activityHasDetails) { dialog = .activity }
         }
         if let usageText {
-            pill(usageText, clickable: detailed) { dialog = .usage }
+            pill(usageText, clickable: detailed) { usageOpen.toggle() }
+                .popover(isPresented: $usageOpen, attachmentAnchor: .rect(.bounds), arrowEdge: .top) {
+                    if let usage { sessionUsagePopover(usage) }
+                }
         }
         if let context {
             pill("\(context.percent)%", clickable: true) { dialog = .context }
@@ -89,15 +93,6 @@ struct ComposerStats: View {
                             if let ttft = activity.meanTtftMs { detail(L.t("首 token 平均（TTFT）", "Avg time to first token (TTFT)"), statisticsDuration(ttft)) }
                             if let speed { detail(L.t("输出速度（TPS）", "Tokens per second (TPS)"), speed) }
                         }
-                    case .usage:
-                        if let usage {
-                            detail(L.t("合计", "Total"), statisticsExact(usage.totalTokens))
-                            if let hit = usage.cacheHitPercent { detail(L.t("缓存命中率", "Cache hit"), "\(hit)%") }
-                            detail(L.t("未缓存输入", "Uncached input"), statisticsExact(usage.uncachedInputTokens))
-                            detail(L.t("缓存读取", "Cache read"), statisticsExact(usage.cacheReadTokens))
-                            if usage.cacheWriteTokens != 0 { detail(L.t("缓存写入", "Cache write"), statisticsExact(usage.cacheWriteTokens)) }
-                            detail(L.t("输出", "Output"), statisticsExact(usage.outputTokens))
-                        }
                     case .context:
                         if let context {
                             detail(L.t("上下文已用 \(context.percent)%", "\(context.percent)% of context used"), "~\(statisticsTokens(context.usedTokens)) / \(statisticsTokens(context.contextWindow))")
@@ -120,9 +115,41 @@ struct ComposerStats: View {
     private func dialogTitle(_ kind: StatisticsDialog) -> String {
         switch kind {
         case .activity: return metrics.activityIsWholeSession ? L.t("会话统计", "Session statistics") : L.t("已加载历史统计", "Loaded history statistics")
-        case .usage: return L.t("Token 用量", "Token usage")
         case .context: return L.t("上下文用量", "Context usage")
         }
+    }
+
+    /// Desktop session usage chip: anchored popover, total in the header, no 「合计」 row.
+    private func sessionUsagePopover(_ usage: ComposerTokenUsage) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(composerSessionUsageTitle(exactTotal: statisticsExact(usage.totalTokens), english: L.en))
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(T.ink)
+            if let hit = usage.cacheHitPercent {
+                detail(composerSessionUsageRowLabel(.cacheHit, english: L.en), "\(hit)%")
+            }
+            detail(
+                composerSessionUsageRowLabel(.uncachedInput, english: L.en),
+                composerSessionUsageTokenValue(exact: statisticsExact(usage.uncachedInputTokens))
+            )
+            detail(
+                composerSessionUsageRowLabel(.cacheRead, english: L.en),
+                composerSessionUsageTokenValue(exact: statisticsExact(usage.cacheReadTokens))
+            )
+            if usage.cacheWriteTokens != 0 {
+                detail(
+                    composerSessionUsageRowLabel(.cacheWrite, english: L.en),
+                    composerSessionUsageTokenValue(exact: statisticsExact(usage.cacheWriteTokens))
+                )
+            }
+            detail(
+                composerSessionUsageRowLabel(.output, english: L.en),
+                composerSessionUsageTokenValue(exact: statisticsExact(usage.outputTokens))
+            )
+        }
+        .padding(16)
+        .frame(minWidth: 240, maxWidth: 320)
+        .modifier(PopoverCompactAdaptation())
     }
 
     private func detail(_ label: String, _ value: String, _ swatch: Color? = nil) -> some View {

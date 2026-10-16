@@ -1,5 +1,6 @@
 import Combine
 import SwiftUI
+import UIKit
 import DSHProtocol
 
 /// Header chip. Retains the shared jobs poll for this conversation; scenePhase is not part of the task id.
@@ -37,7 +38,7 @@ struct JobsAction: View {
                 .accessibilityLabel(JobsActionLabel.text(chip, en: L.en))
                 .popover(isPresented: $open, attachmentAnchor: .rect(.bounds), arrowEdge: jobsPopoverArrowPointsDown ? .top : .bottom) {
                     JobsPanel(model: model, showsNavigationHeader: false) { open = false }
-                        .frame(width: CGFloat(jobsPopoverWidthPoints))
+                        .frame(width: CGFloat(jobsPopoverWidth(screenWidth: UIScreen.main.bounds.width)))
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxHeight: CGFloat(jobsPopoverMaxHeightPoints), alignment: .top)
                         .modifier(PopoverCompactAdaptation())
@@ -227,14 +228,7 @@ struct JobsPanel: View {
                         Text(duration).font(.caption.monospacedDigit()).foregroundStyle(T.text3)
                     }
                 } else {
-                    HStack(spacing: 6) {
-                        if !job.kind.isEmpty {
-                            Text(job.kind).font(.caption).foregroundStyle(T.text3)
-                        }
-                        Text(job.title).foregroundStyle(T.ink).lineLimit(1)
-                        Text(status).font(.caption).foregroundStyle(T.text3).lineLimit(1)
-                        Text(duration).font(.caption.monospacedDigit()).foregroundStyle(T.text3)
-                    }
+                    settledHeadline(job, status: status, duration: duration)
                 }
             }
             if job.isObservable {
@@ -246,6 +240,26 @@ struct JobsPanel: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
+    }
+
+    /// Desktop settled JobView is one line. On a 320-wide phone the SIGTERM
+    /// detail wraps instead of ellipsizing (`signal: SIGTER…`).
+    @ViewBuilder
+    private func settledHeadline(_ job: JobRow, status: String, duration: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 6) {
+                if !job.kind.isEmpty {
+                    Text(job.kind).font(.caption).foregroundStyle(T.text3)
+                }
+                Text(job.title).foregroundStyle(T.ink).lineLimit(1)
+                Text(duration).font(.caption.monospacedDigit()).foregroundStyle(T.text3)
+            }
+            Text(status)
+                .font(.caption)
+                .foregroundStyle(T.text3)
+                .lineLimit(jobsPopoverSettledDetailWraps ? nil : 1)
+                .fixedSize(horizontal: false, vertical: jobsPopoverSettledDetailWraps)
+        }
     }
 
     private func killButton(_ job: JobRow) -> some View {
