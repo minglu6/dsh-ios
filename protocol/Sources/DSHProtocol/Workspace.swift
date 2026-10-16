@@ -66,22 +66,129 @@ public enum WorkspaceArchivedFilter: String, Sendable {
     case hide, show, only
 }
 
-/// Host archive-activity refusal details (`workspace/session-active`).
-public func archiveActivityDescription(_ details: JSONValue?, english: Bool) -> String {
-    (details?["activity"].arr() ?? []).map { activity in
-        let kind = activity["kind"].str() ?? ""
-        let family: String
-        switch kind {
-        case "turn": family = english ? "Turn in progress" : "进行中的回合"
-        case "subagent": family = english ? "Subagents" : "子智能体"
-        case "job": family = english ? "Background jobs" : "后台任务"
-        case "schedule": family = english ? "Scheduled reminders" : "定时提醒"
-        default: family = kind
-        }
-        let names = (activity["items"].arr() ?? []).compactMap { $0["label"].str() ?? $0["id"].str() }
-        return names.isEmpty ? family : "\(family): \(names.joined(separator: ", "))"
-    }.joined(separator: "\n")
+/// One item in a Host `workspace/session-active` activity family.
+public struct ArchiveActivityItem: Equatable, Sendable {
+    public var id: String
+    public var label: String?
+
+    public init(id: String, label: String? = nil) {
+        self.id = id
+        self.label = label
+    }
 }
+
+/// Desktop `ui-workspace` `ArchiveConfirmForm` activity family.
+public struct ArchiveActivityEntry: Equatable, Sendable {
+    public var kind: String
+    public var items: [ArchiveActivityItem]
+
+    public init(kind: String, items: [ArchiveActivityItem] = []) {
+        self.kind = kind
+        self.items = items
+    }
+}
+
+/// Desktop reads `rpcError.details.activity` from `workspace/session-active`.
+public func archiveSessionActiveActivity(_ details: JSONValue?) -> [ArchiveActivityEntry] {
+    (details?["activity"].arr() ?? []).map { activity in
+        ArchiveActivityEntry(
+            kind: activity["kind"].str() ?? "",
+            items: (activity["items"].arr() ?? []).map { item in
+                ArchiveActivityItem(id: item["id"].str() ?? "", label: item["label"].str())
+            }
+        )
+    }
+}
+
+/// Desktop `archive.confirm.listSeparator`.
+public func archiveConfirmListSeparator(english: Bool) -> String {
+    english ? ", " : "、"
+}
+
+/// Desktop `ArchiveSession.activityLine`.
+public func archiveConfirmActivityLine(_ entry: ArchiveActivityEntry, english: Bool) -> String {
+    let n = entry.items.count
+    let names = entry.items.map { $0.label ?? $0.id }.joined(separator: archiveConfirmListSeparator(english: english))
+    let one = n == 1
+    switch entry.kind {
+    case "turn":
+        return english ? "The turn in progress" : "进行中的回合"
+    case "subagent":
+        if english {
+            return one ? "\(n) running subagent: \(names)" : "\(n) running subagents: \(names)"
+        }
+        return "\(n) 个运行中的子智能体：\(names)"
+    case "job":
+        if english {
+            return one ? "\(n) background job: \(names)" : "\(n) background jobs: \(names)"
+        }
+        return "\(n) 个后台任务：\(names)"
+    case "schedule":
+        if english {
+            return one ? "\(n) scheduled reminder: \(names)" : "\(n) scheduled reminders: \(names)"
+        }
+        return "\(n) 条定时提醒：\(names)"
+    default:
+        if english {
+            return one
+                ? "\(n) other item of work (\(entry.kind))"
+                : "\(n) other items of work (\(entry.kind))"
+        }
+        return "\(n) 项其他工作（\(entry.kind)）"
+    }
+}
+
+/// Desktop `archive.confirm.title`.
+public func archiveConfirmTitle(english: Bool) -> String {
+    english ? "Stop and archive this session?" : "停止并归档此会话？"
+}
+
+/// Desktop `archive.confirm.desc`.
+public func archiveConfirmDescription(title: String, english: Bool) -> String {
+    if english {
+        return "“\(title)” still has work in progress. Archiving stops it first; you can restore the session later from the “All conversations (show archived)” filter in the sidebar, and the stopped work will not resume on its own."
+    }
+    return "“\(title)”仍有正在进行的工作。归档会先停止这些工作；之后可在侧栏筛选“全部对话（显示已归档）”中恢复会话，被停止的工作不会自动继续。"
+}
+
+/// Desktop `archive.confirm.activity`.
+public func archiveConfirmActivityLabel(english: Bool) -> String {
+    english ? "Work that will be stopped" : "将被停止的工作"
+}
+
+/// Desktop `archive.confirm.action`.
+public func archiveConfirmAction(english: Bool) -> String {
+    english ? "Stop and archive" : "停止并归档"
+}
+
+/// Desktop `archive.confirm.pending`.
+public func archiveConfirmPending(english: Bool) -> String {
+    english ? "Stopping and archiving…" : "正在停止并归档…"
+}
+
+/// Desktop `toast.archived` / `toast.stoppedAndArchived` + undo + or + filter.
+public func archiveSuccessToast(stopped: Bool, english: Bool) -> String {
+    let head: String
+    if stopped {
+        head = english ? "Session stopped and archived. You can " : "已停止并归档，可"
+    } else {
+        head = english ? "Session archived. You can " : "会话已归档，可"
+    }
+    let undo = english ? "undo" : "撤销"
+    let or = english ? " or " : "或"
+    let filter = english ? "filter archived sessions" : "筛选已归档会话"
+    return head + undo + or + filter
+}
+
+/// Official activity lines, joined for the confirm body (not a toast).
+public func archiveActivityDescription(_ details: JSONValue?, english: Bool) -> String {
+    archiveSessionActiveActivity(details)
+        .map { archiveConfirmActivityLine($0, english: english) }
+        .joined(separator: "\n")
+}
+
+/// Host `workspace/session-active` must open the confirm dialog, not a toast.
+public let archiveSessionActiveOpensConfirm = true
 
 /// Keep hidden archives in the same order account; insert ordinary forks before their source.
 public func reconcileSessionOrder(sessions: [SessionSummary], saved: [String]) -> [String] {

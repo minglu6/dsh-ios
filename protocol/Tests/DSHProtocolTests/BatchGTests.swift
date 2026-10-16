@@ -87,12 +87,49 @@ final class NavigationPolicyTests: XCTestCase {
         """)
         XCTAssertEqual(
             archiveActivityDescription(details, english: false),
-            "进行中的回合: 修 bug\n后台任务: j1"
+            "进行中的回合\n1 个后台任务：j1"
         )
         XCTAssertEqual(
             archiveActivityDescription(details, english: true),
-            "Turn in progress: 修 bug\nBackground jobs: j1"
+            "The turn in progress\n1 background job: j1"
         )
+        XCTAssertEqual(archiveConfirmTitle(english: false), "停止并归档此会话？")
+        XCTAssertEqual(archiveConfirmAction(english: false), "停止并归档")
+        XCTAssertEqual(archiveConfirmPending(english: true), "Stopping and archiving…")
+        XCTAssertEqual(archiveConfirmActivityLabel(english: false), "将被停止的工作")
+        XCTAssertTrue(archiveConfirmDescription(title: "修 bug", english: false).contains("“修 bug”仍有正在进行的工作"))
+        XCTAssertEqual(
+            archiveConfirmActivityLine(
+                ArchiveActivityEntry(
+                    kind: "subagent",
+                    items: [ArchiveActivityItem(id: "a", label: "调研"), ArchiveActivityItem(id: "b", label: "写卡")]
+                ),
+                english: false
+            ),
+            "2 个运行中的子智能体：调研、写卡"
+        )
+        XCTAssertEqual(
+            archiveSuccessToast(stopped: true, english: false),
+            "已停止并归档，可撤销或筛选已归档会话"
+        )
+        XCTAssertEqual(
+            archiveSuccessToast(stopped: false, english: true),
+            "Session archived. You can undo or filter archived sessions"
+        )
+        XCTAssertTrue(archiveSessionActiveOpensConfirm)
+        XCTAssertEqual(archiveConfirmListSeparator(english: false), "、")
+        XCTAssertEqual(
+            archiveConfirmActivityLine(ArchiveActivityEntry(kind: "mystery", items: []), english: false),
+            "0 项其他工作（mystery）"
+        )
+        XCTAssertEqual(
+            archiveConfirmActivityLine(
+                ArchiveActivityEntry(kind: "schedule", items: [ArchiveActivityItem(id: "s1", label: "晨报")]),
+                english: false
+            ),
+            "1 条定时提醒：晨报"
+        )
+        XCTAssertEqual(archiveActivityDescription(nil, english: false), "")
     }
 }
 

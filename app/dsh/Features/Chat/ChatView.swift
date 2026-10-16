@@ -1157,8 +1157,17 @@ struct ComposerView: View {
         model.pendingAttaches.allSatisfy { $0.status != .uploading && $0.status != .failed && $0.status != .pending }
     }
     private var hasPending: Bool { !model.pendingAttaches.isEmpty }
+    private var needsWorkspace: Bool {
+        landingComposerNeedsWorkspace(
+            selectedWorkspaceId: model.draftWorkspaceId ?? model.workspaces.first?.workspaceId,
+            workspaceCount: model.workspaces.count
+        )
+    }
     private var canSend: Bool {
-        model.isOnline && filesReady && (!model.composerText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || hasPending)
+        model.isOnline
+            && !needsWorkspace
+            && filesReady
+            && (!model.composerText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || hasPending)
     }
     private var runningIdle: Bool {
         model.chat?.running == true && model.composerText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !hasPending
@@ -1189,6 +1198,7 @@ struct ComposerView: View {
                             unavailable: model.chat != nil && !model.isOnline,
                             canSteerQueue: model.canSteerQueue,
                             planMode: model.chat?.planMode == true,
+                            needsWorkspace: needsWorkspace,
                             hero: heroPlaceholder
                         ),
                         english: L.en
@@ -1270,7 +1280,7 @@ struct ComposerView: View {
                                 .frame(width: CGFloat(composerSendButtonPoints), height: CGFloat(composerSendButtonPoints))
                         }
                         .background(T.accent, in: Circle())
-                        .accessibilityLabel(L.stop())
+                        .accessibilityLabel(composerStopLabel(english: L.en))
                     } else {
                         Button(action: onSend) {
                             Image(systemName: "arrow.up")

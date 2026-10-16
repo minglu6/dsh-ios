@@ -975,7 +975,7 @@ struct CommandMenuOverlay: View {
         let enabled = model.isOnline && catalogReady && (landing || commandMenuAvailable(kind: kind, ops: model.ops))
         guard enabled else { return }
         if kind != "file", !model.pendingAttaches.isEmpty, commandRefusesAttachments(name: name, catalogRow: command) {
-            model.toast = commandAttachmentsUnsupportedNotice(command: name, english: L.en)
+            model.showToast(commandAttachmentsUnsupportedNotice(command: name, english: L.en))
             return
         }
         @MainActor func consume() { if consumeSlash { model.consumeComposerSlash() } }
