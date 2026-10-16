@@ -18,7 +18,11 @@ struct SettingsView: View {
                             nav(L.agentPresets(), D.agentPreset, divider: hasPluginSettings, enabled: model.isOnline) { model.push(.presets) }
                         }
                         if hasPluginSettings {
-                            nav(L.builtinPluginsNav(), D.plugin, divider: false, enabled: model.isOnline) { model.push(.builtinPlugins) }
+                            nav(L.builtinPluginsNav(), divider: false, enabled: model.isOnline) {
+                                model.push(.builtinPlugins)
+                            } icon: {
+                                PluginPinwheelIcon(size: 16, color: T.text2)
+                            }
                         }
                     }
                     Text(L.phoneConnection())
@@ -390,10 +394,23 @@ func card<Content: View>(@ViewBuilder content: () -> Content) -> some View {
 }
 
 func nav(_ title: String, _ system: String, value: String? = nil, divider: Bool = true, enabled: Bool = true, action: @escaping () -> Void) -> some View {
+    nav(title, value: value, divider: divider, enabled: enabled, action: action) {
+        Image(systemName: system)
+    }
+}
+
+func nav<Icon: View>(
+    _ title: String,
+    value: String? = nil,
+    divider: Bool = true,
+    enabled: Bool = true,
+    action: @escaping () -> Void,
+    @ViewBuilder icon: () -> Icon
+) -> some View {
     VStack(spacing: 0) {
         Button(action: action) {
             HStack {
-                Image(systemName: system).foregroundStyle(T.text2)
+                icon().foregroundStyle(T.text2)
                 Text(title).foregroundStyle(T.ink)
                 Spacer()
                 if let value, !value.isEmpty {

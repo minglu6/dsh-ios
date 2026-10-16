@@ -1293,7 +1293,8 @@ public final class TranscriptReducer {
             }
         case "workspace/changes":
             // Official event carries only turn; statistics come exclusively from Host summary.
-            guard let turn = data["turn"].int(), turn >= 0 else { break }
+            // Desktop `isChangesEvent`: turn is a safe integer >= 1.
+            guard let turn = data["turn"].int(), turn >= 1 else { break }
             let change = Item.changes(Item.Changes(key: "ch\(seq)", turn: turn, seq: seq))
             if let previous = committed.lastIndex(where: {
                 if case .changes(let item) = $0 { return item.turn == turn }

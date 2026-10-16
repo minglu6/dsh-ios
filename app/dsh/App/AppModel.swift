@@ -581,7 +581,7 @@ final class AppModel: ObservableObject {
                     toast = L.thanksFeedback()
                     onResult?(true)
                 } else {
-                    emit(PocketError(code: "bad-reply", message: "主机未返回已保存的反馈").localizedDescription)
+                    emit(PocketError(code: "bad-reply", message: "远程主机未返回已保存的反馈").localizedDescription)
                     onResult?(false)
                 }
             } catch {

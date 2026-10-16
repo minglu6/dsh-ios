@@ -52,7 +52,7 @@ struct QoderConnectionCard: View {
             }
             hint(qoderCopy("使用个人访问令牌连接。VPC 实例留空时使用公网服务", "Connect with a personal access token. Leave the VPC instance empty to use the public service."))
             if !editable && online {
-                hint(qoderCopy("当前会话的连接设置为只读，请在本机 Host 中编辑", "Connection settings are read-only in this session. Open the local Host to edit them."))
+                hint(qoderCopy("当前会话的连接设置为只读，请在本机远程主机中编辑", "Connection settings are read-only in this session. Open the local Host to edit them."))
             }
             if credentialFailed {
                 Text(qoderCopy("无法读取令牌状态，请重试后再保存新令牌", "Could not read the token status. Retry before saving a new token."))
@@ -249,7 +249,7 @@ struct QoderConnectionCard: View {
     private func qoderFailure(_ error: QoderConnectionError) -> String {
         switch error {
         case .readOnly:
-            return qoderCopy("当前会话的连接设置为只读，请在本机 Host 中编辑", "Connection settings are read-only in this session. Open the local Host to edit them.")
+            return qoderCopy("当前会话的连接设置为只读，请在本机远程主机中编辑", "Connection settings are read-only in this session. Open the local Host to edit them.")
         case .credentialReadOnly:
             return qoderCopy("此令牌由启动环境等只读凭据来源管理，请到对应来源中修改", "This token is managed by a read-only credential source, such as the launch environment. Update it there instead.")
         case .loadFailed:

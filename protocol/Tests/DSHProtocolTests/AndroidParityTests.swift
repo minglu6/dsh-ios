@@ -314,7 +314,7 @@ final class AndroidParityTests: XCTestCase {
     func testOfficePreviewErrorReasonsAreOfficialOnly() {
         XCTAssertEqual(
             officePreviewErrorMessage(PocketError(code: "unknown-op", message: "nope"), english: false),
-            "Office 预览不可用。请在运行 DeepSeek Harness 的主机上启用文档预览服务。"
+            "Office 预览不可用。请在运行 DeepSeek Harness 的远程主机上启用文档预览服务。"
         )
         XCTAssertEqual(
             officePreviewErrorMessage(PocketError(code: "document-render/failed", message: "x", details: jsonObject(["reason": .string("busy")])), english: true),

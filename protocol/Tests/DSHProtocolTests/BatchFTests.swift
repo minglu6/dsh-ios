@@ -26,7 +26,7 @@ final class WorkspaceChangesTests: XCTestCase {
     }
 
     func testMissingOrEmptySummaryDoesNotBecomeZeroFileCard() throws {
-        for value in ["null", "{}", "[]", #"{"turn":1,"cwd":"/work","total":0,"added":0,"deleted":0,"files":[]}"#] {
+        for value in ["null", "{}", "[]", #"{"turn":1,"cwd":"/work","total":0,"added":0,"deleted":0,"files":[]}"#, #"{"turn":0,"total":1,"added":1,"deleted":0,"files":[{"path":"a","display":"a","added":1,"deleted":0}]}"#] {
             XCTAssertNil(try WorkspaceChangesSummary.parse(j(value)))
         }
         XCTAssertNil(WorkspaceChangesSummary.parse(nil))
@@ -35,6 +35,22 @@ final class WorkspaceChangesTests: XCTestCase {
         )))
         XCTAssertEqual(capped.total, 2)
         XCTAssertTrue(capped.files.isEmpty)
+    }
+
+    func testHttpSummaryOmitsCwdAndKeepsHostServedOutsideWorkspacePaths() throws {
+        let parsed = try XCTUnwrap(WorkspaceChangesSummary.parse(j("""
+        {"turn":1,"total":2,"added":3,"deleted":0,"files":[
+            {"path":"/tmp/dsh-parity-r2.txt","display":"/tmp/dsh-parity-r2.txt","added":2,"deleted":0},
+            {"path":"../outside.txt","display":"../outside.txt","added":1,"deleted":0}
+        ]}
+        """)))
+        XCTAssertEqual(parsed.cwd, "")
+        XCTAssertEqual(parsed.files.map(\.path), ["/tmp/dsh-parity-r2.txt", "../outside.txt"])
+        XCTAssertEqual(parsed.files.map(\.display), ["/tmp/dsh-parity-r2.txt", "../outside.txt"])
+        XCTAssertEqual(parsed.total, 2)
+        XCTAssertNil(try WorkspaceChangesSummary.parse(j(
+            #"{"turn":1,"cwd":12,"total":1,"added":1,"deleted":0,"files":[{"path":"a","display":"a","added":1,"deleted":0}]}"#
+        )))
     }
 
     func testMalformedEntryRejectsWholeSummaryInsteadOfShiftingDiffIndices() throws {
@@ -137,7 +153,8 @@ final class WorkspaceChangesTests: XCTestCase {
         XCTAssertTrue(reducer.apply(try event(2, "workspace/changes", #"{"turn":3}"#)))
         XCTAssertTrue(reducer.apply(try event(3, "workspace/changes", #"{"turn":4}"#)))
         XCTAssertTrue(reducer.apply(try event(4, "workspace/changes", #"{"turn":-1}"#)))
-        XCTAssertTrue(reducer.apply(try event(5, "workspace/changes", "{}")))
+        XCTAssertTrue(reducer.apply(try event(5, "workspace/changes", #"{"turn":0}"#)))
+        XCTAssertTrue(reducer.apply(try event(6, "workspace/changes", "{}")))
         let items = changesItems(reducer)
         XCTAssertEqual(items.map(\.turn), [3, 4])
         XCTAssertEqual(items.map(\.key), ["ch2", "ch3"])
@@ -168,6 +185,110 @@ final class WorkspaceChangesTests: XCTestCase {
         let expanded = chatTranscriptRows(rows, openTurns: [control.key: true])
         XCTAssertFalse(expanded.contains { if case .changes = $0 { return true }; return false })
         XCTAssertTrue(expanded.contains { if case .answer(let text) = $0 { return text.key == "a1" }; return false })
+        XCTAssertEqual(
+            changesAttachedToAnswer(
+                Item.Text(key: "a1", text: "done", live: false, turn: 1, step: 1),
+                lastCommittedAnswerKeys: ChatActionKeys.lastCommittedAnswerKeys(items),
+                changesByTurn: [1: Item.Changes(key: "ch10", turn: 1, seq: 10)]
+            )?.key,
+            "ch10"
+        )
+    }
+
+    func testEarlierVisibleAnswerDoesNotHideIndependentCardWhenLastCommittedIsFolded() {
+        let earlier = Item.Text(key: "a0", text: "working", live: false, turn: 1, step: 1)
+        let last = Item.Text(key: "a1", text: "done", live: false, turn: 1, step: 2)
+        let changes = Item.Changes(key: "ch10", turn: 1, seq: 10)
+        let rows: [ChatRow] = [
+            .user(Item.User(key: "u", text: "edit files")),
+            .process(ChatRow.Process(
+                key: "turn-1-process",
+                tools: [],
+                reasoning: [],
+                title: "已完成",
+                closed: true,
+                defaultOpen: false,
+                turnSummary: true,
+                canCollapse: true,
+                turn: 1,
+                controlledKeys: ["a1"]
+            )),
+            .answer(earlier),
+            .changes(changes),
+            .answer(last),
+        ]
+        let collapsed = chatTranscriptRows(rows)
+        XCTAssertTrue(collapsed.contains { if case .answer(let text) = $0 { return text.key == "a0" }; return false })
+        XCTAssertFalse(collapsed.contains { if case .answer(let text) = $0 { return text.key == "a1" }; return false })
+        XCTAssertTrue(collapsed.contains { if case .changes(let item) = $0 { return item.key == "ch10" }; return false })
+        XCTAssertNil(changesAttachedToAnswer(
+            earlier,
+            lastCommittedAnswerKeys: [1: last.key],
+            changesByTurn: [1: changes]
+        ))
+        XCTAssertEqual(
+            changesAttachedToAnswer(last, lastCommittedAnswerKeys: [1: last.key], changesByTurn: [1: changes])?.key,
+            "ch10"
+        )
+    }
+
+    func testCreateWorkspaceTempFileSessionShowsTurnTailCardNotFolded() throws {
+        let reducer = TranscriptReducer()
+        XCTAssertTrue(reducer.apply(try event(1, "turn/start", #"{"turn":1}"#)))
+        XCTAssertTrue(reducer.apply(try event(2, "user/message", #"{"message":{"id":"u1","content":[{"type":"text","text":"创建工作区临时文件并展示变更"}],"source":{"kind":"user"}}}"#)))
+        XCTAssertTrue(reducer.apply(try event(3, "step/start", #"{"turn":1,"step":1}"#)))
+        XCTAssertTrue(reducer.apply(try event(4, "tool/call", #"{"callId":"write-1","name":"write","arguments":"{\"path\":\"dsh-parity-r2.txt\"}","turn":1,"step":1}"#)))
+        XCTAssertTrue(reducer.apply(try event(5, "tool/result", #"{"message":{"toolCallId":"write-1","content":[{"type":"text","text":"wrote"}]}}"#)))
+        XCTAssertTrue(reducer.apply(try event(6, "step/end", #"{"turn":1,"step":1}"#)))
+        XCTAssertTrue(reducer.apply(try event(7, "step/start", #"{"turn":1,"step":2}"#)))
+        XCTAssertTrue(reducer.apply(try event(8, "assistant/message", #"{"turn":1,"step":2,"message":{"id":"m1","content":[{"type":"text","text":"已创建文件并已为您展示变更卡"}]}}"#)))
+        XCTAssertTrue(reducer.apply(try event(9, "step/end", #"{"turn":1,"step":2}"#)))
+        XCTAssertTrue(reducer.apply(try event(10, "workspace/changes", #"{"turn":1}"#)))
+        XCTAssertTrue(reducer.apply(try event(11, "turn/end", #"{"turn":1,"reason":{"kind":"complete"}}"#)))
+
+        let items = reducer.items()
+        let changes = changesItems(reducer)
+        XCTAssertEqual(changes.map(\.turn), [1])
+        XCTAssertEqual(changes.map(\.key), ["ch10"])
+        XCTAssertEqual(changes.map(\.seq), [10])
+
+        let lastCommitted = ChatActionKeys.lastCommittedAnswerKeys(items)
+        XCTAssertEqual(lastCommitted[1], "t8.0")
+
+        let rows = foldChatItems(
+            items,
+            policy: presentationPolicyFor(.standard),
+            sessionRunning: false,
+            turnRecords: reducer.turnRecords()
+        )
+        let control = rows.compactMap { row -> ChatRow.Process? in
+            if case .process(let proc) = row, proc.turnSummary { return proc }
+            return nil
+        }.single
+        XCTAssertFalse(control.controlledKeys.contains("ch10"))
+        XCTAssertFalse(control.controlledKeys.contains("t8.0"))
+        let process = rows.compactMap { row -> ChatRow.Process? in
+            if case .process(let proc) = row, !proc.turnSummary { return proc }
+            return nil
+        }.single
+        XCTAssertTrue(control.controlledKeys.contains(process.key))
+
+        let collapsed = chatTranscriptRows(rows)
+        XCTAssertFalse(collapsed.contains { if case .changes = $0 { return true }; return false })
+        let answer = collapsed.compactMap { row -> Item.Text? in
+            if case .answer(let text) = row { return text }
+            return nil
+        }.single
+        XCTAssertEqual(answer.key, "t8.0")
+        XCTAssertEqual(
+            changesAttachedToAnswer(answer, lastCommittedAnswerKeys: lastCommitted, changesByTurn: [1: changes.single])?.seq,
+            10
+        )
+        XCTAssertNil(changesAttachedToAnswer(
+            Item.Text(key: "earlier", text: "draft", live: false, turn: 1, step: 1),
+            lastCommittedAnswerKeys: lastCommitted,
+            changesByTurn: [1: changes.single]
+        ))
     }
 }
 

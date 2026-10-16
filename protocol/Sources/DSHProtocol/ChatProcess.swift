@@ -593,20 +593,42 @@ public func visibleChatRows(_ rows: [ChatRow], openTurns: [String: Bool] = [:]) 
     return hidden.isEmpty ? rows : rows.filter { !hidden.contains($0.key) }
 }
 
-/// Attach the change card to a visible answer; otherwise keep an independent row
-/// so a collapsed 「已完成」 fold does not swallow the desktop WorkspaceChanges card.
+/// Desktop turnTail: hide the independent card only when the last committed answer of
+/// that turn is itself visible. Any earlier visible answer (or a live stream) must not
+/// swallow the card into a missing attachment.
 public func chatTranscriptRows(_ rows: [ChatRow], openTurns: [String: Bool] = [:]) -> [ChatRow] {
     let visible = visibleChatRows(rows, openTurns: openTurns)
-    var answerTurns = Set<Int>()
+    let lastCommitted = lastCommittedAnswerKeys(in: rows)
+    var attachedTurns = Set<Int>()
     for row in visible {
-        if case .answer(let text) = row, let turn = text.turn {
-            answerTurns.insert(turn)
+        if case .answer(let text) = row, let turn = text.turn, lastCommitted[turn] == text.key {
+            attachedTurns.insert(turn)
         }
     }
     return visible.filter { row in
-        if case .changes(let item) = row { return !answerTurns.contains(item.turn) }
+        if case .changes(let item) = row { return !attachedTurns.contains(item.turn) }
         return true
     }
+}
+
+/// Closing-assistant turnTail attachment: the card rides the last committed answer.
+public func changesAttachedToAnswer(
+    _ text: Item.Text,
+    lastCommittedAnswerKeys: [Int: String],
+    changesByTurn: [Int: Item.Changes]
+) -> Item.Changes? {
+    guard let turn = text.turn, lastCommittedAnswerKeys[turn] == text.key else { return nil }
+    return changesByTurn[turn]
+}
+
+private func lastCommittedAnswerKeys(in rows: [ChatRow]) -> [Int: String] {
+    var keys: [Int: String] = [:]
+    for row in rows {
+        if case .answer(let text) = row, let turn = text.turn, !text.live {
+            keys[turn] = text.key
+        }
+    }
+    return keys
 }
 
 public func inspectorRowIndex(_ rows: [ChatRow], itemKey: String) -> Int {

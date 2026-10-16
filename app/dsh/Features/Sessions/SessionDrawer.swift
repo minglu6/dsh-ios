@@ -384,25 +384,33 @@ struct SessionDrawer: View {
         VStack(spacing: 0) {
             Divider().padding(.vertical, 8)
             if visibleOps.contains("plugins.list") {
-                panel(L.pluginsNav(), D.plugin, .plugins)
+                panel(L.pluginsNav(), .plugins) {
+                    PluginPinwheelIcon(size: 16, color: T.ink)
+                }
             }
             if visibleOps.contains("schedule.catalog") {
-                panel(L.scheduleNav(), D.clock, .schedule)
+                panel(L.scheduleNav(), .schedule) {
+                    Image(systemName: D.clock)
+                }
             }
         }
     }
 
-    private func panel(_ title: String, _ system: String, _ panel: DrawerPanel) -> some View {
+    private func panel<Icon: View>(_ title: String, _ panel: DrawerPanel, @ViewBuilder icon: () -> Icon) -> some View {
         Button {
             model.push(.panel(panel))
             model.showDrawer = false
         } label: {
-            Label(title, systemImage: system)
-                .foregroundStyle(T.ink)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .opacity(model.isOnline ? 1 : 0.5)
+            Label {
+                Text(title)
+            } icon: {
+                icon()
+            }
+            .foregroundStyle(T.ink)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .opacity(model.isOnline ? 1 : 0.5)
         }
         .disabled(!model.isOnline)
     }

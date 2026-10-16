@@ -94,15 +94,6 @@ struct TerminalPanel: View {
     private func headerBar(current: TerminalMeta?, running: Bool) -> some View {
         HStack(spacing: 8) {
             Button { model.pop() } label: { Image(systemName: "chevron.left").foregroundStyle(T.ink) }
-            Text(current?.title?.nilIfBlank ?? L.terminal())
-                .font(.headline)
-                .foregroundStyle(T.ink)
-                .lineLimit(1)
-            Spacer()
-            HStack(spacing: 5) {
-                Circle().fill(running ? T.ok : T.text3).frame(width: 6, height: 6)
-                Text(statusLabel).font(.system(size: 11)).foregroundStyle(T.text3)
-            }
             Menu {
                 Text(L.terminalSessions()).font(.caption).foregroundStyle(T.text3)
                 if !model.isOnline {
@@ -142,9 +133,22 @@ struct TerminalPanel: View {
                         .disabled(!(model.isOnline && !opening && !terminating))
                 }
             } label: {
-                Image(systemName: "ellipsis").foregroundStyle(T.text2)
+                HStack(spacing: 4) {
+                    Text(current?.title?.nilIfBlank ?? L.terminal())
+                        .font(.headline)
+                        .foregroundStyle(T.ink)
+                        .lineLimit(1)
+                    Image(systemName: "chevron.down")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(T.text3)
+                }
             }
-            .accessibilityLabel(L.terminalSessionsActions())
+            .accessibilityLabel(current?.title?.nilIfBlank ?? L.terminal())
+            Spacer()
+            HStack(spacing: 5) {
+                Circle().fill(running ? T.ok : T.text3).frame(width: 6, height: 6)
+                Text(statusLabel).font(.system(size: 11)).foregroundStyle(T.text3)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)

@@ -135,7 +135,7 @@ public func officePreviewErrorMessage(_ failure: Error, english: Bool) -> String
     case "unavailable":
         return english
             ? "Office previews are unavailable. Enable the document preview service on the computer running DeepSeek Harness."
-            : "Office 预览不可用。请在运行 DeepSeek Harness 的主机上启用文档预览服务。"
+            : "Office 预览不可用。请在运行 DeepSeek Harness 的远程主机上启用文档预览服务。"
     case "busy":
         return english ? "Office preview is busy. Try again shortly." : "Office 预览任务较多，请稍后重试。"
     case "source-changed":
