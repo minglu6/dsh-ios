@@ -478,6 +478,16 @@ final class ComposerPickerParityTests: XCTestCase {
         )
         XCTAssertEqual(
             changesDiffNoticeKind(WorkspaceFileDiff(kind: "text", path: "a", display: "a", before: true, after: true, coarse: true)),
+            .unchanged
+        )
+        XCTAssertEqual(
+            changesDiffNoticeKind(WorkspaceFileDiff(
+                kind: "text",
+                path: "a",
+                display: "a",
+                hunks: [WorkspaceDiffHunk(oldStart: 1, newStart: 1, lines: ["-old", "+new"])],
+                coarse: true
+            )),
             .coarse
         )
         XCTAssertNil(
