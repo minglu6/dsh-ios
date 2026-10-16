@@ -21,7 +21,7 @@
 | 聊天 | 流式正文与思考、Markdown／代码块／表格、官方思考区、工具行回执、进程组折叠、本地回显、排队编辑／插话、审批官方卡、用户提问卡、`/` 指令、附件上传、会话图片气泡（`session.attachment`）、`@` 官方 mention token 与 chip、模型＋思考强度、权限模式文案芯片、任务清单、目标、本轮用量与会话统计、重试／回合失败、工作区改动卡片（编码视图开启时）、顶栏 ⋯ 导出／会话反馈。消息动作：复制／赞／踩（远程主机有 `feedback.set` 时）／分享；分支在会话 ⋯（`sessions.fork`） |
 | 轨迹 | 对话／轨迹页签：紧凑账本（7 种格子）、工具栏时长／轮次／调用＋搜索、泳道、格子检视 概述／参数／结果／Schema／计时、请求检视 概述／选项／用量／计时（官方 `ui-trajectory` 文案）。编码视图关闭时隐藏。差距矩阵：[docs/parity-gap.md](docs/parity-gap.md) |
 | 配置 | 通用设置（外观三块、字号 px、折叠时机、性能、权限、会话日志、链接打开位置）。外观与字体只保存在本机，不写入远程主机。模型页：提供商编辑＋密钥（`models.providers*`／`credentials.*`）。Agent 预设（`presets.list`／`presets.read`／`presets.settings`）＋官方引导＋创造模式入口。无自造「凭证」页。诊断只在「手机连接」 |
-| 远程主机工具 | 抽屉在公布 `plugins.list` 时打开插件管理（官方市场列表＋开关、安装／检视／来源库；settingsDescribe 在插件详情「配置组件」），在公布 `schedule.catalog` 时打开自动化任务（仅抽屉，设置里没有「自动化」行）。会话「开始」面板对齐桌面：工作区文件（⌘P）＋新建终端。桌面开始与 ⋯ 都没有浏览器／会话诊断入口，故不暴露。PTY 终端与工作区文件树在公布对应 op 时出现。文件预览语言表与隔离高亮对齐 Android，并在对应类型上支持 PDF / Office / XLS。会话顶栏在公布 `jobs.list` 时显示实时任务 chip／面板。差距矩阵：[docs/parity-gap.md](docs/parity-gap.md) |
+| 远程主机工具 | 抽屉在公布 `plugins.list` 时打开插件管理（官方市场列表＋开关、安装／检视／来源库；settingsDescribe 在插件详情「配置组件」），在公布 `schedule.catalog` 时打开自动化任务（仅抽屉，设置里没有「自动化」行）。会话「开始」面板对齐桌面文案：工作区文件＋新建终端（不展示桌面快捷键）。桌面开始与 ⋯ 都没有浏览器／会话诊断入口，故不暴露。PTY 终端与工作区文件树在公布对应 op 时出现。文件预览语言表与隔离高亮对齐 Android，并在对应类型上支持 PDF / Office / XLS。会话顶栏在公布 `jobs.list` 时显示实时任务 chip／面板。差距矩阵：[docs/parity-gap.md](docs/parity-gap.md) |
 
 远程主机配置来自 `plugins.settingsDescribe` 与 `settings.changed`。正常态不放手动同步。
 

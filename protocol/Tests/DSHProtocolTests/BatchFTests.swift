@@ -117,6 +117,58 @@ final class WorkspaceChangesTests: XCTestCase {
         XCTAssertEqual(diff["seq"].long(), 91)
         XCTAssertEqual(diff["index"].int(), 2)
     }
+
+    private func event(_ seq: Int, _ type: String, _ data: String) throws -> JSONValue {
+        try JSONValue.parse(
+            #"{"type":"event","event":{"seq":\#(seq),"time":\#(seq),"type":"\#(type)","data":\#(data)}}"#
+        )
+    }
+
+    private func changesItems(_ reducer: TranscriptReducer) -> [Item.Changes] {
+        reducer.items().compactMap { item in
+            if case .changes(let change) = item { return change }
+            return nil
+        }
+    }
+
+    func testWorkspaceChangesEventKeepsLatestAnnouncementPerTurn() throws {
+        let reducer = TranscriptReducer()
+        XCTAssertTrue(reducer.apply(try event(1, "workspace/changes", #"{"turn":3}"#)))
+        XCTAssertTrue(reducer.apply(try event(2, "workspace/changes", #"{"turn":3}"#)))
+        XCTAssertTrue(reducer.apply(try event(3, "workspace/changes", #"{"turn":4}"#)))
+        XCTAssertTrue(reducer.apply(try event(4, "workspace/changes", #"{"turn":-1}"#)))
+        XCTAssertTrue(reducer.apply(try event(5, "workspace/changes", "{}")))
+        let items = changesItems(reducer)
+        XCTAssertEqual(items.map(\.turn), [3, 4])
+        XCTAssertEqual(items.map(\.key), ["ch2", "ch3"])
+        XCTAssertEqual(items.map(\.seq), [2, 3])
+    }
+
+    func testCollapsedTurnKeepsIndependentChangesCard() {
+        let items: [Item] = [
+            .user(Item.User(key: "u", text: "edit files")),
+            .tool(Item.Tool(key: "t1", callId: "c1", name: "write", arguments: "{}", status: .ok, turn: 1, step: 1)),
+            .changes(Item.Changes(key: "ch10", turn: 1, seq: 10)),
+            .text(Item.Text(key: "a1", text: "done", live: false, turn: 1, step: 1)),
+        ]
+        let rows = foldChatItems(
+            items,
+            policy: presentationPolicyFor(.standard),
+            sessionRunning: false,
+            turnRecords: [TurnRecord(turn: 1, startSeq: 1, endSeq: 10, startedAt: 0, endedAt: 2000)]
+        )
+        let control = rows.compactMap { row -> ChatRow.Process? in
+            if case .process(let proc) = row, proc.turnSummary { return proc }
+            return nil
+        }.single
+        XCTAssertFalse(control.controlledKeys.contains("ch10"))
+        XCTAssertTrue(control.controlledKeys.contains("a1"))
+        let collapsed = chatTranscriptRows(rows)
+        XCTAssertTrue(collapsed.contains { if case .changes(let item) = $0 { return item.key == "ch10" }; return false })
+        let expanded = chatTranscriptRows(rows, openTurns: [control.key: true])
+        XCTAssertFalse(expanded.contains { if case .changes = $0 { return true }; return false })
+        XCTAssertTrue(expanded.contains { if case .answer(let text) = $0 { return text.key == "a1" }; return false })
+    }
 }
 
 final class BrowserPolicyTests: XCTestCase {

@@ -27,6 +27,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | P0 | Brand wordmark + official plugin market | done (#12) |
 | P1 | Chat share row, composer model/permission chips, Start IA, settings shell | done (#13) |
 | H | Android `d1d7ef8…729ef2e`: Qoder / command menu / files.follow / browser tabs / Office·PDF·XLS / offline gray-out / archived rename·fork | done (#11) |
+| P1-fix | WorkspaceChanges independent cards; hide Start desktop shortcuts | this PR |
 
 ---
 
@@ -124,7 +125,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Workspace / session reorder | Host `insertBefore` / `insertSessionBefore` (Android UI is local Manual) | drag/drop calls Host ops when advertised; Manual order still local | **missing** → **present** | **G** |
 | NavigationPolicy | `workspaceDisplayTitle` / `visibleDrawerSession` / `reconcileSessionOrder` / `workspaceBranches` / `archiveActivityDescription` | same Swift ports in `Workspace.swift` | **partial** → **present** | **G** |
 | Open-in-desktop-editor | desktop only | — | **hide** | — |
-| WorkspaceChanges cards | `WorkspaceChanges.kt` | chat cards + review sheet (`workspaceChanges.summary/diff`); attached to last answer when `showCodeWorkView` | **missing** → **present** | **F** |
+| WorkspaceChanges cards | `WorkspaceChanges.kt` | chat cards + review sheet (`workspaceChanges.summary/diff`); `workspace/changes` announcement; attached to last answer when visible, otherwise an independent card outside 「已完成」 | **missing** → **present** | **F** / P1 |
 | File tree live updates | `files.follow` + `observeWorkspaceDirectory` | same; watch-unsupported falls back to list | **partial** → **present** | **F** / **H** |
 | Browser | `BrowserPanel.kt` + `BrowserTabs.kt` HTTP(S)-only, addresses-only checkpoints | implemented (multi-tab `{selected, pages:[{id,url,title}]}`); unexposed — desktop Start / ⋯ have no entry | **hide** | **P1** / **H** |
 | Session Inspector | `SessionInspectorPanel` raw/grouped + pick | implemented, unexposed — desktop Start / ⋯ have no entry | **hide** | **P1** |
@@ -200,7 +201,7 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 - Trajectory: session header / more menu — data is the current follow transcript (no extra Host op). Hidden when coding view is off.
 - Terminal / files / jobs: expose when the matching op is in `hello.ops` (same as Android).
 - Browser / Session Inspector: desktop Start and session ⋯ do not list them. Do not invent an entry; implementations stay unexposed.
-- WorkspaceChanges: chat cards when `showCodeWorkView` and `workspaceChanges.summary` is advertised; diff sheet needs `workspaceChanges.diff`.
+- WorkspaceChanges: consume Host `workspace/changes`; chat cards when `showCodeWorkView` and `workspaceChanges.summary` is advertised; diff sheet needs `workspaceChanges.diff`. Keep the card outside the 「已完成」 fold (attach to the last answer when that answer is visible).
 - Plugins: drawer when `plugins.list`; market enable when `plugins.setEnabled`; add when `plugins.install`; Settings 「内置插件」 when `plugins.inventory`. Do not embed a plugin WebView (desktop market has none).
 - Schedule: **drawer only** (desktop sidebar). Do not add a Settings row.
 - Permissions / models / commands / attachments / queue / goals / presets / session search / export / session feedback / unarchive / Host reorder: expose when the matching op is advertised.
@@ -224,7 +225,7 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 ## Deferred / hide leftovers
 
 - Account / shortcuts / open config file / open-in-desktop-editor: desktop-local — **hide**.
-- Keyboard shortcut settings: desktop-local — **hide**.
+- Keyboard shortcut settings: desktop-local — **hide**. Touch Start also omits desktop chords (`⌘P` / `⌥⌘P` / Ctrl-`) next to 工作区文件 / 新建终端.
 - Android ForegroundService persistent “已连接” notification: iOS has no equivalent; `ConnectionKeeper` uses `beginBackgroundTask` + ping, then `BGAppRefreshTask` `dev.dsh.pocket.ios.refresh`. The WS is not guaranteed after the system expires those windows.
 - Nearby Wi-Fi (`NEARBY_WIFI_DEVICES`) is Android 13+; iOS uses Local Network + Bonjour (`NSLocalNetworkUsageDescription`).
 - iOS CodePreview has no Meslo font file (CSS falls back to monospace). WKWebView cannot intercept `https://`; assets load over `dsh-code-preview://` mapped to the same Android `https://code-preview.invalid` policy used in tests.

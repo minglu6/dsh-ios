@@ -414,10 +414,7 @@ struct ChatView: View {
     }
 
     private var chatRows: [ChatRow] {
-        visibleChatRows(foldedRows, openTurns: openTurns).filter { row in
-            if case .changes(let item) = row { return lastAnswerKeys[item.turn] == nil }
-            return true
-        }
+        chatTranscriptRows(foldedRows, openTurns: openTurns)
     }
 
     private var transcript: some View {
