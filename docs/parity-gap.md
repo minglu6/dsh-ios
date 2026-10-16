@@ -35,7 +35,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R4 | collapseTiming 写回 Host；composer / 运行态 / 提问 / 任务输出 / 插件空态对齐桌面文案 | done (#22) |
 | R5 | 文件树去 chevron + 自动刷新；排队附件缩略图/芯片；claimed `/goal` `/plan` 提示条；变更卡 pocket JSON `false` 旗标；斜杠技能组 + 键盘高度；无会话 landing | done (#23) |
 | R6 | 鲸尾 shimmer；任务双击停止；Cmd/Ctrl+Enter；插件 (i)；侧栏浏览器；landing `/` 完整目录；变更卡 `.task` 锚点；技能按会话隔离；用量 popover；文件树滚动恢复 | done (#24) |
-| R7 | 后台任务 chip 空 Group `.task`；「后台任务状态更新」；标题随 `sessions.list` / title projection 更新；权限 chip 锚定菜单；landing「标准模式」；composer 高度对齐桌面；去掉标题旁 spinner | this PR |
+| R7 | 后台任务 chip 空 Group `.task`；「后台任务状态更新」；标题随 `sessions.list` / title projection 更新；权限 chip 锚定菜单；landing「标准模式」；composer 高度对齐桌面；去掉标题旁 spinner | done (#25) |
+| R8 | waking 触发行；`/permission` popupSelect；composer 按内容测高；任务 popover；权限菜单固定顺序；统计单行；landing 权限写入新会话；停止为两次点按 | this PR |
 
 ---
 
@@ -52,7 +53,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Code preview | shiki offline preview | `CodePreview.kt` | `Features/Files/CodePreview.swift` + `CodePreviewAssets/` |
 | Terminal | Host `terminalController` | `TerminalPanel.kt`, `TerminalView.kt`, `TerminalEmulator.kt` | `Features/Terminal/` + `protocol/TerminalEmulator.swift`; bundled MesloLGL DZ Nerd Font + CoreText cascade; default fg/bg follow appearance; ANSI 16 = desktop xterm.js Tango (#20) |
 | Files | `workspaceFiles` | `FilesPanel.kt` | `Features/Files/` + workspace tree / browse |
-| Jobs | `job-controller` | `JobsAction.kt`, jobs follow in `Pocket.kt` | header chip + `JobsPanel` (`jobs.list` / `follow` / `kill`) |
+| Jobs | `job-controller` | `JobsAction.kt`, jobs follow in `Pocket.kt` | header chip 锚定 popover + `JobsPanel`（两次 Button 点按停止） |
 | Plugins | `ui-plugin-manager`, `ui-settings-plugins` | `PluginsScreen.kt`, `PluginInventory.kt` | `Features/Plugins/` + `PluginPolicy.swift` |
 | Schedule | `ui-schedule` (sidebar, not settings) | `ScheduleScreen.kt`; drawer row | `Features/Schedule/ScheduleScreen.swift`; drawer only |
 | Permissions | `ui-permission` | `PermissionUi.kt` `permissions.catalog/get/set` + risk sheet | `PermissionUi.swift` + session picker + Settings defaults + `danger-full-access`/`auto` confirm |
@@ -79,10 +80,10 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Markdown / code block / tables | `Markdown.kt` | AST + GFM tables / code / file chips | **present** | **D** |
 | Copy / like / dislike / share | `MessageActions` + `FeedbackCategory` | desktop row is share (not branch); branch stays on the session row menu | **present** | **A** / **P1** |
 | Turn usage pill | `ComposerStats.kt` `TurnUsageAction` | same; only `PerformanceUsage.Detailed` | **missing** → **present** | **E** |
-| Composer statistics | Activity / Usage / Context pills | `ComposerStats` + Host projections | **missing** → **present** | **E** |
+| Composer statistics | Activity / Usage / Context pills | `ComposerStats` 单行 HStack（不再 `ViewThatFits` 折成 3 行） | **missing** → **present** | **E** / **R8** |
 | Composer queue / steer | busyEnter + `queue.update` | `busySend` + `PromptQueue` edit/remove/steer；排队行按桌面 `QueueDock` 画图片缩略图 / 文件芯片（有 `session.attachment` 或本地 preview） | **partial** → **present** | **E** / **R5** |
 | `@` mentions | `MentionMenu.kt` official `@path` / `@"path"` / `@[title](dsh-session:…)` | same tokens + chip row + mention panel | **partial** → **present** | **E** |
-| `/` commands | `CommandPopupSheet` `commands.list/execute` | 贴输入框弹层（#21）；`+` 与 `/` 同菜单；不接受附件的指令先 toast 官方句再执行；claimed `/goal` `/plan` 空参数时输入框上方 hint strip。R6 实机：composer 空白约 140pt 只露约 3 行；R7 对齐桌面 InputBar（加号 28 / 发送 34 / 文本 36·52） | **missing** → **present** | **E** / **P2** / **#21** / **R4** / **R5** / **R7** |
+| `/` commands | `CommandPopupSheet` `commands.list/execute` | 贴输入框弹层（#21）；`+` 与 `/` 同菜单；不接受附件的指令先 toast 官方句再执行；claimed `/goal` `/plan` 空参数时输入框上方 hint strip。R8：`ComposerTextView` `fixedSize` + 关滚动测高，空文本走 36/52 地板而不是 132 | **missing** → **present** | **E** / **P2** / **#21** / **R4** / **R5** / **R7** / **R8** |
 | Header ⋯ overflow | Android `MoreSheet` (not desktop) | **removed** — desktop conversation header has no ⋯; export/feedback on `/` and `+`; rename/fork on the drawer row menu | **hide** | **P2** (#16) |
 | Session image bubbles | `session.attachment` + ImageBubble | same cache + retry + original preview | **missing** → **present** | **G** |
 | Attachments | `attachments.upload` | image picker + file importer + receipts | **missing** → **present** | **E** |
@@ -90,8 +91,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Approvals | official `ApprovalCard` takes composer | official card; `accepted` callback clears busy, success drops the row | **partial** → **present** | **E** |
 | TodoPanel | dock card above composer | `TodoPanel` expand in place | **missing** → **present** | **E** |
 | Goal bar | `goals.get` / `goal.activation` CAS | `GoalBar` + `GoalSheet` pause/resume/clear/edit | **missing** → **present** | **E** |
-| Permission mode | catalog/get/set + risk sheet | composer chip 为锚定 `Menu` + 当前项 ✓（斜杠 `/permission` 仍走 sheet）；Settings defaults（`auto` 不能当默认） | **partial** → **present** | **E** / **R7** |
-| Turn trigger row | desktop `TurnTriggerNodeView` | `user/message` 非 `source.kind==user` → `Item.Context` → 可折叠「后台任务状态更新」等官方 `message.trigger.*` | **missing** → **present** | **R7** |
+| Permission mode | catalog/get/set + risk sheet | composer chip 为锚定 `Menu` + 当前项 ✓ + `.menuOrder(.fixed)`；斜杠 `/permission` 按桌面 `popupSelect` 在弹层内原地列选项 + ✓；landing 选档写入 `draftPermission`，创建会话时 `permissions.set`；危险档确认；Settings defaults（`auto` 不能当默认） | **partial** → **present** | **E** / **R7** / **R8** |
+| Turn trigger row | desktop `TurnTriggerNodeView` | 仅 `waking`（`inbox-next-turn.currentClaimed` 或 idle steer）画触发行；Host 注入的 skill-catalog / time-context 与未唤醒的 tool-jobs 继续隐藏 | **missing** → **present** | **R7** / **R8** |
 | Session title live update | Android `refreshTitles` on status | `drawerSessionTitle` 优先非空 title；status 时重拉 `sessions.list`（停后再 4s）；follow `projection key=title` | **partial** → **present** | **R7** |
 | Model + effort | two-level picker | `ModelPicker` root / models / effort | **partial** → **present** | **E** |
 | No “scroll to bottom” FAB | `followBottom` | auto-scroll only | **present** | — |
@@ -304,3 +305,15 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 - Embedded browser cannot intercept every subresource the way Android `shouldInterceptRequest` does; main-frame / navigation policy still uses `BrowserPolicy`. WKWebView cannot intercept `https://` for FortuneSheet; workbook assets load over `dsh-workbook-preview://` mapped to Android `https://workbook-preview.invalid`.
 - Foundation `JSONSerialization` object key order is not insertion-stable; protocol tests compare parsed `JSONValue`, not pretty strings.
 - Desktop `ui-sidebar-files` auto-refresh control is in the DOM but `hidden` (tests assert it has no accessible name). iOS shows pause/play so the same `setAutomatic` gesture is reachable on touch.
+
+## Round 8 对照清单（桌面 `packages/client` + Round 7 实机 `REPORT_44aa`）
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| 触发行 waking | `isWakingTurnTrigger` + `spliceInbox` | `ui-chat` client.js ~10470/10491；`inbox-next-turn.currentClaimed` 或 idle steer | 只有真正唤醒本轮的消息画「后台任务状态更新」等；skill-catalog / time-context / 额外 tool-jobs 不画「收到执行请求」 |
+| `/permission` | `CommandMenuOverlay` `pickingPermission` | `ui-permission-presets` `popupSelect` | 斜杠弹层内原地列选项 + ✓ + 方向键 / Enter；危险档确认。去掉 chip 菜单自撰「加载权限模式…」「没有可用的权限模式」 |
+| Composer 测高 | `composerTextFittedHeight` + `fixedSize` | `InputBar.module.css` 36 / 52 / 132 | 关滚动测内容高度；空文本走地板，不占 132pt 空白，斜杠列表不再只露约 3 行 |
+| 任务面板 | `JobsAction` `.popover` + `PopoverCompactAdaptation` | `ui-jobs` `JobListAction` 贴 chip 的 popover | iPhone 不再整屏 sheet；■ 为两次 Button 点按（`jobKillPress`），不是 `TapGesture(count: 2)` |
+| 权限菜单顺序 | `PermissionChipMenu` `.menuOrder(.fixed)` | 目录顺序 | landing / 会话同一顺序，不随弹出方向翻转 |
+| 底栏统计 | `ComposerStats` 单行 | desktop statistics row | 去掉 `ViewThatFits`→`VStack` 的 3 行回退 |
+| landing 权限 | `draftPermission` → `applyDraftPermission` | desktop hero 选档后写入即将创建的会话 | 无 `sessionId` 时记下草稿，`sessions.create` 后 `permissions.set` |

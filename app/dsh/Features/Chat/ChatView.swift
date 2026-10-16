@@ -13,7 +13,6 @@ struct ChatView: View {
     @State private var showInspector = false
     @State private var highlightedRow: String?
     @ObservedObject private var inspectorNav = InspectorNavigation.shared
-    @State private var showJobs = false
     @State private var openTurns: [String: Bool] = [:]
     @State private var openProcesses: [String: Bool] = [:]
     @State private var inspectTool: Item.Tool?
@@ -88,9 +87,6 @@ struct ChatView: View {
         }
         .onChange(of: model.showCodeWorkView) { show in
             if !show { tab = 0 }
-        }
-        .sheet(isPresented: $showJobs) {
-            JobsPanel(model: model) { showJobs = false }
         }
         .sheet(isPresented: $showPermission) {
             PermissionPickerSheet(
@@ -264,7 +260,7 @@ struct ChatView: View {
             }
             Spacer()
             if let sessionId = model.chat?.sessionId {
-                JobsAction(model: model, sessionId: sessionId) { showJobs = true }
+                JobsAction(model: model, sessionId: sessionId)
             }
         }
         .padding(.horizontal, 14)
@@ -356,7 +352,14 @@ struct ChatView: View {
             onCompact: { model.executeCommand("/compact") },
             onPerm: { if model.isOnline { showPermission = true } },
             onModel: { if model.isOnline { showModels = true } },
-            onExport: { model.exportSession() }
+            onExport: { model.exportSession() },
+            onSelectPermission: { value in
+                if value == "danger-full-access" || value == "auto" {
+                    riskPermission = value
+                } else {
+                    model.setPermission(value) { _ in }
+                }
+            }
         )
     }
 
@@ -1114,7 +1117,7 @@ struct ComposerView: View {
     var body: some View {
         VStack(spacing: 0) {
             mentionPanel
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: CGFloat(composerInnerSpacingPoints)) {
                 if hasPending { attachList }
                 if !references.isEmpty { mentionChips }
                 if model.chat?.planMode == true {
@@ -1161,11 +1164,7 @@ struct ComposerView: View {
                     onEscape: onCommandEscape,
                     onChord: { model.submitComposer(gesture: .chord) }
                 )
-                    .frame(
-                        minHeight: CGFloat(heroPlaceholder ? composerHeroTextMinHeightPoints : composerTextMinHeightPoints),
-                        maxHeight: CGFloat(composerTextMaxHeightPoints),
-                        alignment: .topLeading
-                    )
+                    .fixedSize(horizontal: false, vertical: true)
                     .onChange(of: model.composerText) { value in
                         if let trigger = composerTrigger(value, cursor: value.count) {
                             if trigger.kind == Character("@") {
@@ -1184,7 +1183,7 @@ struct ComposerView: View {
                             .frame(width: CGFloat(composerAddButtonPoints), height: CGFloat(composerAddButtonPoints))
                     }
                     .background(T.fill, in: Circle())
-                    if let perm = model.sessionPermission ?? (heroPlaceholder ? model.defaultPermission : nil), !perm.isEmpty {
+                    if let perm = model.sessionPermission ?? model.draftPermission ?? (heroPlaceholder ? model.defaultPermission : nil), !perm.isEmpty {
                         PermissionChipMenu(
                             current: perm,
                             catalog: model.permissionCatalog,
@@ -1233,12 +1232,12 @@ struct ComposerView: View {
                     }
                 }
             }
-            .padding(.top, 8)
-            .padding(.horizontal, 8)
-            .padding(.bottom, 6)
-            .overlay(RoundedRectangle(cornerRadius: 20).stroke(T.border, lineWidth: 1))
+            .padding(.top, CGFloat(composerCardPaddingTopPoints))
+            .padding(.horizontal, CGFloat(composerCardPaddingHorizontalPoints))
+            .padding(.bottom, CGFloat(composerCardPaddingBottomPoints))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(T.border, lineWidth: 1))
             .padding(.horizontal, 14)
-            .padding(.vertical, 4)
+            .padding(.vertical, 2)
             .onAppear { model.reloadPermissionCatalog() }
         }
         .background(T.surface)
@@ -1355,8 +1354,10 @@ private struct ComposerTextView: UIViewRepresentable {
         view.backgroundColor = .clear
         view.textContainerInset = .zero
         view.textContainer.lineFragmentPadding = 0
-        view.isScrollEnabled = true
         view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        view.setContentHuggingPriority(.required, for: .vertical)
+        view.setContentCompressionResistancePriority(.required, for: .vertical)
+        view.isScrollEnabled = false
         view.adjustsFontForContentSizeCategory = true
         view.text = text
         let placeholder = UILabel()
@@ -1395,13 +1396,14 @@ private struct ComposerTextView: UIViewRepresentable {
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: ComposerUITextView, context: Context) -> CGSize {
-        let width = proposal.width ?? uiView.bounds.width
-        let fitted = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
-        let floor = heroPlaceholder ? composerHeroTextMinHeightPoints : composerTextMinHeightPoints
-        return CGSize(
-            width: width,
-            height: CGFloat(min(composerTextMaxHeightPoints, max(floor, Double(fitted.height))))
-        )
+        let width = max(proposal.width ?? uiView.bounds.width, 1)
+        let wasScroll = uiView.isScrollEnabled
+        uiView.isScrollEnabled = false
+        let content = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
+        uiView.isScrollEnabled = wasScroll
+        let height = composerTextFittedHeight(contentHeight: Double(content.height), hero: heroPlaceholder)
+        uiView.isScrollEnabled = composerTextShouldScroll(fittedHeight: height)
+        return CGSize(width: width, height: CGFloat(height))
     }
 
     final class Coordinator: NSObject, UITextViewDelegate {

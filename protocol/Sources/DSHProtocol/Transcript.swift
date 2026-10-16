@@ -358,13 +358,26 @@ public enum Item: Sendable, Equatable, Identifiable {
         public var sourceKind: String?
         public var at: Int64?
         public var messageSourceJson: String?
+        public var messageId: String?
+        /// Desktop `waking`: claimed from `inbox-next-turn`, or idle steer.
+        public var waking: Bool
 
-        public init(key: String, text: String, sourceKind: String? = nil, at: Int64? = nil, messageSourceJson: String? = nil) {
+        public init(
+            key: String,
+            text: String,
+            sourceKind: String? = nil,
+            at: Int64? = nil,
+            messageSourceJson: String? = nil,
+            messageId: String? = nil,
+            waking: Bool = false
+        ) {
             self.key = key
             self.text = text
             self.sourceKind = sourceKind
             self.at = at
             self.messageSourceJson = messageSourceJson
+            self.messageId = messageId
+            self.waking = waking
         }
     }
 
@@ -669,6 +682,10 @@ public final class TranscriptReducer {
     private var retiredRequests = Set<String>()
     private var inbox: [String: [JSONValue]] = ["next-turn": [], "next-step": []]
     private var inboxSeq: Int64 = -1
+    /// Desktop `inbox-next-turn.currentClaimed` — ids removed from next-turn without cancel.
+    private var nextTurnClaimed = Set<String>()
+    /// Steer claimed from next-step while the agent is idle (opens a turn).
+    private var idleSteerClaimed = Set<String>()
     private var live: LiveAttempt?
     private var assistantRevision: Int64 = 0
     private var streamSuppressed = false
@@ -959,6 +976,8 @@ public final class TranscriptReducer {
         retiredRequests.removeAll()
         inbox = ["next-turn": [], "next-step": []]
         inboxSeq = -1
+        nextTurnClaimed.removeAll()
+        idleSteerClaimed.removeAll()
         live = nil
         assistantRevision = 0
         streamSuppressed = false
@@ -1213,6 +1232,8 @@ public final class TranscriptReducer {
                     committed[index] = .retry(projectRetry(item))
                 }
             }
+        case "agent/inbox/spliced":
+            spliceInbox(data, seq: seq)
         case "user/message":
             let msg = data["content"].isNull ? data["message"] : data
             retireMessage(msg)
@@ -1565,9 +1586,20 @@ public final class TranscriptReducer {
     private func upsertContext(_ msg: JSONValue, key: String, at: Int64?) {
         let text = (msg["content"].arr() ?? []).filter { $0["type"].str() == "text" }.map { $0["text"].str() ?? "" }.joined(separator: "\n")
         if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return }
+        let messageId = inboxIdentity(msg)
         committed.append(.context(Item.Context(
-            key: key, text: text, sourceKind: msg["source"]["kind"].str(), at: at,
-            messageSourceJson: prettySource(msg["source"])
+            key: key,
+            text: text,
+            sourceKind: msg["source"]["kind"].str(),
+            at: at,
+            messageSourceJson: prettySource(msg["source"]),
+            messageId: messageId,
+            waking: isWakingTurnTrigger(
+                sourceKind: msg["source"]["kind"].str(),
+                messageId: messageId,
+                nextTurnClaimed: nextTurnClaimed,
+                idleSteerClaimed: idleSteerClaimed
+            )
         )))
     }
 
@@ -1735,6 +1767,41 @@ public final class TranscriptReducer {
         c.interrupted = interrupted
         c.endedAt = time
         committed[i] = .compacted(c)
+    }
+
+    private func inboxIdentity(_ message: JSONValue) -> String? {
+        message["id"].str()?.nilIfBlank ?? message["source"]["rpcId"].str()?.nilIfBlank
+    }
+
+    /// Desktop `ui-conversation` inbox splice: pending list plus claimed ids.
+    private func spliceInbox(_ data: JSONValue, seq: Int64) {
+        guard let target = data["target"].str(), var messages = inbox[target] else { return }
+        guard let start = data["start"].int() else { return }
+        let count = data["removedCount"].int() ?? 0
+        let inserted = data["inserted"].arr() ?? []
+        if start < 0 || count < 0 || start > messages.count || count > messages.count - start { return }
+        if seq <= inboxSeq { return }
+        inboxSeq = seq
+        let removed = Array(messages[start..<(start + count)])
+        messages.removeSubrange(start..<(start + count))
+        messages.insert(contentsOf: inserted, at: start)
+        inbox[target] = messages
+        for id in inserted.compactMap(inboxIdentity) {
+            nextTurnClaimed.remove(id)
+            idleSteerClaimed.remove(id)
+        }
+        let outcome = data["outcome"].str()
+        if outcome != "canceled" {
+            let removedIds = removed.compactMap(inboxIdentity)
+            if target == "next-turn" {
+                nextTurnClaimed.formUnion(removedIds)
+            } else if target == "next-step", !running {
+                idleSteerClaimed.formUnion(removedIds)
+            }
+        }
+        for (index, message) in inserted.enumerated() {
+            observeInboxMessage(target: target, message: message, seq: seq, index: start + index)
+        }
     }
 
     private func observeInboxMessage(target: String, message: JSONValue, seq: Int64, index: Int) {

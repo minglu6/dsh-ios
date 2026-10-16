@@ -217,11 +217,7 @@ struct PermissionChipMenu: View {
 
     var body: some View {
         Menu {
-            if loading {
-                Text(L.t("加载权限模式…", "Loading permission modes…"))
-            } else if options.isEmpty {
-                Text(L.t("没有可用的权限模式", "No permission modes available"))
-            } else {
+            if !loading {
                 ForEach(options, id: \.value) { option in
                     Button {
                         if option.value != current { onSelect(option.value) }
@@ -249,6 +245,7 @@ struct PermissionChipMenu: View {
             .frame(minHeight: CGFloat(composerChipHeightPoints))
             .background(T.fill, in: Capsule())
         }
+        .menuOrder(.fixed)
         .disabled(!enabled)
         .accessibilityLabel(permissionLabel(value: current, option: catalog?.find(current)))
     }

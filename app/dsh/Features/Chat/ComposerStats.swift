@@ -38,11 +38,9 @@ struct ComposerStats: View {
         if activityText == nil && usageText == nil && context == nil {
             EmptyView()
         } else {
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 12) { pills }
-                VStack(spacing: 2) { pills }
-            }
-            .frame(maxWidth: .infinity)
+            HStack(spacing: 12) { pills }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .lineLimit(1)
             .padding(.horizontal, 14)
             .padding(.vertical, 2)
             .sheet(item: Binding(
@@ -71,7 +69,7 @@ struct ComposerStats: View {
         Button(action: action) {
             HStack(spacing: 4) {
                 Image(systemName: "gauge.with.dots.needle.67percent").font(.system(size: 12)).foregroundStyle(T.text3)
-                Text(text).font(.caption).foregroundStyle(T.text3)
+                Text(text).font(.caption).foregroundStyle(T.text3).lineLimit(1)
             }
             .padding(.vertical, 5)
         }

@@ -158,6 +158,21 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertEqual(composerChipHeightPoints, 28)
         XCTAssertEqual(composerTextMinHeightPoints, 36)
         XCTAssertEqual(composerHeroTextMinHeightPoints, 52)
+        XCTAssertEqual(composerCardPaddingTopPoints, 6)
+        XCTAssertEqual(composerCardPaddingBottomPoints, 4)
+        XCTAssertEqual(composerCardPaddingHorizontalPoints, 8)
+        XCTAssertEqual(composerInnerSpacingPoints, 4)
+        XCTAssertEqual(composerTextFittedHeight(contentHeight: 0, hero: false), composerTextMinHeightPoints)
+        XCTAssertEqual(composerTextFittedHeight(contentHeight: 0, hero: true), composerHeroTextMinHeightPoints)
+        XCTAssertEqual(composerTextFittedHeight(contentHeight: 20, hero: false), composerTextMinHeightPoints)
+        XCTAssertEqual(composerTextFittedHeight(contentHeight: 80, hero: false), 80)
+        XCTAssertEqual(composerTextFittedHeight(contentHeight: 200, hero: false), composerTextMaxHeightPoints)
+        XCTAssertFalse(composerTextShouldScroll(fittedHeight: composerTextMinHeightPoints))
+        XCTAssertTrue(composerTextShouldScroll(fittedHeight: composerTextMaxHeightPoints))
+        XCTAssertTrue(isWakingTurnTrigger(sourceKind: "tool-jobs", messageId: "m1", nextTurnClaimed: ["m1"], idleSteerClaimed: []))
+        XCTAssertFalse(isWakingTurnTrigger(sourceKind: "skill-catalog", messageId: "m2", nextTurnClaimed: ["m1"], idleSteerClaimed: []))
+        XCTAssertFalse(isWakingTurnTrigger(sourceKind: "tool-jobs", messageId: "m3", nextTurnClaimed: ["m1"], idleSteerClaimed: []))
+        XCTAssertTrue(isWakingTurnTrigger(sourceKind: "tool-jobs", messageId: "steer", nextTurnClaimed: [], idleSteerClaimed: ["steer"]))
         XCTAssertEqual(turnTriggerTitle(sourceKind: "tool-jobs", provider: nil, english: false), "后台任务状态更新")
         XCTAssertEqual(turnTriggerTitle(sourceKind: "tool-jobs", provider: nil, english: true), "Background task updated")
         XCTAssertEqual(turnTriggerExplanation(english: false), "这条通知触发了本轮回复。")
@@ -329,7 +344,9 @@ final class DesktopUiParityTests: XCTestCase {
             key: "x29",
             text: "bash-1 completed",
             sourceKind: "tool-jobs",
-            at: 1_700_000_000_000
+            at: 1_700_000_000_000,
+            messageId: "m-wake",
+            waking: true
         )
         let rows = foldChatItems(
             [.context(trigger), .text(Item.Text(key: "a1", text: "done", live: false, turn: 2))],
@@ -340,6 +357,13 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertFalse(
             foldChatItems(
                 [.context(Item.Context(key: "hidden", text: "cwd=/tmp", sourceKind: "runtime-context"))],
+                policy: presentationPolicyFor(.detailed),
+                sessionRunning: false
+            ).contains { if case .turnTrigger = $0 { return true }; return false }
+        )
+        XCTAssertFalse(
+            foldChatItems(
+                [.context(Item.Context(key: "inj", text: "skills", sourceKind: "skill-catalog", messageId: "m-sk", waking: false))],
                 policy: presentationPolicyFor(.detailed),
                 sessionRunning: false
             ).contains { if case .turnTrigger = $0 { return true }; return false }
@@ -360,14 +384,81 @@ final class DesktopUiParityTests: XCTestCase {
 
     func testToolJobsUserMessageFoldsToTurnTrigger() throws {
         let reducer = TranscriptReducer()
-        XCTAssertTrue(reducer.apply(try JSONValue.parse("""
-        {"type":"event","event":{"seq":29,"time":1700000000000,"type":"user/message","data":{"message":{"content":[{"type":"text","text":"bash-1 completed"}],"source":{"kind":"tool-jobs"}}}}}
-        """)))
+        func ev(_ json: String) throws -> Bool { reducer.apply(try JSONValue.parse(json)) }
+        XCTAssertTrue(try ev("""
+        {"type":"event","event":{"seq":1,"time":1,"type":"agent/inbox/spliced","data":{"target":"next-turn","start":0,"removedCount":0,"inserted":[{"id":"m-wake","content":[{"type":"text","text":"bash-1 completed"}],"source":{"kind":"tool-jobs"}}]}}}
+        """))
+        XCTAssertTrue(try ev("""
+        {"type":"event","event":{"seq":2,"time":2,"type":"agent/inbox/spliced","data":{"target":"next-turn","start":0,"removedCount":1,"inserted":[]}}}
+        """))
+        XCTAssertTrue(try ev("""
+        {"type":"event","event":{"seq":3,"time":3,"type":"user/message","data":{"message":{"id":"m-wake","content":[{"type":"text","text":"bash-1 completed"}],"source":{"kind":"tool-jobs"}}}}}
+        """))
         let rows = foldChatItems(
             reducer.items(),
             policy: presentationPolicyFor(.detailed),
             sessionRunning: false
         )
+        XCTAssertEqual(rows.filter { if case .turnTrigger = $0 { return true }; return false }.count, 1)
         XCTAssertTrue(rows.contains { if case .turnTrigger(let item) = $0 { return item.sourceKind == "tool-jobs" && item.text == "bash-1 completed" }; return false })
+    }
+
+    func testInjectedSkillAndTimeContextStayHiddenAndOnlyWakingJobShows() throws {
+        let reducer = TranscriptReducer()
+        func ev(_ json: String) throws -> Bool { reducer.apply(try JSONValue.parse(json)) }
+        XCTAssertTrue(try ev("""
+        {"type":"event","event":{"seq":10,"time":10,"type":"user/message","data":{"message":{"id":"u1","content":[{"type":"text","text":"run two sleeps"}],"source":{"kind":"user"}}}}}
+        """))
+        XCTAssertTrue(try ev("""
+        {"type":"event","event":{"seq":11,"time":11,"type":"user/message","data":{"message":{"id":"m-skills","content":[{"type":"text","text":"Available skills: agent-browser"}],"source":{"kind":"skill-catalog"}}}}}
+        """))
+        XCTAssertTrue(try ev("""
+        {"type":"event","event":{"seq":12,"time":12,"type":"user/message","data":{"message":{"id":"m-time","content":[{"type":"text","text":"Current time: 2026-10-16"}],"source":{"kind":"time-context"}}}}}
+        """))
+        XCTAssertTrue(try ev("""
+        {"type":"event","event":{"seq":20,"time":20,"type":"agent/inbox/spliced","data":{"target":"next-turn","start":0,"removedCount":0,"inserted":[{"id":"m-wake","content":[{"type":"text","text":"bash-1 completed"}],"source":{"kind":"tool-jobs"}}]}}}
+        """))
+        XCTAssertTrue(try ev("""
+        {"type":"event","event":{"seq":21,"time":21,"type":"agent/inbox/spliced","data":{"target":"next-turn","start":0,"removedCount":1,"inserted":[]}}}
+        """))
+        XCTAssertTrue(try ev("""
+        {"type":"event","event":{"seq":22,"time":22,"type":"user/message","data":{"message":{"id":"m-wake","content":[{"type":"text","text":"bash-1 completed"}],"source":{"kind":"tool-jobs"}}}}}
+        """))
+        XCTAssertTrue(try ev("""
+        {"type":"event","event":{"seq":23,"time":23,"type":"user/message","data":{"message":{"id":"m-extra","content":[{"type":"text","text":"bash-2 completed"}],"source":{"kind":"tool-jobs"}}}}}
+        """))
+        let items = reducer.items()
+        XCTAssertEqual(items.filter { if case .context(let c) = $0 { return c.waking } else { return false } }.count, 1)
+        let rows = foldChatItems(items, policy: presentationPolicyFor(.detailed), sessionRunning: false)
+        let triggers = rows.compactMap { row -> Item.Context? in
+            if case .turnTrigger(let item) = row { return item }
+            return nil
+        }
+        XCTAssertEqual(triggers.map(\.sourceKind), ["tool-jobs"])
+        XCTAssertEqual(triggers.map(\.text), ["bash-1 completed"])
+        XCTAssertFalse(rows.contains { if case .turnTrigger(let item) = $0 { return item.sourceKind == "skill-catalog" || item.sourceKind == "time-context" }; return false })
+        XCTAssertFalse(rows.contains { if case .turnTrigger(let item) = $0 { return item.messageId == "m-extra" }; return false })
+    }
+
+    func testCanceledNextTurnSpliceDoesNotWakeAndNextStepInjectStaysHidden() throws {
+        let reducer = TranscriptReducer()
+        func ev(_ json: String) throws -> Bool { reducer.apply(try JSONValue.parse(json)) }
+        XCTAssertTrue(try ev("""
+        {"type":"event","event":{"seq":1,"time":1,"type":"agent/inbox/spliced","data":{"target":"next-turn","start":0,"removedCount":0,"inserted":[{"id":"m-cancel","content":[{"type":"text","text":"canceled job"}],"source":{"kind":"tool-jobs"}}]}}}
+        """))
+        XCTAssertTrue(try ev("""
+        {"type":"event","event":{"seq":2,"time":2,"type":"agent/inbox/spliced","data":{"target":"next-turn","start":0,"removedCount":1,"inserted":[],"outcome":"canceled"}}}
+        """))
+        XCTAssertTrue(try ev("""
+        {"type":"event","event":{"seq":3,"time":3,"type":"user/message","data":{"message":{"id":"m-cancel","content":[{"type":"text","text":"canceled job"}],"source":{"kind":"tool-jobs"}}}}}
+        """))
+        XCTAssertTrue(try ev("""
+        {"type":"event","event":{"seq":4,"time":4,"type":"agent/inbox/spliced","data":{"target":"next-step","start":0,"removedCount":0,"inserted":[{"id":"m-skills","content":[{"type":"text","text":"Available skills"}],"source":{"kind":"skill-catalog"}}]}}}
+        """))
+        XCTAssertTrue(try ev("""
+        {"type":"event","event":{"seq":5,"time":5,"type":"user/message","data":{"message":{"id":"m-skills","content":[{"type":"text","text":"Available skills"}],"source":{"kind":"skill-catalog"}}}}}
+        """))
+        let rows = foldChatItems(reducer.items(), policy: presentationPolicyFor(.detailed), sessionRunning: false)
+        XCTAssertFalse(rows.contains { if case .turnTrigger = $0 { return true }; return false })
     }
 }

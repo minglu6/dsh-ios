@@ -140,6 +140,10 @@ final class AppModel: ObservableObject {
     @Published var permissionCatalogError: String?
     @Published var permissionCatalogLoading = false
     @Published var sessionPermission: String?
+    /// Landing hero selection applied to the session that gets created.
+    @Published var draftPermission: String?
+    /// Bumped when a landing draft is written so an in-flight `permissions.get` cannot overwrite it.
+    private var permissionHydrationGeneration = 0
     @Published var permissionChanging = false
     @Published var modelPending: ModelChoice?
     @Published var catalogLoading = false
@@ -392,6 +396,7 @@ final class AppModel: ObservableObject {
                 )
                 pendingCreatorPreset = nil
                 openSession(id)
+                await applyDraftPermission(sessionId: id)
             } catch {
                 emit(error.localizedDescription)
             }
@@ -526,6 +531,7 @@ final class AppModel: ObservableObject {
             guard let chat, chat.sessionId == id else {
                 throw PocketError(code: "session", message: L.t("未能打开新会话", "Could not open the new session"))
             }
+            await applyDraftPermission(sessionId: id)
             await sendPrompt(client, chat: chat, text: text, images: images, files: files, attachments: attachments, gesture: gesture)
         } catch {
             emit(error.localizedDescription)
@@ -755,8 +761,24 @@ final class AppModel: ObservableObject {
         }
     }
 
+    private func applyDraftPermission(sessionId: String) async {
+        guard let pending = draftPermission, chat?.sessionId == sessionId else { return }
+        draftPermission = nil
+        permissionHydrationGeneration += 1
+        guard let client, ops.contains("permissions.set") else { return }
+        guard permissionCatalog?.options.contains(where: { $0.value == pending }) == true else { return }
+        if let selected = try? await client.setPermission(sessionId: sessionId, name: pending) {
+            sessionPermission = selected
+        }
+    }
+
     func setPermission(_ name: String, onComplete: ((Bool) -> Void)? = nil) {
         Task {
+            guard chat?.sessionId != nil else {
+                draftPermission = name
+                onComplete?(true)
+                return
+            }
             guard let client, let sessionId = chat?.sessionId, !permissionChanging, !permissionCatalogLoading else {
                 onComplete?(false)
                 return
@@ -2287,11 +2309,14 @@ final class AppModel: ObservableObject {
     }
 
     private func loadSessionPermission(_ sessionId: String) {
+        let generation = permissionHydrationGeneration
         Task {
             guard let client, ops.contains("permissions.get") else { return }
             do {
                 let current = try await client.permission(sessionId: sessionId)
-                if chat?.sessionId == sessionId { sessionPermission = current }
+                if chat?.sessionId == sessionId, generation == permissionHydrationGeneration {
+                    sessionPermission = current
+                }
             } catch {
                 // Permission is decorative until the user opens the picker.
             }
