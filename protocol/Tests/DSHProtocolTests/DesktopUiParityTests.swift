@@ -169,10 +169,56 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertEqual(composerTextFittedHeight(contentHeight: 200, hero: false), composerTextMaxHeightPoints)
         XCTAssertFalse(composerTextShouldScroll(fittedHeight: composerTextMinHeightPoints))
         XCTAssertTrue(composerTextShouldScroll(fittedHeight: composerTextMaxHeightPoints))
-        XCTAssertTrue(isWakingTurnTrigger(sourceKind: "tool-jobs", messageId: "m1", nextTurnClaimed: ["m1"], idleSteerClaimed: []))
-        XCTAssertFalse(isWakingTurnTrigger(sourceKind: "skill-catalog", messageId: "m2", nextTurnClaimed: ["m1"], idleSteerClaimed: []))
-        XCTAssertFalse(isWakingTurnTrigger(sourceKind: "tool-jobs", messageId: "m3", nextTurnClaimed: ["m1"], idleSteerClaimed: []))
-        XCTAssertTrue(isWakingTurnTrigger(sourceKind: "tool-jobs", messageId: "steer", nextTurnClaimed: [], idleSteerClaimed: ["steer"]))
+        let claimed = InboxClaimState(currentClaimed: ["m1"], claimSeq: 2, claimedHuman: false)
+        XCTAssertTrue(isWakingTurnTrigger(sourceKind: "tool-jobs", messageId: "m1", nextTurn: claimed, nextStep: .empty, step: nil, turnStartSeq: nil))
+        XCTAssertFalse(isWakingTurnTrigger(sourceKind: "skill-catalog", messageId: "m2", nextTurn: claimed, nextStep: .empty, step: nil, turnStartSeq: nil))
+        XCTAssertFalse(isWakingTurnTrigger(sourceKind: "tool-jobs", messageId: "m3", nextTurn: claimed, nextStep: .empty, step: nil, turnStartSeq: nil))
+        let steer = InboxClaimState(currentClaimed: ["steer"], claimSeq: 8, claimedHuman: false)
+        XCTAssertTrue(isWakingTurnTrigger(sourceKind: "tool-jobs", messageId: "steer", nextTurn: .empty, nextStep: steer, step: 1, turnStartSeq: 5))
+        XCTAssertFalse(isWakingTurnTrigger(sourceKind: "tool-jobs", messageId: "steer", nextTurn: .empty, nextStep: steer, step: 2, turnStartSeq: 5))
+        XCTAssertFalse(isWakingTurnTrigger(sourceKind: "tool-jobs", messageId: "steer", nextTurn: .empty, nextStep: steer, step: 1, turnStartSeq: 9))
+        XCTAssertFalse(isWakingTurnTrigger(
+            sourceKind: "tool-jobs",
+            messageId: "steer",
+            nextTurn: .empty,
+            nextStep: InboxClaimState(currentClaimed: ["steer"], claimSeq: 8, claimedHuman: true),
+            step: 1,
+            turnStartSeq: 5
+        ))
+        XCTAssertTrue(jobsPopoverArrowPointsDown)
+        XCTAssertFalse(landingPermissionPersistsAcrossLaunch)
+        XCTAssertEqual(
+            permissionFullAccessRiskDescription(audience: .currentSession, english: false),
+            "启用完全权限后，智能体将减少确认步骤，并且可以直接执行更多操作，包括敏感操作、文件修改或外部命令。仅建议在你信任当前任务时使用。"
+        )
+        XCTAssertEqual(
+            permissionFullAccessRiskDescription(audience: .newSessionDefault, english: false),
+            "启用完全权限后，新会话将减少确认步骤，并且可以直接执行更多操作，包括敏感操作、文件修改或外部命令。仅建议在你信任后续任务时使用。"
+        )
+        let first = applyInboxClaim(
+            previous: .empty,
+            removed: [InboxClaimIdentity(id: "m1", sourceKind: "tool-jobs")],
+            insertedIds: [],
+            outcome: nil,
+            seq: 2
+        )
+        let replaced = applyInboxClaim(
+            previous: first,
+            removed: [InboxClaimIdentity(id: "m2", sourceKind: "tool-jobs")],
+            insertedIds: [],
+            outcome: nil,
+            seq: 4
+        )
+        XCTAssertEqual(replaced.currentClaimed, ["m2"])
+        XCTAssertFalse(replaced.currentClaimed.contains("m1"))
+        let canceled = applyInboxClaim(
+            previous: first,
+            removed: [InboxClaimIdentity(id: "m9", sourceKind: "tool-jobs")],
+            insertedIds: [],
+            outcome: "canceled",
+            seq: 3
+        )
+        XCTAssertEqual(canceled.currentClaimed, ["m1"])
         XCTAssertEqual(turnTriggerTitle(sourceKind: "tool-jobs", provider: nil, english: false), "后台任务状态更新")
         XCTAssertEqual(turnTriggerTitle(sourceKind: "tool-jobs", provider: nil, english: true), "Background task updated")
         XCTAssertEqual(turnTriggerExplanation(english: false), "这条通知触发了本轮回复。")
@@ -460,5 +506,61 @@ final class DesktopUiParityTests: XCTestCase {
         """))
         let rows = foldChatItems(reducer.items(), policy: presentationPolicyFor(.detailed), sessionRunning: false)
         XCTAssertFalse(rows.contains { if case .turnTrigger = $0 { return true }; return false })
+    }
+
+    func testNextTurnClaimReplacesPreviousClaimAndRpcIdIsNotAnId() throws {
+        let reducer = TranscriptReducer()
+        func ev(_ json: String) throws -> Bool { reducer.apply(try JSONValue.parse(json)) }
+        XCTAssertTrue(try ev("""
+        {"type":"event","event":{"seq":1,"time":1,"type":"agent/inbox/spliced","data":{"target":"next-turn","start":0,"removedCount":0,"inserted":[{"id":"m1","content":[{"type":"text","text":"first"}],"source":{"kind":"tool-jobs"}},{"id":"m2","content":[{"type":"text","text":"second"}],"source":{"kind":"tool-jobs"}}]}}}
+        """))
+        XCTAssertTrue(try ev("""
+        {"type":"event","event":{"seq":2,"time":2,"type":"agent/inbox/spliced","data":{"target":"next-turn","start":0,"removedCount":1,"inserted":[]}}}
+        """))
+        XCTAssertTrue(try ev("""
+        {"type":"event","event":{"seq":3,"time":3,"type":"agent/inbox/spliced","data":{"target":"next-turn","start":0,"removedCount":1,"inserted":[]}}}
+        """))
+        XCTAssertTrue(try ev("""
+        {"type":"event","event":{"seq":4,"time":4,"type":"user/message","data":{"message":{"id":"m1","content":[{"type":"text","text":"first"}],"source":{"kind":"tool-jobs"}}}}}
+        """))
+        XCTAssertTrue(try ev("""
+        {"type":"event","event":{"seq":5,"time":5,"type":"user/message","data":{"message":{"id":"m2","content":[{"type":"text","text":"second"}],"source":{"kind":"tool-jobs"}}}}}
+        """))
+        XCTAssertTrue(try ev("""
+        {"type":"event","event":{"seq":6,"time":6,"type":"user/message","data":{"message":{"content":[{"type":"text","text":"rpc only"}],"source":{"kind":"tool-jobs","rpcId":"m2"}}}}}
+        """))
+        let waking = reducer.items().compactMap { item -> Item.Context? in
+            if case .context(let c) = item, c.waking { return c }
+            return nil
+        }
+        XCTAssertEqual(waking.map(\.messageId), ["m2"])
+        XCTAssertEqual(waking.map(\.text), ["second"])
+    }
+
+    func testIdleSteerWakesOnlyOnStepOneAfterTurnStart() throws {
+        let reducer = TranscriptReducer()
+        func ev(_ json: String) throws -> Bool { reducer.apply(try JSONValue.parse(json)) }
+        XCTAssertTrue(try ev("""
+        {"type":"event","event":{"seq":1,"time":1,"type":"agent/inbox/spliced","data":{"target":"next-step","start":0,"removedCount":0,"inserted":[{"id":"steer","content":[{"type":"text","text":"steer idle"}],"source":{"kind":"tool-jobs"}}]}}}
+        """))
+        XCTAssertTrue(try ev("""
+        {"type":"event","event":{"seq":2,"time":2,"type":"turn/start","data":{"turn":1}}}
+        """))
+        XCTAssertTrue(try ev("""
+        {"type":"event","event":{"seq":3,"time":3,"type":"agent/inbox/spliced","data":{"target":"next-step","start":0,"removedCount":1,"inserted":[]}}}
+        """))
+        XCTAssertTrue(try ev("""
+        {"type":"event","event":{"seq":4,"time":4,"type":"step/start","data":{"turn":1,"step":1}}}
+        """))
+        XCTAssertTrue(try ev("""
+        {"type":"event","event":{"seq":5,"time":5,"type":"user/message","data":{"message":{"id":"steer","content":[{"type":"text","text":"steer idle"}],"source":{"kind":"tool-jobs"}}}}}
+        """))
+        XCTAssertEqual(
+            reducer.items().compactMap { item -> String? in
+                if case .context(let c) = item, c.waking { return c.messageId }
+                return nil
+            },
+            ["steer"]
+        )
     }
 }

@@ -365,18 +365,103 @@ public func isTurnTriggerKind(_ kind: String?) -> Bool {
     return true
 }
 
-/// Desktop `ui-chat` client.js ~10470/10491: only a claimed next-turn (or idle
-/// steer) message is `waking` and becomes a turn-trigger. Injected skill-catalog
-/// / time-context / extra job notices stay hidden.
+/// Desktop `ui-chat` `inbox.ts` claim after one `agent/inbox/spliced`.
+/// A non-canceled removal **replaces** `currentClaimed`; it does not accumulate.
+public struct InboxClaimState: Equatable, Sendable {
+    public var currentClaimed: Set<String>
+    public var claimSeq: Int64
+    public var claimedHuman: Bool
+
+    public static let empty = InboxClaimState(currentClaimed: [], claimSeq: -1, claimedHuman: false)
+
+    public init(currentClaimed: Set<String> = [], claimSeq: Int64 = -1, claimedHuman: Bool = false) {
+        self.currentClaimed = currentClaimed
+        self.claimSeq = claimSeq
+        self.claimedHuman = claimedHuman
+    }
+}
+
+public struct InboxClaimIdentity: Equatable, Sendable {
+    public var id: String
+    public var sourceKind: String?
+
+    public init(id: String, sourceKind: String? = nil) {
+        self.id = id
+        self.sourceKind = sourceKind
+    }
+}
+
+/// Desktop `inbox.ts` `applySplice`: claim batch is the removed ids, or the
+/// previous claim minus any re-inserted ids.
+public func applyInboxClaim(
+    previous: InboxClaimState,
+    removed: [InboxClaimIdentity],
+    insertedIds: [String],
+    outcome: String?,
+    seq: Int64
+) -> InboxClaimState {
+    if !removed.isEmpty && outcome != "canceled" {
+        return InboxClaimState(
+            currentClaimed: Set(removed.map(\.id)),
+            claimSeq: seq,
+            claimedHuman: removed.contains { $0.sourceKind == "user" }
+        )
+    }
+    var claimed = previous.currentClaimed
+    for id in insertedIds { claimed.remove(id) }
+    return InboxClaimState(
+        currentClaimed: claimed,
+        claimSeq: previous.claimSeq,
+        claimedHuman: previous.claimedHuman
+    )
+}
+
+/// Desktop `ui-chat` `message.ts` (compiled client.js ~10360–10491).
+/// `waking` is `inbox-next-turn.currentClaimed.has(id)` or an idle steer:
+/// step 1, next-step claim after `turn/start`, no later next-turn claim,
+/// `claimedHuman == false`.
 public func isWakingTurnTrigger(
     sourceKind: String?,
     messageId: String?,
-    nextTurnClaimed: Set<String>,
-    idleSteerClaimed: Set<String>
+    nextTurn: InboxClaimState,
+    nextStep: InboxClaimState,
+    step: Int?,
+    turnStartSeq: Int64?
 ) -> Bool {
     guard let kind = sourceKind, !kind.isEmpty, kind != "user" else { return false }
     guard let messageId, !messageId.isEmpty else { return false }
-    return nextTurnClaimed.contains(messageId) || idleSteerClaimed.contains(messageId)
+    if nextTurn.currentClaimed.contains(messageId) { return true }
+    guard step == 1, let turnStart = turnStartSeq else { return false }
+    return nextStep.claimSeq > turnStart
+        && nextTurn.claimSeq < turnStart
+        && nextStep.claimedHuman == false
+        && nextStep.currentClaimed.contains(messageId)
+}
+
+/// Desktop `JobListAction` anchors the list below the chip (`arrowEdge: .top`).
+public let jobsPopoverArrowPointsDown = true
+
+/// Desktop hero is already a blank session, so permission lives on the Host.
+/// iOS landing has no session: the draft stays in memory and is not persisted.
+public let landingPermissionPersistsAcrossLaunch = false
+
+/// Desktop `permission.access` (composer / hero) vs `settings.permission` (defaults).
+public enum PermissionRiskAudience: String, Equatable, Sendable {
+    case currentSession
+    case newSessionDefault
+}
+
+public func permissionFullAccessRiskDescription(audience: PermissionRiskAudience, english: Bool) -> String {
+    switch audience {
+    case .newSessionDefault:
+        return english
+            ? "With full access, new sessions will skip more confirmations and can perform more actions, including sensitive operations, file changes, or external commands. Use only when you trust later tasks."
+            : "启用完全权限后，新会话将减少确认步骤，并且可以直接执行更多操作，包括敏感操作、文件修改或外部命令。仅建议在你信任后续任务时使用。"
+    case .currentSession:
+        return english
+            ? "With full access, the agent will skip more confirmations and can perform more actions, including sensitive operations, file changes, or external commands. Use only when you trust the current task."
+            : "启用完全权限后，智能体将减少确认步骤，并且可以直接执行更多操作，包括敏感操作、文件修改或外部命令。仅建议在你信任当前任务时使用。"
+    }
 }
 
 public enum TurnTriggerIcon: String, Equatable, Sendable {

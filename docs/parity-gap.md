@@ -36,7 +36,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R5 | 文件树去 chevron + 自动刷新；排队附件缩略图/芯片；claimed `/goal` `/plan` 提示条；变更卡 pocket JSON `false` 旗标；斜杠技能组 + 键盘高度；无会话 landing | done (#23) |
 | R6 | 鲸尾 shimmer；任务双击停止；Cmd/Ctrl+Enter；插件 (i)；侧栏浏览器；landing `/` 完整目录；变更卡 `.task` 锚点；技能按会话隔离；用量 popover；文件树滚动恢复 | done (#24) |
 | R7 | 后台任务 chip 空 Group `.task`；「后台任务状态更新」；标题随 `sessions.list` / title projection 更新；权限 chip 锚定菜单；landing「标准模式」；composer 高度对齐桌面；去掉标题旁 spinner | done (#25) |
-| R8 | waking 触发行；`/permission` popupSelect；composer 按内容测高；任务 popover；权限菜单固定顺序；统计单行；landing 权限写入新会话；停止为两次点按 | this PR |
+| R8 | waking 触发行；`/permission` popupSelect；composer 按内容测高；任务 popover；权限菜单固定顺序；统计单行；landing 权限写入新会话；停止为两次点按 | done (#26) |
+| R9 | composer `sizeThatFits -> CGSize?`；任务 popover `arrowEdge: .top` 且无返回箭头；landing 风险文案跟桌面 hero；waking 与 `inbox.ts`/`message.ts` 对齐 | this PR |
 
 ---
 
@@ -317,3 +318,13 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 | 权限菜单顺序 | `PermissionChipMenu` `.menuOrder(.fixed)` | 目录顺序 | landing / 会话同一顺序，不随弹出方向翻转 |
 | 底栏统计 | `ComposerStats` 单行 | desktop statistics row | 去掉 `ViewThatFits`→`VStack` 的 3 行回退 |
 | landing 权限 | `draftPermission` → `applyDraftPermission` | desktop hero 选档后写入即将创建的会话 | 无 `sessionId` 时记下草稿，`sessions.create` 后 `permissions.set` |
+
+## Round 9 对照清单（桌面 `packages/client` + Round 8 实机 `REPORT_2c96`）
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| Composer 换行 | `ComposerTextView.sizeThatFits -> CGSize?` | SwiftUI `UIViewRepresentable` 协议 | 返回非 Optional 时 SwiftUI 不调用，长文本不换行；空文本仍走 36/52 |
+| 任务 popover | `arrowEdge: .top` + 无 `header` | `ui-jobs` `JobListAction` 从 chip 下方弹出，无返回箭头 | 320×420 内容完整；「<」只留在全屏 Host 面板 |
+| landing 完全权限确认 | `permission.access` / `currentSession` | `PermissionSelect` 用 `confirm.description`（智能体 / 当前任务）；`settings.permission` 的「新会话 / 后续任务」只给设置默认档。桌面 hero 已是空白会话 | landing 与会话同一套 |
+| landing 草稿持久化 | `landingPermissionPersistsAcrossLaunch = false` | InputBar 仅在 `sessionId !== undefined` 时画权限；hero 的选择写在 Host 会话上 | 不写 UserDefaults；杀进程后回默认档 |
+| waking | `InboxClaimState` + `applyInboxClaim` + `isWakingTurnTrigger` | `ui-chat` `inbox.ts` / `message.ts`（client.js ~10360–10491） | claim **替换** `currentClaimed`；idle steer 要求 step 1、`claimSeq > turnStart`、`claimedHuman == false`；id 不用 rpcId |
