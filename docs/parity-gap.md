@@ -44,7 +44,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R13 | 权限/模型 picker 对齐桌面 MenuSurface；去掉标题模型名与预设；landing AgentPresetSeat；连接入口回到抽屉脚；会话绿点/运行 spinner；Think 块对齐 ReasoningRow | done (#31) |
 | R14 | 权限/模型 picker 弹层在 composer chip **上方**（同 Token 用量 `arrowEdge: .bottom`）；完全权限 / Auto review 确认不被键盘裁切 | done (#32) |
 | R16 | landing 工作区 ghost chip + WorkspacePicker；计划 chip 进 composer modes 行；抽屉脚 footer.action 在 Settings 之上；+ aria / 插件添加 MenuSurface | done (#33) |
-| R17 | 停止并归档确认；无工作区 landing 占位；停止 aria；会话「进行中」；搜索工作区上下文 | this PR |
+| R17 | 停止并归档确认；无工作区 landing 占位；停止 aria；会话「进行中」；搜索工作区上下文 | done (#34) |
+| R18 | 会话统计 / 上下文弹层在 chip 上方；用量 pill 数据库图标；ContextMeter 环；归档不可打开文案；仅归档空态「查看其他会话」 | this PR |
 
 ---
 
@@ -89,7 +90,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Copy / like / dislike / share | `MessageActions` + `FeedbackCategory` | desktop row is share (not branch); branch stays on the session row menu | **present** | **A** / **P1** |
 | Message / trigger clock | `formatMessageClock` | 同日 `HH:mm`；同年 `clock.md`+时钟；跨年 `clock.ymd`+时钟（zh `m月d日` / `y年m月d日`，en `m/d` / `y-m-d`）；本地时区；无今天/昨天 | **present** | **R13** |
 | Turn usage pill | `ComposerStats.kt` `TurnUsageAction` | `TurnUsagePanel`：chip `用量 {n} tok`；popover 在 pill 上方；表头图标 +「本轮用量」左、合计右；无「合计」行；推理挂在输出行 `（其中推理 {n} tok）` | **missing** → **present** | **E** / **R6** / **R12** |
-| Composer statistics | Activity / Usage / Context pills | `ComposerStats` 单行 HStack；Token 用量为贴 chip 的 popover（在 chip **上方**，表头图标 +「Token 用量」左、合计 tok 右；无「合计」行，「缓存命中」+ tok） | **missing** → **present** | **E** / **R8** / **R11** / **R12** |
+| Composer statistics | Activity / Usage / Context pills | `ComposerStats` 单行 HStack；Activity / Token 用量 / ContextMeter 均为贴 chip 的 popover（在 chip **上方**）。用量 pill 用数据库图标；上下文为 14px 环 + 百分比；弹层文案 `stats.dialog.*` / `context.*`（「工具定义」「对话消息」） | **missing** → **present** | **E** / **R8** / **R11** / **R12** / **R18** |
 | Composer queue / steer | busyEnter + `queue.update` | `busySend` + `PromptQueue` edit/remove/steer；排队行按桌面 `QueueDock` 画图片缩略图 / 文件芯片（有 `session.attachment` 或本地 preview） | **partial** → **present** | **E** / **R5** |
 | `@` mentions | `MentionMenu.kt` official `@path` / `@"path"` / `@[title](dsh-session:…)` | same tokens + chip row + mention panel | **partial** → **present** | **E** |
 | `/` commands | `CommandPopupSheet` `commands.list/execute` | 贴输入框弹层（#21）；`+` 与 `/` 同菜单；不接受附件的指令先 toast 官方句再执行；claimed `/goal` `/plan` 空参数时输入框上方 hint strip。R8：`ComposerTextView` `fixedSize` + 关滚动测高，空文本走 36/52 地板而不是 132 | **missing** → **present** | **E** / **P2** / **#21** / **R4** / **R5** / **R7** / **R8** |
@@ -433,3 +434,15 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 | 停止按钮 | `composerStopLabel` | `conversation` `input.stop` | aria「停止生成」/ Stop generating |
 | 会话运行态 | `sidebarRunningLabel` | `ui-workspace` `status.running` | 读屏「进行中」，不是自撰「运行中」 |
 | 搜索结果工作区 | `searchResultShowsWorkspaceContext` | `Rows.tsx` `SearchResultItem` `searchResultWorkspace` | 标题下工作区名，无则「未分组」 |
+
+## Round 18 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`）
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| 会话统计弹层 | `ComposerStats` activity `.popover` | `ui-chat` `ActivityPill` / `DialogPill` `useStatDialog` `side: 'top'` | 不再整屏 sheet；表头「会话统计」；行 `stats.dialog.llmTime` / `toolTime` / `ttft` / `speed`；不发明「已加载历史统计」 |
+| Token 用量 pill 图标 | usage 触发器 `cylinder` | `StatsPills` `IconDatabaseOutlineRegular` | compact / detailed 触发器都是数据库图标，不再与 Activity 共用 gauge |
+| 上下文环 | `ComposerContextRing` + percent | `ui-conversation` `ContextMeter` 14×14 r=5.5 2px；fill `stroke-linecap: round` | 触发器是环而不是 gauge pill；描边半径贴桌面 viewBox，fill 圆头 |
+| 上下文弹层 | `contextPopover` `arrowEdge: .bottom` | `ContextMeter` `useAnchoredPosition` `side: "top"` | 标题按 `context.aria` 拆开「上下文已用」+ `45%`；右侧 `~used / window`；行 `context.system` / `context.tools`「工具定义」 / `context.messages`「对话消息」 |
+| 归档不可打开 | `restoreArchivedBody` / `archivedNotOpenable` | `ui-workspace` `toast.archivedNotOpenable` | 「已归档对话暂时无法查看，请取消归档后查看」；触屏仍用恢复确认（点按对应桌面 toast + 菜单取消归档） |
+| 仅归档空态 | `drawerEmptyKind` + `drawerShowsEmptySessions` + `empty.viewOthers` | `EmptySessions` / `groupByWorkspace` / `leaveArchivedOnly` | EmptySessions 只在 `groups.length === 0`（扁平 `rows.length === 0`）。隐藏/显示已归档时仍画空工作区表头；仅归档把无成员组丢掉后才出「暂无已归档会话」+「查看其他会话」（重置为隐藏已归档） |
+| 停止失败 | `jobKillFailedLabel` | `ui-jobs` `kill.failed` | 「停止失败」，删除自撰「终止失败，请重试」 |

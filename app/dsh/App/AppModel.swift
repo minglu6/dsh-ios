@@ -1721,7 +1721,7 @@ final class AppModel: ObservableObject {
                 onResult(false)
             } catch {
                 jobsPanelKillError = true
-                jobsPanelError = L.killJobFailed()
+                jobsPanelError = jobKillFailedLabel(english: L.en)
                 onResult(false)
             }
         }

@@ -98,10 +98,18 @@ struct SessionDrawer: View {
                                 .foregroundStyle(T.text3)
                                 .padding(16)
                         }
-                    } else {
-                        if pinnedRows.isEmpty && rest.isEmpty && model.workspaces.isEmpty {
-                            Text(emptyCopy).foregroundStyle(T.text3).padding(24)
+                    } else if pinnedRows.isEmpty && rest.isEmpty {
+                        if drawerShowsEmptySessions(
+                            hasVisibleSessions: false,
+                            groupByWorkspace: model.sessionGroupBy != .flat,
+                            hasWorkspaces: !orderedWorkspaces.isEmpty,
+                            archivedOnly: model.archivedFilter == .only
+                        ) {
+                            emptyState
+                        } else {
+                            workspaceGroups(sessions: rest)
                         }
+                    } else {
                         if !pinnedRows.isEmpty {
                             Text(L.pinned())
                                 .font(.system(size: 12))
@@ -113,17 +121,7 @@ struct SessionDrawer: View {
                         if model.sessionGroupBy == .flat {
                             sessionRows(rest, groupKey: "flat")
                         } else {
-                            WorkspaceNavigationGroups(
-                                model: model,
-                                workspaces: orderedWorkspaces,
-                                sessions: rest,
-                                tree: model.sessionGroupBy == .workspaceTree,
-                                onMoveWorkspace: canDragWorkspaces ? { from, before in
-                                    model.moveWorkspace(id: from, beforeId: before)
-                                } : nil
-                            ) { key, rows in
-                                sessionRows(rows, groupKey: key)
-                            }
+                            workspaceGroups(sessions: rest)
                         }
                     }
                 }
@@ -252,10 +250,51 @@ struct SessionDrawer: View {
         visibleSessions.filter { !model.pinnedIds.contains($0.sessionId) || model.archivedIds.contains($0.sessionId) }
     }
 
-    private var emptyCopy: String {
-        if model.currentDot != .online { return L.connectToViewSessions() }
-        if model.archivedFilter == .only { return L.emptyArchivedSessions() }
-        return L.emptySessions()
+    @ViewBuilder
+    private var emptyState: some View {
+        let kind = drawerEmptyKind(
+            online: model.currentDot == .online,
+            archivedOnly: model.archivedFilter == .only,
+            hasVisibleSessions: false
+        )
+        VStack(spacing: 12) {
+            Text(emptyCopy(kind))
+                .foregroundStyle(T.text3)
+            if kind == .emptyArchived {
+                Button(emptyArchivedViewOthers(english: L.en)) {
+                    if emptyArchivedViewOthersResetsToHide {
+                        model.setArchivedFilter(.hide)
+                    }
+                }
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(T.accent)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(24)
+    }
+
+    private func emptyCopy(_ kind: DrawerEmptyKind?) -> String {
+        switch kind {
+        case .offline: return L.connectToViewSessions()
+        case .empty, nil: return L.emptySessions()
+        case .emptyArchived: return L.emptyArchivedSessions()
+        }
+    }
+
+    @ViewBuilder
+    private func workspaceGroups(sessions: [SessionSummary]) -> some View {
+        WorkspaceNavigationGroups(
+            model: model,
+            workspaces: orderedWorkspaces,
+            sessions: sessions,
+            tree: model.sessionGroupBy == .workspaceTree,
+            onMoveWorkspace: canDragWorkspaces ? { from, before in
+                model.moveWorkspace(id: from, beforeId: before)
+            } : nil
+        ) { key, rows in
+            sessionRows(rows, groupKey: key)
+        }
     }
 
     private var canDragWorkspaces: Bool {

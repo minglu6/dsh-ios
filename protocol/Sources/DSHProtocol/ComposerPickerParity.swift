@@ -215,6 +215,53 @@ public let sidebarArchivedIdleHasNoLeadingIcon = true
 /// Desktop `SearchResultItem` shows workspace context under the title.
 public let searchResultShowsWorkspaceContext = true
 
+/// Desktop `EmptySessions` copy when the tree/flat body has no rows.
+/// Archived-only adds `empty.viewOthers`, which resets the filter to hide-archived.
+public enum DrawerEmptyKind: String, Equatable, Sendable {
+    case offline
+    /// Desktop `empty.none`. Not named `none` — that collides with `Optional.none`.
+    case empty
+    /// Desktop `empty.noneArchived`.
+    case emptyArchived
+}
+
+public func drawerEmptyKind(online: Bool, archivedOnly: Bool, hasVisibleSessions: Bool) -> DrawerEmptyKind? {
+    if hasVisibleSessions { return nil }
+    if !online { return .offline }
+    return archivedOnly ? .emptyArchived : .empty
+}
+
+/// Desktop `SessionTree` EmptySessions is `groups.length === 0`, not “no visible
+/// sessions”. `groupByWorkspace` still emits a group per workspace unless the
+/// archived filter is `only` and that group has no visible members. FlatList
+/// EmptySessions is `rows.length === 0`.
+public func drawerShowsEmptySessions(
+    hasVisibleSessions: Bool,
+    groupByWorkspace: Bool,
+    hasWorkspaces: Bool,
+    archivedOnly: Bool
+) -> Bool {
+    if hasVisibleSessions { return false }
+    if archivedOnly { return true }
+    if groupByWorkspace && hasWorkspaces { return false }
+    return true
+}
+
+/// Desktop `ui-workspace` `empty.viewOthers`.
+public func emptyArchivedViewOthers(english: Bool) -> String {
+    english ? "View other sessions" : "查看其他会话"
+}
+
+/// Desktop `leaveArchivedOnly` writes archived filter `default` (hide archived).
+public let emptyArchivedViewOthersResetsToHide = true
+
+/// Desktop `ui-workspace` `toast.archivedNotOpenable`.
+public func archivedNotOpenable(english: Bool) -> String {
+    english
+        ? "Archived sessions cannot be opened. Unarchive it to view."
+        : "已归档对话暂时无法查看，请取消归档后查看"
+}
+
 public func sidebarCompletionUnreadLabel(english: Bool) -> String {
     english ? "Completed, unread" : "已完成，未查看"
 }
