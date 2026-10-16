@@ -27,7 +27,7 @@ enum LocalFonts {
     static func terminal() -> Font { resolve(AppPrefs.terminalFontFamily, monospace: true, size: CGFloat(AppPrefs.terminalFontSize)) }
 
     static func resolve(_ value: String, monospace: Bool, size: CGFloat) -> Font {
-        let fallback: Font = monospace ? .system(size: size, design: .monospaced) : .system(size: size)
+        let fallback: Font = monospace ? TerminalTypeface.font(ofSize: size) : .system(size: size)
         if value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return fallback }
         for entry in value.split(separator: ",") {
             let name = entry.trimmingCharacters(in: .whitespacesAndNewlines).trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
@@ -36,7 +36,10 @@ enum LocalFonts {
             case "sans-serif", "system-ui", "ui-sans-serif", "ui-rounded", "-apple-system", "blinkmacsystemfont", "emoji":
                 return .system(size: size)
             case "monospace", "ui-monospace":
-                return .system(size: size, design: .monospaced)
+                return TerminalTypeface.font(ofSize: size)
+            case "meslolgl dz", "meslolgl dz nerd font", "meslolgl dz nerd font mono",
+                 "meslolgs nf", "meslolgs nerd font":
+                return TerminalTypeface.font(ofSize: size)
             default:
                 return .custom(name, size: size)
             }

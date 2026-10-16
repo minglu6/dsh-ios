@@ -169,10 +169,23 @@ final class SessionSearchTests: XCTestCase {
             XCTAssertEqual((error as? PocketError)?.message, "query required")
         }
         XCTAssertEqual(try SessionSearch.args(query: " needle "), jsonObject(["query": .string("needle")]))
+        XCTAssertEqual(try SessionSearch.args(query: "a\0b"), jsonObject(["query": .string("ab")]))
         XCTAssertFalse(SessionSearch.shouldSearchHost(query: "x", ops: []))
         XCTAssertFalse(SessionSearch.shouldSearchHost(query: "  ", ops: ["sessions.search"]))
         XCTAssertTrue(SessionSearch.shouldSearchHost(query: "x", ops: ["sessions.search"]))
         XCTAssertEqual(SessionSearch.debounceMs, 250)
+        XCTAssertEqual(SessionSearch.resultLimit, 20)
+    }
+
+    func testSanitizeCapsUtf16WithoutSplittingSurrogatePair() {
+        XCTAssertEqual(SessionSearch.sanitizeQuery("  \0hi\0  "), "hi")
+        let bmp = String(repeating: "a", count: 600)
+        XCTAssertEqual(SessionSearch.sanitizeQuery(bmp).utf16.count, 500)
+        let emoji = String(repeating: "😀", count: 300)
+        let capped = SessionSearch.sanitizeQuery(emoji)
+        XCTAssertLessThanOrEqual(capped.utf16.count, 500)
+        XCTAssertEqual(capped.utf16.count % 2, 0)
+        XCTAssertEqual(capped.last, "😀")
     }
 
     func testMergePrefersHostHitsThenLocalWithoutDuplicates() {
@@ -197,6 +210,28 @@ final class SessionSearchTests: XCTestCase {
         XCTAssertEqual(SessionSearch.localMatches(sessions: sessions, workspaces: workspaces, query: "bug").map(\.sessionId), ["a"])
         XCTAssertEqual(SessionSearch.localMatches(sessions: sessions, workspaces: workspaces, query: "工程").map(\.sessionId), ["b"])
     }
+
+    func testPresentCapsAtTwentyAndKeepsHostHasMore() {
+        let local = (0..<25).map { SessionSummary(sessionId: "l\($0)", title: "L\($0)") }
+        let capped = SessionSearch.present(hits: [], local: local)
+        XCTAssertEqual(capped.rows.count, 20)
+        XCTAssertTrue(capped.hasMore)
+        let host = [SessionSummary(sessionId: "h", title: "H")]
+        let short = SessionSearch.present(hits: host, local: [], hostHasMore: true)
+        XCTAssertEqual(short.rows.map(\.sessionId), ["h"])
+        XCTAssertTrue(short.hasMore)
+        XCTAssertEqual(sessionSearchHasMoreLabel(20, english: false), "仅显示前 20 条结果，请缩小搜索范围。")
+    }
+
+    func testDrawerTitleUsesUntitledExceptCurrentBlank() {
+        let blank = SessionSummary(sessionId: "b", blank: true)
+        let named = SessionSummary(sessionId: "n", title: "修 bug")
+        let untitled = SessionSummary(sessionId: "u")
+        XCTAssertEqual(drawerSessionTitle(blank, current: "b", newSession: "新会话", untitled: "未命名"), "新会话")
+        XCTAssertEqual(drawerSessionTitle(blank, current: "other", newSession: "新会话", untitled: "未命名"), "未命名")
+        XCTAssertEqual(drawerSessionTitle(named, current: nil, newSession: "新会话", untitled: "未命名"), "修 bug")
+        XCTAssertEqual(drawerSessionTitle(untitled, current: nil, newSession: "新会话", untitled: "未命名"), "未命名")
+    }
 }
 
 final class SessionFeedbackTests: XCTestCase {
@@ -211,14 +246,6 @@ final class SessionFeedbackTests: XCTestCase {
         XCTAssertThrowsError(try SessionFeedbackRequest.recorded(.object(["recorded": .bool(false)])))
     }
 
-    func testMoreSheetGatesFeedbackAndDisablesWithoutSession() {
-        XCTAssertFalse(MoreSheetPolicy.showsFeedback(ops: ["session.export", "commands.execute"]))
-        XCTAssertTrue(MoreSheetPolicy.showsFeedback(ops: ["session.export", "sessionFeedback.record"]))
-        XCTAssertFalse(MoreSheetPolicy.exportEnabled(online: true, ops: ["session.export"], inChat: false))
-        XCTAssertTrue(MoreSheetPolicy.exportEnabled(online: true, ops: ["session.export"], inChat: true))
-        XCTAssertFalse(MoreSheetPolicy.feedbackEnabled(inChat: false))
-        XCTAssertTrue(MoreSheetPolicy.feedbackEnabled(inChat: true))
-    }
 }
 
 final class SessionAttachmentTests: XCTestCase {

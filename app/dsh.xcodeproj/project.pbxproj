@@ -16,6 +16,7 @@
 			};
 			explicitFolders = (
 				CodePreviewAssets,
+				Fonts,
 				WorkbookPreviewAssets,
 			);
 			path = dsh;

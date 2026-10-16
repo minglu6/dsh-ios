@@ -99,4 +99,27 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertFalse(StartPanelPolicy.includesBrowser)
         XCTAssertFalse(StartPanelPolicy.includesSessionInspector)
     }
+
+    func testConversationHeaderHasNoOverflowMenu() {
+        XCTAssertFalse(ConversationHeaderPolicy.includesOverflowMenu)
+    }
+
+    func testConversationHeaderTitleMatchesDrawerUntitledRules() {
+        XCTAssertEqual(
+            conversationHeaderTitle(sessionId: nil, title: nil, blank: false, newSession: "新会话", untitled: "未命名"),
+            "新会话"
+        )
+        XCTAssertEqual(
+            conversationHeaderTitle(sessionId: "b", title: nil, blank: true, newSession: "新会话", untitled: "未命名"),
+            "新会话"
+        )
+        XCTAssertEqual(
+            conversationHeaderTitle(sessionId: "u", title: nil, blank: false, newSession: "新会话", untitled: "未命名"),
+            "未命名"
+        )
+        XCTAssertEqual(
+            conversationHeaderTitle(sessionId: "n", title: "修 bug", blank: false, newSession: "新会话", untitled: "未命名"),
+            "修 bug"
+        )
+    }
 }

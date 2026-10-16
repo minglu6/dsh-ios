@@ -173,8 +173,8 @@ final class AppModel: ObservableObject {
     @Published var draftPreset = ""
     @Published var pendingCreatorPreset: String?
     @Published var searchHits: [SessionSummary] = []
+    @Published var searchHostHasMore = false
     @Published var searching = false
-    @Published var searchError: String?
     @Published var lastArchivedId: String?
 
     let terminal = AnsiTerminal()
@@ -289,6 +289,7 @@ final class AppModel: ObservableObject {
         ops = []
         presetRoster = []
         searchHits = []
+        searchHostHasMore = false
         catalog = nil
         catalogError = nil
         modelPending = nil
@@ -355,17 +356,19 @@ final class AppModel: ObservableObject {
         initializeChat(sessionId)
         showDrawer = false
         loadSessionPermission(sessionId)
-        refreshGoal()
         Task {
             guard let client else { return }
             do {
                 try await refollow(client, sessionId: sessionId, afterSeq: nil)
             } catch is CancellationError {
             } catch {
-                if chat?.sessionId == sessionId {
-                    emit(error.localizedDescription)
-                    chat?.loaded = true
+                if chat?.sessionId != sessionId { return }
+                if SessionNotFoundPolicy.matches(error) {
+                    absorbMissingSession(sessionId)
+                    return
                 }
+                emit(error.localizedDescription)
+                chat?.loaded = true
             }
         }
     }
@@ -452,10 +455,13 @@ final class AppModel: ObservableObject {
                 publishChat()
                 chat?.loadingOlder = false
             } catch {
-                if followEpoch == epoch {
-                    emit(error.localizedDescription)
-                    chat?.loadingOlder = false
+                if followEpoch != epoch { return }
+                if SessionNotFoundPolicy.matches(error) {
+                    absorbMissingSession(state.sessionId)
+                    return
                 }
+                emit(error.localizedDescription)
+                chat?.loadingOlder = false
             }
         }
     }
@@ -794,7 +800,13 @@ final class AppModel: ObservableObject {
                     chat?.goal = result["goal"].isNull ? nil : result["goal"]
                 }
             } catch {
-                emit(error.localizedDescription)
+                if SessionNotFoundPolicy.matches(error) {
+                    if chat?.sessionId == sessionId { absorbMissingSession(sessionId) }
+                    return
+                }
+                if chat?.sessionId == sessionId && goalActivationEpoch == epoch {
+                    emit(error.localizedDescription)
+                }
             }
         }
     }
@@ -898,9 +910,9 @@ final class AppModel: ObservableObject {
     func searchSessions(_ query: String) {
         searchGeneration += 1
         let generation = searchGeneration
-        searchError = nil
         if !SessionSearch.shouldSearchHost(query: query, ops: ops) {
             searchHits = []
+            searchHostHasMore = false
             searching = false
             return
         }
@@ -910,17 +922,26 @@ final class AppModel: ObservableObject {
             guard searchGeneration == generation else { return }
             do {
                 guard let client else { throw PocketError(code: "transport", message: L.t("未连接到远程主机", "Not connected to the remote host")) }
-                let hits = SessionSearch.parseHits(try await client.searchSessions(query: query))
+                let parsed = SessionSearch.parse(try await client.searchSessions(query: query))
                 guard searchGeneration == generation else { return }
-                searchHits = hits
-                searchError = nil
+                searchHits = parsed.items
+                searchHostHasMore = parsed.hasMore
             } catch {
                 guard searchGeneration == generation else { return }
+                // Desktop: failed content search leaves local metadata matches
+                // visible, without an extra warning.
                 searchHits = []
-                searchError = error.localizedDescription
+                searchHostHasMore = false
             }
             if searchGeneration == generation { searching = false }
         }
+    }
+
+    func clearSessionSearch() {
+        searchGeneration += 1
+        searchHits = []
+        searchHostHasMore = false
+        searching = false
     }
 
     func loadAttachmentBytes(sessionId: String, attachmentId: String) async -> Data? {
@@ -1801,7 +1822,17 @@ final class AppModel: ObservableObject {
             modelSettingsRevision += 1
         }
         if let sessionId = chat?.sessionId {
-            try await refollow(client, sessionId: sessionId, afterSeq: reducer.cursor >= 0 ? reducer.cursor : nil)
+            do {
+                try await refollow(client, sessionId: sessionId, afterSeq: reducer.cursor >= 0 ? reducer.cursor : nil)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                if SessionNotFoundPolicy.matches(error) {
+                    absorbMissingSession(sessionId, refreshRoster: false)
+                } else {
+                    throw error
+                }
+            }
         }
     }
 
@@ -1914,6 +1945,7 @@ final class AppModel: ObservableObject {
                 return
             } catch {
                 if self.client !== client { return }
+                if SessionNotFoundPolicy.matches(error) { return }
                 emit(error.localizedDescription)
                 snapshot = try await client.call("completion.view", args: args)
             }
@@ -1926,7 +1958,9 @@ final class AppModel: ObservableObject {
             return
         } catch {
             if self.client === client {
-                emit(error.localizedDescription)
+                if !SessionNotFoundPolicy.matches(error) {
+                    emit(error.localizedDescription)
+                }
                 completionViewClient = nil
                 completionViewSession = nil
             }
@@ -2080,13 +2114,29 @@ final class AppModel: ObservableObject {
             }
         case "follow.end":
             if m["subId"].str() == subId, let client, let sessionId = chat?.sessionId {
-                Task { try? await refollow(client, sessionId: sessionId, afterSeq: reducer.cursor >= 0 ? reducer.cursor : nil) }
+                Task {
+                    do {
+                        try await refollow(client, sessionId: sessionId, afterSeq: reducer.cursor >= 0 ? reducer.cursor : nil)
+                    } catch is CancellationError {
+                    } catch {
+                        if chat?.sessionId != sessionId { return }
+                        if SessionNotFoundPolicy.matches(error) {
+                            absorbMissingSession(sessionId)
+                        }
+                    }
+                }
             }
         case "follow.error":
             if m["subId"].str() == subId {
                 subId = nil
-                emit(m["error"]["message"].str() ?? m["error"]["code"].str() ?? "follow error")
-                chat?.loaded = true
+                let code = m["error"]["code"].str()
+                let message = m["error"]["message"].str()
+                if SessionNotFoundPolicy.matches(code: code, message: message), let sessionId = chat?.sessionId {
+                    absorbMissingSession(sessionId)
+                } else {
+                    emit(message ?? code ?? "follow error")
+                    chat?.loaded = true
+                }
             }
         case "session":
             switch m["kind"].str() {
@@ -2095,7 +2145,11 @@ final class AppModel: ObservableObject {
                     sessions = [s] + sessions.filter { $0.sessionId != s.sessionId }
                 }
             case "removed":
-                sessions.removeAll { $0.sessionId == m["sessionId"].str() }
+                let removedId = m["sessionId"].str()
+                sessions.removeAll { $0.sessionId == removedId }
+                if let removedId, chat?.sessionId == removedId {
+                    absorbMissingSession(removedId)
+                }
             case "status":
                 let id = m["sessionId"].str()
                 let running = m["running"].bool() ?? false
@@ -2113,7 +2167,13 @@ final class AppModel: ObservableObject {
                     return next
                 }.sorted { $0.updatedAt > $1.updatedAt }
             case "error":
-                if let message = m["message"].str() { emit(message) }
+                if SessionNotFoundPolicy.matches(code: m["code"].str(), message: m["message"].str()) {
+                    if let id = m["sessionId"].str() ?? chat?.sessionId {
+                        absorbMissingSession(id)
+                    }
+                } else if let message = m["message"].str() {
+                    emit(message)
+                }
             default:
                 break
             }
@@ -2777,6 +2837,42 @@ final class AppModel: ObservableObject {
             DispatchQueue.global().asyncAfter(deadline: .now() + .milliseconds(timeoutMs)) {
                 finish(false)
             }
+        }
+    }
+
+    /// Stale drawer row: Host follow/goals no longer bind this id. Drop it, refresh
+    /// the roster, and leave the no-session home — never toast `session/not-found`.
+    private func absorbMissingSession(_ sessionId: String, refreshRoster: Bool = true) {
+        let dropped = SessionNotFoundPolicy.drop(
+            missingId: sessionId,
+            from: sessions,
+            currentId: chat?.sessionId
+        )
+        sessions = dropped.sessions
+        searchHits.removeAll { $0.sessionId == sessionId }
+        workspaces = SessionNotFoundPolicy.drop(sessionId: sessionId, from: workspaces)
+        if dropped.droppedCurrent {
+            followEpoch += 1
+            detachFollow()
+            transcriptPublisher.cancel()
+            chat = nil
+            showDrawer = true
+        }
+        if refreshRoster {
+            Task { await refreshSessionRoster() }
+        }
+    }
+
+    private func refreshSessionRoster() async {
+        guard let client else { return }
+        if let list = try? await client.listSessions() {
+            sessions = list.sorted { $0.updatedAt > $1.updatedAt }
+            if let id = chat?.sessionId, !list.contains(where: { $0.sessionId == id }) {
+                absorbMissingSession(id, refreshRoster: false)
+            }
+        }
+        if ops.contains("workspace.state"), let state = try? await client.call("workspace.state") {
+            applyWorkspaceState(state)
         }
     }
 

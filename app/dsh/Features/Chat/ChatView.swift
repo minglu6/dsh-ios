@@ -24,7 +24,6 @@ struct ChatView: View {
     @State private var showGoal = false
     @State private var questionDrafts: [String: QuestionDraft] = [:]
     @State private var showFileImporter = false
-    @State private var showMore = false
     @State private var showSessionFeedback = false
     @State private var showPreset = false
 
@@ -169,16 +168,6 @@ struct ChatView: View {
         .sheet(item: $model.exportShare) { item in
             ShareSheet(items: [item.url])
         }
-        .sheet(isPresented: $showMore) {
-            MoreSheet(
-                model: model,
-                onDismiss: { showMore = false },
-                onFeedback: {
-                    showMore = false
-                    showSessionFeedback = true
-                }
-            )
-        }
         .sheet(isPresented: $showSessionFeedback) {
             FeedbackCategorySheet(
                 hint: L.sessionFeedbackHint(),
@@ -224,6 +213,18 @@ struct ChatView: View {
         }
     }
 
+    private var headerTitle: String {
+        guard let chat = model.chat else { return L.newSession() }
+        let row = model.sessions.first { $0.sessionId == chat.sessionId }
+        return conversationHeaderTitle(
+            sessionId: chat.sessionId,
+            title: chat.title ?? row?.title,
+            blank: row?.blank ?? false,
+            newSession: L.newSession(),
+            untitled: L.untitledSession()
+        )
+    }
+
     private var presetLabel: String? {
         let id = model.chat?.agentPreset ?? model.draftPreset.nilIfBlank
         guard let id else { return nil }
@@ -245,7 +246,7 @@ struct ChatView: View {
             if model.chat?.running == true {
                 ProgressView().controlSize(.mini)
             }
-            Text(model.chat?.title?.isEmpty == false ? model.chat!.title! : L.newSession())
+            Text(headerTitle)
                 .font(.headline)
                 .foregroundStyle(T.ink)
                 .lineLimit(1)
@@ -271,10 +272,6 @@ struct ChatView: View {
                     .background(T.tint, in: Capsule())
             }
             .disabled(!model.isOnline)
-            Button { showMore = true } label: {
-                Image(systemName: D.ellipsis).foregroundStyle(T.ink)
-            }
-            .accessibilityLabel(L.moreActions())
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -850,7 +847,7 @@ struct MessageRow: View {
 
 private enum MessageClock { case start, end }
 
-/// Desktop MessageIconActions: copy → like/dislike → share. Branch stays on session ⋯.
+/// Desktop MessageIconActions: copy → like/dislike → share. Branch stays on the session row menu.
 private struct MessageActions: View {
     let text: String
     let timeMs: Int64?

@@ -581,14 +581,10 @@ struct CommandSheet: View {
     }
 
     private var candidates: [JSONValue] {
-        var rows = commands
-        if sessionReady && model.ops.contains("attachments.upload") {
-            rows.append(jsonObject(["name": .string("file"), "client": .string("file")]))
-        }
-        if sessionReady && !subagent && model.ops.contains("models.catalog") {
-            rows.append(jsonObject(["name": .string("model"), "client": .string("model")]))
-        }
-        return rows
+        commandMenuMerge(
+            host: commands,
+            injected: commandMenuClientRows(ops: model.ops, sessionReady: sessionReady, subagent: subagent)
+        )
     }
 
     var body: some View {
@@ -605,7 +601,7 @@ struct CommandSheet: View {
                     }
                     let collision = commandContributionCollision(candidates)
                     if let collision {
-                        Text("Command contribution /\(collision) collides with a host command")
+                        Text(commandContributionCollisionMessage(collision, english: L.en))
                             .foregroundStyle(T.err)
                     }
                     let rows = collision == nil ? commandMenuRows(candidates, query: query, leading: leading, english: L.en) : []

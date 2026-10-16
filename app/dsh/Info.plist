@@ -36,6 +36,10 @@
 	<array>
 		<string>dev.dsh.pocket.ios.refresh</string>
 	</array>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Fonts/MesloLGLDZNerdFont-Regular.ttf</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>
