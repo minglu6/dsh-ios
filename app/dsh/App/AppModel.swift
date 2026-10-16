@@ -400,6 +400,13 @@ final class AppModel: ObservableObject {
             return PromptFile(receiptId: receipt)
         }
         guard (!text.isEmpty || !images.isEmpty || !files.isEmpty), let chat, let client else { return }
+        if !pendingAttaches.isEmpty, let name = slashCommandName(text) {
+            let row = commandEntries.first { $0["name"].str() == name }
+            if commandRefusesAttachments(name: name, catalogRow: row) {
+                toast = commandAttachmentsUnsupportedNotice(command: name, english: L.en)
+                return
+            }
+        }
         composerText = ""
         pendingAttaches = []
         Task { await sendPrompt(client, chat: chat, text: text, images: images, files: files) }
@@ -1201,6 +1208,7 @@ final class AppModel: ObservableObject {
         if let hosted = hostSettings.value(.busySend)?.str(), let parsed = BusySend(rawValue: hosted) {
             busySend = parsed
         }
+        collapseTiming = collapseTimingFromHost(hostSettings.value(.collapse)?.str())
         if let hosted = hostSettings.value(.language)?.str() {
             language = hosted.hasPrefix("zh") ? .zh : .en
         } else if !hostSettings.ready {

@@ -240,7 +240,7 @@ private struct SessionInspectorContent: View {
                     state.follow = false
                     if model.chat?.sessionId == chat.sessionId { model.loadOlderHistory() }
                 } label: {
-                    Text(chat.loadingOlder ? L.t("加载中…", "Loading…") : L.t("加载更早", "Load earlier"))
+                    Text(loadOlderLabel(loading: chat.loadingOlder, english: L.en))
                         .font(.system(size: 11))
                         .foregroundStyle(chat.loadingOlder ? T.text3 : T.ink)
                 }

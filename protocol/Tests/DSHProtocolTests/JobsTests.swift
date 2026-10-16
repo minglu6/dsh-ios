@@ -115,10 +115,10 @@ final class JobsTests: XCTestCase {
             to: &lines,
             lossy: true,
             chunks: chunks,
-            expiredNotice: "[部分历史输出已过期]",
-            missingNotice: "[此处输出存在缺失]"
+            expiredNotice: jobOutputGap(english: false),
+            missingNotice: jobOutputGap(english: false)
         )
-        XCTAssertEqual(lines, ["", "[部分历史输出已过期]", "one", "[此处输出存在缺失]", "two", "three"])
+        XCTAssertEqual(lines, ["", "……较早的输出已丢弃……", "one", "……较早的输出已丢弃……", "two", "three"])
     }
 
     func testLossyFlagAcceptsBooleanOrStringTrue() throws {

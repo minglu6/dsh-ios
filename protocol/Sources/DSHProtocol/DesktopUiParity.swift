@@ -151,6 +151,10 @@ public func linkOpeningLabel(_ value: String, english: Bool) -> String {
 
 public let linkOpeningValues = ["sidebar", "new-tab"]
 
+public func linkOpeningTitle(english: Bool) -> String {
+    english ? "Open chat links in" : "网页链接默认打开方式"
+}
+
 public func workDetailsDescription(english: Bool) -> String {
     english ? "Choose how much detail to show for tool calls" : "选择希望看到多少工具调用细节"
 }
@@ -176,7 +180,119 @@ public func busySendDescription(english: Bool) -> String {
 }
 
 public func linkOpeningDescription(english: Bool) -> String {
-    english ? "Where web links in the conversation open" : "对话中网页链接的打开位置"
+    english ? "Choose where to open web links" : "对话中网页链接的打开位置"
+}
+
+public func composerPlaceholderText(planMode: Bool, english: Bool) -> String {
+    if planMode {
+        return english ? "describe your task to generate plan" : "描述你的任务以生成计划"
+    }
+    return english
+        ? "Message or run a task, / commands, @ files or sessions"
+        : "发消息或创建任务, / 调用指令, @ 文件或对话"
+}
+
+public func composerModelFallback(english: Bool) -> String {
+    english ? "Select model" : "请选择模型"
+}
+
+public func loadOlderLabel(loading: Bool, english: Bool) -> String {
+    if loading { return english ? "Loading…" : "加载中…" }
+    return english ? "Load earlier" : "加载更早"
+}
+
+public func formatRunDuration(elapsedMs: Int64, english: Bool) -> String {
+    let total = max(0, elapsedMs / 1000)
+    let hours = total / 3600
+    let minutes = (total / 60) % 60
+    let seconds = total % 60
+    if english {
+        var parts: [String] = []
+        if hours > 0 { parts.append("\(hours)h ") }
+        if total >= 60 { parts.append("\(minutes)m ") }
+        parts.append("\(seconds)s")
+        return parts.joined()
+    }
+    var parts: [String] = []
+    if hours > 0 { parts.append("\(hours)小时") }
+    if total >= 60 { parts.append("\(minutes)分") }
+    parts.append("\(seconds)秒")
+    return parts.joined()
+}
+
+public func deepDivingLabel(startedAtMs: Int64?, nowMs: Int64, english: Bool) -> String {
+    guard let startedAtMs else {
+        return english ? "Deep diving" : "深度求索中"
+    }
+    let duration = formatRunDuration(elapsedMs: max(1000, nowMs - startedAtMs), english: english)
+    return english
+        ? "Deep diving for \(duration) ···"
+        : "深度求索中，用时 \(duration) ···"
+}
+
+public func jobOutputGap(english: Bool) -> String {
+    english ? "… earlier output dropped …" : "……较早的输出已丢弃……"
+}
+
+public func askRowTitle(english: Bool) -> String {
+    english ? "Ask question" : "提问"
+}
+
+public func askReopenLabel(english: Bool) -> String {
+    english ? "Answer" : "回答"
+}
+
+public func askPendingDetail(english: Bool) -> String {
+    english
+        ? "These pending questions remain answerable from the composer."
+        : "等待中的问题仍可在输入框中回答"
+}
+
+public func planChipTitle(english: Bool) -> String {
+    english
+        ? "Plan mode on — click to turn off (/plan off)"
+        : "计划模式已开启 — 点击关闭（/plan off）"
+}
+
+public func pendingAttachmentsLabel(english: Bool) -> String {
+    english ? "Pending attachments" : "待发送附件"
+}
+
+public func pluginsEmptyLabel(english: Bool) -> String {
+    english ? "No plugins are installed yet." : "还没有安装任何插件。"
+}
+
+public func messageFeedbackHint(english: Bool) -> String {
+    english
+        ? "Add details to help us improve. Your submission will include the current conversation log."
+        : "填写详情以帮助我们改进体验，提交内容会包括当前对话的日志"
+}
+
+public func commandAttachmentsUnsupportedNotice(command: String, english: Bool) -> String {
+    english
+        ? "/\(command) does not accept attachments; remove them first"
+        : "/\(command) 不接受附件，请先移除附件"
+}
+
+public func slashCommandName(_ text: String) -> String? {
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard trimmed.hasPrefix("/") else { return nil }
+    let token = trimmed.dropFirst().split(whereSeparator: \.isWhitespace).first.map(String.init) ?? ""
+    return token.isEmpty ? nil : token
+}
+
+/// Desktop `ui-commands`: only a Host command that declares `input.attachments` may submit with files.
+public func commandRefusesAttachments(name: String, catalogRow: JSONValue?) -> Bool {
+    if let catalogRow, catalogRow["name"].str() == name {
+        return catalogRow["input"]["attachments"].bool() != true
+    }
+    switch name {
+    case "file": return false
+    case "goal", "plan", "feedback", "compact", "permission", "model", "export":
+        return true
+    default:
+        return false
+    }
 }
 
 /// Desktop terminal tab title: shell name only, never a truncated id.

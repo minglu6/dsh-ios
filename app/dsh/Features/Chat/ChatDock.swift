@@ -57,7 +57,7 @@ struct UserQuestionCard: View {
     private var card: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text(isPlan ? L.planReview() : "\(item.header ?? L.t("问题", "Question")) · \(index + 1)/\(question.questions.count)")
+                Text(isPlan ? L.planReview() : "\(item.header ?? askRowTitle(english: L.en)) · \(index + 1)/\(question.questions.count)")
                     .font(.subheadline)
                     .foregroundStyle(T.text2)
                 Spacer()
@@ -111,7 +111,7 @@ struct UserQuestionCard: View {
                 if let err { Text(err).font(.caption).foregroundStyle(T.err) }
                 if busy { Text(L.t("正在提交…", "Submitting…")).foregroundStyle(T.text3) }
                 else if question.state == "continued" {
-                    Text(L.t("智能体已继续工作，仍可补充答案", "The agent continued; you can still add an answer"))
+                    Text(askPendingDetail(english: L.en))
                         .font(.caption)
                         .foregroundStyle(T.text3)
                 }
@@ -307,7 +307,7 @@ struct GoalBar: View {
         } else {
             Button(action: onEdit) {
                 HStack(spacing: 8) {
-                    Image(systemName: "flag").foregroundStyle(T.text3)
+                    Image(systemName: D.goal).foregroundStyle(T.text3)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(goalPhaseLabel(phase: goal["phase"].str(), activation: activation))
                             .font(.caption)
@@ -502,14 +502,25 @@ struct PromptQueue: View {
                 Text(L.t("发送中…", "Sending…")).font(.subheadline).foregroundStyle(T.text3)
             }
             if editing {
-                icon("checkmark", enabled: actionable && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
+                icon("checkmark", enabled: actionable && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, label: L.t("保存排队消息", "Save queued message")) {
                     apply(prompt.id, .edit(draft))
                 }
-                icon("xmark", enabled: busyId == nil) { editingId = nil; draft = "" }
+                icon("xmark", enabled: busyId == nil, label: L.t("取消编辑", "Cancel edit")) { editingId = nil; draft = "" }
             } else {
-                icon("pencil", enabled: actionable && prompt.editable) { editingId = prompt.id; draft = prompt.text }
-                icon("trash", enabled: actionable) { apply(prompt.id, .remove) }
-                icon("paperplane", enabled: actionable && running) { apply(prompt.id, .steer) }
+                icon("pencil", enabled: actionable && prompt.editable, label: L.t("编辑排队消息", "Edit queued message")) {
+                    editingId = prompt.id
+                    draft = prompt.text
+                }
+                icon("trash", enabled: actionable, label: L.t("删除排队消息", "Remove queued message")) {
+                    apply(prompt.id, .remove)
+                }
+                icon(
+                    "paperplane",
+                    enabled: actionable && running,
+                    label: running
+                        ? L.t("插话发送", "Steer queued message")
+                        : L.t("仅运行中可插话发送", "Steering is available only while the agent is running")
+                ) { apply(prompt.id, .steer) }
             }
         }
         .padding(.leading, 12)
@@ -528,7 +539,7 @@ struct PromptQueue: View {
         }
     }
 
-    private func icon(_ system: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+    private func icon(_ system: String, enabled: Bool, label: String? = nil, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: system)
                 .font(.system(size: 13))
@@ -537,6 +548,8 @@ struct PromptQueue: View {
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
+        .accessibilityLabel(label ?? "")
+        .accessibilityHidden(label == nil)
     }
 
     private func queuePreview(_ prompt: QueuedPrompt) -> String {
@@ -811,6 +824,10 @@ struct CommandMenuOverlay: View {
     private func activate(_ command: JSONValue, name: String, kind: String?) {
         let enabled = model.isOnline && sessionReady && commandMenuAvailable(kind: kind, ops: model.ops)
         guard enabled else { return }
+        if kind != "file", !model.pendingAttaches.isEmpty, commandRefusesAttachments(name: name, catalogRow: command) {
+            model.toast = commandAttachmentsUnsupportedNotice(command: name, english: L.en)
+            return
+        }
         @MainActor func consume() { if consumeSlash { model.consumeComposerSlash() } }
         switch kind {
         case "file": consume(); onDismiss(); onFile()

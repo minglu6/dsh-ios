@@ -147,6 +147,10 @@ final class ProtocolPolicyTests: XCTestCase {
         XCTAssertEqual(transcriptViewFromHost("expanded"), .detailed)
         XCTAssertEqual(transcriptViewFromHost("compact"), .compact)
         XCTAssertEqual(transcriptViewFromHost("verbose"), .verbose)
+        XCTAssertEqual(collapseTimingFromHost(nil), .completion)
+        XCTAssertEqual(collapseTimingFromHost("completion"), .completion)
+        XCTAssertEqual(collapseTimingFromHost("next-input"), .nextInput)
+        XCTAssertEqual(CollapseTiming.nextInput.rawValue, "next-input")
     }
 
     func testTrajLEnglishFollowsDesktopLocales() {

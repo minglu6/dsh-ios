@@ -4,7 +4,7 @@ import DSHProtocol
 enum SharedSetting: String, CaseIterable {
     case appearance, fontSize, codeFontSize, terminalFontSize
     case textFontFamily, codeFontFamily, terminalFontFamily
-    case language, busySend, codeWork, transcript, performance, permission, sessionLog, linkOpening
+    case language, busySend, codeWork, transcript, collapse, performance, permission, sessionLog, linkOpening
 
     var namespace: String {
         switch self {
@@ -13,7 +13,7 @@ enum SharedSetting: String, CaseIterable {
         case .language: return "locale"
         case .busySend: return "ui-conversation"
         case .codeWork: return "ui-settings"
-        case .transcript, .performance, .linkOpening: return "ui-chat"
+        case .transcript, .collapse, .performance, .linkOpening: return "ui-chat"
         case .permission: return "permission"
         case .sessionLog: return "session-log-deepseek"
         }
@@ -32,6 +32,7 @@ enum SharedSetting: String, CaseIterable {
         case .busySend: return "busyEnter"
         case .codeWork: return "enabled"
         case .transcript: return "transcriptView"
+        case .collapse: return "collapseTiming"
         case .performance: return "performanceUsage"
         case .permission: return "defaultPreset"
         case .sessionLog: return "enabled"
