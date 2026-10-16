@@ -231,6 +231,11 @@ final class SessionSearchTests: XCTestCase {
         XCTAssertEqual(drawerSessionTitle(blank, current: "other", newSession: "新会话", untitled: "未命名"), "未命名")
         XCTAssertEqual(drawerSessionTitle(named, current: nil, newSession: "新会话", untitled: "未命名"), "修 bug")
         XCTAssertEqual(drawerSessionTitle(untitled, current: nil, newSession: "新会话", untitled: "未命名"), "未命名")
+        let titledBlank = SessionSummary(sessionId: "b", title: "创建parity-r6-card.txt文件", blank: true)
+        XCTAssertEqual(
+            drawerSessionTitle(titledBlank, current: "b", newSession: "新会话", untitled: "未命名"),
+            "创建parity-r6-card.txt文件"
+        )
     }
 }
 

@@ -102,10 +102,10 @@ public func drawerSessionTitle(
     newSession: String,
     untitled: String
 ) -> String {
-    if session.blank && session.sessionId == current { return newSession }
     if let title = session.title?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty {
         return title
     }
+    if session.blank && session.sessionId == current { return newSession }
     return untitled
 }
 

@@ -92,21 +92,6 @@ struct ChatView: View {
         .sheet(isPresented: $showJobs) {
             JobsPanel(model: model) { showJobs = false }
         }
-        .sheet(item: $feedbackDraft) { draft in
-            FeedbackCategorySheet(
-                hint: L.feedbackHint(),
-                onDismiss: { feedbackDraft = nil },
-                onSubmit: { category, note, complete in
-                    model.setMessageFeedback(
-                        messageId: draft.messageId,
-                        rating: draft.rating,
-                        category: category,
-                        note: note,
-                        onResult: complete
-                    )
-                }
-            )
-        }
         .sheet(isPresented: $showPermission) {
             PermissionPickerSheet(
                 current: model.sessionPermission ?? "",
@@ -127,6 +112,21 @@ struct ChatView: View {
                 }
             )
             .onAppear { model.reloadPermissionCatalog() }
+        }
+        .sheet(item: $feedbackDraft) { draft in
+            FeedbackCategorySheet(
+                hint: L.feedbackHint(),
+                onDismiss: { feedbackDraft = nil },
+                onSubmit: { category, note, complete in
+                    model.setMessageFeedback(
+                        messageId: draft.messageId,
+                        rating: draft.rating,
+                        category: category,
+                        note: note,
+                        onResult: complete
+                    )
+                }
+            )
         }
         .sheet(isPresented: Binding(get: { riskPermission != nil }, set: { if !$0 { riskPermission = nil } })) {
             if let value = riskPermission {
@@ -223,9 +223,6 @@ struct ChatView: View {
         HStack(spacing: 10) {
             Button { model.showDrawer = true } label: {
                 Image(systemName: D.panelLeft).foregroundStyle(T.ink)
-            }
-            if model.chat?.running == true {
-                ProgressView().controlSize(.mini)
             }
             Text(headerTitle)
                 .font(.headline)
@@ -558,7 +555,13 @@ struct ChatView: View {
                     composerFocus += 1
                 }
             },
-            onPerm: { if model.isOnline { showPermission = true } },
+            onSelectPermission: { value in
+                if value == "danger-full-access" || value == "auto" {
+                    riskPermission = value
+                } else {
+                    model.setPermission(value) { _ in }
+                }
+            },
             onModel: { if model.isOnline { showModels = true } },
             onSend: { submitCommandMenuOrSend() },
             onCommandReturn: { commandHost.requestEnter() },
@@ -663,6 +666,8 @@ struct ChatRowView: View {
             ReasoningRow(reasoning: reasoning)
         case .process(let proc):
             ProcessGroupView(proc: proc, openTurns: $openTurns, openProcesses: $openProcesses, onTool: onTool)
+        case .turnTrigger(let item):
+            TurnTriggerRow(item: item)
         case .changes(let item):
             if changesCardMountsFetch(
                 seq: item.seq,
@@ -672,6 +677,57 @@ struct ChatRowView: View {
             ), let sessionId = model.chat?.sessionId {
                 ChangesCard(model: model, sessionId: sessionId, item: item)
             }
+        }
+    }
+}
+
+private struct TurnTriggerRow: View {
+    let item: Item.Context
+    @State private var open = false
+
+    var body: some View {
+        let provider = turnTriggerProvider(item.messageSourceJson)
+        let title = turnTriggerTitle(sourceKind: item.sourceKind, provider: provider, english: L.en)
+        VStack(alignment: .leading, spacing: 6) {
+            Button { open.toggle() } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: triggerSymbol(turnTriggerIcon(sourceKind: item.sourceKind, provider: provider)))
+                        .font(.system(size: 13))
+                        .foregroundStyle(T.text3)
+                    Text(title).font(.subheadline).foregroundStyle(T.text2)
+                    if let at = item.at {
+                        Text(formatMessageClock(at)).font(.caption).foregroundStyle(T.text3)
+                    }
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 11))
+                        .foregroundStyle(T.text3)
+                        .rotationEffect(.degrees(open ? 180 : 0))
+                    Spacer()
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(title)
+            if open {
+                Text(turnTriggerExplanation(english: L.en))
+                    .font(.caption)
+                    .foregroundStyle(T.text3)
+                if !item.text.isEmpty {
+                    Text(item.text).font(.subheadline).foregroundStyle(T.ink)
+                }
+            }
+        }
+    }
+
+    private func triggerSymbol(_ icon: TurnTriggerIcon) -> String {
+        switch icon {
+        case .goal: return D.goal
+        case .agent, .team, .subagent: return "person.crop.circle"
+        case .github: return "arrow.triangle.branch"
+        case .webhook: return "globe"
+        case .schedule: return "clock"
+        case .job: return "clock.arrow.circlepath"
+        case .plugin: return "puzzlepiece.extension"
+        case .request: return "bolt.horizontal"
         }
     }
 }
@@ -1032,6 +1088,7 @@ struct ComposerView: View {
     var heroPlaceholder = false
     var onPlus: () -> Void = {}
     var onPerm: () -> Void = {}
+    var onSelectPermission: (String) -> Void = { _ in }
     var onModel: () -> Void = {}
     var onSend: () -> Void = {}
     var onCommandReturn: () -> Void = {}
@@ -1070,7 +1127,7 @@ struct ComposerView: View {
                         }
                     }
                     .buttonStyle(.plain)
-                    .frame(minHeight: 48)
+                    .frame(minHeight: CGFloat(composerChipHeightPoints))
                     .accessibilityLabel(L.planModeOn())
                 }
                 if let hint = claimedComposerHint(
@@ -1097,13 +1154,18 @@ struct ComposerView: View {
                         english: L.en
                     ),
                     interceptKeys: interceptKeys,
+                    heroPlaceholder: heroPlaceholder,
                     focusToken: focusToken,
                     onReturn: onCommandReturn,
                     onMove: onCommandMove,
                     onEscape: onCommandEscape,
                     onChord: { model.submitComposer(gesture: .chord) }
                 )
-                    .frame(minHeight: 22, maxHeight: 132, alignment: .topLeading)
+                    .frame(
+                        minHeight: CGFloat(heroPlaceholder ? composerHeroTextMinHeightPoints : composerTextMinHeightPoints),
+                        maxHeight: CGFloat(composerTextMaxHeightPoints),
+                        alignment: .topLeading
+                    )
                     .onChange(of: model.composerText) { value in
                         if let trigger = composerTrigger(value, cursor: value.count) {
                             if trigger.kind == Character("@") {
@@ -1116,27 +1178,20 @@ struct ComposerView: View {
                     }
                 HStack(spacing: 8) {
                     Button(action: onPlus) {
-                        Image(systemName: "plus").foregroundStyle(T.ink).frame(width: 48, height: 48)
+                        Image(systemName: "plus")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(T.ink)
+                            .frame(width: CGFloat(composerAddButtonPoints), height: CGFloat(composerAddButtonPoints))
                     }
                     .background(T.fill, in: Circle())
                     if let perm = model.sessionPermission ?? (heroPlaceholder ? model.defaultPermission : nil), !perm.isEmpty {
-                        Button(action: onPerm) {
-                            HStack(spacing: 4) {
-                                Image(systemName: permissionIcon(perm))
-                                Text(permissionLabel(value: perm, option: model.permissionCatalog?.find(perm)))
-                                    .lineLimit(1)
-                                Text("⌄")
-                                    .font(.subheadline.weight(.semibold))
-                                    .accessibilityHidden(true)
-                            }
-                            .font(.subheadline)
-                            .foregroundStyle(perm == "danger-full-access" ? T.warnText : T.text2)
-                            .padding(.horizontal, 10)
-                            .frame(minHeight: 36)
-                            .background(T.fill, in: Capsule())
-                        }
-                        .disabled(!model.isOnline)
-                        .accessibilityLabel(permissionLabel(value: perm, option: model.permissionCatalog?.find(perm)))
+                        PermissionChipMenu(
+                            current: perm,
+                            catalog: model.permissionCatalog,
+                            loading: model.permissionCatalogLoading,
+                            enabled: model.isOnline && !model.permissionChanging,
+                            onSelect: onSelectPermission
+                        )
                     }
                     Button(action: onModel) {
                         HStack(spacing: 4) {
@@ -1144,30 +1199,33 @@ struct ComposerView: View {
                                 composerModelDisplayName(choiceName: model.modelChoice?.name, catalog: model.catalog)
                                     ?? composerModelFallback(english: L.en)
                             )
-                            .font(.subheadline)
+                            .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(T.text2)
                             .lineLimit(1)
                             if let effort = modelEffortLabel(catalog: model.catalog, provider: model.modelChoice?.provider, model: model.modelChoice?.model, effort: model.modelChoice?.effort) {
                                 Text(effort).font(.caption).foregroundStyle(T.caption).lineLimit(1)
                             }
                             if model.modelPending != nil { ProgressView().controlSize(.mini) }
-                            else { Image(systemName: "chevron.down").font(.caption).foregroundStyle(T.text2) }
+                            else { Image(systemName: "chevron.down").font(.system(size: 11)).foregroundStyle(T.text2) }
                         }
-                        .frame(maxWidth: .infinity, minHeight: 48, alignment: .trailing)
+                        .frame(maxWidth: .infinity, minHeight: CGFloat(composerChipHeightPoints), alignment: .trailing)
                         .opacity(model.isOnline ? 1 : 0.45)
                     }
                     .buttonStyle(.plain)
                     .disabled(!model.isOnline)
                     if runningIdle {
                         Button(action: model.stopRun) {
-                            RoundedRectangle(cornerRadius: 3).fill(Color.white).frame(width: 10, height: 10)
-                                .frame(width: 48, height: 48)
+                            RoundedRectangle(cornerRadius: 3).fill(Color.white).frame(width: 8, height: 8)
+                                .frame(width: CGFloat(composerSendButtonPoints), height: CGFloat(composerSendButtonPoints))
                         }
                         .background(T.accent, in: Circle())
                         .accessibilityLabel(L.stop())
                     } else {
                         Button(action: onSend) {
-                            Image(systemName: "arrow.up").foregroundStyle(Color.white).frame(width: 48, height: 48)
+                            Image(systemName: "arrow.up")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(Color.white)
+                                .frame(width: CGFloat(composerSendButtonPoints), height: CGFloat(composerSendButtonPoints))
                         }
                         .background(T.accent.opacity(canSend || interceptKeys ? 1 : 0.4), in: Circle())
                         .disabled(!canSend && !interceptKeys)
@@ -1175,10 +1233,13 @@ struct ComposerView: View {
                     }
                 }
             }
-            .padding(14)
+            .padding(.top, 8)
+            .padding(.horizontal, 8)
+            .padding(.bottom, 6)
             .overlay(RoundedRectangle(cornerRadius: 20).stroke(T.border, lineWidth: 1))
             .padding(.horizontal, 14)
             .padding(.vertical, 4)
+            .onAppear { model.reloadPermissionCatalog() }
         }
         .background(T.surface)
     }
@@ -1278,6 +1339,7 @@ private struct ComposerTextView: UIViewRepresentable {
     @Binding var text: String
     var placeholder: String
     var interceptKeys: Bool
+    var heroPlaceholder: Bool = false
     var focusToken: Int
     var onReturn: () -> Void
     var onMove: (Int) -> Void
@@ -1335,7 +1397,11 @@ private struct ComposerTextView: UIViewRepresentable {
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: ComposerUITextView, context: Context) -> CGSize {
         let width = proposal.width ?? uiView.bounds.width
         let fitted = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
-        return CGSize(width: width, height: min(132, max(22, fitted.height)))
+        let floor = heroPlaceholder ? composerHeroTextMinHeightPoints : composerTextMinHeightPoints
+        return CGSize(
+            width: width,
+            height: CGFloat(min(composerTextMaxHeightPoints, max(floor, Double(fitted.height))))
+        )
     }
 
     final class Coordinator: NSObject, UITextViewDelegate {

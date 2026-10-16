@@ -11,7 +11,13 @@ struct JobsAction: View {
     private var available: Bool { model.canShowJobs }
 
     var body: some View {
-        Group {
+        ZStack {
+            Color.clear
+                .frame(
+                    width: CGFloat(jobsActionWatchAnchorPoints),
+                    height: CGFloat(jobsActionWatchAnchorPoints)
+                )
+                .accessibilityHidden(true)
             if let chip = JobsActionLabel.chip(jobs: model.jobs, failed: model.jobsFailed) {
                 Button(action: onClick) {
                     HStack(spacing: 6) {
@@ -32,6 +38,7 @@ struct JobsAction: View {
             }
         }
         .task(id: "\(model.activeId ?? "")-\(sessionId)-\(available)") {
+            guard jobsActionShouldWatch(online: model.isOnline, hasListOp: model.ops.contains("jobs.list")) else { return }
             await model.retainJobsWatch(hostId: model.activeId, sessionId: sessionId, available: available)
         }
     }

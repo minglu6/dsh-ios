@@ -69,6 +69,10 @@ public enum ConversationHeaderPolicy {
     public static var includesOverflowMenu: Bool { false }
 }
 
+/// Host titles a session asynchronously after the first turn. Android
+/// `refreshTitles` reloads `sessions.list` on status, then again 4s after stop.
+public let sessionTitleRefreshDelayNanoseconds: UInt64 = 4_000_000_000
+
 /// Same title as the workspace row: the current blank session is 新会话,
 /// every other missing title is 未命名 / Untitled.
 public func conversationHeaderTitle(
@@ -329,6 +333,63 @@ public func changesCardMountsFetch(
     hasSummaryOp: Bool
 ) -> Bool {
     turnClosed && codeWork && changesCardShouldFetch(seq: seq, hasSummaryOp: hasSummaryOp)
+}
+
+/// Desktop InputBar sizes (`InputBar.module.css`): 28 add, 34 send, 36/52 text.
+public let composerAddButtonPoints: Double = 28
+public let composerSendButtonPoints: Double = 34
+public let composerChipHeightPoints: Double = 28
+public let composerTextMinHeightPoints: Double = 36
+public let composerHeroTextMinHeightPoints: Double = 52
+public let composerTextMaxHeightPoints: Double = 132
+
+/// Desktop `ui-chat` turn-trigger kinds (`turn-trigger.ts`).
+public func isTurnTriggerKind(_ kind: String?) -> Bool {
+    guard let kind, !kind.isEmpty, kind != "user", kind != "runtime-context" else { return false }
+    return true
+}
+
+public enum TurnTriggerIcon: String, Equatable, Sendable {
+    case agent, github, goal, job, plugin, request, schedule, subagent, team, webhook
+}
+
+public func turnTriggerIcon(sourceKind: String?, provider: String?) -> TurnTriggerIcon {
+    switch sourceKind {
+    case "goal": return .goal
+    case "agent-message": return .agent
+    case "team-message": return .team
+    case "subagent-settled": return .subagent
+    case "webhook": return provider == "github" ? .github : .webhook
+    case "schedule": return .schedule
+    case "tool-jobs": return .job
+    case "cordis-host-runner": return .plugin
+    default: return .request
+    }
+}
+
+/// Desktop `ui-chat` `message.trigger.*` — no invented copy.
+public func turnTriggerTitle(sourceKind: String?, provider: String?, english: Bool) -> String {
+    switch turnTriggerIcon(sourceKind: sourceKind, provider: provider) {
+    case .goal: return english ? "Continuing goal" : "继续执行目标"
+    case .agent: return english ? "Task message received" : "收到任务消息"
+    case .team: return english ? "Team message received" : "收到团队消息"
+    case .subagent: return english ? "Subtask status updated" : "子任务状态更新"
+    case .github: return english ? "GitHub event received" : "收到 GitHub 事件"
+    case .webhook: return english ? "External event received" : "收到外部事件"
+    case .schedule: return english ? "Automation task" : "自动化任务"
+    case .job: return english ? "Background task updated" : "后台任务状态更新"
+    case .plugin: return english ? "Plugin status updated" : "插件状态更新"
+    case .request: return english ? "Execution requested" : "收到执行请求"
+    }
+}
+
+public func turnTriggerExplanation(english: Bool) -> String {
+    english ? "This notification triggered this response." : "这条通知触发了本轮回复。"
+}
+
+public func turnTriggerProvider(_ sourceJson: String?) -> String? {
+    guard let sourceJson, let parsed = try? JSONValue.parse(sourceJson) else { return nil }
+    return parsed["provider"].str()
 }
 
 /// Slash catalog cache is per session (and never shared with a subagent).

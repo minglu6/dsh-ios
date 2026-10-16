@@ -115,13 +115,6 @@ struct RootView: View {
                 }
                 BrandWordmark(height: 20)
                 Spacer()
-                if !model.presetRoster.isEmpty {
-                    Button { showHomePreset = true } label: {
-                        Label(homePresetLabel, systemImage: D.agentPreset)
-                            .font(.caption)
-                            .foregroundStyle(T.accent)
-                    }
-                }
             }
             .padding(14)
             .background(T.surface)
@@ -180,7 +173,9 @@ struct RootView: View {
                         composerFocus += 1
                     }
                 },
-                onPerm: { if model.isOnline { showPermission = true } },
+                onSelectPermission: { value in
+                    model.setPermission(value) { _ in }
+                },
                 onModel: { if model.isOnline { showModels = true } },
                 onSend: {
                     if landingCommandMenuVisible {
@@ -265,6 +260,23 @@ struct RootView: View {
                 .background(T.fill, in: Capsule())
             }
             .accessibilityLabel(landingChooseWorkspace(english: L.en))
+            if !model.presetRoster.isEmpty {
+                Button { showHomePreset = true } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: D.agentPreset)
+                        Text(homePresetLabel)
+                            .lineLimit(1)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 11))
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(T.text2)
+                    .padding(.horizontal, 10)
+                    .frame(minHeight: 36)
+                    .background(T.fill, in: Capsule())
+                }
+                .accessibilityLabel(homePresetLabel)
+            }
             Spacer()
         }
         .padding(.horizontal, 14)

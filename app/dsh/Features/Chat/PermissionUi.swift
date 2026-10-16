@@ -204,3 +204,52 @@ struct PermissionRiskSheet: View {
         )
     }
 }
+
+/// Desktop permission chip: anchored menu with a check on the current preset.
+struct PermissionChipMenu: View {
+    let current: String
+    let catalog: PermissionCatalog?
+    var loading: Bool = false
+    var enabled: Bool = true
+    var onSelect: (String) -> Void
+
+    private var options: [PermissionOption] { catalog?.options ?? [] }
+
+    var body: some View {
+        Menu {
+            if loading {
+                Text(L.t("加载权限模式…", "Loading permission modes…"))
+            } else if options.isEmpty {
+                Text(L.t("没有可用的权限模式", "No permission modes available"))
+            } else {
+                ForEach(options, id: \.value) { option in
+                    Button {
+                        if option.value != current { onSelect(option.value) }
+                    } label: {
+                        if option.value == current {
+                            Label(permissionLabel(value: option.value, option: option), systemImage: "checkmark")
+                        } else {
+                            Text(permissionLabel(value: option.value, option: option))
+                        }
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: permissionIcon(current))
+                Text(permissionLabel(value: current, option: catalog?.find(current)))
+                    .lineLimit(1)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 11))
+                    .accessibilityHidden(true)
+            }
+            .font(.system(size: 13, weight: .medium))
+            .foregroundStyle(current == "danger-full-access" ? T.warnText : T.text2)
+            .padding(.horizontal, 8)
+            .frame(minHeight: CGFloat(composerChipHeightPoints))
+            .background(T.fill, in: Capsule())
+        }
+        .disabled(!enabled)
+        .accessibilityLabel(permissionLabel(value: current, option: catalog?.find(current)))
+    }
+}

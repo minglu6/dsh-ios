@@ -2,6 +2,29 @@ import XCTest
 @testable import DSHProtocol
 
 final class JobsTests: XCTestCase {
+    func testRealisticHostRosterParsesLossyFalseAndShowsLiveChip() throws {
+        let result = try JSONValue.parse("""
+        {"type":"rows","jobs":[
+          {"id":"bash-1","kind":"bash","label":"sleep 600","status":"running","startedAt":1700000000000,"output":{"total":0,"earliest":0,"lossy":false}},
+          {"id":"bash-2","kind":"bash","label":"sleep 900","status":"running","startedAt":1700000001000,"output":{"total":12,"earliest":0,"lossy":false}}
+        ]}
+        """)
+        let rows = parseJobRoster(result)
+        XCTAssertEqual(rows.map(\.id), ["bash-1", "bash-2"])
+        XCTAssertEqual(rows.map(\.kind), ["bash", "bash"])
+        XCTAssertEqual(rows.map(\.title), ["sleep 600", "sleep 900"])
+        XCTAssertEqual(rows.map(\.status), ["running", "running"])
+        XCTAssertEqual(rows[0].outputTotal, 0)
+        XCTAssertEqual(rows[1].outputTotal, 12)
+        XCTAssertTrue(rows.allSatisfy(\.isLive))
+        XCTAssertEqual(JobsActionLabel.chip(jobs: rows, failed: false), .live(2))
+        XCTAssertEqual(JobsActionLabel.text(.live(1), en: false), "1 个后台任务运行中")
+        XCTAssertTrue(jobsActionShouldWatch(online: true, hasListOp: true))
+        XCTAssertFalse(jobsActionShouldWatch(online: true, hasListOp: false))
+        XCTAssertGreaterThan(jobsActionWatchAnchorPoints, 0)
+        XCTAssertEqual(jobIdentity(try JSONValue.parse(#"{"id":7}"#)), "7")
+    }
+
     func testListRosterParsesIdAliasesAndDropsRowsWithoutIdentity() throws {
         let result = try JSONValue.parse("""
         {"jobs":[

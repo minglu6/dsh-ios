@@ -2371,6 +2371,13 @@ final class AppModel: ObservableObject {
                     reducer.setRunning(running)
                     transcriptPublisher.flush()
                 }
+                Task {
+                    await refreshSessionTitles()
+                    if !running {
+                        try? await Task.sleep(nanoseconds: sessionTitleRefreshDelayNanoseconds)
+                        await refreshSessionTitles()
+                    }
+                }
             case "activity":
                 let id = m["sessionId"].str()
                 let t = m["updatedAt"].long() ?? 0
@@ -3080,6 +3087,7 @@ final class AppModel: ObservableObject {
         guard let client else { return }
         if let list = try? await client.listSessions() {
             sessions = list.sorted { $0.updatedAt > $1.updatedAt }
+            applySessionTitleToChat()
             if let id = chat?.sessionId, !list.contains(where: { $0.sessionId == id }) {
                 absorbMissingSession(id, refreshRoster: false)
             }
@@ -3087,6 +3095,19 @@ final class AppModel: ObservableObject {
         if ops.contains("workspace.state"), let state = try? await client.call("workspace.state") {
             applyWorkspaceState(state)
         }
+    }
+
+    /// dsh titles a session asynchronously after the first turn; the list is the source of truth.
+    private func refreshSessionTitles() async {
+        await refreshSessionRoster()
+    }
+
+    private func applySessionTitleToChat() {
+        guard let id = chat?.sessionId,
+              let title = sessions.first(where: { $0.sessionId == id })?.title?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !title.isEmpty
+        else { return }
+        chat?.title = title
     }
 
     private func emit(_ message: String) {

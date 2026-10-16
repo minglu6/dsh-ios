@@ -40,7 +40,7 @@ public struct JobRow: Sendable, Equatable, Identifiable {
     }
 
     public static func parse(_ element: JSONValue) -> JobRow? {
-        guard let id = element["id"].str()?.nilIfBlank ?? element["jobId"].str()?.nilIfBlank else { return nil }
+        guard let id = jobIdentity(element) else { return nil }
         let status = element["status"].str() ?? element["state"].str() ?? ""
         let title = element["label"].str()?.nilIfBlank
             ?? element["command"].str()?.nilIfBlank
@@ -315,7 +315,23 @@ public func applyJobOutputFrames(
 }
 
 public func parseJobRoster(_ result: JSONValue) -> [JobRow] {
-    (result["jobs"].arr() ?? []).compactMap(JobRow.parse)
+    let rows = result["jobs"].arr() ?? result["rows"].arr() ?? result.arr() ?? []
+    return rows.compactMap(JobRow.parse)
+}
+
+/// Host `job.list` rows use string ids (`bash-1`); pocket JSON may also send a number.
+public func jobIdentity(_ element: JSONValue) -> String? {
+    element["id"].str()?.nilIfBlank
+        ?? element["jobId"].str()?.nilIfBlank
+        ?? element["id"].long().map(String.init)
+        ?? element["jobId"].long().map(String.init)
+}
+
+/// Chip `.task` must run before any roster exists (same empty-Group trap as ChangesCard).
+public let jobsActionWatchAnchorPoints: Double = 1
+
+public func jobsActionShouldWatch(online: Bool, hasListOp: Bool) -> Bool {
+    online && hasListOp
 }
 
 /// kotlinx `JsonElement.toString() == "true"` for boolean or string primitives.
