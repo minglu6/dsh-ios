@@ -687,7 +687,7 @@ struct CommandMenuOverlay: View {
             }
             .frame(maxHeight: .infinity)
             .onChange(of: highlight) { value in
-                if let value { proxy.scrollTo(value, anchor: .nearest) }
+                if let value { proxy.scrollTo(value, anchor: .center) }
             }
         }
     }
