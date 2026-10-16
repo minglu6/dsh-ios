@@ -172,7 +172,7 @@ public enum TrajL {
     public static func layoutToolAdded(_ name: String) -> String { en ? "Tool added: \(name)" : "已添加工具：\(name)" }
     public static func layoutToolRemoved(_ name: String) -> String { en ? "Tool removed: \(name)" : "已移除工具：\(name)" }
 
-    /// Android-only empty copy; desktop locales.ts has no key — do not invent English.
+    /// Android-only empty copy; desktop empty ledger keeps the toolbar and has no locale key.
     public static let emptyTrajectory = "暂无轨迹"
 }
 

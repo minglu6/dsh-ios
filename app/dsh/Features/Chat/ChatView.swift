@@ -94,6 +94,7 @@ struct ChatView: View {
         }
         .sheet(item: $feedbackDraft) { draft in
             FeedbackCategorySheet(
+                hint: L.feedbackHint(),
                 onDismiss: { feedbackDraft = nil },
                 onSubmit: { category, note, complete in
                     model.setMessageFeedback(
@@ -427,6 +428,10 @@ struct ChatView: View {
         )
     }
 
+    private var runningTurnStartedAt: Int64? {
+        model.chat?.turns.last(where: { $0.endedAt == nil })?.startedAt
+    }
+
     private var lastAnswerKeys: [Int: String] {
         lastCommittedAnswerKeys(in: foldedRows)
     }
@@ -450,9 +455,12 @@ struct ChatView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {
                     if model.chat?.hasMore == true {
-                        Button(L.loading()) { model.loadOlderHistory() }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 8)
+                        Button(loadOlderLabel(loading: model.chat?.loadingOlder == true, english: L.en)) {
+                            model.loadOlderHistory()
+                        }
+                        .disabled(model.chat?.loadingOlder == true)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
                     }
                     ForEach(Array(chatRows.enumerated()), id: \.element.key) { _, row in
                         let pickKey = inspectorPickKey(row)
@@ -486,6 +494,9 @@ struct ChatView: View {
                     }
                     if model.chat?.loaded == false {
                         ProgressView().frame(maxWidth: .infinity).padding()
+                    }
+                    if model.chat?.running == true {
+                        RunningStatusRow(startedAtMs: runningTurnStartedAt)
                     }
                     Color.clear.frame(height: 1).id("bottom")
                 }
@@ -553,6 +564,22 @@ struct ChatView: View {
             onCommandMove: { commandHost.requestMove($0) },
             onCommandEscape: { dismissCommandMenu() }
         )
+    }
+}
+
+private struct RunningStatusRow: View {
+    let startedAtMs: Int64?
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let nowMs = Int64(context.date.timeIntervalSince1970 * 1000)
+            Text(deepDivingLabel(startedAtMs: startedAtMs, nowMs: nowMs, english: L.en))
+                .font(.subheadline)
+                .foregroundStyle(T.accent)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 4)
+                .accessibilityLabel(L.t("深度求索中", "Deep diving"))
+        }
     }
 }
 
@@ -772,7 +799,7 @@ private struct ToolCard: View {
         case .users: return "person.2"
         case .checklist: return "checklist"
         case .clock: return "clock"
-        case .goal: return "flag"
+        case .goal: return D.goal
         case .plugin: return "puzzlepiece.extension"
         case .agent: return "person.crop.circle"
         case .branch: return "arrow.triangle.branch"
@@ -1019,17 +1046,17 @@ struct ComposerView: View {
                         model.executeCommand("/plan off")
                     } label: {
                         HStack(spacing: 6) {
-                            Image(systemName: "checklist").foregroundStyle(T.accent)
+                            Image(systemName: D.plan).foregroundStyle(T.accent)
                             Text(L.planChip()).foregroundStyle(T.accent)
-                            Text(L.t("退出", "Exit")).font(.caption).foregroundStyle(T.text3)
                         }
                     }
                     .buttonStyle(.plain)
                     .frame(minHeight: 48)
+                    .accessibilityLabel(L.planModeOn())
                 }
                 ComposerTextView(
                     text: $model.composerText,
-                    placeholder: L.composerPlaceholder(),
+                    placeholder: composerPlaceholderText(planMode: model.chat?.planMode == true, english: L.en),
                     interceptKeys: interceptKeys,
                     focusToken: focusToken,
                     onReturn: onCommandReturn,
@@ -1073,12 +1100,13 @@ struct ComposerView: View {
                     }
                     Button(action: onModel) {
                         HStack(spacing: 4) {
-                            if let name = composerModelDisplayName(choiceName: model.modelChoice?.name, catalog: model.catalog) {
-                                Text(name)
-                                    .font(.subheadline)
-                                    .foregroundStyle(T.text2)
-                                    .lineLimit(1)
-                            }
+                            Text(
+                                composerModelDisplayName(choiceName: model.modelChoice?.name, catalog: model.catalog)
+                                    ?? composerModelFallback(english: L.en)
+                            )
+                            .font(.subheadline)
+                            .foregroundStyle(T.text2)
+                            .lineLimit(1)
                             if let effort = modelEffortLabel(catalog: model.catalog, provider: model.modelChoice?.provider, model: model.modelChoice?.model, effort: model.modelChoice?.effort) {
                                 Text(effort).font(.caption).foregroundStyle(T.caption).lineLimit(1)
                             }

@@ -32,14 +32,14 @@ struct TrajectoryView: View {
 
     var body: some View {
         let loaded = model.chat?.loaded == true
-        let hasMore = model.chat?.hasMore == true
         if !loaded {
-            ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if turns.isEmpty && !hasMore {
-            Text(TrajL.emptyTrajectory)
-                .font(.subheadline)
-                .foregroundStyle(T.caption)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            VStack(spacing: 8) {
+                ProgressView()
+                Text(TrajL.historyLoadingTrajectory)
+                    .font(.subheadline)
+                    .foregroundStyle(T.caption)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             ledger
         }

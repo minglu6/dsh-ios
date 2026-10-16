@@ -5,7 +5,7 @@ public enum TranscriptView: String, Sendable, CaseIterable {
 }
 
 /// Desktop `TranscriptViewPolicy`: non-desktop clients default to `detailed` when Host has no saved mode.
-/// `normal` / `expanded` are legacy saved values read as `detailed`. `collapseTiming` is client-local.
+/// `normal` / `expanded` are legacy saved values read as `detailed`.
 public func transcriptViewFromHost(_ raw: String?) -> TranscriptView {
     switch raw {
     case "compact": return .compact
@@ -16,8 +16,14 @@ public func transcriptViewFromHost(_ raw: String?) -> TranscriptView {
     }
 }
 
+/// Desktop `ui-chat.collapseTiming`: `completion` | `next-input`. Absence keeps completion folding.
 public enum CollapseTiming: String, Sendable, CaseIterable {
-    case completion, nextInput
+    case completion
+    case nextInput = "next-input"
+}
+
+public func collapseTimingFromHost(_ raw: String?) -> CollapseTiming {
+    CollapseTiming(rawValue: raw ?? "") ?? .completion
 }
 
 /// Desktop `@deepseek-ai/dsh-client-ui-chat` presentation policy.

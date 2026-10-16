@@ -22,7 +22,7 @@ enum L {
     static func submitFeedback() -> String { en ? "Submit feedback" : "提交反馈" }
     static func feedbackCategory() -> String { en ? "Feedback category" : "反馈分类" }
     static func feedbackDetail() -> String { en ? "Feedback details" : "反馈详情" }
-    static func feedbackHint() -> String { en ? "Add details to help us improve…" : "填写详情以帮助我们改进…" }
+    static func feedbackHint() -> String { messageFeedbackHint(english: en) }
     static func thanksFeedback() -> String { en ? "Thanks for your feedback" : "感谢你的反馈" }
     /// Android sheet only; desktop has no bilingual key for this retry line.
     static func feedbackSubmitFailed() -> String { "提交失败，内容已保留，请重试" }
@@ -73,11 +73,7 @@ enum L {
     static func pairingCode() -> String { pairingCodeFieldLabel(english: en) }
     static func sessionInspector() -> String { en ? "Session diagnostics" : "会话数据诊断" }
     static func sessionFeedback() -> String { en ? "Feedback" : "反馈" }
-    static func sessionFeedbackHint() -> String {
-        en
-            ? "Add details to help us improve. Your submission will include the current conversation log."
-            : "填写详情以帮助我们改进体验，提交内容会包括当前对话的日志"
-    }
+    static func sessionFeedbackHint() -> String { messageFeedbackHint(english: en) }
     static func imageLoading() -> String { en ? "Loading image…" : "图片加载中…" }
     static func imageLoadFailed() -> String { en ? "Failed to load image; click to retry" : "图片加载失败，点击重试" }
     static func agentPresets() -> String { en ? "Agent presets" : "Agent 预设" }
@@ -361,8 +357,8 @@ enum L {
     static func killJobFailed() -> String { en ? "Stop failed, retry" : "终止失败，请重试" }
     static func backToJobs() -> String { en ? "Back to background jobs" : "返回后台任务" }
     static func waitingJobOutput() -> String { en ? "Waiting for job output…" : "等待任务输出…" }
-    static func jobOutputExpired() -> String { en ? "[Older output expired]" : "[部分历史输出已过期]" }
-    static func jobOutputMissing() -> String { en ? "[Output missing here]" : "[此处输出存在缺失]" }
+    static func jobOutputExpired() -> String { jobOutputGap(english: en) }
+    static func jobOutputMissing() -> String { jobOutputGap(english: en) }
     static func jobOutputFailed() -> String { en ? "Unable to read output" : "输出读取失败" }
     static func jobLoadFailed() -> String { en ? "Unable to load jobs" : "任务加载失败" }
     static func completedUnread() -> String { en ? "Completed, unread" : "已完成，未查看" }
@@ -375,9 +371,9 @@ enum L {
     static func compact() -> String { en ? "Compact" : "简洁" }
     static func detailed() -> String { en ? "Detailed" : "详细" }
     static func fontSize() -> String { en ? "Font size" : "字号大小" }
-    static func linkOpening() -> String { en ? "Where links open" : "链接打开位置" }
+    static func linkOpening() -> String { linkOpeningTitle(english: en) }
     static func addPlugin() -> String { en ? "Add plugin" : "添加插件" }
-    static func pluginsHint() -> String { en ? "Install, enable and configure plugins" : "安装、启用和配置插件" }
+    static func pluginsHint() -> String { en ? "Install, enable, and configure plugins" : "安装、启用和配置插件" }
     static func officialPlugins(_ count: Int) -> String { en ? "Official \(count)" : "官方 \(count)" }
     static func installedPlugins() -> String { en ? "Installed plugins" : "已安装插件" }
     static func experimentalBadge() -> String { en ? "Experimental" : "实验性" }
@@ -386,9 +382,7 @@ enum L {
     static func newAutomation() -> String { en ? "New automation task" : "新建自动化任务" }
     static func automation() -> String { en ? "Scheduled tasks" : "自动化任务" }
     static func tool() -> String { en ? "Tool" : "工具" }
-    static func composerPlaceholder() -> String {
-        en ? "Send a message or create a task, / for commands, @ for files or chats" : "发消息或创建任务, / 调用指令, @ 文件或对话"
-    }
+    static func composerPlaceholder() -> String { composerPlaceholderText(planMode: false, english: en) }
     static func planReview() -> String { en ? "Plan review" : "计划待审" }
     static func approvePlan() -> String { en ? "Approve" : "同意执行" }
     static func typeYourAnswer() -> String { en ? "Type your answer" : "输入你的答案" }
@@ -400,14 +394,14 @@ enum L {
     static func sectionSkills() -> String { en ? "Skills" : "技能" }
     static func noOptions() -> String { en ? "No options" : "无选项" }
     static func file() -> String { en ? "File" : "文件" }
-    static func pendingFiles() -> String { en ? "Pending files" : "待发送文件" }
+    static func pendingFiles() -> String { pendingAttachmentsLabel(english: en) }
     static func uploading() -> String { en ? "Uploading…" : "上传中…" }
     static func uploadFailed() -> String { en ? "Upload failed; tap to retry" : "上传失败，点击重试" }
     static func removeFile(_ name: String) -> String { en ? "Remove file \(name)" : "移除文件 \(name)" }
     static func filesAndFolders() -> String { en ? "Files & folders" : "文件与文件夹" }
     static func planChip() -> String { en ? "Plan" : "计划" }
-    static func planModeOn() -> String { en ? "Plan mode on — tap to turn off" : "计划模式已开启 — 点击关闭" }
-    static func reopenQuestion() -> String { en ? "Question waiting · Reopen" : "问题等待回答 · 重新打开" }
+    static func planModeOn() -> String { planChipTitle(english: en) }
+    static func reopenQuestion() -> String { askReopenLabel(english: en) }
     static func notConnected() -> String { en ? "Not connected" : "未连接" }
     static func disconnected() -> String { en ? "Disconnected" : "已断开" }
 

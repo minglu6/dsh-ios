@@ -191,6 +191,12 @@ struct PluginsScreen: View {
     @ViewBuilder
     private var market: some View {
         let groups = pluginMarketGroups(bundles)
+        if !loading && error == nil && bundles.isEmpty {
+            Text(pluginsEmptyLabel(english: L.en))
+                .font(.footnote)
+                .foregroundStyle(T.text3)
+                .padding(.horizontal, 22)
+        }
         if !groups.official.isEmpty {
             Text(L.officialPlugins(groups.official.count))
                 .font(.subheadline.weight(.medium))

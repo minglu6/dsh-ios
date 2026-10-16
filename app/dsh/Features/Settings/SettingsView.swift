@@ -124,7 +124,7 @@ struct GeneralSettingsView: View {
                             L.collapseTiming(),
                             collapseTimingDescription(english: L.en),
                             value: collapseText(model.collapseTiming),
-                            enabled: model.isOnline
+                            enabled: shared.writable(.collapse)
                         ) { sheet = "collapse" }
                         HStack {
                             VStack(alignment: .leading) {
@@ -175,7 +175,7 @@ struct GeneralSettingsView: View {
                         }
                         if shared.hasField(.linkOpening) {
                             preferenceRow(
-                                L.linkOpening(),
+                                linkOpeningTitle(english: L.en),
                                 linkOpeningDescription(english: L.en),
                                 value: shared.value(.linkOpening)?.str().flatMap { value in
                                     value.isEmpty ? nil : linkOpeningLabel(value, english: L.en)
@@ -321,8 +321,7 @@ struct GeneralSettingsView: View {
                 case "collapse":
                     ForEach(CollapseTiming.allCases, id: \.rawValue) { mode in
                         Button(collapseText(mode)) {
-                            model.collapseTiming = mode
-                            sheet = nil
+                            shared.write(.collapse, value: .string(mode.rawValue)) { sheet = nil }
                         }
                     }
                 case "busy":
@@ -360,7 +359,7 @@ struct GeneralSettingsView: View {
         case "busy": return L.t("繁忙时的发送行为", "Send behavior while busy")
         case "perf": return L.performanceUsage()
         case "perm": return L.t("权限", "Permission")
-        case "links": return L.linkOpening()
+        case "links": return linkOpeningTitle(english: L.en)
         default: return ""
         }
     }
