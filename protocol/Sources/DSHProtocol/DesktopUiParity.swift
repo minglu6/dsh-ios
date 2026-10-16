@@ -527,6 +527,8 @@ public func wakingTriggerStep(openStep: Int?, openTurn _: Int?) -> Int? {
 
 /// Desktop `RiskConfirmation` is a centered dialog, not a full-screen sheet.
 public let permissionRiskIsCenteredDialog = true
+/// Checkbox / confirm stay in the viewport: ignore keyboard inset, scroll if needed.
+public let permissionRiskStaysAboveKeyboard = true
 
 /// Desktop keeps the conversation mounted while the in-app browser is open.
 public let chatPreservesPositionAcrossBrowser = true

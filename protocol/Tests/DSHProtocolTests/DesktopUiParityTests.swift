@@ -227,6 +227,7 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertNil(wakingTriggerStep(openStep: nil, openTurn: 1))
         XCTAssertEqual(wakingTriggerStep(openStep: 1, openTurn: 1), 1)
         XCTAssertTrue(permissionRiskIsCenteredDialog)
+        XCTAssertTrue(permissionRiskStaysAboveKeyboard)
         XCTAssertTrue(chatPreservesPositionAcrossBrowser)
         XCTAssertFalse(landingPermissionPersistsAcrossLaunch)
         XCTAssertEqual(

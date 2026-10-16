@@ -201,17 +201,25 @@ struct PermissionRiskDialog: View {
     var onConfirm: () -> Void
 
     var body: some View {
-        ZStack {
-            T.scrim.ignoresSafeArea()
-                .onTapGesture(perform: onDismiss)
-            PermissionRiskSheet(
-                preset: preset,
-                enabled: enabled,
-                forDefaults: forDefaults,
-                onDismiss: onDismiss,
-                onConfirm: onConfirm
-            )
+        GeometryReader { geo in
+            ZStack {
+                T.scrim.ignoresSafeArea()
+                    .onTapGesture(perform: onDismiss)
+                ScrollView {
+                    PermissionRiskSheet(
+                        preset: preset,
+                        enabled: enabled,
+                        forDefaults: forDefaults,
+                        onDismiss: onDismiss,
+                        onConfirm: onConfirm
+                    )
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: geo.size.height)
+                }
+                .scrollDismissesKeyboard(.interactively)
+            }
         }
+        .ignoresSafeArea(.keyboard, edges: permissionRiskStaysAboveKeyboard ? .all : [])
         .onAppear {
             guard permissionRiskDismissesKeyboard else { return }
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
@@ -260,7 +268,7 @@ struct PermissionChipMenu: View {
         .buttonStyle(.plain)
         .disabled(!enabled)
         .accessibilityLabel(currentLabel)
-        .popover(isPresented: $open, attachmentAnchor: .rect(.bounds), arrowEdge: .top) {
+        .popover(isPresented: $open, attachmentAnchor: .rect(.bounds), arrowEdge: composerPickerPopoverOpensAbove ? .bottom : .top) {
             VStack(alignment: .leading, spacing: 0) {
                 if loading {
                     ProgressView().frame(maxWidth: .infinity).padding(8)
@@ -304,7 +312,17 @@ struct PermissionChipMenu: View {
                 }
             }
             .padding(CGFloat(permissionMenuPaddingPoints))
-            .frame(minWidth: CGFloat(permissionMenuMinWidthPoints), maxWidth: CGFloat(permissionMenuMaxWidthPoints))
+            .frame(
+                minWidth: CGFloat(permissionMenuMinWidthPoints),
+                maxWidth: CGFloat(permissionMenuMaxWidthPoints)
+            )
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(
+                minHeight: options.isEmpty
+                    ? nil
+                    : CGFloat(permissionMenuHeightPoints(optionCount: options.count)),
+                alignment: .top
+            )
             .modifier(PopoverCompactAdaptation())
         }
     }
