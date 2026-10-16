@@ -23,7 +23,6 @@ struct RootView: View {
                         .transition(.move(edge: .leading))
                     Spacer()
                 }
-                .ignoresSafeArea()
             }
         }
         .preferredColorScheme(preferred)

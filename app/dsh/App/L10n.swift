@@ -397,6 +397,7 @@ enum L {
     static func completeQuestionFirst() -> String { en ? "Please complete this question first." : "请先完成这道问题。" }
     static func sectionAdd() -> String { en ? "Add" : "添加" }
     static func sectionCommands() -> String { en ? "Commands" : "指令" }
+    static func sectionSkills() -> String { en ? "Skills" : "技能" }
     static func noOptions() -> String { en ? "No options" : "无选项" }
     static func file() -> String { en ? "File" : "文件" }
     static func pendingFiles() -> String { en ? "Pending files" : "待发送文件" }

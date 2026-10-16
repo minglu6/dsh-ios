@@ -4,6 +4,18 @@ public enum TranscriptView: String, Sendable, CaseIterable {
     case compact, standard, detailed, verbose
 }
 
+/// Desktop `TranscriptViewPolicy`: non-desktop clients default to `detailed` when Host has no saved mode.
+/// `normal` / `expanded` are legacy saved values read as `detailed`. `collapseTiming` is client-local.
+public func transcriptViewFromHost(_ raw: String?) -> TranscriptView {
+    switch raw {
+    case "compact": return .compact
+    case "standard": return .standard
+    case "detailed", "normal", "expanded": return .detailed
+    case "verbose": return .verbose
+    default: return .detailed
+    }
+}
+
 public enum CollapseTiming: String, Sendable, CaseIterable {
     case completion, nextInput
 }
@@ -621,14 +633,18 @@ public func changesAttachedToAnswer(
     return changesByTurn[turn]
 }
 
-private func lastCommittedAnswerKeys(in rows: [ChatRow]) -> [Int: String] {
+public func lastCommittedAnswerKeys(in rows: [ChatRow]) -> [Int: String] {
     var keys: [Int: String] = [:]
     for row in rows {
-        if case .answer(let text) = row, let turn = text.turn, !text.live {
+        if case .answer(let text) = row, let turn = text.turn, isCommittedAnswer(text) {
             keys[turn] = text.key
         }
     }
     return keys
+}
+
+func isCommittedAnswer(_ text: Item.Text) -> Bool {
+    !text.live && !text.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
 }
 
 public func inspectorRowIndex(_ rows: [ChatRow], itemKey: String) -> Int {

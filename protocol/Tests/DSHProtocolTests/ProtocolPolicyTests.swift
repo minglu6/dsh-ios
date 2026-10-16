@@ -131,6 +131,24 @@ final class ProtocolPolicyTests: XCTestCase {
         XCTAssertEqual(ChatActionKeys.lastCommittedAnswerKeys(items), [1: "a2", 2: "b1"])
     }
 
+    func testLastCommittedAnswerKeysSkipBlankReplies() {
+        let items: [Item] = [
+            .text(Item.Text(key: "a1", text: "done", live: false, turn: 1)),
+            .text(Item.Text(key: "blank", text: " \n", live: false, turn: 1)),
+        ]
+        XCTAssertEqual(ChatActionKeys.lastCommittedAnswerKeys(items), [1: "a1"])
+    }
+
+    func testTranscriptViewFromHostMatchesNonDesktopDefault() {
+        XCTAssertEqual(transcriptViewFromHost(nil), .detailed)
+        XCTAssertEqual(transcriptViewFromHost("standard"), .standard)
+        XCTAssertEqual(transcriptViewFromHost("detailed"), .detailed)
+        XCTAssertEqual(transcriptViewFromHost("normal"), .detailed)
+        XCTAssertEqual(transcriptViewFromHost("expanded"), .detailed)
+        XCTAssertEqual(transcriptViewFromHost("compact"), .compact)
+        XCTAssertEqual(transcriptViewFromHost("verbose"), .verbose)
+    }
+
     func testTrajLEnglishFollowsDesktopLocales() {
         let previous = TrajL.en
         defer { TrajL.en = previous }

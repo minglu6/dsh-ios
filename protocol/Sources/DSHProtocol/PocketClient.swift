@@ -408,6 +408,11 @@ public final class PocketClient: @unchecked Sendable {
         try await call("commands.list", args: jsonObject(["sessionId": .string(sessionId)]))["commands"].arr() ?? []
     }
 
+    /// Host `skills/list` forwarded as pocket `skills.list` → `{skills: [...]}`.
+    public func listSkills(sessionId: String) async throws -> [JSONValue] {
+        try await call("skills.list", args: jsonObject(["sessionId": .string(sessionId)]))["skills"].arr() ?? []
+    }
+
     public func executeCommand(sessionId: String, line: String) async throws -> JSONValue {
         try await call("commands.execute", args: jsonObject([
             "sessionId": .string(sessionId),

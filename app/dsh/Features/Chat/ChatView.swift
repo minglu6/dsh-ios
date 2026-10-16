@@ -391,13 +391,7 @@ struct ChatView: View {
     }
 
     private var lastAnswerKeys: [Int: String] {
-        var keys: [Int: String] = [:]
-        for row in foldedRows {
-            if case .answer(let text) = row, let turn = text.turn {
-                keys[turn] = text.key
-            }
-        }
-        return keys
+        lastCommittedAnswerKeys(in: foldedRows)
     }
 
     private var changesByTurn: [Int: Item.Changes] {
@@ -429,7 +423,7 @@ struct ChatView: View {
                             if case .answer(let text) = row {
                                 return changesAttachedToAnswer(
                                     text,
-                                    lastCommittedAnswerKeys: model.chat?.lastAnswerKeys ?? [:],
+                                    lastCommittedAnswerKeys: lastAnswerKeys,
                                     changesByTurn: changesByTurn
                                 )
                             }

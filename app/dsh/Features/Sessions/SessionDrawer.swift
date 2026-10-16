@@ -140,7 +140,10 @@ struct SessionDrawer: View {
         .onChange(of: orderedIds) { value in
             if model.sessionOrderBy == .manual { model.persistManualOrder(value) }
         }
-        .onAppear { rememberOps() }
+        .onAppear {
+            rememberOps()
+            model.refreshSessionsWhenVisible()
+        }
         .onChange(of: model.isOnline) { _ in rememberOps() }
         .onChange(of: model.ops) { _ in rememberOps() }
         .confirmationDialog(L.viewOptions(), isPresented: $viewOptions, titleVisibility: .visible) {
