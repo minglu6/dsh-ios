@@ -463,17 +463,22 @@ public func goalPhaseLabel(phase: String?, activation: String?) -> String {
     }
 }
 
-public func permissionLabel(value: String, option: PermissionOption? = nil) -> String {
-    if value == "auto" { return "自动审查" }
+public func permissionLabel(value: String, option: PermissionOption? = nil, english: Bool = false) -> String {
+    if value == "auto" { return english ? "Auto review" : "自动审查" }
     let name = option?.name ?? value
-    let builtIn: (String, String)?
+    let zh: String
+    let en: String
     switch value {
-    case "read-only": builtIn = ("Read Only", "仅可查看")
-    case "workspace-write": builtIn = ("Workspace Write", "工作区内修改")
-    case "danger-full-access": builtIn = ("Full access", "完全权限")
-    default: builtIn = nil
+    case "read-only":
+        zh = "仅可查看"; en = "Read Only"
+    case "workspace-write":
+        zh = "工作区内修改"; en = "Workspace Write"
+    case "danger-full-access":
+        zh = "完全权限"; en = "Full access"
+    default:
+        return name
     }
-    if let builtIn, name == value || name == builtIn.0 { return builtIn.1 }
+    if name == value || name == en || name == zh { return english ? en : zh }
     return name
 }
 

@@ -102,6 +102,11 @@ final class DesktopUiParityTests: XCTestCase {
 
     func testConversationHeaderHasNoOverflowMenu() {
         XCTAssertFalse(ConversationHeaderPolicy.includesOverflowMenu)
+        XCTAssertFalse(conversationHeaderShowsModelChip)
+        XCTAssertFalse(conversationHeaderShowsAgentPreset)
+        XCTAssertFalse(conversationHeaderShowsTimestamp)
+        XCTAssertFalse(settingsIncludesPhoneConnection)
+        XCTAssertTrue(phoneConnectionLivesInDrawerFooter)
     }
 
     func testGeneralSettingsCopyMatchesDesktopLocale() {

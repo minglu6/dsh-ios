@@ -69,30 +69,3 @@ enum RunningWhaleFrames {
     }
 }
 
-/// Desktop `TextShimmer`: sliding highlight on running copy; static when reduced-motion.
-struct TextShimmer: View {
-    let text: String
-    var active = true
-
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        if !active || reduceMotion {
-            Text(text)
-                .foregroundStyle(T.accent)
-        } else {
-            TimelineView(.animation) { context in
-                let period: TimeInterval = 2.4
-                let t = context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: period) / period
-                Text(text)
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [T.accent.opacity(0.45), T.accent, T.accent.opacity(0.45)],
-                            startPoint: UnitPoint(x: t * 2 - 0.6, y: 0.5),
-                            endPoint: UnitPoint(x: t * 2 + 0.4, y: 0.5)
-                        )
-                    )
-            }
-        }
-    }
-}

@@ -951,20 +951,3 @@ private func toolNames(_ json: String?) -> Set<String> {
     return Set(arr.compactMap { $0["name"].str() })
 }
 
-public func formatMessageClock(_ timestampMs: Int64, nowMs: Int64 = Int64(Date().timeIntervalSince1970 * 1000)) -> String {
-    let date = Date(timeIntervalSince1970: TimeInterval(timestampMs) / 1000.0)
-    let now = Date(timeIntervalSince1970: TimeInterval(nowMs) / 1000.0)
-    let cal = Calendar.current
-    let hmFormatter = DateFormatter()
-    hmFormatter.locale = posix
-    hmFormatter.dateFormat = "HH:mm"
-    let hm = hmFormatter.string(from: date)
-    if cal.isDate(date, inSameDayAs: now) { return hm }
-    let y = cal.component(.year, from: date)
-    let m = cal.component(.month, from: date)
-    let d = cal.component(.day, from: date)
-    if cal.component(.year, from: date) == cal.component(.year, from: now) {
-        return "\(m)月\(d)日 \(hm)"
-    }
-    return "\(y)年\(m)月\(d)日"
-}

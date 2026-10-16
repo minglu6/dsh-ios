@@ -2,16 +2,6 @@ import SwiftUI
 import UIKit
 import DSHProtocol
 
-func permissionIcon(_ value: String) -> String {
-    switch value {
-    case "auto": return "eye"
-    case "read-only": return "eyeglasses"
-    case "workspace-write": return "pencil"
-    case "danger-full-access": return "exclamationmark.shield"
-    default: return "hand.raised"
-    }
-}
-
 struct PermissionPickerSheet: View {
     let current: String
     let catalog: PermissionCatalog?
@@ -70,23 +60,26 @@ struct PermissionPickerSheet: View {
                             }
                         } label: {
                             HStack(alignment: .top, spacing: 12) {
-                                Image(systemName: permissionIcon(option.value))
-                                    .foregroundStyle(option.value == "danger-full-access" ? T.warnText : T.text2)
+                                if permissionHasGlyph(option.value) {
+                                    OfficialGlyph(
+                                        kind: .permission(option.value),
+                                        size: CGFloat(permissionMenuIconSizePoints),
+                                        color: option.value == "danger-full-access" ? T.warnText : T.text2
+                                    )
+                                }
                                 VStack(alignment: .leading, spacing: 4) {
                                     HStack {
-                                        Text(permissionLabel(value: option.value, option: option))
+                                        Text(permissionLabel(value: option.value, option: option, english: L.en))
                                             .foregroundStyle(T.ink)
-                                        if option.value == "auto" {
-                                            Text("EXP")
-                                                .font(.caption2.weight(.semibold))
-                                                .foregroundStyle(T.warnText)
-                                                .padding(.horizontal, 6)
-                                                .padding(.vertical, 2)
-                                                .background(T.warnTint, in: Capsule())
+                                        if let badge = permissionExpBadge(option.value) {
+                                            Text(badge)
+                                                .font(.system(size: CGFloat(permissionExpBadgeFontSizePoints), weight: .medium))
+                                                .tracking(CGFloat(permissionExpBadgeLetterSpacing))
+                                                .foregroundStyle(T.text3)
                                         }
                                     }
                                     Text(option.value == "auto"
-                                         ? L.t("无沙箱运行；每次原生工具调用和 PTC 内层调用前由同一模型进行实验性审查。", "Runs without a sandbox. Each native tool call and PTC inner call is reviewed experimentally by the same model.")
+                                         ? permissionAutoDescription(english: L.en)
                                          : (option.description ?? ""))
                                         .font(.footnote)
                                         .foregroundStyle(T.text3)
@@ -138,8 +131,8 @@ struct PermissionRiskSheet: View {
                 .frame(width: 44, height: 44)
                 .overlay(Image(systemName: "exclamationmark.triangle").foregroundStyle(T.warnText))
             Text(auto
-                 ? L.t("确认启用自动审查（实验）？", "Enable auto-review (experimental)?")
-                 : L.t("确认启用完全权限？", "Enable full access?"))
+                 ? permissionAutoConfirmTitle(english: L.en)
+                 : L.t("确认启用完全权限？", "Enable Full access?"))
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(T.ink)
             Text(description)
@@ -151,7 +144,7 @@ struct PermissionRiskSheet: View {
                     Image(systemName: acknowledged ? "checkmark.square.fill" : "square")
                         .foregroundStyle(acknowledged ? T.ink : T.text3)
                     Text(auto
-                         ? L.t("我已了解这些风险，并愿意继续", "I understand these risks and want to continue")
+                         ? permissionAutoConfirmAcknowledge(english: L.en)
                          : L.t("我已了解风险，并愿意继续", "I understand the risks and want to continue"))
                         .foregroundStyle(T.ink)
                         .multilineTextAlignment(.leading)
@@ -163,7 +156,7 @@ struct PermissionRiskSheet: View {
                 Button(L.cancel(), action: onDismiss)
                     .frame(maxWidth: .infinity, minHeight: 50)
                     .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 1))
-                Button(auto ? L.t("启用自动审查", "Enable auto-review") : L.t("启用完全权限", "Enable full access")) {
+                Button(auto ? permissionAutoConfirmEnable(english: L.en) : L.t("启用完全权限", "Enable Full access")) {
                     if interactive && acknowledged {
                         submitted = true
                         acknowledged = false
@@ -188,10 +181,7 @@ struct PermissionRiskSheet: View {
 
     private var description: String {
         if auto {
-            return L.t(
-                "自动审查不使用沙箱。每次原生工具调用和 PTC 内层调用前，都会由与当前 agent 相同的模型进行审查；审查拒绝的调用由你批准或拒绝。此功能仍属实验性，可能误放行或误拒绝，并会消耗额外 token。",
-                "Auto-review does not use a sandbox. Each native tool call and PTC inner call is reviewed by the same model as the current agent; rejected calls require your approval. This is experimental and may allow or deny incorrectly, and uses extra tokens."
-            )
+            return permissionAutoConfirmDescription(english: L.en)
         }
         // Desktop hero / composer uses `permission.access` (current session).
         // Settings defaults use `settings.permission` (new sessions).
@@ -229,48 +219,93 @@ struct PermissionRiskDialog: View {
     }
 }
 
-/// Desktop permission chip: anchored menu with a check on the current preset.
+/// Desktop `PermissionSelect`: ghost chip + custom MenuSurface, not a system Menu.
 struct PermissionChipMenu: View {
     let current: String
     let catalog: PermissionCatalog?
     var loading: Bool = false
     var enabled: Bool = true
     var onSelect: (String) -> Void
+    @State private var open = false
 
     private var options: [PermissionOption] { catalog?.options ?? [] }
+    private var currentLabel: String {
+        permissionLabel(value: current, option: catalog?.find(current), english: L.en)
+    }
 
     var body: some View {
-        Menu {
-            if !loading {
-                ForEach(options, id: \.value) { option in
-                    Button {
-                        if option.value != current { onSelect(option.value) }
-                    } label: {
-                        if option.value == current {
-                            Label(permissionLabel(value: option.value, option: option), systemImage: "checkmark")
-                        } else {
-                            Text(permissionLabel(value: option.value, option: option))
-                        }
-                    }
-                }
-            }
-        } label: {
+        Button { if enabled { open.toggle() } } label: {
             HStack(spacing: 4) {
-                Image(systemName: permissionIcon(current))
-                Text(permissionLabel(value: current, option: catalog?.find(current)))
+                if permissionHasGlyph(current) {
+                    OfficialGlyph(
+                        kind: .permission(current),
+                        size: CGFloat(permissionTriggerIconSizePoints),
+                        color: current == "danger-full-access" ? T.warnText : T.text2
+                    )
+                }
+                Text(currentLabel)
                     .lineLimit(1)
                 Image(systemName: "chevron.down")
                     .font(.system(size: 11))
+                    .foregroundStyle(T.caption)
+                    .rotationEffect(.degrees(open ? 180 : 0))
                     .accessibilityHidden(true)
             }
             .font(.system(size: 13, weight: .medium))
             .foregroundStyle(current == "danger-full-access" ? T.warnText : T.text2)
-            .padding(.horizontal, 8)
+            .padding(.leading, 8)
+            .padding(.trailing, 4)
             .frame(minHeight: CGFloat(composerChipHeightPoints))
-            .background(T.fill, in: Capsule())
         }
-        .menuOrder(.fixed)
+        .buttonStyle(.plain)
         .disabled(!enabled)
-        .accessibilityLabel(permissionLabel(value: current, option: catalog?.find(current)))
+        .accessibilityLabel(currentLabel)
+        .popover(isPresented: $open, attachmentAnchor: .rect(.bounds), arrowEdge: .top) {
+            VStack(alignment: .leading, spacing: 0) {
+                if loading {
+                    ProgressView().frame(maxWidth: .infinity).padding(8)
+                }
+                ForEach(options, id: \.value) { option in
+                    Button {
+                        open = false
+                        if option.value != current { onSelect(option.value) }
+                    } label: {
+                        HStack(spacing: 6) {
+                            if permissionHasGlyph(option.value) {
+                                OfficialGlyph(
+                                    kind: .permission(option.value),
+                                    size: CGFloat(permissionMenuIconSizePoints),
+                                    color: T.ink
+                                )
+                            }
+                            Text(permissionLabel(value: option.value, option: option, english: L.en))
+                                .font(.system(size: 13))
+                                .foregroundStyle(T.ink)
+                                .lineLimit(1)
+                            if let badge = permissionExpBadge(option.value) {
+                                Text(badge)
+                                    .font(.system(size: CGFloat(permissionExpBadgeFontSizePoints), weight: .medium))
+                                    .tracking(CGFloat(permissionExpBadgeLetterSpacing))
+                                    .foregroundStyle(T.text3)
+                            }
+                            Spacer(minLength: 8)
+                            if option.value == current {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(T.ink)
+                            }
+                        }
+                        .padding(.horizontal, 8)
+                        .frame(minHeight: CGFloat(permissionMenuRowMinHeightPoints))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(CGFloat(permissionMenuPaddingPoints))
+            .frame(minWidth: CGFloat(permissionMenuMinWidthPoints), maxWidth: CGFloat(permissionMenuMaxWidthPoints))
+            .modifier(PopoverCompactAdaptation())
+        }
     }
 }

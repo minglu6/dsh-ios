@@ -305,8 +305,21 @@ struct SessionDrawer: View {
                         .lineLimit(1)
                     if let snippet = session.searchSnippet, searching {
                         Text(snippet).font(.caption).foregroundStyle(T.accent).lineLimit(2)
-                    } else {
-                        Text(formatSessionTime(at: session.updatedAt, now: now, language: model.language))
+                    } else if let trailing = sessionRowTrailingLabel(
+                        blank: session.blank,
+                        pending: sessionPendingInteraction(
+                            awaitingApproval: model.approvals.contains { $0.sessionId == session.sessionId },
+                            planReview: model.userQuestions.contains { question in
+                                question.sessionId == session.sessionId
+                                    && question.questions.contains { $0.intentKind == "plan-review" }
+                            },
+                            awaitingAnswer: model.userQuestions.contains { $0.sessionId == session.sessionId }
+                        ),
+                        updatedAt: session.updatedAt,
+                        now: now,
+                        english: L.en
+                    ) {
+                        Text(trailing)
                             .font(.caption)
                             .foregroundStyle(T.text3)
                     }
@@ -367,20 +380,16 @@ struct SessionDrawer: View {
     @ViewBuilder
     private func leading(_ session: SessionSummary) -> some View {
         let archived = model.archivedIds.contains(session.sessionId)
-        if session.running {
-            ProgressView().controlSize(.mini)
-        } else if archived {
-            Image(systemName: D.archive).foregroundStyle(T.text3).font(.caption)
-        } else if model.unreadIds.contains(session.sessionId) {
-            Circle()
-                .fill(T.ok)
-                .frame(width: 8, height: 8)
-                .accessibilityLabel(L.completedUnread())
-        } else if model.approvals.contains(where: { $0.sessionId == session.sessionId }) {
-            Image(systemName: "hand.raised.fill").foregroundStyle(T.warnText).font(.caption)
-        } else {
-            Image(systemName: "bubble.left").foregroundStyle(T.text3).font(.caption)
-        }
+        SidebarSessionLeadingView(
+            kind: sidebarSessionLeading(
+                running: session.running,
+                archived: archived,
+                unread: model.unreadIds.contains(session.sessionId),
+                awaitingApproval: model.approvals.contains { $0.sessionId == session.sessionId },
+                awaitingAnswer: model.userQuestions.contains { $0.sessionId == session.sessionId }
+            ),
+            english: L.en
+        )
     }
 
     private var drawerPanels: some View {

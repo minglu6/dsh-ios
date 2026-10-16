@@ -40,7 +40,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R9 | composer `sizeThatFits -> CGSize?`；任务 popover `arrowEdge: .top` 且无返回箭头；landing 风险文案跟桌面 hero；waking 与 `inbox.ts`/`message.ts` 对齐 | done (#27) |
 | R10 | 已停止任务按 `JobView`/`exit` 投影；任务 popover 按内容收缩；底栏 `tok`；触发行灰卡；完全权限居中确认；浏览器关闭后保留对话位置；waking step 仅 `openStep` | done (#28) |
 | R11 | 底栏 Token 用量贴 chip 的 popover；已结束任务 SIGTERM 整句；完全权限确认先收键盘 | done (#29) |
-| R12 | Token 用量弹层在 chip 上方；表头图标 + 合计右对齐；本轮用量对齐 `message.turnUsage`；Think 展开保留图标；轨迹吞吐空窗用官方「不可用」；「已结束」一次点按展开 | this PR |
+| R12 | Token 用量弹层在 chip 上方；表头图标 + 合计右对齐；本轮用量对齐 `message.turnUsage`；Think 展开保留图标；轨迹吞吐空窗用官方「不可用」；「已结束」一次点按展开 | done (#30) |
+| R13 | 权限/模型 picker 对齐桌面 MenuSurface；去掉标题模型名与预设；landing AgentPresetSeat；连接入口回到抽屉脚；会话绿点/运行 spinner；Think 块对齐 ReasoningRow | this PR |
 
 ---
 
@@ -76,13 +77,14 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | --- | --- | --- | --- | --- |
 | User bubble, pending echo | `Chat.kt` | `MessageRow` `.user` | **present** | — |
 | Assistant text stream | follow reducer | `.text` live/committed | **present** | — |
-| Reasoning disclosure | Think icon + preview | official Think / 思考 + preview; Markdown body。展开仍留 Think 图标，右侧 chevron（`DisclosureRow`），不再用 chevron 替换图标 | **present** | **D** / **R12** |
+| Reasoning disclosure | Think icon + preview | 标题恒为「思考」/Think；运行中 TextShimmer 而非 spinner；收起默认；展开时 chevron 替换 Think 图标；正文 compact 三级色 13/20；预览为首行（流式为已完成段首行） | **present** | **D** / **R12** / **R13** |
 | Tool row → inspector | `Chat.kt` tool card | `ToolProcessSummary` title/icon/receipt + inspect sheet | **present** | **D** |
-| Process group fold | `ChatProcess.kt` | `foldChatItems` / `visibleChatRows` + `ProcessGroupView` | **present** | **D** |
+| Process group fold | `ChatProcess.kt` | `foldChatItems` / `visibleChatRows` + `ProcessGroupView`；已完成回合为「已完成，用时」+ 右侧 chevron（无左侧图标）；步骤组标题 body 14 + ` · ` 细节；成员与组头同列（无额外缩进）；运行中 shimmer | **present** | **D** / **R13** |
 | Notices (stopped / max-tokens / account) | reducer + official `message.*` | reducer emits; `.notice` / `RetryRow` / `TurnFailureRow` | **present** | **E** |
 | Deliverables | `Item.Deliverable` | tap opens workspace file preview | **present** | **B** |
 | Markdown / code block / tables | `Markdown.kt` | AST + GFM tables / code / file chips | **present** | **D** |
 | Copy / like / dislike / share | `MessageActions` + `FeedbackCategory` | desktop row is share (not branch); branch stays on the session row menu | **present** | **A** / **P1** |
+| Message / trigger clock | `formatMessageClock` | 同日 `HH:mm`；同年 `clock.md`+时钟；跨年 `clock.ymd`+时钟（zh `m月d日` / `y年m月d日`，en `m/d` / `y-m-d`）；本地时区；无今天/昨天 | **present** | **R13** |
 | Turn usage pill | `ComposerStats.kt` `TurnUsageAction` | `TurnUsagePanel`：chip `用量 {n} tok`；popover 在 pill 上方；表头图标 +「本轮用量」左、合计右；无「合计」行；推理挂在输出行 `（其中推理 {n} tok）` | **missing** → **present** | **E** / **R6** / **R12** |
 | Composer statistics | Activity / Usage / Context pills | `ComposerStats` 单行 HStack；Token 用量为贴 chip 的 popover（在 chip **上方**，表头图标 +「Token 用量」左、合计 tok 右；无「合计」行，「缓存命中」+ tok） | **missing** → **present** | **E** / **R8** / **R11** / **R12** |
 | Composer queue / steer | busyEnter + `queue.update` | `busySend` + `PromptQueue` edit/remove/steer；排队行按桌面 `QueueDock` 画图片缩略图 / 文件芯片（有 `session.attachment` 或本地 preview） | **partial** → **present** | **E** / **R5** |
@@ -95,10 +97,11 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Approvals | official `ApprovalCard` takes composer | official card; `accepted` callback clears busy, success drops the row | **partial** → **present** | **E** |
 | TodoPanel | dock card above composer | `TodoPanel` expand in place | **missing** → **present** | **E** |
 | Goal bar | `goals.get` / `goal.activation` CAS | `GoalBar` + `GoalSheet` pause/resume/clear/edit | **missing** → **present** | **E** |
-| Permission mode | catalog/get/set + risk sheet | composer chip 为锚定 `Menu` + 当前项 ✓ + `.menuOrder(.fixed)`；斜杠 `/permission` 按桌面 `popupSelect` 在弹层内原地列选项 + ✓；landing 选档写入 `draftPermission`，创建会话时 `permissions.set`；危险档确认；Settings defaults（`auto` 不能当默认） | **partial** → **present** | **E** / **R7** / **R8** |
+| Permission mode | catalog/get/set + risk sheet | composer chip 为桌面 `PermissionSelect` 幽灵按钮 + 官方 SVG + EXP 8/500 + 自定义菜单（非系统 Menu）；斜杠 `/permission` 按桌面 `popupSelect` 在弹层内原地列选项 + ✓；landing 选档写入 `draftPermission`，创建会话时 `permissions.set`；危险档确认；Settings defaults（`auto` 不能当默认） | **partial** → **present** | **E** / **R7** / **R8** / **R13** |
 | Turn trigger row | desktop `TurnTriggerNodeView` | 仅 `waking`（`inbox-next-turn.currentClaimed` 或 idle steer）画触发行；Host 注入的 skill-catalog / time-context 与未唤醒的 tool-jobs 继续隐藏 | **missing** → **present** | **R7** / **R8** |
 | Session title live update | Android `refreshTitles` on status | `drawerSessionTitle` 优先非空 title；status 时重拉 `sessions.list`（停后再 4s）；follow `projection key=title` | **partial** → **present** | **R7** |
-| Model + effort | two-level picker | `ModelPicker` root / models / effort | **partial** → **present** | **E** |
+| Session list relative time | `formatSessionTime` / `timeLabel` | `relativeTime` 桶 + `time.now/{unit}`；空白会话不画时间；审批/计划待审/待回答用 `status.compact.*` 替换时间；标题栏无时钟 | **present** | **R13** |
+| Model + effort | two-level picker | composer chip 锚定 `ModelSelect` 两级菜单（模型 / 有推理才出推理等级）；空态「暂无可用模型」；landing 无会话时写入 `draftModel` | **partial** → **present** | **E** / **R13** |
 | No “scroll to bottom” FAB | `followBottom` | auto-scroll only | **present** | — |
 
 ## 2. Trajectory
@@ -153,7 +156,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Header jobs chip | `JobsAction.kt` / desktop `JobListAction` | tabs-row chip；面板为进行中 / 已结束 + 两点击停止（`kill.confirm`）。R6 实机：空 `Group` 上的 `.task` 不跑、从不 `jobs.list`；R7 把 watch 挂在 1pt 常驻锚点（同变更卡）。插件 `jobs.list` / `follow` / `kill` 已转发，Host `{type:rows, jobs:[…], output.lossy:false}` 可解析。R10：行状态按桌面 `JobView`（`status`/`detail`/`progress`/`finishedAt`，必要时从 `exit` 投影）；killed 为橙点 + `signal: SIGTERM; cancelled by the user` 单行、无停止按钮。R11：popover 随屏宽放宽，已结束 detail 换行而不截成 `SIGTER…`。R12：「已结束」按桌面 `settledOpen ?? liveCount===0`，一次点按展开；popover 花名册保持同一 identity，不再 `ViewThatFits` 重挂载吃掉首点 | **present** | **C** / **R6** / **R7** / **R10** / **R11** / **R12** |
 | Failed refresh → 「任务状态不可用」 (not 0) | `JobsAction.kt:62-64` | same copy, stale running count discarded | **present** | **C** |
 | `jobs.list` / `follow` / `kill` | `Pocket.kt` | `PocketClient` + `JobsPanel`; list+live follow share one roster | **present** | **C** |
-| Unread green dot | `CompletionReminders` epoch+revision | epoch+revision; leading slot only | **present** | **C** |
+| Unread green dot | `CompletionReminders` epoch+revision | idle+未归档时 14pt 槽内 3/14 半径绿点；运行中为 StateDot spinner（仅会话行）；工作区保持文件夹 | **present** | **C** / **R13** |
 | Task / approval local notifications | `ConnectionService` + `TaskNotifyTexts` | UNUserNotificationCenter; same titles/tags; no ForegroundService | **missing** → **present** | **G** |
 | `completion.view` failure does not drop WS | `Pocket.kt` | `syncCompletionView` retry | **present** | — |
 | `follow` without `maxMessages` | `PocketFollowTest` | `FollowRequest.args` | **present** | — |
@@ -182,7 +185,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | 「移动端」 group / 代码自动换行 | Android still has these (audit S2/S5) | wrap is local; no extra mobile group copied | **present** | — |
 | Version only on General | audit S3 | General only | **present** | — |
 | Account / shortcuts / open config file | desktop-local | — | **hide** | — |
-| Phone connection + 复制诊断报告 | connections | connections overflow | **present** | — |
+| Phone connection + 复制诊断报告 | connections | 抽屉脚（计算机名 + 状态），Settings 无「手机连接」分组 | **present** | **R13** |
 | LAN / NSD discovery | `_dshpocket._tcp` protocol=1 + 64-hex instanceId | same TXT gate; unpaired filter; address bind | **partial** → **present** | **G** |
 | Paired-device online poll | TCP probe, 10s, max 2 | same policy (`PairedDeviceStatusPolicy`) | **missing** → **present** | **G** |
 | Reconnect restore gate | `ConnectionRestorePolicy` Offline/Connecting only | same; `NWPathMonitor` wakes the loop | **partial** → **present** | **G** |
@@ -361,7 +364,7 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 | Token 用量方向 | `composerUsagePopoverOpensAbove` → `arrowEdge: .bottom` | `ui-chat` `stat-dialog.ts` `useStatDialog` `side: 'top'` | 弹层在统计 chip **上方**，不被键盘挡住 |
 | Token 用量表头 | `UsagePopoverHeader` | `StatsPills.tsx` `DialogPill` + `stat-dialog.module.css` `.title` / `.titleLabel` / `.titleValue` | 左侧数据库图标 +「Token 用量」；合计 `34,185 tok` 右对齐；无「合计」行 |
 | 本轮用量 | `TurnUsageAction` | `TurnUsagePanel.tsx` + `locale.ts` `message.turnUsage.*` | 同样在 pill 上方；表头「本轮用量」+ 合计右对齐；`提供方 / 模型`；`缓存命中`；输出行后缀 `（其中推理 {n} tok）`；EN `Cached input` |
-| Think 展开 | `ReasoningRow` | `ReasoningRow.tsx` + `DisclosureRow` `icon={THINK_ICON}` | 展开仍画 Think 图标，右侧 chevron，不再用 chevron 替换 brain |
+| Think 展开 | `ReasoningRow` | `ReasoningRow.tsx` + `DisclosureRow` `icon={THINK_ICON}` | R12 误读。R13 按 alpha.5 `DisclosureRow`：`open ? IconChevronUp : collapsedLeading`（展开 chevron-up 替换 Think；收起 Think，触屏无 hover 换 chevron） |
 | 已结束展开 | `jobsSettledSectionExpanded` + `JobsPopoverRoster` | `JobListAction.tsx` `settledOpen ?? liveRows.length === 0`；`job-list-action.client.spec.tsx` 一次 click 展开 | 显式 toggle 优先；有 live 时默认折叠；点一次展开。popover 测高后同一 `ScrollView`，不再 `ViewThatFits` 在 `jobList` ↔ 滚动层之间重挂载。时钟只在有 live 行时走 |
 | 轨迹吞吐空窗 | `formatThroughput` | `ui-trajectory` `timingNotAvailable` | `seconds <= 0` →「不可用」/ `Not available`，删除自撰「时长过短」 |
 
@@ -370,4 +373,27 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 - 文件树滚动恢复：`fileTreeOffsets` + `fileTreeRestoredOffset` 已在 R6 / 测试里；无新代码缺口。
 - 空 `Group` `.task`：变更卡 / 任务 chip 已用 1pt 锚点（R6/R7）。
 - Account / shortcuts / open config / open-in-desktop-editor：仍 **hide**。
-- 桌面 `DisclosureRow` hover 把 Think 换成 chevron：触屏无 hover，不移植。
+- 桌面 `DisclosureRow` / `ChatGroupSeat` hover 把图标换成 chevron：触屏无 hover，收起态保持图标（与 Android 触屏处理一致，桌面源码仍是 hover 才换）。
+
+## Round 13 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`）
+
+每条只引用桌面 package / 文件 / 符号；Android 只作「已移植项」核对，冲突以桌面为准。
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| 权限 chip | `PermissionUi` + `OfficialGlyph` | `ui-permission-presets` `PermissionSelect` / `PermissionIcon*` / `Menu.module.css` | 幽灵触发 + 官方 SVG；Auto 有图标；EXP 8px/500/0.2；菜单 min 144 max 360、行 34、icon 14；文案 `自动审查`/`Auto review` |
+| 模型 picker | `ModelPicker` `ModelChipMenu` | `ui-model-selection` `ModelSelect` | 两级弹层；根行「模型」/有推理才「推理等级」；空态「暂无可用模型」；搜索空「没有匹配的模型。」 |
+| 会话标题 | `ChatView.header` | `ui-conversation` `ConversationSessionHeader` | 无模型 chip、无 Agent 预设、无时间戳 |
+| Agent 预设 | `AgentPresetSeat` | `ui-agent-preset` `AgentPresetSeat` | 只在无会话 landing；minHeight 28、maxWidth 240、13/500 |
+| 连接入口 | 抽屉脚 | Settings 仅 General/Models/Presets/Plugins；pocket 连接不是 Settings 分组 | Settings 去掉「手机连接」卡 |
+| 会话 leading | `SidebarActivityIndicator` | `ui-workspace` `Rows.tsx` `SessionStatusDots` / `StateDot` | idle 空；未查看绿点 3/14 of 14；运行 spinner 仅会话行；工作区文件夹 |
+| Think 标题 | `ReasoningRow` | `ui-chat` `ReasoningRow` `t("message.think")` | 恒为「思考」/Think；流式 vs 完成是 `TextShimmer`，不换文案 |
+| Think 时长 | 不在 Think 行 | `TurnProcessNodeView` `message.turnProcess.took` | 「已完成，用时 」+ `formatRunDuration`；Think 行无 duration |
+| Think shimmer | `TextShimmer` 1.5s / 0.3s delay | `ui-primitives` `TextShimmer` / `TextShimmer.module.css` | 运行中扫光；Reduce Motion 静态 |
+| Think 默认/收起 | `@State open = false` + `collapseTiming` | `useDisclosure` `expandedVersion === version` 初值 null→收起；Turn 换代重置 | 默认收起；工作步骤收起时机仍是 Host `ui-chat.collapseTiming` |
+| Think chevron | 展开 `chevron.up` 替换 Think | `ui-primitives` `DisclosureRow` `leading = open ? IconChevronUpOutlineRegular : collapsedLeading` | 收起 Think 图标；展开 chevron-up；无 hover 换标 |
+| Think 正文 | `MarkdownView` `.compact` | `ReasoningContent` `MarkdownText variant="compact"` + `ReasoningRow.module.css` `.thinkBody` | 三级色、次级 13、行高 20、左缩进 22、上下 4 |
+| Think 与工具组 | `ProcessGroupView` | `ChatGroupSeat` + `ProcessGroupHeader` | 组头 body 字号；细节 `message.turnProcess.separator` ` · `；成员与组头同列；组内 ReasoningRow 独立披露 |
+| 会话列表时间 | `sessionRowTrailingLabel` | `ui-primitives` `relativeTime` + `ui-workspace` `Rows.tsx` `timeLabel` / `sessionStatuses` | 经过毫秒桶，不是日历今天/昨天；zh 刚刚/N分钟/小时/天/个月/年；en now/Nmin/h/d/mo/y；空白不画；待审批/计划待审/待回答替换时间 |
+| 消息/触发器时间 | `formatMessageClock` | `ui-chat` `message-chrome.ts` `formatMessageClock` + `clock.md`/`clock.ymd` | 本地日历同日 `HH:mm`；同年日期+时钟；跨年日期+时钟；en `10/11 16:08` / `2025-1-3 09:05` |
+| 会话标题栏时间 | 无 | `ConversationSessionHeader` 无 clock | 不发明 header 时间 |
