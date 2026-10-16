@@ -182,15 +182,57 @@ struct ChatView: View {
         feedbackDraft = FeedbackDraft(messageId: messageId, rating: rating)
     }
 
+    private var headerCrumbs: [ConversationHeaderCrumb] {
+        conversationHeaderAncestry(
+            sessions: model.sessions,
+            sessionId: model.chat?.sessionId,
+            currentTitle: headerTitle,
+            newSession: L.newSession(),
+            untitled: L.untitledSession()
+        )
+    }
+
     private var header: some View {
         HStack(spacing: 10) {
             Button { model.showDrawer = true } label: {
                 Image(systemName: D.panelLeft).foregroundStyle(T.ink)
             }
-            Text(headerTitle)
-                .font(.headline)
-                .foregroundStyle(T.ink)
-                .lineLimit(1)
+            if conversationHeaderShowsCrumbs(headerCrumbs) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 4) {
+                        ForEach(Array(headerCrumbs.enumerated()), id: \.element.sessionId) { index, crumb in
+                            if index > 0 {
+                                Text("/")
+                                    .font(.headline)
+                                    .foregroundStyle(T.text3)
+                            }
+                            if crumb.current {
+                                Text(crumb.title)
+                                    .font(.headline)
+                                    .foregroundStyle(crumb.subagent ? T.text2 : T.ink)
+                                    .lineLimit(1)
+                            } else {
+                                Button {
+                                    model.openSession(crumb.sessionId)
+                                } label: {
+                                    Text(crumb.title)
+                                        .font(.headline)
+                                        .foregroundStyle(T.text2)
+                                        .lineLimit(1)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(sessionHierarchyAria(english: L.en))
+            } else {
+                Text(headerTitle)
+                    .font(.headline)
+                    .foregroundStyle(T.ink)
+                    .lineLimit(1)
+            }
             Spacer()
             Button { showStart = true } label: {
                 Image(systemName: D.panelRight).foregroundStyle(T.ink)
@@ -243,7 +285,11 @@ struct ChatView: View {
 
     private var questionVisible: Bool {
         guard let question = sessionQuestion else { return false }
-        return !question.questions.isEmpty && model.hiddenQuestionId != question.questionId
+        return !question.questions.isEmpty && !userQuestionIsCollapsed(
+            questionId: question.questionId,
+            callId: question.callId,
+            hiddenId: model.hiddenQuestionId
+        )
     }
 
     private var slashTrigger: ComposerTrigger? { slashMenuTrigger(model.composerText) }
@@ -335,7 +381,12 @@ struct ChatView: View {
                     set: { questionDrafts = $0 }
                 ),
                 enabled: model.isOnline,
-                onDismiss: { model.hiddenQuestionId = question.questionId },
+                onDismiss: {
+                    model.hiddenQuestionId = userQuestionCollapseId(
+                        questionId: question.questionId,
+                        callId: question.callId
+                    )
+                },
                 onAnswer: { callId, answers, done in model.answerUserQuestion(callId: callId, answers: answers, onResult: done) }
             )
         } else if let approval = sessionApproval {
@@ -345,10 +396,6 @@ struct ChatView: View {
                 enabled: model.isOnline,
                 onAnswer: { approval, outcome, done in model.answer(approval, outcome: outcome, onResult: done) }
             )
-        }
-        if sessionQuestion != nil && !questionVisible {
-            Button(L.reopenQuestion()) { model.hiddenQuestionId = nil }
-                .frame(maxWidth: .infinity)
         }
         if let chat = model.chat {
             TodoPanel(sessionKey: "\(model.activeId ?? ""):\(chat.sessionId)", todos: chat.todos)
@@ -620,11 +667,17 @@ struct ChatRowView: View {
         case .turnFailure(let failure):
             TurnFailureRow(item: failure)
         case .tool(let tool):
-            ToolCard(tool: tool, onTap: { onTool(tool) })
+            ToolCard(tool: tool, reopenLabel: askRowActionLabel(for: tool), onTap: { tapTool(tool) })
         case .reasoning(let reasoning):
             ReasoningRow(reasoning: reasoning)
         case .process(let proc):
-            ProcessGroupView(proc: proc, openTurns: $openTurns, openProcesses: $openProcesses, onTool: onTool)
+            ProcessGroupView(
+                proc: proc,
+                openTurns: $openTurns,
+                openProcesses: $openProcesses,
+                reopenLabel: { askRowActionLabel(for: $0) },
+                onTool: { tapTool($0) }
+            )
         case .turnTrigger(let item):
             TurnTriggerRow(item: item)
         case .changes(let item):
@@ -637,6 +690,26 @@ struct ChatRowView: View {
                 ChangesCard(model: model, sessionId: sessionId, item: item)
             }
         }
+    }
+
+    private func askRowActionLabel(for tool: Item.Tool) -> String? {
+        askToolRowReopensComposer(
+            toolName: tool.name,
+            callId: tool.callId,
+            hiddenQuestionCallId: model.hiddenQuestionId
+        ) ? L.reopenQuestion() : nil
+    }
+
+    private func tapTool(_ tool: Item.Tool) {
+        if askToolRowReopensComposer(
+            toolName: tool.name,
+            callId: tool.callId,
+            hiddenQuestionCallId: model.hiddenQuestionId
+        ) {
+            model.hiddenQuestionId = nil
+            return
+        }
+        onTool(tool)
     }
 }
 
@@ -698,6 +771,7 @@ private struct ProcessGroupView: View {
     let proc: ChatRow.Process
     @Binding var openTurns: [String: Bool]
     @Binding var openProcesses: [String: Bool]
+    var reopenLabel: (Item.Tool) -> String? = { _ in nil }
     var onTool: (Item.Tool) -> Void
 
     var body: some View {
@@ -746,7 +820,12 @@ private struct ProcessGroupView: View {
                     ForEach(Array(proc.members.enumerated()), id: \.element.key) { _, member in
                         switch member {
                         case .reasoning(let reasoning): ReasoningRow(reasoning: reasoning)
-                        case .tool(let tool): ToolCard(tool: tool, onTap: { onTool(tool) })
+                        case .tool(let tool):
+                            ToolCard(
+                                tool: tool,
+                                reopenLabel: reopenLabel(tool),
+                                onTap: { onTool(tool) }
+                            )
                         default: EmptyView()
                         }
                     }
@@ -866,6 +945,7 @@ private struct ReasoningRow: View {
 
 private struct ToolCard: View {
     let tool: Item.Tool
+    var reopenLabel: String? = nil
     var onTap: () -> Void
 
     var body: some View {
@@ -897,6 +977,12 @@ private struct ToolCard: View {
                     }
                 }
                 Spacer(minLength: 0)
+                if let reopenLabel {
+                    Text(reopenLabel)
+                        .font(.system(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
+                        .foregroundStyle(T.accent)
+                        .lineLimit(1)
+                }
             }
             .padding(tool.status == .awaitingApproval ? 8 : 0)
             .background(tool.status == .awaitingApproval ? T.warnTint : Color.clear, in: RoundedRectangle(cornerRadius: 8))
@@ -1230,7 +1316,7 @@ struct ComposerView: View {
                             .foregroundStyle(T.ink)
                             .frame(width: CGFloat(composerAddButtonPoints), height: CGFloat(composerAddButtonPoints))
                     }
-                    .background(T.fill, in: Circle())
+                    .background(T.selector, in: Circle())
                     .accessibilityLabel(composerCommandsAria(english: L.en))
                     if !permissionChipRequiresCatalog || model.permissionCatalog != nil {
                         if let perm = model.sessionPermission ?? model.draftPermission ?? (heroPlaceholder ? model.defaultPermission : nil), !perm.isEmpty {

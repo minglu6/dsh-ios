@@ -45,6 +45,43 @@ final class ComposerPickerParityTests: XCTestCase {
         XCTAssertTrue(permissionChipRequiresCatalog)
         XCTAssertEqual(composerCommandsAria(english: false), "添加文件或调用指令")
         XCTAssertEqual(composerCommandsAria(english: true), "Add files or run commands")
+        XCTAssertTrue(composerAddButtonUsesFilledCircle)
+        XCTAssertTrue(composerAddButtonUsesSelectorFill)
+        XCTAssertEqual(composerAddButtonSelectorLightHex, 0xFFF5F6F7)
+        XCTAssertEqual(composerAddButtonSelectorDarkHex, 0xFF353638)
+        XCTAssertFalse(composerShowsAskChip)
+        XCTAssertTrue(isAskUserQuestionTool("ask_user_question"))
+        XCTAssertTrue(isAskUserQuestionTool("request_user_input"))
+        XCTAssertFalse(isAskUserQuestionTool("bash"))
+        XCTAssertTrue(
+            askToolRowReopensComposer(
+                toolName: "ask_user_question",
+                callId: "c1",
+                hiddenQuestionCallId: "c1"
+            )
+        )
+        XCTAssertFalse(
+            askToolRowReopensComposer(
+                toolName: "ask_user_question",
+                callId: "c1",
+                hiddenQuestionCallId: nil
+            )
+        )
+        XCTAssertFalse(
+            askToolRowReopensComposer(
+                toolName: "bash",
+                callId: "c1",
+                hiddenQuestionCallId: "c1"
+            )
+        )
+        XCTAssertEqual(userQuestionCollapseId(questionId: "q1", callId: "c1"), "c1")
+        XCTAssertEqual(userQuestionCollapseId(questionId: "q1", callId: nil), "q1")
+        XCTAssertTrue(userQuestionIsCollapsed(questionId: "q1", callId: "c1", hiddenId: "c1"))
+        XCTAssertTrue(userQuestionIsCollapsed(questionId: "q1", callId: "c1", hiddenId: "q1"))
+        XCTAssertFalse(userQuestionIsCollapsed(questionId: "q1", callId: "c1", hiddenId: nil))
+        XCTAssertFalse(userQuestionIsCollapsed(questionId: "q1", callId: "c1", hiddenId: "other"))
+        XCTAssertTrue(landingAllowsDraftFileAttachments)
+        XCTAssertFalse(landingFileAttachRequiresSession)
         XCTAssertEqual(commandMenuStatusLoading(english: false), "正在加载选项…")
         XCTAssertEqual(commandMenuStatusEmpty(english: false), "无选项")
         XCTAssertEqual(commandMenuStatusEmpty(english: true), "No options")
@@ -178,8 +215,15 @@ final class ComposerPickerParityTests: XCTestCase {
         )
         XCTAssertEqual(
             drawerEmptyKind(online: false, archivedOnly: true, hasVisibleSessions: false),
-            .offline
+            .emptyArchived
         )
+        XCTAssertEqual(
+            drawerEmptyKind(online: false, archivedOnly: false, hasVisibleSessions: false),
+            .empty
+        )
+        XCTAssertTrue(drawerEmptyIgnoresOnline)
+        XCTAssertEqual(emptySessionsNone(english: false), "暂无会话")
+        XCTAssertEqual(emptySessionsNone(english: true), "No sessions yet")
         XCTAssertNil(drawerEmptyKind(online: true, archivedOnly: true, hasVisibleSessions: true))
         XCTAssertFalse(
             drawerShowsEmptySessions(
@@ -238,5 +282,61 @@ final class ComposerPickerParityTests: XCTestCase {
         XCTAssertEqual(agentPresetSeatMinHeightPoints, 28)
         XCTAssertEqual(agentPresetSeatFontSizePoints, 13)
         XCTAssertEqual(agentPresetSeatFontWeight, 500)
+    }
+
+    func testSubagentHeaderCrumbsFollowDesktopAncestry() {
+        let parent = SessionSummary(sessionId: "parent", title: "主任务")
+        let child = SessionSummary(
+            sessionId: "child",
+            title: "子智能体",
+            parentSessionId: "parent",
+            origin: "subagent"
+        )
+        let crumbs = conversationHeaderAncestry(
+            sessions: [parent, child],
+            sessionId: "child",
+            currentTitle: "子智能体",
+            newSession: "新会话",
+            untitled: "未命名"
+        )
+        XCTAssertTrue(conversationHeaderShowsCrumbs(crumbs))
+        XCTAssertEqual(crumbs.map(\.sessionId), ["parent", "child"])
+        XCTAssertEqual(crumbs.map(\.title), ["主任务", "子智能体"])
+        XCTAssertEqual(crumbs.map(\.subagent), [false, true])
+        XCTAssertEqual(crumbs.map(\.current), [false, true])
+        XCTAssertEqual(sessionHierarchyAria(english: false), "会话层级")
+        XCTAssertEqual(sessionHierarchyAria(english: true), "Session hierarchy")
+
+        let regular = conversationHeaderAncestry(
+            sessions: [parent],
+            sessionId: "parent",
+            currentTitle: "主任务",
+            newSession: "新会话",
+            untitled: "未命名"
+        )
+        XCTAssertFalse(conversationHeaderShowsCrumbs(regular))
+        XCTAssertEqual(regular.map(\.sessionId), ["parent"])
+        XCTAssertTrue(regular[0].current)
+        XCTAssertTrue(
+            conversationHeaderAncestry(
+                sessions: [parent, child],
+                sessionId: nil,
+                currentTitle: "新会话",
+                newSession: "新会话",
+                untitled: "未命名"
+            ).isEmpty
+        )
+
+        let loopA = SessionSummary(sessionId: "a", parentSessionId: "b", origin: "subagent")
+        let loopB = SessionSummary(sessionId: "b", parentSessionId: "a", origin: "subagent")
+        let loop = conversationHeaderAncestry(
+            sessions: [loopA, loopB],
+            sessionId: "a",
+            currentTitle: "A",
+            newSession: "新会话",
+            untitled: "未命名"
+        )
+        XCTAssertEqual(Set(loop.map(\.sessionId)), ["a", "b"])
+        XCTAssertEqual(loop.count, 2)
     }
 }

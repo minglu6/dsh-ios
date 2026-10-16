@@ -45,7 +45,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R14 | 权限/模型 picker 弹层在 composer chip **上方**（同 Token 用量 `arrowEdge: .bottom`）；完全权限 / Auto review 确认不被键盘裁切 | done (#32) |
 | R16 | landing 工作区 ghost chip + WorkspacePicker；计划 chip 进 composer modes 行；抽屉脚 footer.action 在 Settings 之上；+ aria / 插件添加 MenuSurface | done (#33) |
 | R17 | 停止并归档确认；无工作区 landing 占位；停止 aria；会话「进行中」；搜索工作区上下文 | done (#34) |
-| R18 | 会话统计 / 上下文弹层在 chip 上方；用量 pill 数据库图标；ContextMeter 环；归档不可打开文案；仅归档空态「查看其他会话」 | this PR |
+| R18 | 会话统计 / 上下文弹层在 chip 上方；用量 pill 数据库图标；ContextMeter 环；归档不可打开文案；仅归档空态「查看其他会话」 | done (#35) |
+| R19 | 离线空态 empty.none；landing 草稿附件；Ask 重开在工具行；subagent header crumbs；+ 按钮 selector 填充 | this PR |
 
 ---
 
@@ -96,8 +97,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | `/` commands | `CommandPopupSheet` `commands.list/execute` | 贴输入框弹层（#21）；`+` 与 `/` 同菜单；不接受附件的指令先 toast 官方句再执行；claimed `/goal` `/plan` 空参数时输入框上方 hint strip。R8：`ComposerTextView` `fixedSize` + 关滚动测高，空文本走 36/52 地板而不是 132 | **missing** → **present** | **E** / **P2** / **#21** / **R4** / **R5** / **R7** / **R8** |
 | Header ⋯ overflow | Android `MoreSheet` (not desktop) | **removed** — desktop conversation header has no ⋯; export/feedback on `/` and `+`; rename/fork on the drawer row menu | **hide** | **P2** (#16) |
 | Session image bubbles | `session.attachment` + ImageBubble | same cache + retry + original preview | **missing** → **present** | **G** |
-| Attachments | `attachments.upload` | image picker + file importer + receipts | **missing** → **present** | **E** |
-| User questions | `UserQuestionCard` `userQuestions.answer` | same card / plan-review / skip+submit | **missing** → **present** | **E** |
+| Attachments | `attachments.upload` | image picker + file importer + receipts；landing 无会话也可草稿非图文件，创建后上传 | **missing** → **present** | **E** / **R19** |
+| User questions | `UserQuestionCard` `userQuestions.answer` | composer 接管卡片；收起后点 `ask_user_question` 工具行「回答」重开（桌面 `AskQuestionRow`，无 composer Ask chip） | **missing** → **present** | **E** / **R19** |
 | Approvals | official `ApprovalCard` takes composer | official card; `accepted` callback clears busy, success drops the row | **partial** → **present** | **E** |
 | TodoPanel | dock card above composer | `TodoPanel` expand in place | **missing** → **present** | **E** |
 | Goal bar | `goals.get` / `goal.activation` CAS | `GoalBar` + `GoalSheet` pause/resume/clear/edit | **missing** → **present** | **E** |
@@ -446,3 +447,20 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 | 归档不可打开 | `restoreArchivedBody` / `archivedNotOpenable` | `ui-workspace` `toast.archivedNotOpenable` | 「已归档对话暂时无法查看，请取消归档后查看」；触屏仍用恢复确认（点按对应桌面 toast + 菜单取消归档） |
 | 仅归档空态 | `drawerEmptyKind` + `drawerShowsEmptySessions` + `empty.viewOthers` | `EmptySessions` / `groupByWorkspace` / `leaveArchivedOnly` | EmptySessions 只在 `groups.length === 0`（扁平 `rows.length === 0`）。隐藏/显示已归档时仍画空工作区表头；仅归档把无成员组丢掉后才出「暂无已归档会话」+「查看其他会话」（重置为隐藏已归档） |
 | 停止失败 | `jobKillFailedLabel` | `ui-jobs` `kill.failed` | 「停止失败」，删除自撰「终止失败，请重试」 |
+
+## Round 19 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`）
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| 离线空花名册 | `drawerEmptyKind` / `emptySessionsNone` | `ui-workspace` `EmptySessions` `empty.none` / `empty.noneArchived` | 离线不再用 Batch H「连接后显示会话」；无行时仍是「暂无会话」/「暂无已归档会话」 |
+| landing 草稿附件 | `attachFile` + `createSessionAndSend(draftFiles:)` | InputBar `addFiles` / `createDrafts`（hero 已有 blank session） | 无会话也可挂非图文件；`sessions.create` 后上传再 prompt。桌面 `sessionId === undefined` 时 `addFiles` 为空，iOS landing 替代 blank session |
+| Ask 重开 | `askToolRowReopensComposer` + `ToolCard` trailing `ask.reopen` | `ui-tool` `AskQuestionRow` `rowActionLabel`；`conversation.input.left` 无占用者 | 去掉自撰 composer 全宽「回答」；点提问工具行重开卡片。桌面无 Ask composer chip |
+| subagent crumbs | `conversationHeaderAncestry` | `ConversationSessionHeader` `deriveAncestry` / `session.hierarchy` | 当前会话 `origin=subagent` 时标题为「父 / 子」；父可点按打开。抽屉仍隐藏 subagent 行 |
+| + 按钮填充 | `T.selector` 28pt `Circle` | InputBar `.add` `--dsw-specific-selector` `#f5f6f7` / `#353638` | 填充圆用 selector，不是 hover-solid `#f1f3f5` |
+
+本轮核对后**不改**、确认已对齐或平台/hide：
+
+- 工作区自动选中：landing 仍 `draftWorkspaceId ?? workspaces.first`，对应桌面 blank session 已属于某工作区；无工作区才 inert。
+- Account / shortcuts / open config / open-in-desktop-editor / 快捷键设置页：仍 **hide**。
+- 桌面 popover 系统箭头 / Think 收起无 hover 换 chevron：仍平台残留。
+- Android `18af5a8` / `9e580d4` / `d30825c` / `c5f8cdd`：外观本机、发布流程、skills.list / 无 session 目录，iOS 已有；无新交互可搬。
