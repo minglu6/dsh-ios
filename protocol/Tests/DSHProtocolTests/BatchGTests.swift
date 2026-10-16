@@ -246,14 +246,6 @@ final class SessionFeedbackTests: XCTestCase {
         XCTAssertThrowsError(try SessionFeedbackRequest.recorded(.object(["recorded": .bool(false)])))
     }
 
-    func testMoreSheetGatesFeedbackAndDisablesWithoutSession() {
-        XCTAssertFalse(MoreSheetPolicy.showsFeedback(ops: ["session.export", "commands.execute"]))
-        XCTAssertTrue(MoreSheetPolicy.showsFeedback(ops: ["session.export", "sessionFeedback.record"]))
-        XCTAssertFalse(MoreSheetPolicy.exportEnabled(online: true, ops: ["session.export"], inChat: false))
-        XCTAssertTrue(MoreSheetPolicy.exportEnabled(online: true, ops: ["session.export"], inChat: true))
-        XCTAssertFalse(MoreSheetPolicy.feedbackEnabled(inChat: false))
-        XCTAssertTrue(MoreSheetPolicy.feedbackEnabled(inChat: true))
-    }
 }
 
 final class SessionAttachmentTests: XCTestCase {

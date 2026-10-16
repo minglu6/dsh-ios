@@ -24,7 +24,6 @@ struct ChatView: View {
     @State private var showGoal = false
     @State private var questionDrafts: [String: QuestionDraft] = [:]
     @State private var showFileImporter = false
-    @State private var showMore = false
     @State private var showSessionFeedback = false
     @State private var showPreset = false
 
@@ -169,16 +168,6 @@ struct ChatView: View {
         .sheet(item: $model.exportShare) { item in
             ShareSheet(items: [item.url])
         }
-        .sheet(isPresented: $showMore) {
-            MoreSheet(
-                model: model,
-                onDismiss: { showMore = false },
-                onFeedback: {
-                    showMore = false
-                    showSessionFeedback = true
-                }
-            )
-        }
         .sheet(isPresented: $showSessionFeedback) {
             FeedbackCategorySheet(
                 hint: L.sessionFeedbackHint(),
@@ -271,10 +260,6 @@ struct ChatView: View {
                     .background(T.tint, in: Capsule())
             }
             .disabled(!model.isOnline)
-            Button { showMore = true } label: {
-                Image(systemName: D.ellipsis).foregroundStyle(T.ink)
-            }
-            .accessibilityLabel(L.moreActions())
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)

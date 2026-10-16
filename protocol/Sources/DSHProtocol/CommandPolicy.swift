@@ -31,6 +31,39 @@ public func builtinCommandName(_ definitionId: String?) -> String? {
 public let commandAddNames = ["file", "goal", "plan", "feedback"]
 public let commandOrderedNames = commandAddNames + ["compact", "permission", "model", "export"]
 
+/// Client-injected `/` and `+` rows. Desktop puts feedback/export here, not on a
+/// conversation header ⋯ menu. Skip a kind already present from `commands.list`.
+public func commandMenuClientRows(ops: Set<String>, sessionReady: Bool, subagent: Bool) -> [JSONValue] {
+    var rows: [JSONValue] = []
+    if sessionReady && ops.contains("attachments.upload") {
+        rows.append(jsonObject(["name": .string("file"), "client": .string("file")]))
+    }
+    if sessionReady && !subagent && ops.contains("models.catalog") {
+        rows.append(jsonObject(["name": .string("model"), "client": .string("model")]))
+    }
+    if sessionReady && ops.contains("sessionFeedback.record") {
+        rows.append(jsonObject(["name": .string("feedback"), "client": .string("feedback")]))
+    }
+    if sessionReady && ops.contains("session.export") {
+        rows.append(jsonObject(["name": .string("export"), "client": .string("export")]))
+    }
+    return rows
+}
+
+public func commandMenuMerge(host: [JSONValue], injected: [JSONValue]) -> [JSONValue] {
+    var kinds = Set(host.compactMap(commandMenuKind))
+    var names = Set(host.compactMap { $0["name"].str() })
+    var result = host
+    for row in injected {
+        if let kind = commandMenuKind(row), kinds.contains(kind) { continue }
+        if let name = row["name"].str(), names.contains(name) { continue }
+        result.append(row)
+        if let kind = commandMenuKind(row) { kinds.insert(kind) }
+        if let name = row["name"].str() { names.insert(name) }
+    }
+    return result
+}
+
 public func commandMenuKind(_ command: JSONValue) -> String? {
     command["client"].str() ?? builtinCommandName(command["definitionId"].str())
 }

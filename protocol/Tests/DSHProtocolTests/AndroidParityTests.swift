@@ -4,6 +4,28 @@ import XCTest
 final class AndroidParityTests: XCTestCase {
     private func json(_ text: String) throws -> JSONValue { try JSONValue.parse(text) }
 
+    func testCommandMenuInjectsExportAndFeedbackWithoutCollidingHostRows() throws {
+        let host = [
+            try json(#"{"name":"feedback","definitionId":"@deepseek-ai/dsh-command-feedback"}"#),
+            try json(#"{"name":"deploy"}"#),
+        ]
+        let injected = commandMenuClientRows(
+            ops: ["attachments.upload", "models.catalog", "session.export", "sessionFeedback.record"],
+            sessionReady: true,
+            subagent: false
+        )
+        let merged = commandMenuMerge(host: host, injected: injected)
+        XCTAssertEqual(
+            merged.compactMap { $0["name"].str() },
+            ["feedback", "deploy", "file", "model", "export"]
+        )
+        XCTAssertEqual(
+            commandMenuRows(merged, query: "", leading: true).compactMap { $0["name"].str() },
+            ["file", "feedback", "model", "export", "deploy"]
+        )
+        XCTAssertTrue(commandMenuClientRows(ops: ["session.export"], sessionReady: false, subagent: false).isEmpty)
+    }
+
     func testCommandMenuEmptyQueryUsesDesktopSections() throws {
         let rows = try (["deploy", "export", "feedback", "compact", "goal", "plan", "permission", "other"].map {
             try json(#"{"name":"\#($0)"}"#)

@@ -15,21 +15,3 @@ public enum SessionFeedbackRequest {
     }
 }
 
-/// Official header ⋯ rows. Export is always listed; feedback is ops-gated.
-public enum MoreSheetPolicy {
-    public static func showsFeedback(ops: Set<String>) -> Bool {
-        ops.contains("sessionFeedback.record")
-    }
-
-    public static func exportEnabled(online: Bool, ops: Set<String>, inChat: Bool) -> Bool {
-        online && ops.contains("session.export") && inChat
-    }
-
-    public static func feedbackEnabled(inChat: Bool) -> Bool {
-        inChat
-    }
-
-    public static func showsFork(ops: Set<String>, inChat: Bool) -> Bool {
-        ops.contains("sessions.fork") && inChat
-    }
-}

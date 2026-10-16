@@ -63,6 +63,12 @@ public func composerModelDisplayName(choiceName: String?, catalog: ModelCatalog?
     return nil
 }
 
+/// Desktop conversation header has no session ⋯ overflow. Export / feedback live
+/// on `/` and `+`. Rename / fork stay on the session row menu.
+public enum ConversationHeaderPolicy {
+    public static var includesOverflowMenu: Bool { false }
+}
+
 public enum ConversationFontSize {
     public static let min = 10
     public static let max = 22

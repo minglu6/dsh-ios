@@ -99,4 +99,8 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertFalse(StartPanelPolicy.includesBrowser)
         XCTAssertFalse(StartPanelPolicy.includesSessionInspector)
     }
+
+    func testConversationHeaderHasNoOverflowMenu() {
+        XCTAssertFalse(ConversationHeaderPolicy.includesOverflowMenu)
+    }
 }
