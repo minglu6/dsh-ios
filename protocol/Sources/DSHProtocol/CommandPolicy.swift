@@ -33,8 +33,10 @@ public let commandOrderedNames = commandAddNames + ["compact", "permission", "mo
 
 /// Client-injected `/` and `+` rows. Desktop puts feedback/export here, not on a
 /// conversation header ⋯ menu. Skip a kind already present from `commands.list`.
-/// Landing (no session yet) lists the same 添加 / 指令 catalog a blank desktop
-/// session would — `sessionReady` is only for execution, not catalog membership.
+/// Landing (no session yet) injects only desktop's client contributions
+/// (`ui-conversation` /file, `ui-model-selection` /model). goal/plan/feedback/
+/// compact/permission/export are Host commands on desktop and must come from
+/// `commands.list` (session-less on landing), never a hardcoded catalog.
 public func commandMenuClientRows(
     ops: Set<String>,
     sessionReady: Bool,
@@ -43,7 +45,7 @@ public func commandMenuClientRows(
 ) -> [JSONValue] {
     if subagent { return [] }
     if landing {
-        return commandOrderedNames.map { name in
+        return ["file", "model"].map { name in
             jsonObject(["name": .string(name), "client": .string(name)])
         }
     }
