@@ -8,5 +8,7 @@ final class TerminalTypefaceTests: XCTestCase {
         XCTAssertEqual(TerminalTypefacePolicy.cascadeFamilies.first, TerminalTypefacePolicy.bundledFamily)
         XCTAssertTrue(TerminalTypefacePolicy.cascadeFamilies.contains("Menlo"))
         XCTAssertTrue(TerminalTypefacePolicy.cascadeFamilies.contains("Apple Symbols"))
+        XCTAssertEqual(TerminalTypefacePolicy.uiAppFontPath, "Fonts/MesloLGLDZNerdFont-Regular.ttf")
+        XCTAssertEqual(TerminalTypefacePolicy.bundleSubdirectory, "Fonts")
     }
 }

@@ -6,21 +6,25 @@ import DSHProtocol
 enum TerminalTypeface {
     private static var registered = false
 
+    static var bundledFontURL: URL? {
+        Bundle.main.url(
+            forResource: TerminalTypefacePolicy.fileName,
+            withExtension: TerminalTypefacePolicy.fileExtension,
+            subdirectory: TerminalTypefacePolicy.bundleSubdirectory
+        ) ?? Bundle.main.url(
+            forResource: TerminalTypefacePolicy.fileName,
+            withExtension: TerminalTypefacePolicy.fileExtension
+        )
+    }
+
+    static func bundledFontData() -> Data? {
+        bundledFontURL.flatMap { try? Data(contentsOf: $0) }
+    }
+
     static func registerBundledFont() {
         guard !registered else { return }
         registered = true
-        let urls = [
-            Bundle.main.url(
-                forResource: TerminalTypefacePolicy.fileName,
-                withExtension: TerminalTypefacePolicy.fileExtension
-            ),
-            Bundle.main.url(
-                forResource: TerminalTypefacePolicy.fileName,
-                withExtension: TerminalTypefacePolicy.fileExtension,
-                subdirectory: "Fonts"
-            ),
-        ]
-        guard let url = urls.compactMap({ $0 }).first else { return }
+        guard let url = bundledFontURL else { return }
         CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
     }
 

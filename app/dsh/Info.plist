@@ -38,7 +38,6 @@
 	</array>
 	<key>UIAppFonts</key>
 	<array>
-		<string>MesloLGLDZNerdFont-Regular.ttf</string>
 		<string>Fonts/MesloLGLDZNerdFont-Regular.ttf</string>
 	</array>
 	<key>UILaunchScreen</key>

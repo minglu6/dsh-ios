@@ -154,7 +154,7 @@ enum L {
     static func phoneConnection() -> String { en ? "Phone connection" : "手机连接" }
     static func mobileSection() -> String { en ? "Mobile" : "移动端" }
     static func hostSettingsReadOnly() -> String {
-        en ? "Host settings are read-only" : "主机配置为只读"
+        en ? "Host settings are read-only" : "远程主机配置为只读"
     }
     static func language() -> String { en ? "Language" : "语言" }
     static func appearance() -> String { en ? "Appearance" : "外观" }

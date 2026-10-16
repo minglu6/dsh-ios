@@ -13,9 +13,11 @@ private func previewCss(_ color: Color) -> String {
     return String(format: "#%02x%02x%02x", Int((r * 255).rounded()), Int((g * 255).rounded()), Int((b * 255).rounded()))
 }
 
+/// Android `previewCodeFontFamily`: bundled Meslo is CSS `'DSH Meslo'` served at `/font/meslo.ttf`.
 private func previewCodeFontFamily(_ value: String) -> String {
+    let meslo = "\"DSH Meslo\", monospace"
     let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-    if trimmed.isEmpty { return "monospace" }
+    if trimmed.isEmpty { return meslo }
     let first = trimmed.split(separator: ",").first.map(String.init)?.trimmingCharacters(in: .whitespacesAndNewlines)
         .trimmingCharacters(in: CharacterSet(charactersIn: "\"'")) ?? ""
     switch first.lowercased() {
@@ -24,9 +26,12 @@ private func previewCodeFontFamily(_ value: String) -> String {
         return "sans-serif"
     case "serif", "ui-serif", "math", "fangsong": return "serif"
     case "cursive": return "cursive"
+    case "meslolgl dz", "meslolgl dz nerd font", "meslolgl dz nerd font mono",
+         "meslolgs nf", "meslolgs nerd font":
+        return meslo
     default:
         let normalized = normalizeFontFamily(value)
-        return normalized.isEmpty ? "monospace" : "\(normalized), monospace"
+        return normalized.isEmpty ? meslo : "\(normalized), \(meslo)"
     }
 }
 
@@ -190,13 +195,19 @@ final class CodePreviewSchemeHandler: NSObject, WKURLSchemeHandler {
             fail(urlSchemeTask, status: 403)
             return
         }
+        let data: Data
         if asset == "@meslo" {
-            fail(urlSchemeTask, status: 404)
-            return
-        }
-        guard let file = Self.assetURL(asset), let data = try? Data(contentsOf: file) else {
-            fail(urlSchemeTask, status: 404)
-            return
+            guard let font = TerminalTypeface.bundledFontData() else {
+                fail(urlSchemeTask, status: 404)
+                return
+            }
+            data = font
+        } else {
+            guard let file = Self.assetURL(asset), let bytes = try? Data(contentsOf: file) else {
+                fail(urlSchemeTask, status: 404)
+                return
+            }
+            data = bytes
         }
         let mime: String
         switch (asset as NSString).pathExtension {
