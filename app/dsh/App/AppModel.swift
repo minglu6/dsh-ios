@@ -8,6 +8,13 @@ enum Dot: String {
     case online, connecting, offline, unauthorized
 }
 
+/// Desktop `ArchiveConfirmForm` pending request (Host `workspace/session-active`).
+struct ArchiveConfirmRequest: Equatable, Identifiable {
+    var session: SessionSummary
+    var details: JSONValue?
+    var id: String { session.sessionId }
+}
+
 struct ChatState {
     var sessionId: String
     var items: [Item] = []
@@ -188,6 +195,8 @@ final class AppModel: ObservableObject {
     @Published var searchHostHasMore = false
     @Published var searching = false
     @Published var lastArchivedId: String?
+    @Published var toastUndoArchiveId: String?
+    @Published var archiveConfirm: ArchiveConfirmRequest?
 
     let terminal = AnsiTerminal()
     let hostSettings = HostSettings()
@@ -390,11 +399,16 @@ final class AppModel: ObservableObject {
     func createAndOpenSession(workspaceId: String? = nil, preset: String? = nil) {
         Task {
             guard let client else { return }
+            let chosenWorkspace = workspaceId ?? draftWorkspaceId ?? workspaces.first?.workspaceId
+            if landingComposerNeedsWorkspace(selectedWorkspaceId: chosenWorkspace, workspaceCount: workspaces.count) {
+                presentToast(landingWorkspaceRequired(english: L.en))
+                return
+            }
             do {
                 let chosen = preset ?? pendingCreatorPreset ?? draftPreset.nilIfBlank
                 let id = try await client.createSession(
                     agentPreset: chosen,
-                    workspaceId: workspaceId ?? draftWorkspaceId ?? workspaces.first?.workspaceId
+                    workspaceId: chosenWorkspace
                 )
                 pendingCreatorPreset = nil
                 openSession(id)
@@ -482,10 +496,17 @@ final class AppModel: ObservableObject {
             return PromptFile(receiptId: receipt)
         }
         guard (!text.isEmpty || !images.isEmpty || !files.isEmpty), let client else { return }
+        if chat == nil, landingComposerNeedsWorkspace(
+            selectedWorkspaceId: draftWorkspaceId ?? workspaces.first?.workspaceId,
+            workspaceCount: workspaces.count
+        ) {
+            presentToast(landingWorkspaceRequired(english: L.en))
+            return
+        }
         if !pendingAttaches.isEmpty, let name = slashCommandName(text) {
             let row = commandEntries.first { $0["name"].str() == name }
             if commandRefusesAttachments(name: name, catalogRow: row) {
-                toast = commandAttachmentsUnsupportedNotice(command: name, english: L.en)
+                presentToast(commandAttachmentsUnsupportedNotice(command: name, english: L.en))
                 return
             }
         }
@@ -624,16 +645,27 @@ final class AppModel: ObservableObject {
             do {
                 try await client.archiveSession(session.sessionId, stopActivity: stopActivity)
                 lastArchivedId = session.sessionId
+                archiveConfirm = nil
                 if let state = try? await client.call("workspace.state") { applyWorkspaceState(state) }
-                toast = L.archivedToast() + L.unarchiveSession()
+                presentToast(L.archivedToast(stopped: stopActivity), undoArchive: session.sessionId)
             } catch {
-                if let pocket = error as? PocketError, pocket.code == "workspace/session-active" {
-                    emit(archiveActivityDescription(pocket.details, english: L.en))
+                if !stopActivity,
+                   let pocket = error as? PocketError,
+                   pocket.code == "workspace/session-active",
+                   archiveSessionActiveOpensConfirm {
+                    archiveConfirm = ArchiveConfirmRequest(session: session, details: pocket.details)
                 } else {
                     emit(error.localizedDescription)
                 }
             }
         }
+    }
+
+    func undoLastArchive() {
+        guard let id = toastUndoArchiveId else { return }
+        toastUndoArchiveId = nil
+        toast = nil
+        unarchive(id)
     }
 
     func unarchive(_ sessionId: String, thenOpen: Bool = false, onResult: ((Bool) -> Void)? = nil) {
@@ -717,7 +749,7 @@ final class AppModel: ObservableObject {
                     onResult?(true)
                 } else if let next = MessageFeedback.parse(result) {
                     feedback[messageId] = next
-                    toast = L.thanksFeedback()
+                    presentToast(L.thanksFeedback())
                     onResult?(true)
                 } else {
                     emit(PocketError(code: "bad-reply", message: "远程主机未返回已保存的反馈").localizedDescription)
@@ -929,7 +961,7 @@ final class AppModel: ObservableObject {
                     onResult?(false)
                 } else {
                     if let text = result["result"]["text"].str(), !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        toast = text
+                        presentToast(text)
                     }
                     onResult?(true)
                 }
@@ -1131,7 +1163,7 @@ final class AppModel: ObservableObject {
             do {
                 let receipt = try await client.recordSessionFeedback(sessionId: sessionId, category: category, note: note)
                 try SessionFeedbackRequest.recorded(receipt)
-                toast = L.thanksFeedback()
+                presentToast(L.thanksFeedback())
                 onResult(true)
             } catch {
                 emit(error.localizedDescription)
@@ -1393,7 +1425,7 @@ final class AppModel: ObservableObject {
             }
             let text = String(data: data, encoding: .utf8) ?? ""
             UIPasteboard.general.string = text
-            toast = L.diagnosticsCopied()
+            presentToast(L.diagnosticsCopied())
             return text
         } catch {
             emit(error.localizedDescription)
@@ -3174,7 +3206,17 @@ final class AppModel: ObservableObject {
         chat?.title = title
     }
 
+    func showToast(_ message: String) {
+        presentToast(message)
+    }
+
+    private func presentToast(_ message: String, undoArchive: String? = nil) {
+        toastUndoArchiveId = undoArchive
+        toast = message
+    }
+
     private func emit(_ message: String) {
+        toastUndoArchiveId = nil
         errorMessage = message
     }
 

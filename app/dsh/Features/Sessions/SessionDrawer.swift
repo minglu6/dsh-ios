@@ -184,6 +184,24 @@ struct SessionDrawer: View {
         } message: {
             Text(L.restoreArchivedBody())
         }
+        .alert(
+            archiveConfirmTitle(english: L.en),
+            isPresented: Binding(
+                get: { model.archiveConfirm != nil },
+                set: { if !$0 { model.archiveConfirm = nil } }
+            )
+        ) {
+            Button(archiveConfirmAction(english: L.en), role: .destructive) {
+                guard let request = model.archiveConfirm else { return }
+                model.archive(request.session, stopActivity: true)
+            }
+            .disabled(!(model.isOnline && model.ops.contains("workspace.archiveSession")))
+            Button(L.cancel(), role: .cancel) { model.archiveConfirm = nil }
+        } message: {
+            if let request = model.archiveConfirm {
+                Text(archiveConfirmMessage(request))
+            }
+        }
     }
 
     private var searching: Bool { !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
@@ -303,9 +321,15 @@ struct SessionDrawer: View {
                     ))
                         .foregroundStyle(archived ? T.text3 : T.ink)
                         .lineLimit(1)
+                    if searching, searchResultShowsWorkspaceContext {
+                        Text(workspaceContext(for: session.sessionId))
+                            .font(.caption)
+                            .foregroundStyle(T.text3)
+                            .lineLimit(1)
+                    }
                     if let snippet = session.searchSnippet, searching {
                         Text(snippet).font(.caption).foregroundStyle(T.accent).lineLimit(2)
-                    } else if let trailing = sessionRowTrailingLabel(
+                    } else if !searching, let trailing = sessionRowTrailingLabel(
                         blank: session.blank,
                         pending: sessionPendingInteraction(
                             awaitingApproval: model.approvals.contains { $0.sessionId == session.sessionId },
@@ -363,7 +387,7 @@ struct SessionDrawer: View {
             }
             Button(L.copySessionId()) {
                 UIPasteboard.general.string = session.sessionId
-                model.toast = L.sessionIdCopied()
+                model.showToast(L.sessionIdCopied())
             }
             if visibleOps.contains("workspace.archiveSession") {
                 if archived {
@@ -375,6 +399,34 @@ struct SessionDrawer: View {
                 }
             }
         }
+    }
+
+    private func workspaceContext(for sessionId: String) -> String {
+        if let workspace = model.workspaces.first(where: { $0.sessionIds.contains(sessionId) }) {
+            return workspaceDisplayTitle(
+                title: workspace.title,
+                path: workspace.path,
+                localizedDefault: L.defaultWorkspace()
+            )
+        }
+        return L.ungrouped()
+    }
+
+    private func archiveConfirmMessage(_ request: ArchiveConfirmRequest) -> String {
+        let title = drawerSessionTitle(
+            request.session,
+            current: model.chat?.sessionId,
+            newSession: L.newSession(),
+            untitled: L.untitledSession()
+        )
+        var lines = [
+            archiveConfirmDescription(title: title, english: L.en),
+            "",
+            archiveConfirmActivityLabel(english: L.en),
+        ]
+        let activity = archiveActivityDescription(request.details, english: L.en)
+        if !activity.isEmpty { lines.append(activity) }
+        return lines.joined(separator: "\n")
     }
 
     @ViewBuilder

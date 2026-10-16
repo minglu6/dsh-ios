@@ -387,10 +387,30 @@ final class DesktopUiParityTests: XCTestCase {
                 unavailable: false,
                 canSteerQueue: true,
                 planMode: true,
+                needsWorkspace: false,
                 hero: true
             ),
             .steerQueue
         )
+        XCTAssertEqual(
+            composerPlaceholderKind(
+                parentOffline: false,
+                unavailable: false,
+                canSteerQueue: false,
+                planMode: false,
+                needsWorkspace: true,
+                hero: true
+            ),
+            .workspace
+        )
+        XCTAssertEqual(composerPlaceholderText(kind: .workspace, english: false), "选择一个工作区开始")
+        XCTAssertEqual(composerPlaceholderText(kind: .workspace, english: true), "Choose a workspace to start")
+        XCTAssertEqual(landingWorkspaceRequired(english: false), "请先选择工作区")
+        XCTAssertEqual(composerStopLabel(english: false), "停止生成")
+        XCTAssertEqual(composerStopLabel(english: true), "Stop generating")
+        XCTAssertTrue(landingComposerNeedsWorkspace(selectedWorkspaceId: nil, workspaceCount: 0))
+        XCTAssertFalse(landingComposerNeedsWorkspace(selectedWorkspaceId: nil, workspaceCount: 1))
+        XCTAssertFalse(landingComposerNeedsWorkspace(selectedWorkspaceId: "w1", workspaceCount: 0))
         XCTAssertEqual(resolveSubmitMode(preferred: "queue", running: true, gesture: .chord, steeringAvailable: true), "steer")
         XCTAssertEqual(resolveSubmitMode(preferred: "steer", running: true, gesture: .chord, steeringAvailable: true), "queue")
         XCTAssertEqual(resolveSubmitMode(preferred: "steer", running: false, gesture: .chord, steeringAvailable: true), "queue")

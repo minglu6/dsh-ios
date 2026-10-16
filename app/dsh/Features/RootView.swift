@@ -46,7 +46,13 @@ struct RootView: View {
                     .padding(.vertical, 8)
                     .background(T.primaryButton.opacity(0.92), in: Capsule())
                     .padding(.top, 8)
-                    .onTapGesture { model.errorMessage = nil; model.toast = nil }
+                    .onTapGesture {
+                        if model.toastUndoArchiveId != nil {
+                            model.undoLastArchive()
+                        }
+                        model.errorMessage = nil
+                        model.toast = nil
+                    }
                     .task(id: message) {
                         try? await Task.sleep(nanoseconds: 4_000_000_000)
                         if model.errorMessage == message { model.errorMessage = nil }

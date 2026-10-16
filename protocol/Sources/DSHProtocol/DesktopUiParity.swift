@@ -191,22 +191,26 @@ public func linkOpeningDescription(english: Bool) -> String {
 public enum ComposerPlaceholderKind: String, Equatable, Sendable {
     case parentOffline
     case unavailable
+    case workspace
     case steerQueue
     case plan
     case hero
     case defaultMessage
 }
 
-/// Desktop InputBar order: parentOffline → unavailable → steerQueue → plan → hero/default.
+/// Desktop InputBar order: parentOffline → unavailable → workspace (inert hero)
+/// → steerQueue → plan → hero/default.
 public func composerPlaceholderKind(
     parentOffline: Bool,
     unavailable: Bool,
     canSteerQueue: Bool,
     planMode: Bool,
+    needsWorkspace: Bool,
     hero: Bool
 ) -> ComposerPlaceholderKind {
     if parentOffline { return .parentOffline }
     if unavailable { return .unavailable }
+    if needsWorkspace { return .workspace }
     if canSteerQueue { return .steerQueue }
     if planMode { return .plan }
     if hero { return .hero }
@@ -221,6 +225,8 @@ public func composerPlaceholderText(kind: ComposerPlaceholderKind, english: Bool
             : "父会话已离线，无法继续发送；仍可停止当前运行"
     case .unavailable:
         return english ? "Session unavailable" : "会话不可用"
+    case .workspace:
+        return composerWorkspacePlaceholder(english: english)
     case .steerQueue:
         return english
             ? "Cmd/Ctrl+Enter steers all queued messages"
@@ -238,17 +244,38 @@ public func composerPlaceholderText(kind: ComposerPlaceholderKind, english: Bool
     }
 }
 
-public func composerPlaceholderText(planMode: Bool, english: Bool, hero: Bool = false) -> String {
+public func composerPlaceholderText(planMode: Bool, english: Bool, hero: Bool = false, needsWorkspace: Bool = false) -> String {
     composerPlaceholderText(
         kind: composerPlaceholderKind(
             parentOffline: false,
             unavailable: false,
             canSteerQueue: false,
             planMode: planMode,
+            needsWorkspace: needsWorkspace,
             hero: hero
         ),
         english: english
     )
+}
+
+/// Desktop `conversation` `placeholder.workspace` when the hero chip has no title.
+public func composerWorkspacePlaceholder(english: Bool) -> String {
+    english ? "Choose a workspace to start" : "选择一个工作区开始"
+}
+
+/// Desktop `ui-workspace` `draft.workspaceRequired`.
+public func landingWorkspaceRequired(english: Bool) -> String {
+    english ? "Choose a workspace first." : "请先选择工作区"
+}
+
+/// Desktop hero composer is inert until the workspace chip has a title.
+public func landingComposerNeedsWorkspace(selectedWorkspaceId: String?, workspaceCount: Int) -> Bool {
+    selectedWorkspaceId == nil && workspaceCount == 0
+}
+
+/// Desktop `conversation` `input.stop`.
+public func composerStopLabel(english: Bool) -> String {
+    english ? "Stop generating" : "停止生成"
 }
 
 /// Desktop `ui-conversation` `resolveSubmitMode`.

@@ -60,7 +60,7 @@ enum L {
     static func restoreArchivedBody() -> String {
         en ? "Restore this archived session before opening it." : "已归档会话需先恢复才能打开。"
     }
-    static func archivedToast() -> String { en ? "Session archived; you can " : "会话已归档，可" }
+    static func archivedToast(stopped: Bool = false) -> String { archiveSuccessToast(stopped: stopped, english: en) }
     static func orderByLabel() -> String { en ? "Order by" : "排序方式" }
     static func orderByManual() -> String { en ? "Manual" : "手动排序" }
     static func orderByUpdated() -> String { en ? "Last updated" : "最近更新" }
@@ -402,7 +402,7 @@ enum L {
     static func file() -> String { en ? "File" : "文件" }
     static func pendingFiles() -> String { pendingAttachmentsLabel(english: en) }
     static func uploading() -> String { en ? "Uploading…" : "上传中…" }
-    static func uploadFailed() -> String { en ? "Upload failed; tap to retry" : "上传失败，点击重试" }
+    static func uploadFailed() -> String { en ? "Upload failed; click to retry" : "上传失败，点击重试" }
     static func removeFile(_ name: String) -> String { en ? "Remove file \(name)" : "移除文件 \(name)" }
     static func filesAndFolders() -> String { en ? "Files & folders" : "文件与文件夹" }
     static func planChip() -> String { planChipLabel(english: en) }

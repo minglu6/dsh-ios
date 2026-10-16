@@ -43,7 +43,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R12 | Token 用量弹层在 chip 上方；表头图标 + 合计右对齐；本轮用量对齐 `message.turnUsage`；Think 展开保留图标；轨迹吞吐空窗用官方「不可用」；「已结束」一次点按展开 | done (#30) |
 | R13 | 权限/模型 picker 对齐桌面 MenuSurface；去掉标题模型名与预设；landing AgentPresetSeat；连接入口回到抽屉脚；会话绿点/运行 spinner；Think 块对齐 ReasoningRow | done (#31) |
 | R14 | 权限/模型 picker 弹层在 composer chip **上方**（同 Token 用量 `arrowEdge: .bottom`）；完全权限 / Auto review 确认不被键盘裁切 | done (#32) |
-| R16 | landing 工作区 ghost chip + WorkspacePicker；计划 chip 进 composer modes 行；抽屉脚 footer.action 在 Settings 之上；+ aria / 插件添加 MenuSurface | this PR |
+| R16 | landing 工作区 ghost chip + WorkspacePicker；计划 chip 进 composer modes 行；抽屉脚 footer.action 在 Settings 之上；+ aria / 插件添加 MenuSurface | done (#33) |
+| R17 | 停止并归档确认；无工作区 landing 占位；停止 aria；会话「进行中」；搜索工作区上下文 | this PR |
 
 ---
 
@@ -421,3 +422,14 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 | 设置默认权限说明 | `PermissionPickerSheet` | `settings.permission` `description` | 仅「选择新会话的默认权限模式」，去掉自撰「自动审查仅适用于…」 |
 | 斜杠空态 | `CommandMenuOverlay` | `ui-commands` `status.loading` / `status.empty` | 「正在加载选项…」/「无选项」 |
 | 插件添加菜单 | `PluginAddMenu` popover | `ui-plugin-manager` `AddPluginMenu` | 两行 MenuSurface：第三方 + 创造；不再用 confirmationDialog |
+
+## Round 17 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`）
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| 停止并归档 | `SessionDrawer` alert + `AppModel.archive` | `ui-workspace` `ArchiveConfirmForm` / `activityLine`；Host `workspace/session-active` | 拒绝时打开确认，不再 toast 自撰 activity 句；确认文案 `archive.confirm.*`；确认后 `stopActivity=true` |
+| 归档成功 toast | `archiveSuccessToast` | `toast.archived` / `toast.stoppedAndArchived` + `undo` / `or` / `filter` | 「会话已归档，可撤销或筛选已归档会话」；点 toast 撤销（触屏对应桌面 undo 链） |
+| 无工作区 landing | `landingComposerNeedsWorkspace` | `ConversationRoot` `inert` + `placeholder.workspace` / `draft.workspaceRequired` | 无工作区时占位「选择一个工作区开始」，发送/新建 toast「请先选择工作区」，不静默 create |
+| 停止按钮 | `composerStopLabel` | `conversation` `input.stop` | aria「停止生成」/ Stop generating |
+| 会话运行态 | `sidebarRunningLabel` | `ui-workspace` `status.running` | 读屏「进行中」，不是自撰「运行中」 |
+| 搜索结果工作区 | `searchResultShowsWorkspaceContext` | `Rows.tsx` `SearchResultItem` `searchResultWorkspace` | 标题下工作区名，无则「未分组」 |

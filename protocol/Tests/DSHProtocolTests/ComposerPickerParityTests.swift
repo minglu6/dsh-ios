@@ -165,6 +165,9 @@ final class ComposerPickerParityTests: XCTestCase {
         XCTAssertEqual(sidebarCompletionDotRadiusRatio, 3.0 / 14.0)
         XCTAssertEqual(sidebarCompletionUnreadLabel(english: false), "已完成，未查看")
         XCTAssertEqual(sidebarCompletionUnreadLabel(english: true), "Completed, unread")
+        XCTAssertEqual(sidebarRunningLabel(english: false), "进行中")
+        XCTAssertEqual(sidebarRunningLabel(english: true), "Running")
+        XCTAssertTrue(searchResultShowsWorkspaceContext)
     }
 
     func testAgentPresetSeatMetrics() {

@@ -212,13 +212,16 @@ public let sidebarCompletionDotRadiusRatio: Double = 3.0 / 14.0
 public let sidebarWorkspaceKeepsFolderIcon = true
 public let sidebarIdleSessionHasNoBubble = true
 public let sidebarArchivedIdleHasNoLeadingIcon = true
+/// Desktop `SearchResultItem` shows workspace context under the title.
+public let searchResultShowsWorkspaceContext = true
 
 public func sidebarCompletionUnreadLabel(english: Bool) -> String {
     english ? "Completed, unread" : "已完成，未查看"
 }
 
+/// Desktop `ui-workspace` `status.running`.
 public func sidebarRunningLabel(english: Bool) -> String {
-    english ? "Running" : "运行中"
+    english ? "Running" : "进行中"
 }
 
 public func sidebarAwaitingApprovalLabel(english: Bool) -> String {
