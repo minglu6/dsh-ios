@@ -206,10 +206,11 @@ public struct SkillEntry: Equatable, Sendable, Identifiable {
     }
 
     public static func parse(_ element: JSONValue) -> SkillEntry? {
-        guard let name = element["name"].str(), !name.isEmpty else { return nil }
-        let description = element["description"].str() ?? ""
-        let modelInvocable = element["modelInvocable"].bool()
-            ?? element["invocation"]["modelInvocable"].bool()
+        guard let object = element.obj() else { return nil }
+        guard let name = object["name"]?.str(), !name.isEmpty else { return nil }
+        let description = object["description"]?.str() ?? ""
+        let modelInvocable = object["modelInvocable"]?.bool()
+            ?? object["invocation"]?.obj()?["modelInvocable"]?.bool()
             ?? false
         return SkillEntry(name: name, description: description, modelInvocable: modelInvocable)
     }

@@ -33,7 +33,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | P2-visual | xterm Tango ANSI; terminal tab title / 关闭; file-icon 色; 设置 locales; 链接打开两项 | done (#20) |
 | tree/slash | 文件树原地展开；斜杠菜单贴输入框 | done (#21) |
 | R4 | collapseTiming 写回 Host；composer / 运行态 / 提问 / 任务输出 / 插件空态对齐桌面文案 | done (#22) |
-| R5 | 文件树去 chevron + 自动刷新；排队附件缩略图/芯片；claimed `/goal` `/plan` 提示条 | this PR |
+| R5 | 文件树去 chevron + 自动刷新；排队附件缩略图/芯片；claimed `/goal` `/plan` 提示条；变更卡 pocket JSON `false` 旗标；斜杠技能组 + 键盘高度；无会话 landing | this PR |
 
 ---
 
@@ -132,7 +132,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Workspace / session reorder | Host `insertBefore` / `insertSessionBefore` (Android UI is local Manual) | drag/drop calls Host ops when advertised; Manual order still local | **missing** → **present** | **G** |
 | NavigationPolicy | `workspaceDisplayTitle` / `visibleDrawerSession` / `reconcileSessionOrder` / `workspaceBranches` / `archiveActivityDescription` | same Swift ports in `Workspace.swift` | **partial** → **present** | **G** |
 | Open-in-desktop-editor | desktop only | — | **hide** | — |
-| WorkspaceChanges cards | `WorkspaceChanges.kt` | chat cards + review sheet (`workspaceChanges.summary/diff`); `workspace/changes` announcement; attached to last answer when visible, otherwise an independent card outside 「已完成」 | **missing** → **present** | **F** / P1 |
+| WorkspaceChanges cards | `WorkspaceChanges.kt` | chat cards + review sheet (`workspaceChanges.summary/diff`); `workspace/changes` announcement; attached to last answer when visible, otherwise an independent card outside 「已完成」. Pocket JSON 的 `binary`/`oversized: false` 按 Android 接受（#19 只修了 `{summary:…}` 解包，运行时 Host 序列化带 false 仍整卡解析失败） | **missing** → **present** | **F** / P1 / **R5** |
 | File tree live updates | `files.follow` + `observeWorkspaceDirectory` | same; watch-unsupported 回退 list；工具栏 pause/play「自动刷新」按桌面 `DirectoryNode.setAutomatic`：关则保留 watch、不因 change 再 list | **partial** → **present** | **F** / **H** / **R5** |
 | Browser | `BrowserPanel.kt` + `BrowserTabs.kt` HTTP(S)-only, addresses-only checkpoints | implemented (multi-tab `{selected, pages:[{id,url,title}]}`); unexposed — desktop Start / ⋯ have no entry | **hide** | **P1** / **H** |
 | Session Inspector | `SessionInspectorPanel` raw/grouped + pick | implemented, unexposed — desktop Start / ⋯ have no entry | **hide** | **P1** |
@@ -210,7 +210,7 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 - Conversation header has no ⋯ overflow. Export and session feedback live on `/` and `+`. Rename, fork, and Copy Session ID live on the drawer session row menu. Header title uses the same rule as the drawer: current blank → 「新会话」, any other missing title → 「未命名」.
 - Terminal / files / jobs: expose when the matching op is in `hello.ops` (same as Android).
 - Browser / Session Inspector: desktop Start and session ⋯ do not list them. Do not invent an entry; implementations stay unexposed.
-- WorkspaceChanges: consume Host `workspace/changes`; chat cards when `showCodeWorkView` and `workspaceChanges.summary` is advertised; diff sheet needs `workspaceChanges.diff`. Keep the card outside the 「已完成」 fold (attach to the last answer when that answer is visible).
+- WorkspaceChanges: consume Host `workspace/changes`; chat cards when `showCodeWorkView` and `workspaceChanges.summary` is advertised; diff sheet needs `workspaceChanges.diff`. Keep the card outside the 「已完成」 fold (attach to the last answer when that answer is visible). Pocket wire flags are `absent | true | false` (Android); do not reject JSON `false`.
 - Plugins: drawer when `plugins.list`; market enable when `plugins.setEnabled`; add when `plugins.install`; Settings 「内置插件」 when `plugins.inventory`. Do not embed a plugin WebView (desktop market has none).
 - Schedule: **drawer only** (desktop sidebar). Do not add a Settings row.
 - Permissions / models / commands / attachments / queue / goals / presets / session search / export / session feedback / unarchive / Host reorder: expose when the matching op is advertised.
@@ -255,6 +255,10 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 | 自动刷新 | `FileAutoRefresh` + `directoryWatchShouldReload` | `store.ts` `autoRefresh`、`directory-node.ts` `setAutomatic`、`FilesBody.tsx` pause/play | 默认开；关后 watch 仍在，change 不 list；再开补一次 list。桌面把按钮包在 `<span hidden>`（测试要求不可见）；iOS 画出按钮，否则触屏无法用 |
 | 排队附件 | `QueuedAttachment` / `PromptQueue` | `ui-conversation` `QueueDock.tsx` | 图片 24×24 缩略图（`session.attachment` 或本地 preview）；文件芯片 = 图标 + 名 + `fileSizeText`；无 durable ref 的块跳过 |
 | claimed hint | `claimedComposerHint` 在输入框上方 | `InputBar.tsx` `--dsh-composer-hint` | `/goal` `/plan`（及 Host 中文名经 catalog `definitionId`）且参数为空才显示；有目标时用 `hint.goal.active` |
+| 变更卡运行时 | `WorkspaceChanges.wireBoolFlag` + `parsePocketResult` | Host `workspace/changes` via pocket `follow`（plugin 不滤 type）；summary/diff via `workspaceChangesOps` | 插件 `d30825c` **有**转发：`plugin/index.js` `workspaceChangesOps`、`skillOps`；`server.js` `follow` 原样推 `sc.follow` 帧。缺卡是 iOS 把 JSON `false` 当畸形。 |
+| 斜杠「技能」 | `skillCatalog` 预取 + `commandMenuDisplayRows` | desktop 三组 添加 / 指令 / 技能 | `skills.list` 有数据才出「技能」组，排在指令之后；首屏高度用 composer 上方全部可用高度 |
+| 斜杠键盘高度 | `commandMenuAvailableHeight` | 贴 composer 上方的剩余视口 | 去掉 `max(240, 72%)` 地板（键盘升起后 240 会高于剩余高度） |
+| 无会话首页 | `RootView.emptyChat` | `conversation` landing：`hero.headline` / `hero.preview` / `placeholder.hero` | 「探索未至之境」+「预览版」+ composer「描述你想要构建的内容, / 调用指令, @ 文件或对话」；发送即 `sessions.create` 再 prompt。抽屉仍保留「新会话」。 |
 
 ## Deferred / hide leftovers
 

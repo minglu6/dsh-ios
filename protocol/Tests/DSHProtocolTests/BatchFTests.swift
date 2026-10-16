@@ -151,8 +151,11 @@ final class WorkspaceChangesTests: XCTestCase {
     func testPocketSummaryNullAndMalformedFlagsStayUnavailable() throws {
         XCTAssertNil(try WorkspaceChangesSummary.parsePocketResult(j(#"{"summary":null}"#)))
         XCTAssertNil(WorkspaceChangesSummary.parsePocketResult(nil))
-        XCTAssertNil(try WorkspaceChangesSummary.parsePocketResult(j(#"{"summary":{"turn":1,"total":1,"added":2,"deleted":0,"files":[{"path":"a","display":"a","added":2,"deleted":0,"binary":false}]}}"#)))
+        let serializedFalse = try XCTUnwrap(WorkspaceChangesSummary.parsePocketResult(j(#"{"summary":{"turn":1,"total":1,"added":2,"deleted":0,"files":[{"path":"a","display":"a","added":2,"deleted":0,"binary":false,"oversized":false}]}}"#)))
+        XCTAssertEqual(serializedFalse.files.single, WorkspaceChangedFile(path: "a", display: "a", added: 2, deleted: 0))
         XCTAssertNil(try WorkspaceChangesSummary.parsePocketResult(j(#"{"summary":{"turn":1,"total":1,"added":2,"deleted":0,"files":[{"path":"","display":"a","added":2,"deleted":0}]}}"#)))
+        XCTAssertNil(try WorkspaceChangesSummary.parsePocketResult(j(#"{"summary":{"turn":1,"total":1,"added":2,"deleted":0,"files":[{"path":"a","display":"a","added":2,"deleted":0,"binary":null}]}}"#)))
+        XCTAssertNil(try WorkspaceChangesSummary.parsePocketResult(j(#"{"summary":{"turn":1,"total":1,"added":2,"deleted":0,"files":[{"path":"a","display":"a","added":2,"deleted":0,"binary":"yes"}]}}"#)))
         let http = try XCTUnwrap(WorkspaceChangesSummary.parsePocketResult(j("""
         {"summary":{"turn":1,"total":1,"added":1,"deleted":1,"files":[
             {"path":"parity-r3-card.txt","display":"parity-r3-card.txt","added":1,"deleted":1}

@@ -141,6 +141,21 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertEqual(composerPlaceholderText(planMode: true, english: false), "描述你的任务以生成计划")
         XCTAssertEqual(composerPlaceholderText(planMode: false, english: true), "Message or run a task, / commands, @ files or sessions")
         XCTAssertEqual(composerPlaceholderText(planMode: true, english: true), "describe your task to generate plan")
+        XCTAssertEqual(
+            composerPlaceholderText(planMode: false, english: false, hero: true),
+            "描述你想要构建的内容, / 调用指令, @ 文件或对话"
+        )
+        XCTAssertEqual(
+            composerPlaceholderText(planMode: false, english: true, hero: true),
+            "Describe what you want to build, / commands, @ files or sessions"
+        )
+        XCTAssertEqual(landingHeadline(english: false), "探索未至之境")
+        XCTAssertEqual(landingHeadline(english: true), "Into the Unknown")
+        XCTAssertEqual(landingPreviewBadge(english: false), "预览版")
+        XCTAssertEqual(landingPreviewBadge(english: true), "Preview")
+        XCTAssertEqual(commandMenuAvailableHeight(containerHeight: 180), 172)
+        XCTAssertEqual(commandMenuAvailableHeight(containerHeight: 80), 72)
+        XCTAssertEqual(commandMenuAvailableHeight(containerHeight: 4), 0)
         XCTAssertEqual(composerModelFallback(english: false), "请选择模型")
         XCTAssertEqual(composerModelFallback(english: true), "Select model")
         XCTAssertEqual(loadOlderLabel(loading: false, english: false), "加载更早")

@@ -140,6 +140,31 @@ final class SlashMenuTests: XCTestCase {
         XCTAssertFalse(menu.isVisible(trigger: slashMenuTrigger("/file")))
     }
 
+    func testSkillsGroupFollowsAddThenCommandsWhenCatalogReturnsRows() throws {
+        let commands = try [
+            command("file", client: "file"),
+            command("goal"),
+            command("compact"),
+        ]
+        let skills = [SkillEntry(name: "agent-browser", description: "Drive a browser", modelInvocable: true)]
+        let rows = commandMenuDisplayRows(commands: commands, skills: skills, query: "", leading: true, english: false)
+        XCTAssertEqual(
+            rows.compactMap { row -> String? in
+                switch row {
+                case .section(let title): return title
+                case .command(let command): return command["name"].str()
+                case .skill(let skill): return skill.name
+                }
+            },
+            ["添加", "file", "goal", "指令", "compact", "技能", "agent-browser"]
+        )
+        XCTAssertTrue(rows.contains { if case .section("技能") = $0 { return true }; return false })
+        XCTAssertNil(commandMenuDisplayRows(commands: commands, skills: [], query: "", leading: true, english: false).first {
+            if case .section("技能") = $0 { return true }
+            return false
+        })
+    }
+
     func testChineseCopyWritesRemoteHostNotHost() {
         XCTAssertEqual(commandContributionCollisionMessage("plan", english: false), "指令贡献 /plan 与远程主机指令冲突")
         XCTAssertFalse(commandContributionCollisionMessage("plan", english: false).contains("Host"))

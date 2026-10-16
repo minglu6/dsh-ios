@@ -700,7 +700,15 @@ struct CommandMenuOverlay: View {
     var body: some View {
         menuCard
             .task(id: catalogTaskId) { await load() }
-            .onAppear { highlight = commandMenuDefaultHighlight(rows) }
+            .onAppear {
+                if skills.isEmpty, !model.skillEntries.isEmpty {
+                    skills = model.skillEntries
+                }
+                highlight = commandMenuDefaultHighlight(rows)
+            }
+            .onChange(of: model.skillEntries) { entries in
+                if skills.isEmpty, !entries.isEmpty { skills = entries }
+            }
             .onChange(of: query) { _ in highlight = commandMenuDefaultHighlight(rows) }
             .onChange(of: rows.count) { _ in syncHighlight() }
             .onChange(of: host.enterRequest) { _ in
@@ -922,37 +930,46 @@ struct CommandMenuOverlay: View {
     }
 
     private func load() async {
-        if !model.isOnline || !sessionReady {
-            loading = model.isOnline && !sessionReady
+        if !model.isOnline {
+            loading = false
+            return
+        }
+        if model.chat != nil && !sessionReady {
+            loading = true
+            return
+        }
+        if !sessionReady {
+            loading = false
             return
         }
         loading = true
         error = nil
+        let id = model.chat?.sessionId
         do {
-            let id = model.chat?.sessionId
             if id == nil || subagent || !model.ops.contains("commands.list") {
                 commands = []
             } else {
                 commands = try await model.commandCatalog(sessionId: id!)
             }
-            if id == nil || subagent || !model.ops.contains("skills.list") {
-                skills = []
-            } else {
-                do {
-                    skills = try await model.skillCatalog(sessionId: id!)
-                } catch is CancellationError {
-                    return
-                } catch {
-                    #if DEBUG
-                    print("[dsh.skills] list failed session=\(id ?? "") error=\(error)")
-                    #endif
-                    skills = []
-                }
-            }
         } catch is CancellationError {
             return
         } catch {
             self.error = error.localizedDescription.isEmpty ? (L.en ? "Could not load commands" : "无法加载指令") : error.localizedDescription
+            commands = []
+        }
+        if let id, !subagent, model.ops.contains("skills.list") {
+            do {
+                skills = try await model.skillCatalog(sessionId: id)
+            } catch is CancellationError {
+                return
+            } catch {
+                #if DEBUG
+                print("[dsh.skills] list failed session=\(id) error=\(error)")
+                #endif
+                skills = model.skillEntries
+            }
+        } else {
+            skills = []
         }
         loading = false
     }

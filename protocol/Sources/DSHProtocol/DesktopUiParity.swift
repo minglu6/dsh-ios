@@ -183,13 +183,35 @@ public func linkOpeningDescription(english: Bool) -> String {
     english ? "Choose where to open web links" : "对话中网页链接的打开位置"
 }
 
-public func composerPlaceholderText(planMode: Bool, english: Bool) -> String {
+public func composerPlaceholderText(planMode: Bool, english: Bool, hero: Bool = false) -> String {
     if planMode {
         return english ? "describe your task to generate plan" : "描述你的任务以生成计划"
+    }
+    if hero {
+        return english
+            ? "Describe what you want to build, / commands, @ files or sessions"
+            : "描述你想要构建的内容, / 调用指令, @ 文件或对话"
     }
     return english
         ? "Message or run a task, / commands, @ files or sessions"
         : "发消息或创建任务, / 调用指令, @ 文件或对话"
+}
+
+/// Desktop `conversation` `hero.headline`.
+public func landingHeadline(english: Bool) -> String {
+    english ? "Into the Unknown" : "探索未至之境"
+}
+
+/// Desktop `conversation` `hero.preview`.
+public func landingPreviewBadge(english: Bool) -> String {
+    english ? "Preview" : "预览版"
+}
+
+/// Space above the composer (already keyboard-avoided) minus a hairline margin.
+/// Never invent a floor taller than the remaining viewport — that is what
+/// squeezed the slash list into a 3-page scroller under the iOS keyboard.
+public func commandMenuAvailableHeight(containerHeight: Double, margin: Double = 8) -> Double {
+    max(0, containerHeight - margin)
 }
 
 public func composerModelFallback(english: Bool) -> String {

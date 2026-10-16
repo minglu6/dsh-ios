@@ -399,7 +399,7 @@ final class AppModel: ObservableObject {
             guard !attach.isImage, attach.status == .ready, let receipt = attach.receiptId else { return nil }
             return PromptFile(receiptId: receipt)
         }
-        guard (!text.isEmpty || !images.isEmpty || !files.isEmpty), let chat, let client else { return }
+        guard (!text.isEmpty || !images.isEmpty || !files.isEmpty), let client else { return }
         if !pendingAttaches.isEmpty, let name = slashCommandName(text) {
             let row = commandEntries.first { $0["name"].str() == name }
             if commandRefusesAttachments(name: name, catalogRow: row) {
@@ -428,7 +428,32 @@ final class AppModel: ObservableObject {
         }
         composerText = ""
         pendingAttaches = []
-        Task { await sendPrompt(client, chat: chat, text: text, images: images, files: files, attachments: queueAttachments) }
+        if let chat {
+            Task { await sendPrompt(client, chat: chat, text: text, images: images, files: files, attachments: queueAttachments) }
+            return
+        }
+        Task { await createSessionAndSend(client, text: text, images: images, files: files, attachments: queueAttachments) }
+    }
+
+    private func createSessionAndSend(
+        _ client: PocketClient,
+        text: String,
+        images: [PromptImage],
+        files: [PromptFile],
+        attachments: [QueuedAttachment]
+    ) async {
+        do {
+            let chosen = pendingCreatorPreset ?? draftPreset.nilIfBlank
+            let id = try await client.createSession(agentPreset: chosen)
+            pendingCreatorPreset = nil
+            openSession(id)
+            guard let chat, chat.sessionId == id else {
+                throw PocketError(code: "session", message: L.t("未能打开新会话", "Could not open the new session"))
+            }
+            await sendPrompt(client, chat: chat, text: text, images: images, files: files, attachments: attachments)
+        } catch {
+            emit(error.localizedDescription)
+        }
     }
 
     func stopRun() {
@@ -1943,6 +1968,19 @@ final class AppModel: ObservableObject {
         subId = sid
         chat?.loaded = true
         await loadFeedback(client, sessionId: sessionId)
+        await loadSkills(sessionId)
+    }
+
+    private func loadSkills(_ sessionId: String) async {
+        guard ops.contains("skills.list") else { return }
+        do {
+            _ = try await skillCatalog(sessionId: sessionId)
+        } catch is CancellationError {
+        } catch {
+            #if DEBUG
+            print("[dsh.skills] prefetch failed session=\(sessionId) error=\(error)")
+            #endif
+        }
     }
 
     private func loadFeedback(_ client: PocketClient, sessionId: String) async {
