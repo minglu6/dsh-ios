@@ -360,6 +360,174 @@ public func askToolRowReopensComposer(toolName: String, callId: String?, hiddenQ
     return callId == hiddenQuestionCallId
 }
 
+/// Desktop `AskQuestionRow` `useProjection("userQuestions")` `view.active`.
+public func askToolRowIsAnswerable(callId: String?, questionId: String?, activeCallIds: [String]) -> Bool {
+    if let callId, !callId.isEmpty, activeCallIds.contains(callId) { return true }
+    if let questionId, !questionId.isEmpty, activeCallIds.contains(questionId) { return true }
+    return false
+}
+
+/// Desktop `isPendingResult`: JSON `{ pending: true, callId }`.
+public func isAskPendingResult(_ result: String?) -> Bool {
+    guard let result, let parsed = try? JSONValue.parse(result) else { return false }
+    return parsed["pending"].bool() == true && (parsed["callId"].str()?.isEmpty == false)
+}
+
+/// Desktop `ui-conversation` `ask.waiting` / `ask.pending` / `ask.closed`.
+public func askWaitingLabel(english: Bool) -> String {
+    english ? "waiting" : "等待回答"
+}
+
+public func askPendingLabel(english: Bool) -> String {
+    english ? "continued; answer still available" : "已继续工作，仍可回答"
+}
+
+public func askClosedLabel(english: Bool) -> String {
+    english ? "closed" : "已结束"
+}
+
+public func askCancelledLabel(english: Bool) -> String {
+    english ? "cancelled" : "已取消"
+}
+
+public func askInterruptedLabel(english: Bool) -> String {
+    english ? "interrupted" : "已中断"
+}
+
+/// Desktop `AskQuestionRow` title / summary / reopen. Review panel is desktop-only.
+public struct AskToolRowChrome: Equatable, Sendable {
+    public var title: String
+    public var summary: String?
+    public var actionLabel: String?
+
+    public init(title: String, summary: String?, actionLabel: String?) {
+        self.title = title
+        self.summary = summary
+        self.actionLabel = actionLabel
+    }
+}
+
+public func askToolRowChrome(
+    name: String,
+    status: ToolStatus,
+    error: String?,
+    result: String?,
+    answerable: Bool,
+    english: Bool
+) -> AskToolRowChrome? {
+    guard isAskUserQuestionTool(name) else { return nil }
+    let title = askRowTitle(english: english)
+    if error == "ASK_CANCELLED" {
+        return AskToolRowChrome(title: title, summary: askCancelledLabel(english: english), actionLabel: nil)
+    }
+    if error == "ASK_ABORTED" {
+        return AskToolRowChrome(title: title, summary: askInterruptedLabel(english: english), actionLabel: nil)
+    }
+    if status == .running || status == .preparing {
+        return AskToolRowChrome(
+            title: title,
+            summary: askWaitingLabel(english: english),
+            actionLabel: answerable ? askReopenLabel(english: english) : nil
+        )
+    }
+    if isAskPendingResult(result) {
+        if answerable {
+            return AskToolRowChrome(
+                title: title,
+                summary: askPendingLabel(english: english),
+                actionLabel: askReopenLabel(english: english)
+            )
+        }
+        return AskToolRowChrome(title: title, summary: askClosedLabel(english: english), actionLabel: nil)
+    }
+    return AskToolRowChrome(title: title, summary: nil, actionLabel: nil)
+}
+
+/// Desktop `ui-chat` `image.loading` / `image.failed`.
+public func messageImageLoading(english: Bool) -> String {
+    english ? "Loading image…" : "加载图片…"
+}
+
+public func messageImageFailed(english: Bool) -> String {
+    english ? "Image preview unavailable" : "图片无法预览"
+}
+
+/// Desktop `ui-chat` `ModelRetryItem` label: active uses `retry.active`.
+public func retryAttemptLabel(state: RetryState, active: Bool, english: Bool) -> String {
+    if active { return english ? "Retrying model request" : "正在重试模型请求" }
+    switch state {
+    case .cancelled: return english ? "Model request retry cancelled" : "模型请求重试已取消"
+    case .started: return english ? "Retried model request" : "已重试模型请求"
+    case .scheduled: return english ? "Waiting to retry model request" : "等待重试模型请求"
+    }
+}
+
+/// Desktop `duration.milliseconds`.
+public func retryDelayMilliseconds(delayMs: Int64, english: Bool) -> String {
+    english ? "\(delayMs)ms" : "\(delayMs)毫秒"
+}
+
+public func retryAttemptIsActive(state: RetryState, isLast: Bool) -> Bool {
+    state == .scheduled && isLast
+}
+
+/// Desktop `TurnErrorItem` title: signed-out and interrupted share `message.taskStopped`.
+public func turnFailureTitle(code: String?, english: Bool) -> String {
+    if code == "ACCOUNT_SIGNED_OUT" || code == "INTERRUPTED" {
+        return english ? "Task stopped" : "任务已停止"
+    }
+    return english ? "This turn failed" : "本轮运行失败"
+}
+
+/// Desktop `TurnErrorItem` hides the `INTERRUPTED` code chip.
+public func turnFailureShowsCode(_ code: String?) -> Bool {
+    guard let code, !code.isEmpty else { return false }
+    return code != "INTERRUPTED"
+}
+
+/// Desktop `ui-deliverables` `diff.*` notices on the review surface.
+public enum ChangesDiffNotice: String, Equatable, Sendable {
+    case missing, binary, oversized, created, deleted, unchanged, coarse
+}
+
+public func changesDiffNoticeKind(_ diff: WorkspaceFileDiff?) -> ChangesDiffNotice? {
+    guard let diff else { return .missing }
+    if diff.kind == "binary" { return .binary }
+    if diff.kind == "oversized" { return .oversized }
+    if !diff.before { return .created }
+    if !diff.after { return .deleted }
+    if diff.hunks.isEmpty { return .unchanged }
+    if diff.coarse { return .coarse }
+    return nil
+}
+
+public func changesDiffNoticeLabel(_ kind: ChangesDiffNotice, english: Bool) -> String {
+    switch kind {
+    case .missing:
+        return english
+            ? "The contents of this turn’s changes are no longer available"
+            : "这轮改动的内容已不可用"
+    case .binary:
+        return english ? "Binary file; changes cannot be shown" : "二进制文件，无法显示改动"
+    case .oversized:
+        return english ? "File too large; changes cannot be shown" : "文件过大，无法显示改动"
+    case .created:
+        return english ? "Created in this turn" : "本轮新建的文件"
+    case .deleted:
+        return english ? "Deleted in this turn" : "本轮删除的文件"
+    case .unchanged:
+        return english ? "Both sides hold the same lines" : "两侧内容相同"
+    case .coarse:
+        return english
+            ? "Line comparison timed out; shown as a whole-file replacement"
+            : "逐行对比超时，按整个文件替换显示"
+    }
+}
+
+public func changesDiffTruncatedLabel(count: Int, english: Bool) -> String {
+    english ? "Showing the first \(count) lines" : "只显示前 \(count) 行"
+}
+
 /// Collapse stores the tool `callId` so `AskQuestionRow` can match the transcript row.
 public func userQuestionCollapseId(questionId: String, callId: String?) -> String {
     callId ?? questionId

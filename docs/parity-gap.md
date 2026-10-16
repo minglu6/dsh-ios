@@ -46,7 +46,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R16 | landing 工作区 ghost chip + WorkspacePicker；计划 chip 进 composer modes 行；抽屉脚 footer.action 在 Settings 之上；+ aria / 插件添加 MenuSurface | done (#33) |
 | R17 | 停止并归档确认；无工作区 landing 占位；停止 aria；会话「进行中」；搜索工作区上下文 | done (#34) |
 | R18 | 会话统计 / 上下文弹层在 chip 上方；用量 pill 数据库图标；ContextMeter 环；归档不可打开文案；仅归档空态「查看其他会话」 | done (#35) |
-| R19 | 离线空态 empty.none；landing 草稿附件；Ask 重开在工具行；subagent header crumbs；+ 按钮 selector 填充 | this PR |
+| R19 | 离线空态 empty.none；landing 草稿附件；Ask 重开在工具行；subagent header crumbs；+ 按钮 selector 填充 | done (#36) |
+| R20 | Ask 行「提问」+ waiting/pending；改动 diff.*；图片 image.failed；重试 scheduled；INTERRUPTED 失败 | this PR |
 
 ---
 
@@ -85,7 +86,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Reasoning disclosure | Think icon + preview | 标题恒为「思考」/Think；运行中 TextShimmer 而非 spinner；收起默认；展开时 chevron 替换 Think 图标；正文 compact 三级色 13/20；预览为首行（流式为已完成段首行） | **present** | **D** / **R12** / **R13** |
 | Tool row → inspector | `Chat.kt` tool card | `ToolProcessSummary` title/icon/receipt + inspect sheet | **present** | **D** |
 | Process group fold | `ChatProcess.kt` | `foldChatItems` / `visibleChatRows` + `ProcessGroupView`；已完成回合为「已完成，用时」+ 右侧 chevron（无左侧图标）；步骤组标题 body 14 + ` · ` 细节；成员与组头同列（无额外缩进）；运行中 shimmer | **present** | **D** / **R13** |
-| Notices (stopped / max-tokens / account) | reducer + official `message.*` | reducer emits; `.notice` / `RetryRow` / `TurnFailureRow` | **present** | **E** |
+| Notices (stopped / max-tokens / account) | reducer + official `message.*` | reducer emits; `.notice` / `RetryRow`（active vs scheduled 文案） / `TurnFailureRow`（`INTERRUPTED`=`taskStopped` + `failure.interrupted`） | **present** | **E** / **R20** |
 | Deliverables | `Item.Deliverable` | tap opens workspace file preview | **present** | **B** |
 | Markdown / code block / tables | `Markdown.kt` | AST + GFM tables / code / file chips | **present** | **D** |
 | Copy / like / dislike / share | `MessageActions` + `FeedbackCategory` | desktop row is share (not branch); branch stays on the session row menu | **present** | **A** / **P1** |
@@ -98,7 +99,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Header ⋯ overflow | Android `MoreSheet` (not desktop) | **removed** — desktop conversation header has no ⋯; export/feedback on `/` and `+`; rename/fork on the drawer row menu | **hide** | **P2** (#16) |
 | Session image bubbles | `session.attachment` + ImageBubble | same cache + retry + original preview | **missing** → **present** | **G** |
 | Attachments | `attachments.upload` | image picker + file importer + receipts；landing 无会话也可草稿非图文件，创建后上传 | **missing** → **present** | **E** / **R19** |
-| User questions | `UserQuestionCard` `userQuestions.answer` | composer 接管卡片；收起后点 `ask_user_question` 工具行「回答」重开（桌面 `AskQuestionRow`，无 composer Ask chip） | **missing** → **present** | **E** / **R19** |
+| User questions | `UserQuestionCard` `userQuestions.answer` | composer 接管卡片；工具行标题 `ask.rowTitle`「提问」；运行中「等待回答」、pending「已继续工作，仍可回答」；可回答时点行「回答」重开（桌面 `AskQuestionRow`，无 composer Ask chip，无 review 面板） | **missing** → **present** | **E** / **R19** / **R20** |
 | Approvals | official `ApprovalCard` takes composer | official card; `accepted` callback clears busy, success drops the row | **partial** → **present** | **E** |
 | TodoPanel | dock card above composer | `TodoPanel` expand in place | **missing** → **present** | **E** |
 | Goal bar | `goals.get` / `goal.activation` CAS | `GoalBar` + `GoalSheet` pause/resume/clear/edit | **missing** → **present** | **E** |
@@ -464,3 +465,22 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 - Account / shortcuts / open config / open-in-desktop-editor / 快捷键设置页：仍 **hide**。
 - 桌面 popover 系统箭头 / Think 收起无 hover 换 chevron：仍平台残留。
 - Android `18af5a8` / `9e580d4` / `d30825c` / `c5f8cdd`：外观本机、发布流程、skills.list / 无 session 目录，iOS 已有；无新交互可搬。
+
+## Round 20 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`）
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| Ask 工具行 | `askToolRowChrome` + `ToolProcessSummary` | `ui-tool` `AskQuestionRow` + `conversation` `ask.*` | 标题「提问」/ Ask question；运行中「等待回答」；pending「已继续工作，仍可回答」；关闭「已结束」；ASK_CANCELLED / ASK_ABORTED。可回答时 trailing「回答」。桌面 `ask.review` 面板 phone 不实现 |
+| 改动 diff | `changesDiffNoticeKind` / `changesDiffNoticeLabel` | `ui-deliverables` `diff.*` | 「这轮改动的内容已不可用」/「无法显示改动」/「本轮新建的文件」/「两侧内容相同」/「按整个文件替换显示」/「只显示前 {count} 行」 |
+| 消息图 | `messageImageLoading` / `messageImageFailed` | `ui-chat` `image.loading` / `image.failed` | 「加载图片…」/「图片无法预览」。点按仍重试，文案不再自撰「点击重试」 |
+| 重试行 | `retryAttemptLabel` / `retryDelayMilliseconds` | `ui-chat` `ModelRetryItem` | 当前 scheduled=`retry.active`「正在重试」；历史 scheduled=`retry.scheduled`「等待重试」；延迟 `{n}毫秒` |
+| 回合失败 | `turnFailureTitle` / `chatFailureMessage` | `TurnErrorItem` / `failureMessage` | `INTERRUPTED` 标题「任务已停止」、正文 `failure.interrupted`、不画 code chip。只映射桌面代码（去掉 QUOTA_EXCEEDED / AUTH_ERROR / INVALID_API_KEY 兜底） |
+| 鲸尾读屏 | `RunningStatusRow` | `chat.deepDivingFor` | accessibilityLabel 与可见「深度求索中，用时 … ···」同一句 |
+
+本轮核对后**不改**、确认已对齐或平台/hide：
+
+- 绿点 / 会话行 spinner / 标题无 running spinner / 抽屉脚连接入口：已对齐，Android 在 Settings 下挂「云端设备」不搬。
+- Account / shortcuts / open config / open-in-desktop-editor / 快捷键设置页：仍 **hide**。
+- 桌面 popover 系统箭头 / Think 收起无 hover 换 chevron：仍平台残留。
+- `AskQuestionRow` `ask.review`「查看回答」打开桌面 review 面板：phone 无该面板，不发明一层。
+- Android `18af5a8`…`c5f8cdd`：无新交互。

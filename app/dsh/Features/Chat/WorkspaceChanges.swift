@@ -283,16 +283,7 @@ private struct ChangesDiffBody: View {
     let diff: WorkspaceFileDiff?
 
     var body: some View {
-        let notice: String? = {
-            guard let diff else { return L.t("远程主机已不再提供本轮改动", "The remote host no longer has this comparison") }
-            if diff.kind == "binary" { return L.t("二进制文件，无法显示文本差异", "Binary file; no text comparison") }
-            if diff.kind == "oversized" { return L.t("文件过大，未捕获文本差异", "File too large; comparison was not captured") }
-            if !diff.before { return L.t("本轮新增文件", "File added in this turn") }
-            if !diff.after { return L.t("本轮删除文件", "File deleted in this turn") }
-            if diff.hunks.isEmpty { return L.t("文件内容相同", "File contents are identical") }
-            if diff.coarse { return L.t("逐行对比超时，按整文件替换展示", "Comparison timed out; showing whole-file replacement") }
-            return nil
-        }()
+        let notice: String? = changesDiffNoticeKind(diff).map { changesDiffNoticeLabel($0, english: L.en) }
         let lines = diff.map(changeDiffLines) ?? []
         let truncated = (diff?.hunks.reduce(0) { $0 + $1.lines.count } ?? 0) > 5000
         VStack(alignment: .leading, spacing: 0) {
@@ -322,7 +313,7 @@ private struct ChangesDiffBody: View {
                         .background(mark == " " || mark == nil ? Color.clear : tint.opacity(0.09))
                     }
                     if truncated {
-                        Text(L.t("仅显示前 5000 行", "Showing the first 5000 lines"))
+                        Text(changesDiffTruncatedLabel(count: 5000, english: L.en))
                             .foregroundStyle(T.text3)
                             .padding(.vertical, 16)
                     }

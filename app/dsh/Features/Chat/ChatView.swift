@@ -592,7 +592,7 @@ private struct RunningStatusRow: View {
             }
             .padding(.top, 4)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(L.t("深度求索中", "Deep diving"))
+            .accessibilityLabel(label)
         }
     }
 }
@@ -692,20 +692,34 @@ struct ChatRowView: View {
         }
     }
 
-    private func askRowActionLabel(for tool: Item.Tool) -> String? {
-        askToolRowReopensComposer(
-            toolName: tool.name,
+    private func askAnswerable(for tool: Item.Tool) -> Bool {
+        askToolRowIsAnswerable(
             callId: tool.callId,
-            hiddenQuestionCallId: model.hiddenQuestionId
-        ) ? L.reopenQuestion() : nil
+            questionId: nil,
+            activeCallIds: model.userQuestions.compactMap { $0.callId ?? $0.questionId }
+        )
+    }
+
+    private func askRowActionLabel(for tool: Item.Tool) -> String? {
+        askToolRowChrome(
+            name: tool.name,
+            status: tool.status,
+            error: tool.error,
+            result: tool.result,
+            answerable: askAnswerable(for: tool),
+            english: L.en
+        )?.actionLabel
     }
 
     private func tapTool(_ tool: Item.Tool) {
-        if askToolRowReopensComposer(
-            toolName: tool.name,
-            callId: tool.callId,
-            hiddenQuestionCallId: model.hiddenQuestionId
-        ) {
+        if askToolRowChrome(
+            name: tool.name,
+            status: tool.status,
+            error: tool.error,
+            result: tool.result,
+            answerable: askAnswerable(for: tool),
+            english: L.en
+        )?.actionLabel != nil {
             model.hiddenQuestionId = nil
             return
         }
@@ -949,7 +963,20 @@ private struct ToolCard: View {
     var onTap: () -> Void
 
     var body: some View {
-        let summary = toolProcessSummary(tool, en: L.en)
+        let base = toolProcessSummary(tool, en: L.en)
+        let chrome = askToolRowChrome(
+            name: tool.name,
+            status: tool.status,
+            error: tool.error,
+            result: tool.result,
+            answerable: reopenLabel != nil,
+            english: L.en
+        )
+        let summary = ToolProcessSummary(
+            title: chrome?.title ?? base.title,
+            summary: chrome?.summary ?? base.summary,
+            icon: base.icon
+        )
         let tint: Color = {
             switch tool.status {
             case .error: return T.err
