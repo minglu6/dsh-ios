@@ -84,6 +84,7 @@ public enum ChatRow: Equatable, Sendable {
     case deliverable(Item.Deliverable)
     case changes(Item.Changes)
     case turnTrigger(Item.Context)
+    case compacted(Item.Compacted)
 
     public var key: String {
         switch self {
@@ -98,6 +99,7 @@ public enum ChatRow: Equatable, Sendable {
         case .deliverable(let v): return v.key
         case .changes(let v): return v.key
         case .turnTrigger(let v): return v.key
+        case .compacted(let v): return v.key
         }
     }
 
@@ -403,7 +405,8 @@ private func isBlankAssistant(_ item: Item) -> Bool {
 private func isHidden(_ item: Item) -> Bool {
     switch item {
     case .context(let ctx): return !ctx.waking
-    case .system, .compacted: return true
+    case .system: return true
+    case .compacted(let compacted): return !compactionItemIsVisible(compacted)
     default: return isBlankAssistant(item)
     }
 }
@@ -495,6 +498,7 @@ public func foldChatItems(
         case .turnFailure(let v): return v.turn
         case .deliverable(let v): return v.turn
         case .changes(let v): return v.turn
+        case .compacted(let v): return v.turn
         default: return nil
         }
     }
@@ -535,8 +539,8 @@ public func foldChatItems(
                 if finalPosition == nil || (positions[row.key] ?? Int.max) < finalPosition! {
                     controlled.insert(row.key)
                 }
-            case .changes:
-                // Desktop keeps the WorkspaceChanges card outside the completed-turn fold.
+            case .changes, .compacted:
+                // Desktop keeps WorkspaceChanges and CompactionItem outside the completed-turn fold.
                 break
             default:
                 break
@@ -683,6 +687,7 @@ private func emitPlain(_ out: inout [ChatRow], _ item: Item) {
     case .turnFailure(let v): out.append(.turnFailure(v))
     case .deliverable(let v): out.append(.deliverable(v))
     case .changes(let v): out.append(.changes(v))
+    case .compacted(let v): out.append(.compacted(v))
     case .context(let v) where v.waking:
         out.append(.turnTrigger(v))
     default: break

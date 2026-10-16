@@ -419,6 +419,14 @@ public enum Item: Sendable, Equatable, Identifiable {
         public var startedAt: Int64?
         public var endedAt: Int64?
         public var turn: Int?
+        /// Desktop `CompactionSummaryNode.shadowedItemCount` from `shadowedSeqs.length`.
+        public var shadowedItemCount: Int?
+        /// Desktop `CompactionSummaryNode.shadowedTokenCount`.
+        public var shadowedTokenCount: Int?
+        /// Desktop manual `/compact` `sourceCommandId` → title `message.compaction.commandTitle`.
+        public var sourceCommandId: String?
+        /// Desktop `compactionDefinition` only builds the marker after the checkpoint lands.
+        public var hasCheckpoint: Bool
 
         public init(
             key: String,
@@ -429,7 +437,11 @@ public enum Item: Sendable, Equatable, Identifiable {
             interrupted: Bool = false,
             startedAt: Int64? = nil,
             endedAt: Int64? = nil,
-            turn: Int? = nil
+            turn: Int? = nil,
+            shadowedItemCount: Int? = nil,
+            shadowedTokenCount: Int? = nil,
+            sourceCommandId: String? = nil,
+            hasCheckpoint: Bool = false
         ) {
             self.key = key
             self.compactionId = compactionId
@@ -440,6 +452,10 @@ public enum Item: Sendable, Equatable, Identifiable {
             self.startedAt = startedAt
             self.endedAt = endedAt
             self.turn = turn
+            self.shadowedItemCount = shadowedItemCount
+            self.shadowedTokenCount = shadowedTokenCount
+            self.sourceCommandId = sourceCommandId
+            self.hasCheckpoint = hasCheckpoint
         }
     }
 
@@ -1236,6 +1252,7 @@ public final class TranscriptReducer {
         case "agent/inbox/spliced":
             spliceInbox(data, seq: seq)
         case "user/message":
+            if applyCompactionCheckpoint(e, data: data) { break }
             let msg = data["content"].isNull ? data["message"] : data
             retireMessage(msg)
             if isTyped(msg) {
@@ -1739,37 +1756,92 @@ public final class TranscriptReducer {
     }
 
     private func upsertCompactionStart(_ data: JSONValue, time: Int64?) {
-        guard let id = data["compactionId"].str(), compactIndex[id] == nil else { return }
+        guard let id = data["compactionId"].str()?.nilIfBlank else { return }
+        let commandId = data["sourceCommandId"].str()?.nilIfBlank
+        if let i = compactIndex[id], case .compacted(var existing) = committed[i] {
+            if existing.sourceCommandId == nil { existing.sourceCommandId = commandId }
+            if existing.startedAt == nil { existing.startedAt = time }
+            if existing.turn == nil { existing.turn = data["turn"].int() ?? openTurn }
+            committed[i] = .compacted(existing)
+            return
+        }
         compactIndex[id] = committed.count
         committed.append(.compacted(Item.Compacted(
             key: "cmp\(id)", compactionId: id, status: .running,
-            startedAt: time, turn: data["turn"].int() ?? openTurn
+            startedAt: time, turn: data["turn"].int() ?? openTurn,
+            sourceCommandId: commandId
         )))
     }
 
     private func upsertCompactionSummary(_ data: JSONValue) {
-        guard let id = data["compactionId"].str() else { return }
-        let summary = data["summary"].str() ?? (data["message"]["content"].arr() ?? [])
-            .filter { $0["type"].str() == "text" }
-            .map { $0["text"].str() ?? "" }
-            .joined(separator: "\n")
-            .nilIfBlank
-        guard let i = compactIndex[id], case .compacted(var c) = committed[i] else { return }
-        c.summary = summary ?? c.summary
-        committed[i] = .compacted(c)
+        guard let id = data["compactionId"].str()?.nilIfBlank else { return }
+        ensureCompacted(id: id, data: data)
+        guard let i = compactIndex[id], case .compacted(var compacted) = committed[i] else { return }
+        if let summary = compactionSummaryText(from: data["summary"]) {
+            compacted.summary = summary
+        }
+        if let items = compactionShadowedItemCount(from: data) {
+            compacted.shadowedItemCount = items
+        }
+        if let tokens = compactionShadowedTokenCount(from: data) {
+            compacted.shadowedTokenCount = tokens
+        }
+        if compacted.sourceCommandId == nil {
+            compacted.sourceCommandId = data["sourceCommandId"].str()?.nilIfBlank
+        }
+        committed[i] = .compacted(compacted)
     }
 
     private func upsertCompactionEnd(_ data: JSONValue, time: Int64?) {
-        guard let id = data["compactionId"].str() else { return }
+        guard let id = data["compactionId"].str()?.nilIfBlank else { return }
+        ensureCompacted(id: id, data: data)
         let err = data["error"]
         let interrupted = err["code"].str() == "interrupted" || err["reason"].str() == "interrupted" || data["interrupted"].bool() == true
         let isErr = !err.isNull
-        guard let i = compactIndex[id], case .compacted(var c) = committed[i] else { return }
-        c.status = isErr ? .error : .ok
-        c.error = err.isNull ? nil : (err["reason"].str() ?? err["message"].str() ?? err["code"].str())
-        c.interrupted = interrupted
-        c.endedAt = time
-        committed[i] = .compacted(c)
+        guard let i = compactIndex[id], case .compacted(var compacted) = committed[i] else { return }
+        compacted.status = isErr ? .error : .ok
+        compacted.error = err.isNull ? nil : (err["reason"].str() ?? err["message"].str() ?? err["code"].str())
+        compacted.interrupted = interrupted
+        compacted.endedAt = time
+        if compacted.sourceCommandId == nil {
+            compacted.sourceCommandId = data["sourceCommandId"].str()?.nilIfBlank
+        }
+        committed[i] = .compacted(compacted)
+    }
+
+    private func applyCompactionCheckpoint(_ event: JSONValue, data: JSONValue) -> Bool {
+        guard isCompactionCheckpoint(event: event, data: data) else { return false }
+        guard let id = compactionCheckpointId(from: data) else { return false }
+        let commandId = compactionCheckpointCommandId(from: data)
+        if let i = compactIndex[id], case .compacted(var compacted) = committed[i] {
+            compacted.hasCheckpoint = true
+            if compacted.sourceCommandId == nil { compacted.sourceCommandId = commandId }
+            committed[i] = .compacted(compacted)
+        } else {
+            compactIndex[id] = committed.count
+            committed.append(.compacted(Item.Compacted(
+                key: "cmp\(id)",
+                compactionId: id,
+                status: .running,
+                startedAt: event["time"].long(),
+                turn: data["turn"].int() ?? openTurn,
+                sourceCommandId: commandId,
+                hasCheckpoint: true
+            )))
+        }
+        return true
+    }
+
+    private func ensureCompacted(id: String, data: JSONValue) {
+        if compactIndex[id] != nil { return }
+        compactIndex[id] = committed.count
+        committed.append(.compacted(Item.Compacted(
+            key: "cmp\(id)",
+            compactionId: id,
+            status: .running,
+            turn: data["turn"].int() ?? openTurn,
+            sourceCommandId: data["sourceCommandId"].str()?.nilIfBlank
+        )))
     }
 
     private func inboxIdentity(_ message: JSONValue) -> String? {

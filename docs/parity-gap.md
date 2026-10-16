@@ -48,7 +48,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R18 | 会话统计 / 上下文弹层在 chip 上方；用量 pill 数据库图标；ContextMeter 环；归档不可打开文案；仅归档空态「查看其他会话」 | done (#35) |
 | R19 | 离线空态 empty.none；landing 草稿附件；Ask 重开在工具行；subagent header crumbs；+ 按钮 selector 填充 | done (#36) |
 | R20 | Ask 行「提问」+ waiting/pending；改动 diff.*；图片 image.failed；重试 scheduled；INTERRUPTED 失败 | done (#37) |
-| R21 | 工具行 tool.title.* / preparing 保留标题；Goal `detail.goal.*` | this PR |
+| R21 | 工具行 tool.title.* / preparing 保留标题；Goal `detail.goal.*` | done (#38) |
+| R22 | Chat `CompactionItem` `message.compaction*` | this PR |
 
 ---
 
@@ -56,7 +57,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 
 | Surface | Official package | Android | iOS now |
 | --- | --- | --- | --- |
-| Transcript fold | `ui-chat` / `ui-conversation` | `protocol/Transcript.kt`, `Chat.kt`, `ChatProcess.kt` | `protocol/…/Transcript.swift`, `ChatProcess.swift`, `Features/Chat/ChatView.swift` |
+| Transcript fold | `ui-chat` / `ui-conversation` | `protocol/Transcript.kt`, `Chat.kt`, `ChatProcess.kt` (Compacted still hidden) | `protocol/…/Transcript.swift`, `ChatProcess.swift`, `Features/Chat/ChatView.swift` — chat shows desktop `CompactionItem`; Android still folds it |
 | Message actions | `ui-chat` `MessageIconActions` | `Chat.kt` `MessageActions` | `ChatView` `MessageActions` (copy / like / dislike / share + turn usage; branch on the session row menu) |
 | Trajectory | `ui-trajectory` | `Trajectory.kt` + Detail/Inspector/Request/Locales; `protocol/TrajectoryTimeline.kt` | `Features/Trajectory/` + `protocol/Trajectory.swift` / `TrajectoryRequest.swift` |
 | WorkspaceChanges | Host `workspaceChanges.summary/diff` | `WorkspaceChanges.kt` | `Features/Chat/WorkspaceChanges.swift` + `protocol/WorkspaceChanges.swift` |
@@ -208,7 +209,7 @@ Port as the matching batch needs them (same JSON, no second protocol):
 | Android `app/core/protocol` | Used by | Batch |
 | --- | --- | --- |
 | `TrajectoryTimeline.kt` | Trajectory swimlane | **A done** (`TrajectoryTimeline.swift`) |
-| `Transcript.kt` extra items (`System`, `Compacted`, `Retry`, `TurnFailure`, `Changes`; System/Compacted folded, Retry/TurnFailure rendered, Changes cards in chat when coding view is on) | Chat + trajectory | A / D / **E** / **F** |
+| `Transcript.kt` extra items (`System`, `Compacted`, `Retry`, `TurnFailure`, `Changes`; System folded; Compacted is desktop `CompactionItem` in chat; Retry/TurnFailure rendered; Changes cards when coding view is on) | Chat + trajectory | A / D / **E** / **F** / **R22** |
 | `TurnTokenUsage.kt` | Inspector + usage | **E done** (`TurnTokenUsage.swift`) |
 | `ComposerMetrics.kt` | Composer statistics | **E done** (`ComposerMetrics.swift`) |
 | `WorkspaceChanges.kt` | Changed-file cards | **F done** (`WorkspaceChanges.swift`) |
@@ -500,5 +501,20 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 - Account / shortcuts / open config / open-in-desktop-editor / 快捷键设置页：仍 **hide**。
 - 桌面 popover 系统箭头 / Think 收起无 hover 换 chevron：仍平台残留。
 - `AskQuestionRow` `ask.review`：phone 不发明 review 面板。
-- Chat 压缩行 `CompactionItem`（`message.compaction*`）：桌面对话可见，iOS 仍按 Android 折进 `isHidden`。留给 Round 22，避免本轮同时改 fold 与工具行。
 - Android `18af5a8`…`c5f8cdd`：无新交互。
+
+## Round 22 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`）
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| Chat 压缩行 | `CompactionRow` + `foldChatItems` | `ui-chat` `CompactionItem` / `message.compaction*`；`compactionDefinition` / `compactSummary` | 落地 marker 可见；标题「上下文已压缩」/ Context compacted；手动 `/compact` 标题 `compact`；完成「已压缩 {n} 条历史记录（约 {n} tokens）」；无计数时「点击查看压缩摘要」或「压缩摘要不可用」；有 summary 才可展开 Markdown。仅 `compaction/start` 的 running 行仍隐藏（桌面无 CompactionItem，要等 checkpoint） |
+| compact-checkpoint | `applyCompactionCheckpoint` | `isCompactionCheckpoint` / `compactSource` `kind: compact-checkpoint` | replacement `user/message` 不画用户气泡，把 checkpoint 记在 Compacted 上。`surfaceOp` 必须存在且不是 `append` |
+| 摘要字段 | `compactionSummaryText` / `shadowedSeqs` | `compactSummary` | `data.summary` 仅为 text block 数组（不用字符串兜底）；`shadowedItemCount` = `shadowedSeqs.length`；非负整数 `shadowedTokenCount` |
+
+本轮核对后**不改**、确认已对齐或平台/hide：
+
+- Account / shortcuts / open config / open-in-desktop-editor / 快捷键设置页：仍 **hide**。
+- 桌面 popover 系统箭头 / Think 收起无 hover 换 chevron：仍平台残留。CompactionItem 同样无 hover，触屏保持 API/`curlybraces` 图标，不换成 chevron。
+- `AskQuestionRow` `ask.review`：phone 不发明 review 面板。
+- `CompactionCommandCard` / `command/run` 运行中「正在压缩…」：桌面是 slash command 卡，不是 CompactionItem。iOS 没有 command 节点，不发明一层。留给 Round 23。
+- Android `18af5a8`…`c5f8cdd`：无新交互。Desktop 仍赢过 Android 把 Compacted 折进 `isHidden`。

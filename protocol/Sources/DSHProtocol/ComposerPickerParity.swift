@@ -665,3 +665,112 @@ public func pluginAddCreatePluginMissing(english: Bool) -> String {
 }
 
 public let pluginAddMenuUsesMenuSurface = true
+
+// MARK: - CompactionItem (desktop ui-chat CompactionItem)
+
+/// Desktop `message.compaction` / `message.compaction.commandTitle`.
+public func compactionRowTitle(sourceCommandId: String?, english: Bool) -> String {
+    if sourceCommandId != nil {
+        return "compact"
+    }
+    return english ? "Context compacted" : "上下文已压缩"
+}
+
+/// Desktop CompactionItem summary line. Counts require both fields; otherwise
+/// `fallbackSummary`, else expand copy when a body exists, else unavailable.
+public func compactionRowSummary(
+    shadowedItemCount: Int?,
+    shadowedTokenCount: Int?,
+    fallbackSummary: String?,
+    hasSummary: Bool,
+    english: Bool
+) -> String {
+    if let items = shadowedItemCount, let tokens = shadowedTokenCount {
+        return english
+            ? "Compacted \(items) history items (~\(tokens) tokens)"
+            : "已压缩 \(items) 条历史记录（约 \(tokens) tokens）"
+    }
+    if let fallbackSummary, !fallbackSummary.isEmpty {
+        return fallbackSummary
+    }
+    if hasSummary {
+        return english ? "View compaction summary" : "点击查看压缩摘要"
+    }
+    return english ? "Compaction summary unavailable" : "压缩摘要不可用"
+}
+
+public func compactionRowSummary(item: Item.Compacted, english: Bool) -> String {
+    compactionRowSummary(
+        shadowedItemCount: item.shadowedItemCount,
+        shadowedTokenCount: item.shadowedTokenCount,
+        fallbackSummary: nil,
+        hasSummary: item.summary != nil,
+        english: english
+    )
+}
+
+/// Desktop `compactionDefinition.buildViewNode` is null until the checkpoint
+/// lands. In-flight `compaction/start` without summary/counts stays hidden.
+/// Settled markers (end, summary, or counts) still render if the checkpoint
+/// event is outside the window.
+public func compactionItemIsVisible(_ item: Item.Compacted) -> Bool {
+    if item.hasCheckpoint { return true }
+    if item.status != .running { return true }
+    if item.summary != nil { return true }
+    if item.shadowedItemCount != nil && item.shadowedTokenCount != nil { return true }
+    return false
+}
+
+public func compactionRowIsExpandable(_ item: Item.Compacted) -> Bool {
+    item.summary != nil
+}
+
+/// Desktop `compactSummary`: `data.summary` is an array of text blocks joined
+/// with no separator. Non-arrays are not a summary.
+public func compactionSummaryText(from summary: JSONValue) -> String? {
+    guard let blocks = summary.arr() else { return nil }
+    let text = blocks.map { block in
+        block["type"].str() == "text" ? (block["text"].str() ?? "") : ""
+    }.joined()
+    return text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : text
+}
+
+/// Desktop: `shadowedSeqs` must be an array of non-negative safe integers.
+public func compactionShadowedItemCount(from data: JSONValue) -> Int? {
+    guard let seqs = data["shadowedSeqs"].arr() else { return nil }
+    for seq in seqs {
+        guard let value = seq.long(), value >= 0 else { return nil }
+    }
+    return seqs.count
+}
+
+public func compactionShadowedTokenCount(from data: JSONValue) -> Int? {
+    guard let value = data["shadowedTokenCount"].long(), value >= 0 else { return nil }
+    return Int(value)
+}
+
+/// Desktop `isCompactionCheckpoint`: replacement `user/message` whose source
+/// kind is `compact-checkpoint`. `surfaceOp` must be present and not `append`.
+public func isCompactionCheckpoint(event: JSONValue, data: JSONValue) -> Bool {
+    guard event["type"].str() == "user/message" else { return false }
+    guard let op = event["surfaceOp"].str(), op != "append" else { return false }
+    return compactionCheckpointId(from: data) != nil
+}
+
+public func compactionCheckpointId(from data: JSONValue) -> String? {
+    let source = compactionMessageSource(data)
+    guard source["kind"].str() == "compact-checkpoint" else { return nil }
+    let id = source["compactionId"].str()?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    return id.isEmpty ? nil : id
+}
+
+public func compactionCheckpointCommandId(from data: JSONValue) -> String? {
+    guard let value = compactionMessageSource(data)["sourceCommandId"].str()?.trimmingCharacters(in: .whitespacesAndNewlines),
+          !value.isEmpty else { return nil }
+    return value
+}
+
+private func compactionMessageSource(_ data: JSONValue) -> JSONValue {
+    let msg = data["content"].isNull && data["message"].obj() != nil ? data["message"] : data
+    return msg["source"].isNull ? data["source"] : msg["source"]
+}
