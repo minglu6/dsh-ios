@@ -47,7 +47,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R17 | 停止并归档确认；无工作区 landing 占位；停止 aria；会话「进行中」；搜索工作区上下文 | done (#34) |
 | R18 | 会话统计 / 上下文弹层在 chip 上方；用量 pill 数据库图标；ContextMeter 环；归档不可打开文案；仅归档空态「查看其他会话」 | done (#35) |
 | R19 | 离线空态 empty.none；landing 草稿附件；Ask 重开在工具行；subagent header crumbs；+ 按钮 selector 填充 | done (#36) |
-| R20 | Ask 行「提问」+ waiting/pending；改动 diff.*；图片 image.failed；重试 scheduled；INTERRUPTED 失败 | this PR |
+| R20 | Ask 行「提问」+ waiting/pending；改动 diff.*；图片 image.failed；重试 scheduled；INTERRUPTED 失败 | done (#37) |
+| R21 | 工具行 tool.title.* / preparing 保留标题；Goal `detail.goal.*` | this PR |
 
 ---
 
@@ -483,4 +484,21 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 - Account / shortcuts / open config / open-in-desktop-editor / 快捷键设置页：仍 **hide**。
 - 桌面 popover 系统箭头 / Think 收起无 hover 换 chevron：仍平台残留。
 - `AskQuestionRow` `ask.review`「查看回答」打开桌面 review 面板：phone 无该面板，不发明一层。
+- Android `18af5a8`…`c5f8cdd`：无新交互。
+
+## Round 21 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`）
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| 工具行标题 | `toolRowTitle` + `ToolProcessSummary` | `ui-conversation` `tool.title.*` / `todo.rowTitle`；`ui-tool` SearchRow / WebRow / DetailsRow `LSP_TITLE_KEYS` | grep「搜索文件内容」/glob「查找文件」/web_search「网页搜索」/web_fetch「网页获取」；EN Grep/Glob/Fetch/Pwsh；todo `Update to-do list`；schedule reminder；ralph loop；lsp `goToDefinition`/`findReferences`/`goToImplementation`/`hover` |
+| 工具行 preparing | `toolProcessSummary` 不再换标题 | `ui-tool` `ToolRow`：`title = t(titleKey)`；`row.preparing` 仅 a11y | 准备中仍是「读取」+ 参数摘要，不是组头「准备读取文件」。读屏 `正在准备调用` |
+| Goal 条 | `goalPhaseLabel` | `ui-conversation` `detail.goal.*` | 进行中 / 等待继续 / 已暂停 / 受阻 / 已完成 / 没有目标。disarmed ≠ paused |
+
+本轮核对后**不改**、确认已对齐或平台/hide：
+
+- 绿点 / 会话行 spinner / 标题无 running spinner / 抽屉脚连接入口：已对齐。
+- Account / shortcuts / open config / open-in-desktop-editor / 快捷键设置页：仍 **hide**。
+- 桌面 popover 系统箭头 / Think 收起无 hover 换 chevron：仍平台残留。
+- `AskQuestionRow` `ask.review`：phone 不发明 review 面板。
+- Chat 压缩行 `CompactionItem`（`message.compaction*`）：桌面对话可见，iOS 仍按 Android 折进 `isHidden`。留给 Round 22，避免本轮同时改 fold 与工具行。
 - Android `18af5a8`…`c5f8cdd`：无新交互。

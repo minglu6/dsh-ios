@@ -453,13 +453,24 @@ public func todoProgressLabel(_ todos: [TodoItem], en: Bool) -> String {
     return parts.joined(separator: "\u{2002}·\u{2002}")
 }
 
-public func goalPhaseLabel(phase: String?, activation: String?) -> String {
+/// Desktop `ui-conversation` `detail.goal.*`. Disarmed is not paused.
+public func goalPhaseLabel(phase: String?, activation: String?, english: Bool = false) -> String {
     switch phase {
-    case "active": return activation == "disarmed" ? "已暂停的目标" : "进行中的目标"
-    case "paused": return "已暂停的目标"
-    case "blocked": return "受阻的目标"
-    case "complete": return "已完成的目标"
-    default: return "目标状态未知"
+    case nil, "", "empty":
+        return english ? "No goal" : "没有目标"
+    case "active":
+        if activation == "disarmed" {
+            return english ? "Awaiting continuation" : "等待继续"
+        }
+        return english ? "Active" : "进行中"
+    case "paused":
+        return english ? "Paused" : "已暂停"
+    case "blocked":
+        return english ? "Blocked" : "受阻"
+    case "complete":
+        return english ? "Completed" : "已完成"
+    default:
+        preconditionFailure("unknown desktop goal phase: \(phase ?? "nil")")
     }
 }
 

@@ -498,4 +498,85 @@ final class ComposerPickerParityTests: XCTestCase {
         XCTAssertEqual(changesDiffTruncatedLabel(count: 5000, english: false), "只显示前 5000 行")
         XCTAssertEqual(changesDiffTruncatedLabel(count: 5000, english: true), "Showing the first 5000 lines")
     }
+
+    func testToolRowTitlesMatchDesktopConversationLocale() {
+        XCTAssertEqual(toolRowTitle(name: "grep", english: false), "搜索文件内容")
+        XCTAssertEqual(toolRowTitle(name: "grep", english: true), "Grep")
+        XCTAssertEqual(toolRowTitle(name: "glob", english: false), "查找文件")
+        XCTAssertEqual(toolRowTitle(name: "glob", english: true), "Glob")
+        XCTAssertEqual(toolRowTitle(name: "web_search", english: false), "网页搜索")
+        XCTAssertEqual(toolRowTitle(name: "web_fetch", english: false), "网页获取")
+        XCTAssertEqual(toolRowTitle(name: "web_fetch", english: true), "Fetch")
+        XCTAssertEqual(toolRowTitle(name: "pwsh", english: true), "Pwsh")
+        XCTAssertEqual(toolRowTitle(name: "todo_write", english: true), "Update to-do list")
+        XCTAssertEqual(toolRowTitle(name: "get_goal", english: true), "View goal")
+        XCTAssertEqual(toolRowTitle(name: "schedule_create", english: true), "Create reminder")
+        XCTAssertEqual(toolRowTitle(name: "schedule_list", english: true), "List reminders")
+        XCTAssertEqual(toolRowTitle(name: "ralph", english: true), "Run ralph loop")
+        XCTAssertEqual(toolRowTitle(name: "spawn_teammate", english: true), "Create teammate")
+        XCTAssertEqual(toolRowTitle(name: "list_subagent_models", english: true), "List models")
+        XCTAssertEqual(toolRowTitle(name: "cordis_inspect_self", english: true), "Inspect plugins")
+        XCTAssertEqual(
+            toolRowTitle(name: "lsp", arguments: #"{"operation":"goToDefinition"}"#, english: false),
+            "查找定义"
+        )
+        XCTAssertEqual(
+            toolRowTitle(name: "lsp", arguments: #"{"operation":"findReferences"}"#, english: true),
+            "Find references"
+        )
+        XCTAssertEqual(
+            toolRowTitle(name: "lsp", arguments: #"{"operation":"goToImplementation"}"#, english: false),
+            "查找实现"
+        )
+        XCTAssertEqual(
+            toolRowTitle(name: "lsp", arguments: #"{"operation":"hover"}"#, english: true),
+            "Inspect symbol"
+        )
+        XCTAssertEqual(toolRowTitle(name: "lsp", english: false), "查询代码符号")
+        XCTAssertEqual(toolRowTitle(name: "vendor.unknown", english: false), "工具调用")
+        XCTAssertEqual(toolRowStateStatus(.preparing, english: false), "正在准备调用")
+        XCTAssertEqual(toolRowStateStatus(.preparing, english: true), "Preparing tool call")
+        XCTAssertEqual(toolRowStateStatus(.running, english: false), "运行中")
+        XCTAssertEqual(toolRowStateStatus(.error, english: true), "Failed")
+        XCTAssertNil(toolRowStateStatus(.ok, english: false))
+        XCTAssertNil(toolRowStateStatus(.awaitingApproval, english: false))
+
+        let preparingRead = toolProcessSummary(
+            Item.Tool(
+                key: "t",
+                callId: "c1",
+                name: "read",
+                arguments: #"{"path":"src/a.ts"}"#,
+                status: .preparing
+            )
+        )
+        XCTAssertEqual(preparingRead.title, "读取")
+        XCTAssertEqual(preparingRead.summary, "src/a.ts")
+        XCTAssertNotEqual(preparingRead.title, preparingToolTitle("read"))
+
+        let preparingBash = toolProcessSummary(
+            Item.Tool(
+                key: "t",
+                callId: "c1",
+                name: "bash",
+                arguments: #"{"command":"npm test","description":"Run tests"}"#,
+                status: .preparing
+            ),
+            en: true
+        )
+        XCTAssertEqual(preparingBash.title, "Bash")
+        XCTAssertEqual(preparingBash.summary, "Run tests")
+    }
+
+    func testGoalPhaseMatchesDesktopDetailGoal() {
+        XCTAssertEqual(goalPhaseLabel(phase: "active", activation: "armed", english: false), "进行中")
+        XCTAssertEqual(goalPhaseLabel(phase: "active", activation: "disarmed", english: false), "等待继续")
+        XCTAssertEqual(goalPhaseLabel(phase: "paused", activation: nil, english: false), "已暂停")
+        XCTAssertEqual(goalPhaseLabel(phase: "blocked", activation: nil, english: false), "受阻")
+        XCTAssertEqual(goalPhaseLabel(phase: "complete", activation: nil, english: false), "已完成")
+        XCTAssertEqual(goalPhaseLabel(phase: nil, activation: nil, english: false), "没有目标")
+        XCTAssertEqual(goalPhaseLabel(phase: "active", activation: "armed", english: true), "Active")
+        XCTAssertEqual(goalPhaseLabel(phase: "active", activation: "disarmed", english: true), "Awaiting continuation")
+        XCTAssertNotEqual(goalPhaseLabel(phase: "active", activation: "disarmed"), goalPhaseLabel(phase: "paused", activation: nil))
+    }
 }

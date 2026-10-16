@@ -326,6 +326,15 @@ final class ToolProcessSummaryTests: XCTestCase {
         let custom = toolProcessSummary(tool("vendor.job_list", result: "(no background jobs)", args: #"{"scope":"current"}"#))
         XCTAssertEqual(custom.summary, "vendor.job_list · current")
         XCTAssertEqual(custom.icon, .generic)
+        XCTAssertEqual(custom.title, "工具调用")
+    }
+
+    func testPreparingKeepsOfficialTitleAndArgumentSummary() {
+        let preparing = tool("grep", result: nil, args: #"{"pattern":"TODO"}"#, status: .preparing)
+        let summary = toolProcessSummary(preparing)
+        XCTAssertEqual(summary.title, "搜索文件内容")
+        XCTAssertEqual(summary.summary, "TODO")
+        XCTAssertEqual(toolProcessSummary(tool("web_fetch", result: nil, args: #"{"url":"https://ex"}"#, status: .running)).title, "网页获取")
     }
 }
 
