@@ -60,7 +60,7 @@ struct ComposerStats: View {
         }
         if let usageText {
             pill(usageText, clickable: detailed) { usageOpen.toggle() }
-                .popover(isPresented: $usageOpen, attachmentAnchor: .rect(.bounds), arrowEdge: .top) {
+                .popover(isPresented: $usageOpen, attachmentAnchor: .rect(.bounds), arrowEdge: composerUsagePopoverOpensAbove ? .bottom : .top) {
                     if let usage { sessionUsagePopover(usage) }
                 }
         }
@@ -119,12 +119,13 @@ struct ComposerStats: View {
         }
     }
 
-    /// Desktop session usage chip: anchored popover, total in the header, no 「合计」 row.
+    /// Desktop session usage chip: anchored above, icon + title left, total right.
     private func sessionUsagePopover(_ usage: ComposerTokenUsage) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(composerSessionUsageTitle(exactTotal: statisticsExact(usage.totalTokens), english: L.en))
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(T.ink)
+            UsagePopoverHeader(
+                title: composerSessionUsageTitle(english: L.en),
+                value: composerSessionUsageTitleValue(exactTotal: statisticsExact(usage.totalTokens))
+            )
             if let hit = usage.cacheHitPercent {
                 detail(composerSessionUsageRowLabel(.cacheHit, english: L.en), "\(hit)%")
             }
@@ -195,8 +196,8 @@ struct TurnUsageAction: View {
     @State private var expanded = false
 
     var body: some View {
-        let count = "\(statisticsTokens(Double(usage.totalTokens))) tok"
-        let label = L.t("用量 \(count)", "Usage \(count)")
+        let count = composerSessionUsageTokenValue(exact: statisticsTokens(Double(usage.totalTokens)))
+        let label = composerTurnUsageConsumed(total: count, english: L.en)
         Button { expanded.toggle() } label: {
             HStack(spacing: 4) {
                 Image(systemName: "cylinder").font(.system(size: 12)).foregroundStyle(T.text3)
@@ -209,28 +210,27 @@ struct TurnUsageAction: View {
         }
         .buttonStyle(.plain)
         .frame(maxWidth: 180, minHeight: 48)
-        .popover(isPresented: $expanded, attachmentAnchor: .rect(.bounds), arrowEdge: .top) {
+        .popover(isPresented: $expanded, attachmentAnchor: .rect(.bounds), arrowEdge: composerUsagePopoverOpensAbove ? .bottom : .top) {
             VStack(alignment: .leading, spacing: 10) {
-                Text(L.t("本轮用量", "Turn usage")).font(.subheadline.weight(.medium)).foregroundStyle(T.ink)
-                row(L.t("合计", "Total"), "\(statisticsExact(usage.totalTokens)) tok")
+                UsagePopoverHeader(
+                    title: composerTurnUsageTitle(english: L.en),
+                    value: composerSessionUsageTitleValue(exactTotal: statisticsExact(usage.totalTokens))
+                )
                 if let routes = usage.routes, !routes.isEmpty {
-                    Text(L.t("模型", "Model")).foregroundStyle(T.text2)
-                    ForEach(routes, id: \.self) { route in
-                        Text("\(route.provider)/\(route.model)").foregroundStyle(T.ink)
-                    }
+                    row(composerTurnUsageModelLabel(english: L.en), routes.map { "\($0.provider)/\($0.model)" }.joined(separator: ", "))
                 }
                 let promptTokens = usage.totalTokens - usage.outputTokens
                 if let cached = usage.cacheReadTokens, promptTokens > 0 {
-                    row(L.t("缓存命中率", "Cache hit"), String(format: "%.1f%%", Double(cached) / Double(promptTokens) * 100))
+                    row(composerSessionUsageRowLabel(.cacheHit, english: L.en), String(format: "%.1f%%", Double(cached) / Double(promptTokens) * 100))
                 }
-                row(L.t("未缓存输入", "Uncached input"), "\(statisticsExact(usage.uncachedInputTokens)) tok")
-                if let read = usage.cacheReadTokens { row(L.t("缓存读取", "Cache read"), "\(statisticsExact(read)) tok") }
-                if let write = usage.cacheWriteTokens { row(L.t("缓存写入", "Cache write"), "\(statisticsExact(write)) tok") }
-                row(L.t("输出", "Output"), "\(statisticsExact(usage.outputTokens)) tok")
-                if let reasoning = usage.reasoningTokens {
-                    row(L.t("其中推理输出", "Of which reasoning"), "\(statisticsExact(reasoning)) tok")
-                        .padding(.leading, 12)
+                row(composerSessionUsageRowLabel(.uncachedInput, english: L.en), composerSessionUsageTokenValue(exact: statisticsExact(usage.uncachedInputTokens)))
+                if let read = usage.cacheReadTokens {
+                    row(composerSessionUsageRowLabel(.cacheRead, english: L.en), composerSessionUsageTokenValue(exact: statisticsExact(read)))
                 }
+                if let write = usage.cacheWriteTokens {
+                    row(composerSessionUsageRowLabel(.cacheWrite, english: L.en), composerSessionUsageTokenValue(exact: statisticsExact(write)))
+                }
+                outputRow
             }
             .font(.subheadline)
             .padding(16)
@@ -240,11 +240,46 @@ struct TurnUsageAction: View {
         .onChange(of: turn) { _ in expanded = false }
     }
 
+    private var outputRow: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(composerSessionUsageRowLabel(.output, english: L.en)).foregroundStyle(T.text2)
+            Spacer()
+            HStack(spacing: 0) {
+                Text(composerSessionUsageTokenValue(exact: statisticsExact(usage.outputTokens))).foregroundStyle(T.ink)
+                if let reasoning = usage.reasoningTokens {
+                    Text(composerTurnUsageReasoning(
+                        tokens: composerSessionUsageTokenValue(exact: statisticsExact(reasoning)),
+                        english: L.en
+                    ))
+                    .foregroundStyle(T.text3)
+                }
+            }
+        }
+    }
+
     private func row(_ label: String, _ value: String) -> some View {
         HStack {
             Text(label).foregroundStyle(T.text2)
             Spacer()
             Text(value).foregroundStyle(T.ink)
+        }
+    }
+}
+
+/// Desktop `stat-dialog` heading: database glyph + section name left, exact total right.
+private struct UsagePopoverHeader: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center, spacing: 6) {
+                Image(systemName: "cylinder").font(.system(size: 14)).foregroundStyle(T.ink)
+                Text(title).font(.subheadline.weight(.medium)).foregroundStyle(T.ink)
+                Spacer(minLength: 16)
+                Text(value).font(.subheadline.weight(.medium)).monospacedDigit().foregroundStyle(T.ink)
+            }
+            Divider()
         }
     }
 }

@@ -39,7 +39,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R8 | waking 触发行；`/permission` popupSelect；composer 按内容测高；任务 popover；权限菜单固定顺序；统计单行；landing 权限写入新会话；停止为两次点按 | done (#26) |
 | R9 | composer `sizeThatFits -> CGSize?`；任务 popover `arrowEdge: .top` 且无返回箭头；landing 风险文案跟桌面 hero；waking 与 `inbox.ts`/`message.ts` 对齐 | done (#27) |
 | R10 | 已停止任务按 `JobView`/`exit` 投影；任务 popover 按内容收缩；底栏 `tok`；触发行灰卡；完全权限居中确认；浏览器关闭后保留对话位置；waking step 仅 `openStep` | done (#28) |
-| R11 | 底栏 Token 用量贴 chip 的 popover；已结束任务 SIGTERM 整句；完全权限确认先收键盘 | this PR |
+| R11 | 底栏 Token 用量贴 chip 的 popover；已结束任务 SIGTERM 整句；完全权限确认先收键盘 | done (#29) |
+| R12 | Token 用量弹层在 chip 上方；表头图标 + 合计右对齐；本轮用量对齐 `message.turnUsage`；Think 展开保留图标；轨迹吞吐空窗用官方「不可用」 | this PR |
 
 ---
 
@@ -75,15 +76,15 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | --- | --- | --- | --- | --- |
 | User bubble, pending echo | `Chat.kt` | `MessageRow` `.user` | **present** | — |
 | Assistant text stream | follow reducer | `.text` live/committed | **present** | — |
-| Reasoning disclosure | Think icon + preview | official Think / 思考 + preview; Markdown body | **present** | **D** |
+| Reasoning disclosure | Think icon + preview | official Think / 思考 + preview; Markdown body。展开仍留 Think 图标，右侧 chevron（`DisclosureRow`），不再用 chevron 替换图标 | **present** | **D** / **R12** |
 | Tool row → inspector | `Chat.kt` tool card | `ToolProcessSummary` title/icon/receipt + inspect sheet | **present** | **D** |
 | Process group fold | `ChatProcess.kt` | `foldChatItems` / `visibleChatRows` + `ProcessGroupView` | **present** | **D** |
 | Notices (stopped / max-tokens / account) | reducer + official `message.*` | reducer emits; `.notice` / `RetryRow` / `TurnFailureRow` | **present** | **E** |
 | Deliverables | `Item.Deliverable` | tap opens workspace file preview | **present** | **B** |
 | Markdown / code block / tables | `Markdown.kt` | AST + GFM tables / code / file chips | **present** | **D** |
 | Copy / like / dislike / share | `MessageActions` + `FeedbackCategory` | desktop row is share (not branch); branch stays on the session row menu | **present** | **A** / **P1** |
-| Turn usage pill | `ComposerStats.kt` `TurnUsageAction` | same; only `PerformanceUsage.Detailed` | **missing** → **present** | **E** |
-| Composer statistics | Activity / Usage / Context pills | `ComposerStats` 单行 HStack；Token 用量为贴 chip 的 popover（表头含合计 tok，无「合计」行，「缓存命中」+ tok） | **missing** → **present** | **E** / **R8** / **R11** |
+| Turn usage pill | `ComposerStats.kt` `TurnUsageAction` | `TurnUsagePanel`：chip `用量 {n} tok`；popover 在 pill 上方；表头图标 +「本轮用量」左、合计右；无「合计」行；推理挂在输出行 `（其中推理 {n} tok）` | **missing** → **present** | **E** / **R6** / **R12** |
+| Composer statistics | Activity / Usage / Context pills | `ComposerStats` 单行 HStack；Token 用量为贴 chip 的 popover（在 chip **上方**，表头图标 +「Token 用量」左、合计 tok 右；无「合计」行，「缓存命中」+ tok） | **missing** → **present** | **E** / **R8** / **R11** / **R12** |
 | Composer queue / steer | busyEnter + `queue.update` | `busySend` + `PromptQueue` edit/remove/steer；排队行按桌面 `QueueDock` 画图片缩略图 / 文件芯片（有 `session.attachment` 或本地 preview） | **partial** → **present** | **E** / **R5** |
 | `@` mentions | `MentionMenu.kt` official `@path` / `@"path"` / `@[title](dsh-session:…)` | same tokens + chip row + mention panel | **partial** → **present** | **E** |
 | `/` commands | `CommandPopupSheet` `commands.list/execute` | 贴输入框弹层（#21）；`+` 与 `/` 同菜单；不接受附件的指令先 toast 官方句再执行；claimed `/goal` `/plan` 空参数时输入框上方 hint strip。R8：`ComposerTextView` `fixedSize` + 关滚动测高，空文本走 36/52 地板而不是 132 | **missing** → **present** | **E** / **P2** / **#21** / **R4** / **R5** / **R7** / **R8** |
@@ -109,7 +110,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Compact ledger (事件 + 内容) | `Trajectory.kt` | `TrajRowView` | **present** | **A** |
 | Toolbar 时长 / 轮次 / 调用 + search | `TrajectoryToolbar` port | same chips + search field | **present** | **A** |
 | Swimlane overview | `TrajectoryTimeline.kt` | `TrajectoryTimeline.swift` + `SwimlaneChart` | **present** | **A** |
-| Inspector tabs 概述 / 参数 / 结果 / Schema / 计时 | `TrajectoryDetail.kt` | `TrajectoryDetailSheet` | **present** | **A** |
+| Inspector tabs 概述 / 参数 / 结果 / Schema / 计时 | `TrajectoryDetail.kt` | `TrajectoryDetailSheet`。吞吐窗口 ≤0 用官方 `timingNotAvailable`「不可用」，不再自撰「时长过短」 | **present** | **A** / **R12** |
 | JSON tree expand / copy | `TrajectoryJson.kt` | `TrajectoryJsonView` + protocol `TrajectoryJson.swift` | **missing** → **present** | **H** |
 | Request inspector | `TrajectoryRequest.kt` | ledger boundary chip + Request sheet 概述/选项/用量/计时; overview parentRequest | **missing** → **present** | **F** |
 | Official locales | `TrajectoryLocales.kt` ← `ui-trajectory` `locales.ts` | `TrajL` | **present** | **A** |
@@ -308,6 +309,7 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 - Embedded browser cannot intercept every subresource the way Android `shouldInterceptRequest` does; main-frame / navigation policy still uses `BrowserPolicy`. WKWebView cannot intercept `https://` for FortuneSheet; workbook assets load over `dsh-workbook-preview://` mapped to Android `https://workbook-preview.invalid`.
 - Foundation `JSONSerialization` object key order is not insertion-stable; protocol tests compare parsed `JSONValue`, not pretty strings.
 - Desktop `ui-sidebar-files` auto-refresh control is in the DOM but `hidden` (tests assert it has no accessible name). iOS shows pause/play so the same `setAutomatic` gesture is reachable on touch.
+- Desktop `DisclosureRow` `previewChevron` swaps the Think icon for a chevron on hover. Touch has no hover; iOS keeps the Think icon and a trailing chevron.
 
 ## Round 8 对照清单（桌面 `packages/client` + Round 7 实机 `REPORT_44aa`）
 
@@ -351,3 +353,20 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 | 已结束任务 SIGTERM | `jobsPopoverWidth(screenWidth:)` + `jobsPopoverSettledDetailWraps` | `JobListAction` 整句 `signal: SIGTERM; cancelled by the user` | 窄屏换行，不再 `SIGTER…` |
 | 完全权限确认键盘 | `permissionRiskDismissesKeyboard` + composer `resignKeyboard` | desktop `RiskConfirmation` 先 blur composer | 对话框出现前收起键盘（slash 菜单的 lockFirstResponder 也放开） |
 | waking 回归表 | `WakingTurnTriggerTests` | `ui-chat` `inbox.ts` / `message.ts`（client.js ~10360–10491） | 一张表覆盖 next-turn claim、idle steer、skill-catalog / time-context、未认领 tool-jobs、claim 替换、无 step、canceled splice |
+
+## Round 12 对照清单（桌面 `packages/client` + Round 11 实机）
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| Token 用量方向 | `composerUsagePopoverOpensAbove` → `arrowEdge: .bottom` | `ui-chat` `stat-dialog.ts` `useStatDialog` `side: 'top'` | 弹层在统计 chip **上方**，不被键盘挡住 |
+| Token 用量表头 | `UsagePopoverHeader` | `StatsPills.tsx` `DialogPill` + `stat-dialog.module.css` `.title` / `.titleLabel` / `.titleValue` | 左侧数据库图标 +「Token 用量」；合计 `34,185 tok` 右对齐；无「合计」行 |
+| 本轮用量 | `TurnUsageAction` | `TurnUsagePanel.tsx` + `locale.ts` `message.turnUsage.*` | 同样在 pill 上方；表头「本轮用量」+ 合计右对齐；`提供方 / 模型`；`缓存命中`；输出行后缀 `（其中推理 {n} tok）`；EN `Cached input` |
+| Think 展开 | `ReasoningRow` | `ReasoningRow.tsx` + `DisclosureRow` `icon={THINK_ICON}` | 展开仍画 Think 图标，右侧 chevron，不再用 chevron 替换 brain |
+| 轨迹吞吐空窗 | `formatThroughput` | `ui-trajectory` `timingNotAvailable` | `seconds <= 0` →「不可用」/ `Not available`，删除自撰「时长过短」 |
+
+本轮源码对照后**不改**、留给实机 / 平台的项：
+
+- 文件树滚动恢复：`fileTreeOffsets` + `fileTreeRestoredOffset` 已在 R6 / 测试里；无新代码缺口。
+- 空 `Group` `.task`：变更卡 / 任务 chip 已用 1pt 锚点（R6/R7）。
+- Account / shortcuts / open config / open-in-desktop-editor：仍 **hide**。
+- 桌面 `DisclosureRow` hover 把 Think 换成 chevron：触屏无 hover，不移植。

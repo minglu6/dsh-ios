@@ -457,25 +457,53 @@ public let composerStatisticsTokenUnit = "tok"
 
 /// Desktop usage chip opens an anchored popover, not a full-screen sheet.
 public let composerSessionUsageIsPopover = true
-/// Desktop puts the session total in the header (`Token 用量 34,185 tok`), not a 「合计」 row.
+/// Desktop `useStatDialog` (`side: 'top'`) places the panel above the chip.
+/// SwiftUI `arrowEdge: .bottom` puts the tip on the bottom edge (content above).
+public let composerUsagePopoverOpensAbove = true
+/// Desktop `stat-dialog` title row: section name left, headline value right.
+public let composerUsagePopoverHeaderSplitsTotal = true
+/// Desktop puts the session / turn total in the header, not a 「合计」 row.
 public let composerSessionUsageOmitsTotalRow = true
+public let composerTurnUsageOmitsTotalRow = true
 
 public enum ComposerSessionUsageRow: String, Equatable, Sendable {
     case cacheHit, uncachedInput, cacheRead, cacheWrite, output
 }
 
-/// Desktop `ui-conversation` usage popover header and row labels.
-public func composerSessionUsageTitle(exactTotal: String, english: Bool) -> String {
-    english
-        ? "Token usage \(exactTotal) \(composerStatisticsTokenUnit)"
-        : "Token 用量 \(exactTotal) \(composerStatisticsTokenUnit)"
+/// Desktop `ui-chat` `stats.dialog.usageTitle` — label only; total is `titleValue`.
+public func composerSessionUsageTitle(english: Bool) -> String {
+    english ? "Token usage" : "Token 用量"
+}
+
+public func composerSessionUsageTitleValue(exactTotal: String) -> String {
+    "\(exactTotal) \(composerStatisticsTokenUnit)"
+}
+
+/// Desktop `ui-chat` `message.turnUsage.title`.
+public func composerTurnUsageTitle(english: Bool) -> String {
+    english ? "Turn usage" : "本轮用量"
+}
+
+/// Desktop `ui-chat` `message.turnUsage.consumed` + `message.turnUsage.count`.
+public func composerTurnUsageConsumed(total: String, english: Bool) -> String {
+    english ? "Usage \(total)" : "用量 \(total)"
+}
+
+/// Desktop `ui-chat` `message.turnUsage.model`.
+public func composerTurnUsageModelLabel(english: Bool) -> String {
+    english ? "Provider / model" : "提供方 / 模型"
+}
+
+/// Desktop `ui-chat` `message.turnUsage.reasoning` (`{tokens}` already includes `tok`).
+public func composerTurnUsageReasoning(tokens: String, english: Bool) -> String {
+    english ? " (\(tokens) reasoning)" : "（其中推理 \(tokens)）"
 }
 
 public func composerSessionUsageRowLabel(_ row: ComposerSessionUsageRow, english: Bool) -> String {
     switch row {
     case .cacheHit: return english ? "Cache hit" : "缓存命中"
     case .uncachedInput: return english ? "Uncached input" : "未缓存输入"
-    case .cacheRead: return english ? "Cache read" : "缓存读取"
+    case .cacheRead: return english ? "Cached input" : "缓存读取"
     case .cacheWrite: return english ? "Cache write" : "缓存写入"
     case .output: return english ? "Output" : "输出"
     }

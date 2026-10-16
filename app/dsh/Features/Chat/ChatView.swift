@@ -814,13 +814,14 @@ private struct ReasoningRow: View {
             Button { open.toggle() } label: {
                 HStack(spacing: 6) {
                     if reasoning.live { ProgressView().controlSize(.mini) }
-                    Image(systemName: open ? "chevron.down" : "brain").foregroundStyle(T.text3)
+                    Image(systemName: "brain").foregroundStyle(T.text3)
                     Text(L.reasoning()).font(.system(size: CGFloat(AppPrefs.fontSize - 1))).foregroundStyle(T.text3)
                     if showPreview {
                         Circle().fill(T.caption).frame(width: 2, height: 2)
                         Text(preview).font(.system(size: CGFloat(AppPrefs.fontSize - 1))).foregroundStyle(T.text3).lineLimit(1)
                     }
                     Spacer()
+                    Image(systemName: open ? "chevron.down" : "chevron.right").font(.caption).foregroundStyle(T.text3)
                 }
             }
             .buttonStyle(.plain)
