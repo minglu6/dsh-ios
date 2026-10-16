@@ -35,8 +35,8 @@ struct JobsAction: View {
                 .buttonStyle(.plain)
                 .padding(.trailing, 4)
                 .accessibilityLabel(JobsActionLabel.text(chip, en: L.en))
-                .popover(isPresented: $open, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
-                    JobsPanel(model: model) { open = false }
+                .popover(isPresented: $open, attachmentAnchor: .rect(.bounds), arrowEdge: jobsPopoverArrowPointsDown ? .top : .bottom) {
+                    JobsPanel(model: model, showsNavigationHeader: false) { open = false }
                         .frame(width: 320, height: 420)
                         .modifier(PopoverCompactAdaptation())
                 }
@@ -52,6 +52,8 @@ struct JobsAction: View {
 /// Desktop `JobListAction`: live / settled sections, inline output, two-press kill.
 struct JobsPanel: View {
     @ObservedObject var model: AppModel
+    /// Desktop `JobListAction` popover has no back chrome; the full-screen Host panel still does.
+    var showsNavigationHeader: Bool = true
     var onDismiss: (() -> Void)?
 
     @State private var expandedKey: String?
@@ -70,8 +72,10 @@ struct JobsPanel: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            header(L.backgroundJobs()) {
-                if let onDismiss { onDismiss() } else { model.pop() }
+            if showsNavigationHeader {
+                header(L.backgroundJobs()) {
+                    if let onDismiss { onDismiss() } else { model.pop() }
+                }
             }
             if model.jobs == nil && !model.jobsFailed {
                 ProgressView().frame(maxWidth: .infinity).padding()

@@ -192,15 +192,11 @@ struct PermissionRiskSheet: View {
                 "Auto-review does not use a sandbox. Each native tool call and PTC inner call is reviewed by the same model as the current agent; rejected calls require your approval. This is experimental and may allow or deny incorrectly, and uses extra tokens."
             )
         }
-        if forDefaults {
-            return L.t(
-                "启用完全权限后，新会话将减少确认步骤，并且可以直接执行更多操作，包括敏感操作、文件修改或外部命令。仅建议在你信任后续任务时使用。",
-                "With full access, new sessions will skip more confirmations and can perform more actions, including sensitive operations, file changes, or external commands. Use only when you trust later tasks."
-            )
-        }
-        return L.t(
-            "启用完全权限后，智能体将减少确认步骤，并且可以直接执行更多操作，包括敏感操作、文件修改或外部命令。仅建议在你信任当前任务时使用。",
-            "With full access, the agent will skip more confirmations and can perform more actions, including sensitive operations, file changes, or external commands. Use only when you trust the current task."
+        // Desktop hero / composer uses `permission.access` (current session).
+        // Settings defaults use `settings.permission` (new sessions).
+        return permissionFullAccessRiskDescription(
+            audience: forDefaults ? .newSessionDefault : .currentSession,
+            english: L.en
         )
     }
 }

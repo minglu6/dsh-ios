@@ -141,6 +141,7 @@ final class AppModel: ObservableObject {
     @Published var permissionCatalogLoading = false
     @Published var sessionPermission: String?
     /// Landing hero selection applied to the session that gets created.
+    /// Memory-only: desktop hero is already a Host session, so it does not persist a local draft.
     @Published var draftPermission: String?
     /// Bumped when a landing draft is written so an in-flight `permissions.get` cannot overwrite it.
     private var permissionHydrationGeneration = 0

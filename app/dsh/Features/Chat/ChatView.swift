@@ -1395,7 +1395,7 @@ private struct ComposerTextView: UIViewRepresentable {
         }
     }
 
-    func sizeThatFits(_ proposal: ProposedViewSize, uiView: ComposerUITextView, context: Context) -> CGSize {
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: ComposerUITextView, context: Context) -> CGSize? {
         let width = max(proposal.width ?? uiView.bounds.width, 1)
         let wasScroll = uiView.isScrollEnabled
         uiView.isScrollEnabled = false
