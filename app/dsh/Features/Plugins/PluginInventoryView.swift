@@ -32,7 +32,7 @@ struct PluginInventoryView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     settingsMessage(L.t("查看内置部署的插件列表", "View plugins in the built-in deployment"))
                     if model.isOnline && !model.ops.contains("plugins.inventory") {
-                        settingsMessage(L.t("主机未提供内置插件目录，请检查主机插件是否已加载。", "The host does not provide a built-in plugin inventory. Check that its plugin is loaded."), error: true)
+                        settingsMessage(L.t("远程主机未提供内置插件目录，请检查远程主机插件是否已加载。", "The remote host does not provide a built-in plugin inventory. Check that its plugin is loaded."), error: true)
                     }
                     if let error { settingsMessage(error, error: true) }
                     if loading { ProgressView().frame(maxWidth: .infinity).padding() }

@@ -139,8 +139,8 @@ struct TerminalView: View {
                     if selecting && !isMac { copySelection() } else { send("\u{0003}") }
                 }
                 TerminalKey("Ctrl+D", enabled: inputEnabled) { send("\u{0004}") }
-                TerminalKey(isMac ? "Cmd+V" : "Ctrl+V", enabled: inputEnabled, description: "Paste") { paste() }
-                TerminalKey(isMac ? "Cmd+C" : "Copy", enabled: selecting, description: "Copy selection") { copySelection() }
+                TerminalKey(L.paste(), enabled: inputEnabled) { paste() }
+                TerminalKey(L.copy(), enabled: selecting) { copySelection() }
             }
         }
         .padding(.horizontal, 8)

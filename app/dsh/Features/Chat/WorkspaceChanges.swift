@@ -262,7 +262,7 @@ private struct ChangesDiffBody: View {
 
     var body: some View {
         let notice: String? = {
-            guard let diff else { return L.t("主机已不再提供本轮改动", "The host no longer has this comparison") }
+            guard let diff else { return L.t("远程主机已不再提供本轮改动", "The remote host no longer has this comparison") }
             if diff.kind == "binary" { return L.t("二进制文件，无法显示文本差异", "Binary file; no text comparison") }
             if diff.kind == "oversized" { return L.t("文件过大，未捕获文本差异", "File too large; comparison was not captured") }
             if !diff.before { return L.t("本轮新增文件", "File added in this turn") }

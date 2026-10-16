@@ -426,8 +426,12 @@ struct ChatView: View {
                     ForEach(Array(chatRows.enumerated()), id: \.element.key) { _, row in
                         let pickKey = inspectorPickKey(row)
                         let attached: Item.Changes? = {
-                            if case .answer(let text) = row, let turn = text.turn {
-                                return changesByTurn[turn]
+                            if case .answer(let text) = row {
+                                return changesAttachedToAnswer(
+                                    text,
+                                    lastCommittedAnswerKeys: model.chat?.lastAnswerKeys ?? [:],
+                                    changesByTurn: changesByTurn
+                                )
                             }
                             return nil
                         }()

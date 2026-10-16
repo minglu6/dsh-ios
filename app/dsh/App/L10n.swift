@@ -14,6 +14,7 @@ enum L {
     }
 
     static func copy() -> String { en ? "Copy" : "复制" }
+    static func paste() -> String { en ? "Paste" : "粘贴" }
     static func copied() -> String { en ? "Copied" : "复制成功" }
     static func like() -> String { en ? "Good response" : "好的回答" }
     static func dislike() -> String { en ? "Bad response" : "有问题的回答" }
@@ -266,7 +267,6 @@ enum L {
         en ? "Run commands in the session workspace" : "在会话工作区运行命令"
     }
     static func terminalSessions() -> String { en ? "Terminal sessions" : "终端会话" }
-    static func terminalSessionsActions() -> String { en ? "Terminal sessions and actions" : "终端会话与操作" }
     static func terminalOffline() -> String { en ? "Offline" : "离线" }
     static func terminalConnecting() -> String { en ? "Connecting" : "连接中" }
     static func terminalExiting() -> String { en ? "Exiting" : "退出中" }

@@ -52,8 +52,15 @@ public struct WorkspaceChangesSummary: Sendable, Equatable {
 
     public static func parse(_ value: JSONValue?) -> WorkspaceChangesSummary? {
         guard let object = value?.obj() else { return nil }
-        guard let turn = object["turn"]?.changeCount() else { return nil }
-        guard let cwd = object["cwd"]?.str() else { return nil }
+        // Desktop `isChangesSummary`: turn >= 1; HTTP omits Host-only `cwd` / snapshot ids.
+        guard let turn = object["turn"]?.changeCount(), turn >= 1 else { return nil }
+        let cwd: String
+        if let raw = object["cwd"], !raw.isNull {
+            guard let directory = raw.str() else { return nil }
+            cwd = directory
+        } else {
+            cwd = ""
+        }
         guard let total = object["total"]?.changeCount(), total > 0 else { return nil }
         guard let added = object["added"]?.changeCount() else { return nil }
         guard let deleted = object["deleted"]?.changeCount() else { return nil }

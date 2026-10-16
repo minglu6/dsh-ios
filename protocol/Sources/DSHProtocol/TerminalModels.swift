@@ -77,7 +77,7 @@ public func selectTerminal(
         if let found = entries.first(where: { $0.id == preferred }) { return found }
         throw PocketError(
             code: "terminal/unavailable",
-            message: "终端已退出或已由主机回收，请选择其他会话或新建"
+            message: "终端已退出或已由远程主机回收，请选择其他会话或新建"
         )
     }
     return entries.first(where: { $0.state == "running" }) ?? entries.first

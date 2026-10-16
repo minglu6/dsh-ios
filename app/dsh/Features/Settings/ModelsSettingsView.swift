@@ -53,7 +53,7 @@ struct ModelsSettingsView: View {
                         .disabled(!canAdd)
                         .padding(.horizontal, 18)
                         if !loading && !addOptions.offered {
-                            settingsMessage(L.t("主机未提供可新增的模型提供商配置。", "The Host has not exposed an add-provider configuration."))
+                            settingsMessage(L.t("远程主机未提供可新增的模型提供商配置。", "The remote host has not exposed an add-provider configuration."))
                         } else if !loading && !addOptions.enabled(protocols: protocols) {
                             settingsMessage(L.t("当前没有可添加的目录提供商或自定义 API 协议。", "No catalog providers or custom API protocols are available to add."))
                         }
@@ -360,7 +360,7 @@ struct ProviderSettingsEditorView: View {
             if let err = initial?["provider"]["error"].str() { Text(err).foregroundStyle(T.err).font(.caption) }
             if let error { Text(error).foregroundStyle(T.err).font(.caption) }
             if !knownLayout {
-                Text(L.t("此提供商由主机配置管理。", "This provider is managed in Host configuration.")).font(.caption).foregroundStyle(T.text3)
+                Text(L.t("此提供商由远程主机配置管理。", "This provider is managed in remote host configuration.")).font(.caption).foregroundStyle(T.text3)
             }
             if initial == nil {
                 field(L.t("Provider ID", "Provider ID")) {

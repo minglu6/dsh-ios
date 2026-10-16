@@ -161,8 +161,8 @@ final class PluginPolicyTests: XCTestCase {
     }
 
     func testChangeTextMatchesAndroidHostCopy() {
-        XCTAssertEqual(pluginChangeText(jsonObject(["application": .string("restart-required")]), en: false), "更改已保存，将在主机下次启动生效")
-        XCTAssertEqual(pluginChangeText(jsonObject(["application": .string("restart-required")]), en: true), "Saved; takes effect after the host restarts")
+        XCTAssertEqual(pluginChangeText(jsonObject(["application": .string("restart-required")]), en: false), "更改将在下次启动生效")
+        XCTAssertEqual(pluginChangeText(jsonObject(["application": .string("restart-required")]), en: true), "The change takes effect at the next start")
         XCTAssertEqual(pluginChangeText(jsonObject(["application": .string("applied")]), en: true), "Change applied")
     }
 
