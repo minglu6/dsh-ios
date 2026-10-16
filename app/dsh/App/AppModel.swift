@@ -143,6 +143,7 @@ final class AppModel: ObservableObject {
     /// Landing hero selection applied to the session that gets created.
     /// Memory-only: desktop hero is already a Host session, so it does not persist a local draft.
     @Published var draftPermission: String?
+    @Published var draftModel: ModelChoice?
     /// Bumped when a landing draft is written so an in-flight `permissions.get` cannot overwrite it.
     private var permissionHydrationGeneration = 0
     @Published var permissionChanging = false
@@ -398,6 +399,7 @@ final class AppModel: ObservableObject {
                 pendingCreatorPreset = nil
                 openSession(id)
                 await applyDraftPermission(sessionId: id)
+                await applyDraftModel(sessionId: id)
             } catch {
                 emit(error.localizedDescription)
             }
@@ -533,6 +535,7 @@ final class AppModel: ObservableObject {
                 throw PocketError(code: "session", message: L.t("未能打开新会话", "Could not open the new session"))
             }
             await applyDraftPermission(sessionId: id)
+            await applyDraftModel(sessionId: id)
             await sendPrompt(client, chat: chat, text: text, images: images, files: files, attachments: attachments, gesture: gesture)
         } catch {
             emit(error.localizedDescription)
@@ -736,7 +739,21 @@ final class AppModel: ObservableObject {
 
     func selectModel(_ choice: ModelChoice, onComplete: ((Bool) -> Void)? = nil) {
         Task {
-            guard let client, let sessionId = chat?.sessionId, modelPending == nil else {
+            guard modelPending == nil else {
+                onComplete?(false)
+                return
+            }
+            guard let sessionId = chat?.sessionId else {
+                guard client != nil else {
+                    onComplete?(false)
+                    return
+                }
+                modelChoice = choice
+                draftModel = choice
+                onComplete?(true)
+                return
+            }
+            guard let client else {
                 onComplete?(false)
                 return
             }
@@ -770,6 +787,27 @@ final class AppModel: ObservableObject {
         guard permissionCatalog?.options.contains(where: { $0.value == pending }) == true else { return }
         if let selected = try? await client.setPermission(sessionId: sessionId, name: pending) {
             sessionPermission = selected
+        }
+    }
+
+    private func applyDraftModel(sessionId: String) async {
+        guard let pending = draftModel, chat?.sessionId == sessionId else { return }
+        draftModel = nil
+        guard let client else { return }
+        do {
+            let response = try await client.selectModel(
+                sessionId: sessionId,
+                provider: pending.provider,
+                model: pending.model,
+                effort: pending.effort
+            )
+            if let selected = modelChoice(from: response["selected"]) {
+                modelChoice = selected
+            } else {
+                modelChoice = pending
+            }
+        } catch {
+            emit(error.localizedDescription)
         }
     }
 
@@ -872,6 +910,8 @@ final class AppModel: ObservableObject {
                     pendingCreatorPreset = nil
                     openSession(created)
                     sessionId = created
+                    await applyDraftPermission(sessionId: created)
+                    await applyDraftModel(sessionId: created)
                 } catch {
                     emit(error.localizedDescription)
                     onResult?(false)

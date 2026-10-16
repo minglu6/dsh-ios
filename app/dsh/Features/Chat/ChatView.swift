@@ -25,7 +25,6 @@ struct ChatView: View {
     @State private var questionDrafts: [String: QuestionDraft] = [:]
     @State private var showFileImporter = false
     @State private var showSessionFeedback = false
-    @State private var showPreset = false
 
     /// Android: Screen.Chat + drawer closed + focused + RESUMED. Otherwise completion.view gets null.
     private var desiredViewedSession: String? {
@@ -44,20 +43,6 @@ struct ChatView: View {
             }
         }
         .background(T.bg.ignoresSafeArea())
-        .sheet(isPresented: $showModels) {
-            ModelPicker(
-                catalog: model.catalog,
-                current: model.modelChoice,
-                loading: model.catalogLoading,
-                error: model.catalogError,
-                pending: model.modelPending,
-                enabled: model.isOnline,
-                onReload: { model.reloadModelCatalog() },
-                onDismiss: { showModels = false },
-                onPick: { choice, done in model.selectModel(choice, onComplete: done) }
-            )
-            .padding()
-        }
         .sheet(isPresented: $showStart) {
             StartPanel(
                 model: model,
@@ -154,15 +139,6 @@ struct ChatView: View {
                 }
             )
         }
-        .sheet(isPresented: $showPreset) {
-            PresetSheet(
-                model: model,
-                current: model.chat?.agentPreset ?? model.draftPreset,
-                editable: model.chat == nil,
-                onDismiss: { showPreset = false },
-                onPick: { model.draftPreset = $0 }
-            )
-        }
         .fileImporter(isPresented: $showFileImporter, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
             if case .success(let urls) = result {
                 for url in urls {
@@ -202,15 +178,6 @@ struct ChatView: View {
         )
     }
 
-    private var presetLabel: String? {
-        let id = model.chat?.agentPreset ?? model.draftPreset.nilIfBlank
-        guard let id else { return nil }
-        if let row = model.presetRoster.first(where: { $0["id"].str() == id }) {
-            return PresetPolicy.name(row, english: L.en)
-        }
-        return id
-    }
-
     private func openFeedback(messageId: String, rating: String) {
         feedbackDraft = FeedbackDraft(messageId: messageId, rating: rating)
     }
@@ -225,27 +192,10 @@ struct ChatView: View {
                 .foregroundStyle(T.ink)
                 .lineLimit(1)
             Spacer()
-            if let label = presetLabel {
-                Button { showPreset = true } label: {
-                    Label(label, systemImage: D.agentPreset)
-                        .font(.caption)
-                        .foregroundStyle(T.accent)
-                        .labelStyle(.titleAndIcon)
-                }
-            }
             Button { showStart = true } label: {
                 Image(systemName: D.panelRight).foregroundStyle(T.ink)
             }
             .accessibilityLabel(L.startPanel())
-            Button { if model.isOnline { showModels = true } } label: {
-                Text(composerModelDisplayName(choiceName: model.modelChoice?.name, catalog: model.catalog) ?? L.modelsNav())
-                    .font(.caption)
-                    .foregroundStyle(T.accent)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(T.tint, in: Capsule())
-            }
-            .disabled(!model.isOnline)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -570,7 +520,7 @@ struct ChatView: View {
                     model.setPermission(value) { _ in }
                 }
             },
-            onModel: { if model.isOnline { showModels = true } },
+            modelMenuOpen: $showModels,
             onSend: { submitCommandMenuOrSend() },
             onCommandReturn: { commandHost.requestEnter() },
             onCommandMove: { commandHost.requestMove($0) },
@@ -590,6 +540,7 @@ private struct RunningStatusRow: View {
                 RunningWhaleTail()
                 TextShimmer(text: label, active: true)
                     .font(.subheadline)
+                    .foregroundStyle(T.accent)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.top, 4)
@@ -705,7 +656,7 @@ private struct TurnTriggerRow: View {
                     Text(title).font(.subheadline).foregroundStyle(T.text2)
                     Spacer(minLength: 8)
                     if let at = item.at {
-                        Text(formatMessageClock(at)).font(.caption).foregroundStyle(T.text3)
+                        Text(formatMessageClock(at, english: L.en)).font(.caption).foregroundStyle(T.text3)
                     }
                     Image(systemName: "chevron.down")
                         .font(.system(size: 11))
@@ -756,17 +707,36 @@ private struct ProcessGroupView: View {
             Button {
                 binding.wrappedValue[proc.key] = !open
             } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: processSymbol(proc.activityKind)).foregroundStyle(T.text3)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(proc.title).font(LocalFonts.text()).foregroundStyle(T.text2)
-                        if let detail = proc.detail, !open {
-                            Text(detail).font(.caption).foregroundStyle(T.text3).lineLimit(1)
+                if proc.turnSummary {
+                    HStack(spacing: 4) {
+                        Text(proc.title)
+                            .font(.system(size: CGFloat(AppPrefs.fontSize)))
+                            .foregroundStyle(T.text3)
+                            .lineLimit(1)
+                        if proc.canCollapse {
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 11))
+                                .foregroundStyle(T.text3)
+                                .rotationEffect(.degrees(open ? 180 : 0))
                         }
+                        Spacer(minLength: 0)
                     }
-                    Spacer()
-                    if !proc.closed { ProgressView().controlSize(.mini) }
-                    Image(systemName: open ? "chevron.down" : "chevron.right").font(.caption).foregroundStyle(T.text3)
+                    .frame(minHeight: 33)
+                    .overlay(alignment: .bottom) {
+                        Divider()
+                    }
+                } else {
+                    HStack(spacing: CGFloat(reasoningRowGapPoints)) {
+                        processLeading(kind: proc.activityKind, open: open)
+                        TextShimmer(active: !proc.closed) {
+                            Text(processGroupHeaderTitle(label: proc.title, detail: proc.detail))
+                                .font(.system(size: CGFloat(AppPrefs.fontSize)))
+                                .foregroundStyle(T.text3)
+                                .lineLimit(1)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .frame(minHeight: 24)
                 }
             }
             .buttonStyle(.plain)
@@ -781,9 +751,26 @@ private struct ProcessGroupView: View {
                         }
                     }
                 }
-                .padding(.leading, 22)
             }
         }
+    }
+
+    @ViewBuilder
+    private func processLeading(kind: String, open: Bool) -> some View {
+        ZStack {
+            if open {
+                Image(systemName: "chevron.up")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(T.text3)
+            } else if kind == "thinking" {
+                OfficialGlyph(kind: .think, size: CGFloat(reasoningIconSizePoints), color: T.text3)
+            } else {
+                Image(systemName: processSymbol(kind))
+                    .font(.system(size: 13))
+                    .foregroundStyle(T.text3)
+            }
+        }
+        .frame(width: CGFloat(reasoningLeadingBoxPoints), height: CGFloat(reasoningLeadingBoxPoints))
     }
 
     private func processSymbol(_ kind: String) -> String {
@@ -804,30 +791,74 @@ private struct ProcessGroupView: View {
 
 private struct ReasoningRow: View {
     let reasoning: Item.Reasoning
-    @State private var open = false
+    @State private var open = reasoningDefaultExpanded
 
     var body: some View {
         let preview = reasoningPreview(reasoning.text, running: reasoning.live)
         let policy = presentationPolicyFor(AppModel.shared.transcriptView)
         let showPreview = !open && !preview.isEmpty && (reasoning.live || policy.settledReasoningPreview)
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 0) {
             Button { open.toggle() } label: {
-                HStack(spacing: 6) {
-                    if reasoning.live { ProgressView().controlSize(.mini) }
-                    Image(systemName: "brain").foregroundStyle(T.text3)
-                    Text(L.reasoning()).font(.system(size: CGFloat(AppPrefs.fontSize - 1))).foregroundStyle(T.text3)
-                    if showPreview {
-                        Circle().fill(T.caption).frame(width: 2, height: 2)
-                        Text(preview).font(.system(size: CGFloat(AppPrefs.fontSize - 1))).foregroundStyle(T.text3).lineLimit(1)
+                HStack(spacing: CGFloat(reasoningRowGapPoints)) {
+                    ZStack {
+                        if open && reasoningChevronReplacesIconWhenExpanded {
+                            Image(systemName: "chevron.up")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(T.text3)
+                        } else {
+                            OfficialGlyph(kind: .think, size: CGFloat(reasoningIconSizePoints), color: T.text3)
+                        }
                     }
-                    Spacer()
-                    Image(systemName: open ? "chevron.down" : "chevron.right").font(.caption).foregroundStyle(T.text3)
+                    .frame(width: CGFloat(reasoningLeadingBoxPoints), height: CGFloat(reasoningLeadingBoxPoints))
+                    TextShimmer(active: reasoning.live) {
+                        HStack(spacing: 0) {
+                            Text(reasoningTitle(english: L.en))
+                                .font(.system(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize)), weight: .regular))
+                                .foregroundStyle(T.text3)
+                            if showPreview {
+                                Circle()
+                                    .fill(T.caption)
+                                    .frame(
+                                        width: CGFloat(reasoningPreviewSeparatorSizePoints),
+                                        height: CGFloat(reasoningPreviewSeparatorSizePoints)
+                                    )
+                                    .padding(.horizontal, CGFloat(reasoningPreviewSeparatorSpacingPoints))
+                                Text(preview)
+                                    .font(.system(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
+                                    .foregroundStyle(T.text3)
+                                    .lineLimit(1)
+                                    .mask(
+                                        LinearGradient(
+                                            stops: reasoning.live
+                                                ? [
+                                                    .init(color: .white, location: 0),
+                                                    .init(color: .white, location: 0.72),
+                                                    .init(color: .clear, location: 1),
+                                                ]
+                                                : [.init(color: .white, location: 0), .init(color: .white, location: 1)],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                            }
+                        }
+                    }
+                    Spacer(minLength: 0)
                 }
+                .frame(minHeight: 24)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(reasoningTitle(english: L.en))
             if open {
-                MarkdownView(source: reasoning.text, streaming: reasoning.live, wrapCode: AppModel.shared.codeWordWrap, bodyColor: T.text2)
-                    .padding(.leading, 22)
+                MarkdownView(
+                    source: reasoning.text,
+                    streaming: reasoning.live,
+                    wrapCode: AppModel.shared.codeWordWrap,
+                    bodyColor: T.text3,
+                    variant: .compact
+                )
+                .padding(.leading, CGFloat(reasoningBodyLeadingPoints))
+                .padding(.vertical, CGFloat(reasoningBodyVerticalPaddingPoints))
             }
         }
     }
@@ -847,16 +878,25 @@ private struct ToolCard: View {
             }
         }()
         Button(action: onTap) {
-            HStack(spacing: 8) {
+            HStack(spacing: CGFloat(reasoningRowGapPoints)) {
                 Image(systemName: toolSymbol(summary.icon)).foregroundStyle(tint)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(summary.title).font(LocalFonts.text()).foregroundStyle(T.ink)
-                    if let line = summary.summary {
-                        Text(line).font(.caption).foregroundStyle(T.text3).lineLimit(2)
+                    .frame(width: CGFloat(reasoningLeadingBoxPoints), height: CGFloat(reasoningLeadingBoxPoints))
+                TextShimmer(active: tool.status == .running || tool.status == .preparing) {
+                    HStack(spacing: CGFloat(reasoningPreviewSeparatorSpacingPoints)) {
+                        Text(summary.title)
+                            .font(.system(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
+                            .foregroundStyle(tint)
+                            .lineLimit(1)
+                        if let line = summary.summary {
+                            Circle().fill(T.caption).frame(width: 2, height: 2)
+                            Text(line)
+                                .font(.system(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
+                                .foregroundStyle(tint)
+                                .lineLimit(1)
+                        }
                     }
                 }
-                Spacer()
-                if tool.status == .running || tool.status == .preparing { ProgressView().controlSize(.mini) }
+                Spacer(minLength: 0)
             }
             .padding(tool.status == .awaitingApproval ? 8 : 0)
             .background(tool.status == .awaitingApproval ? T.warnTint : Color.clear, in: RoundedRectangle(cornerRadius: 8))
@@ -1022,7 +1062,7 @@ private struct MessageActions: View {
     var body: some View {
         HStack(spacing: 0) {
             if clock == .start, let timeMs {
-                Text(formatMessageClock(timeMs))
+                Text(formatMessageClock(timeMs, english: L.en))
                     .font(.system(size: 13))
                     .foregroundStyle(T.text3)
                     .padding(.trailing, 8)
@@ -1061,7 +1101,7 @@ private struct MessageActions: View {
             }
             Spacer(minLength: 0)
             if clock == .end, let timeMs {
-                Text(formatMessageClock(timeMs))
+                Text(formatMessageClock(timeMs, english: L.en))
                     .font(.system(size: 12))
                     .foregroundStyle(T.text3)
                     .padding(.leading, 8)
@@ -1102,7 +1142,7 @@ struct ComposerView: View {
     var onPlus: () -> Void = {}
     var onPerm: () -> Void = {}
     var onSelectPermission: (String) -> Void = { _ in }
-    var onModel: () -> Void = {}
+    @Binding var modelMenuOpen: Bool
     var onSend: () -> Void = {}
     var onCommandReturn: () -> Void = {}
     var onCommandMove: (Int) -> Void = { _ in }
@@ -1203,26 +1243,18 @@ struct ComposerView: View {
                             onSelect: onSelectPermission
                         )
                     }
-                    Button(action: onModel) {
-                        HStack(spacing: 4) {
-                            Text(
-                                composerModelDisplayName(choiceName: model.modelChoice?.name, catalog: model.catalog)
-                                    ?? composerModelFallback(english: L.en)
-                            )
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(T.text2)
-                            .lineLimit(1)
-                            if let effort = modelEffortLabel(catalog: model.catalog, provider: model.modelChoice?.provider, model: model.modelChoice?.model, effort: model.modelChoice?.effort) {
-                                Text(effort).font(.caption).foregroundStyle(T.caption).lineLimit(1)
-                            }
-                            if model.modelPending != nil { ProgressView().controlSize(.mini) }
-                            else { Image(systemName: "chevron.down").font(.system(size: 11)).foregroundStyle(T.text2) }
-                        }
-                        .frame(maxWidth: .infinity, minHeight: CGFloat(composerChipHeightPoints), alignment: .trailing)
-                        .opacity(model.isOnline ? 1 : 0.45)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(!model.isOnline)
+                    Spacer(minLength: 0)
+                    ModelChipMenu(
+                        catalog: model.catalog,
+                        current: model.modelChoice,
+                        loading: model.catalogLoading,
+                        error: model.catalogError,
+                        pending: model.modelPending,
+                        enabled: model.isOnline,
+                        open: $modelMenuOpen,
+                        onReload: { model.reloadModelCatalog() },
+                        onPick: { choice, done in model.selectModel(choice, onComplete: done) }
+                    )
                     if runningIdle {
                         Button(action: model.stopRun) {
                             RoundedRectangle(cornerRadius: 3).fill(Color.white).frame(width: 8, height: 8)

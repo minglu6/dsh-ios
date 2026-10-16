@@ -1,18 +1,25 @@
 import SwiftUI
+import UIKit
 import DSHProtocol
+
+enum MarkdownVariant {
+    case body
+    case compact
+}
 
 struct MarkdownView: View {
     let source: String
     var streaming = false
     var wrapCode = false
     var bodyColor: Color = T.ink
+    var variant: MarkdownVariant = .body
     var onFile: ((String) -> Void)? = nil
     var onLink: ((URL) -> Void)? = nil
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: variant == .compact ? 4 : 8) {
             ForEach(Array(parseMarkdown(source, streaming: streaming).enumerated()), id: \.offset) { _, block in
-                MdBlockView(block: block, wrapCode: wrapCode, bodyColor: bodyColor)
+                MdBlockView(block: block, wrapCode: wrapCode, bodyColor: bodyColor, variant: variant)
             }
         }
         .environment(\.openURL, OpenURLAction { url in
@@ -35,13 +42,35 @@ private struct MdBlockView: View {
     let block: MdBlock
     let wrapCode: Bool
     let bodyColor: Color
+    var variant: MarkdownVariant = .body
+
+    private var compactSize: CGFloat {
+        CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))
+    }
+
+    /// Desktop compact `line-height: calc(20px + delta)` at the secondary size.
+    private var compactLineSpacing: CGFloat {
+        max(0, CGFloat(reasoningBodyLineHeightPoints) - UIFont.systemFont(ofSize: compactSize).lineHeight)
+    }
 
     var body: some View {
         switch block {
         case .paragraph(let spans):
-            wraps(spans)
+            if variant == .compact {
+                wraps(spans)
+                    .font(.system(size: compactSize))
+                    .lineSpacing(compactLineSpacing)
+            } else {
+                wraps(spans)
+            }
         case .heading(let level, let spans):
-            wraps(spans).font(level <= 1 ? .system(size: CGFloat(AppPrefs.fontSize), weight: .semibold) : .headline)
+            if variant == .compact {
+                wraps(spans)
+                    .font(.system(size: compactSize, weight: .semibold))
+                    .lineSpacing(compactLineSpacing)
+            } else {
+                wraps(spans).font(level <= 1 ? .system(size: CGFloat(AppPrefs.fontSize), weight: .semibold) : .headline)
+            }
         case .bulletList(let items, _):
             VStack(alignment: .leading, spacing: 4) {
                 ForEach(Array(items.enumerated()), id: \.offset) { _, item in
@@ -122,7 +151,7 @@ private struct MdBlockView: View {
     private func nested(_ children: [MdBlock]) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             ForEach(Array(children.enumerated()), id: \.offset) { _, child in
-                MdBlockView(block: child, wrapCode: wrapCode, bodyColor: bodyColor)
+                MdBlockView(block: child, wrapCode: wrapCode, bodyColor: bodyColor, variant: variant)
             }
         }
     }

@@ -25,15 +25,6 @@ struct SettingsView: View {
                             }
                         }
                     }
-                    Text(L.phoneConnection())
-                        .font(.caption)
-                        .foregroundStyle(T.text3)
-                        .padding(.horizontal, 22)
-                    card {
-                        nav(L.connections(), "link", value: model.activeProfile?.name ?? L.notConnected(), divider: false) {
-                            model.push(.connections)
-                        }
-                    }
                 }
                 .padding(.vertical, 12)
             }
@@ -304,7 +295,7 @@ struct GeneralSettingsView: View {
 
     private var defaultPermissionLabel: String {
         let value = model.defaultPermission
-        return permissionLabel(value: value, option: model.permissionCatalog?.find(value))
+        return permissionLabel(value: value, option: model.permissionCatalog?.find(value), english: L.en)
     }
 
     @ViewBuilder

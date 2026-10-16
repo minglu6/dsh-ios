@@ -432,15 +432,3 @@ enum L {
     }
 }
 
-func formatSessionTime(at: Int64, now: Int64, language: AppLanguage) -> String {
-    let diff = max(0, now - at)
-    let en = language == .en
-    switch diff {
-    case ..<60_000: return en ? "now" : "刚刚"
-    case ..<(3_600_000): return "\(diff / 60_000)" + (en ? "min" : "分钟")
-    case ..<(86_400_000): return "\(diff / 3_600_000)" + (en ? "h" : "小时")
-    case ..<(30 * 86_400_000): return "\(diff / 86_400_000)" + (en ? "d" : "天")
-    case ..<(365 * 86_400_000): return "\(diff / (30 * 86_400_000))" + (en ? "mo" : "个月")
-    default: return "\(diff / (365 * 86_400_000))" + (en ? "y" : "年")
-    }
-}

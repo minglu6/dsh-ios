@@ -815,8 +815,10 @@ struct CommandMenuOverlay: View {
                 if model.permissionCatalogLoading && permissionOptions.isEmpty { loadingRow }
                 ForEach(Array(permissionOptions.enumerated()), id: \.offset) { index, option in
                     HStack(spacing: 10) {
-                        Image(systemName: permissionIcon(option.value)).foregroundStyle(T.text2)
-                        Text(permissionLabel(value: option.value, option: option)).foregroundStyle(T.ink)
+                        if permissionHasGlyph(option.value) {
+                            OfficialGlyph(kind: .permission(option.value), size: 14, color: T.text2)
+                        }
+                        Text(permissionLabel(value: option.value, option: option, english: L.en)).foregroundStyle(T.ink)
                         Spacer()
                         if option.value == currentPermission {
                             Image(systemName: "checkmark").font(.system(size: 12, weight: .semibold)).foregroundStyle(T.accent)

@@ -7,7 +7,6 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @ObservedObject private var model = AppModel.shared
     @ObservedObject private var theme = ThemeStateHolder.shared
-    @State private var showHomePreset = false
     @State private var slashMenu = SlashMenuState()
     @StateObject private var commandHost = CommandMenuHost()
     @State private var showModels = false
@@ -56,15 +55,6 @@ struct RootView: View {
         .animation(.easeOut(duration: 0.2), value: model.showDrawer)
         .onChange(of: scenePhase) { phase in
             ConnectionKeeper.shared.sceneChanged(phase)
-        }
-        .sheet(isPresented: $showHomePreset) {
-            PresetSheet(
-                model: model,
-                current: model.draftPreset,
-                editable: true,
-                onDismiss: { showHomePreset = false },
-                onPick: { model.draftPreset = $0 }
-            )
         }
     }
 
@@ -200,7 +190,7 @@ struct RootView: View {
                     }
                 },
                 onSelectPermission: { applyLandingPermission($0) },
-                onModel: { if model.isOnline { showModels = true } },
+                modelMenuOpen: $showModels,
                 onSend: {
                     if landingCommandMenuVisible {
                         commandHost.requestEnter()
@@ -216,20 +206,6 @@ struct RootView: View {
         .background(T.bg)
         .onChange(of: model.composerText) { _ in
             slashMenu.track(trigger: landingSlashTrigger)
-        }
-        .sheet(isPresented: $showModels) {
-            ModelPicker(
-                catalog: model.catalog,
-                current: model.modelChoice,
-                loading: model.catalogLoading,
-                error: model.catalogError,
-                pending: model.modelPending,
-                enabled: model.isOnline,
-                onReload: { model.reloadModelCatalog() },
-                onDismiss: { showModels = false },
-                onPick: { choice, done in model.selectModel(choice, onComplete: done) }
-            )
-            .padding()
         }
         .sheet(isPresented: $showWorkspacePicker) {
             WorkspaceDirectorySheet(model: model, onDismiss: { showWorkspacePicker = false })
@@ -305,37 +281,11 @@ struct RootView: View {
                 .background(T.fill, in: Capsule())
             }
             .accessibilityLabel(landingChooseWorkspace(english: L.en))
-            if !model.presetRoster.isEmpty {
-                Button { showHomePreset = true } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: D.agentPreset)
-                        Text(homePresetLabel)
-                            .lineLimit(1)
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 11))
-                    }
-                    .font(.subheadline)
-                    .foregroundStyle(T.text2)
-                    .padding(.horizontal, 10)
-                    .frame(minHeight: 36)
-                    .background(T.fill, in: Capsule())
-                }
-                .accessibilityLabel(homePresetLabel)
-            }
+            AgentPresetSeat(model: model)
             Spacer()
         }
         .padding(.horizontal, 14)
         .padding(.bottom, 4)
-    }
-
-    private var homePresetLabel: String {
-        let id = model.draftPreset.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            ? model.presetRoster.first { $0["isDefault"].bool() == true }?["id"].str()
-            : model.draftPreset
-        if let id, let row = model.presetRoster.first(where: { $0["id"].str() == id }) {
-            return PresetPolicy.name(row, english: L.en)
-        }
-        return L.agentPresets()
     }
 
     private var drawerScrim: some View {
