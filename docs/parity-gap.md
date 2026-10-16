@@ -350,3 +350,4 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 | Token 用量 | `ComposerStats` session usage `.popover` | desktop statistics chip `MenuSurface` | 贴 chip 的小气泡；表头 `Token 用量 {exact} tok`；无「合计」行；「缓存命中」不是「缓存命中率」；token 值带 `tok` |
 | 已结束任务 SIGTERM | `jobsPopoverWidth(screenWidth:)` + `jobsPopoverSettledDetailWraps` | `JobListAction` 整句 `signal: SIGTERM; cancelled by the user` | 窄屏换行，不再 `SIGTER…` |
 | 完全权限确认键盘 | `permissionRiskDismissesKeyboard` + composer `resignKeyboard` | desktop `RiskConfirmation` 先 blur composer | 对话框出现前收起键盘（slash 菜单的 lockFirstResponder 也放开） |
+| waking 回归表 | `WakingTurnTriggerTests` | `ui-chat` `inbox.ts` / `message.ts`（client.js ~10360–10491） | 一张表覆盖 next-turn claim、idle steer、skill-catalog / time-context、未认领 tool-jobs、claim 替换、无 step、canceled splice |
