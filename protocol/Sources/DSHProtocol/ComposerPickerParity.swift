@@ -774,3 +774,132 @@ private func compactionMessageSource(_ data: JSONValue) -> JSONValue {
     let msg = data["content"].isNull && data["message"].obj() != nil ? data["message"] : data
     return msg["source"].isNull ? data["source"] : msg["source"]
 }
+
+// MARK: - ContextInjectionRow tool-change chrome (desktop ui-chat isVisibleChatNode)
+
+/// Desktop `dsh-llm` `ContentBlock` text / `tool-addition` / `tool-removal`.
+public func contextContentBlocks(_ blocks: [JSONValue]) -> (text: String, added: [String], removed: [String]) {
+    var texts: [String] = []
+    var added: [String] = []
+    var removed: [String] = []
+    for block in blocks {
+        switch block["type"].str() {
+        case "text":
+            texts.append(block["text"].str() ?? "")
+        case "tool-addition":
+            if let name = block["toolName"].str()?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
+                added.append(name)
+            }
+        case "tool-removal":
+            if let name = block["toolName"].str()?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
+                removed.append(name)
+            }
+        default:
+            break
+        }
+    }
+    return (texts.joined(separator: "\n"), added, removed)
+}
+
+/// Desktop `isVisibleChatNode`: ordinary Context is hidden; tool-change blocks stay.
+public func contextHasToolChanges(_ item: Item.Context) -> Bool {
+    !item.toolAdditions.isEmpty || !item.toolRemovals.isEmpty
+}
+
+public func contextItemIsVisible(_ item: Item.Context) -> Bool {
+    item.waking || contextHasToolChanges(item)
+}
+
+/// Desktop `ContextInjectionRow` uses tool chrome when every block is add/remove.
+public func contextToolChangeIsExclusive(_ item: Item.Context) -> Bool {
+    contextHasToolChanges(item)
+        && item.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+}
+
+/// Desktop `message.toolAdded` / `message.toolRemoved` / `message.toolsUpdated`.
+public func contextToolChangeTitle(added: [String], removed: [String], english: Bool) -> String {
+    if added.count == 1 && removed.isEmpty {
+        return english ? "Tool added: \(added[0])" : "已添加工具：\(added[0])"
+    }
+    if removed.count == 1 && added.isEmpty {
+        return english ? "Tool removed: \(removed[0])" : "已移除工具：\(removed[0])"
+    }
+    return english ? "Tools updated" : "工具已更新"
+}
+
+public func contextToolChangeTitle(item: Item.Context, english: Bool) -> String {
+    contextToolChangeTitle(added: item.toolAdditions, removed: item.toolRemovals, english: english)
+}
+
+/// Desktop `message.contextInjection` when Context is visible but not exclusive tool-change blocks.
+public func contextInjectionTitle(english: Bool) -> String {
+    english ? "Context injection" : "上下文注入"
+}
+
+public func contextRowTitle(item: Item.Context, english: Bool) -> String {
+    if contextToolChangeIsExclusive(item) {
+        return contextToolChangeTitle(item: item, english: english)
+    }
+    return contextInjectionTitle(english: english)
+}
+
+/// Desktop collapsed summary: counts only when there is more than one tool-change block.
+public func contextToolChangeSummary(added: [String], removed: [String], english: Bool) -> String? {
+    if added.count + removed.count <= 1 { return nil }
+    if !added.isEmpty && !removed.isEmpty {
+        return english
+            ? "\(added.count) added, \(removed.count) removed"
+            : "新增 \(added.count) 个，移除 \(removed.count) 个"
+    }
+    if !added.isEmpty {
+        return english ? "\(added.count) added" : "新增 \(added.count) 个"
+    }
+    return english ? "\(removed.count) removed" : "移除 \(removed.count) 个"
+}
+
+public func contextToolChangeSummary(item: Item.Context, english: Bool) -> String? {
+    contextToolChangeSummary(added: item.toolAdditions, removed: item.toolRemovals, english: english)
+}
+
+public func contextToolChangeIsExpandable(added: [String], removed: [String]) -> Bool {
+    added.count + removed.count > 1
+}
+
+public func contextToolChangeAddedLine(names: [String], english: Bool) -> String? {
+    if names.isEmpty { return nil }
+    let joined = names.joined(separator: ", ")
+    return english ? "Added: \(joined)" : "新增：\(joined)"
+}
+
+public func contextToolChangeRemovedLine(names: [String], english: Bool) -> String? {
+    if names.isEmpty { return nil }
+    let joined = names.joined(separator: ", ")
+    return english ? "Removed: \(joined)" : "移除：\(joined)"
+}
+
+// MARK: - TurnMaxTokensItem / stopped notice (desktop ui-chat MessageItem)
+
+/// Desktop `message.maxTokens`.
+public func maxTokensTitle(english: Bool) -> String {
+    english ? "Output token limit reached" : "已达到输出 token 上限"
+}
+
+/// Desktop `message.maxTokens.hint`.
+public func maxTokensHint(english: Bool) -> String {
+    english
+        ? "The reply was cut off; earlier output is preserved in the conversation. Send \"continue\" to let the model resume."
+        : "回答被截断，已有输出保留在对话中。发送“继续”可让模型接着输出。"
+}
+
+/// Desktop `message.stopped`.
+public func messageStopped(english: Bool) -> String {
+    english ? "Stopped" : "已停止"
+}
+
+public func noticeChatTitle(_ notice: Item.Notice, english: Bool) -> String {
+    switch notice.kind {
+    case .maxTokens: return maxTokensTitle(english: english)
+    case .stopped: return messageStopped(english: english)
+    case .generic: return notice.text
+    }
+}

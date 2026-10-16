@@ -49,7 +49,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R19 | 离线空态 empty.none；landing 草稿附件；Ask 重开在工具行；subagent header crumbs；+ 按钮 selector 填充 | done (#36) |
 | R20 | Ask 行「提问」+ waiting/pending；改动 diff.*；图片 image.failed；重试 scheduled；INTERRUPTED 失败 | done (#37) |
 | R21 | 工具行 tool.title.* / preparing 保留标题；Goal `detail.goal.*` | done (#38) |
-| R22 | Chat `CompactionItem` `message.compaction*` | this PR |
+| R22 | Chat `CompactionItem` `message.compaction*` | done (#39) |
+| R23 | ContextInjectionRow 工具变更行；TurnMaxTokensItem；signed-out TurnErrorItem | this PR |
 
 ---
 
@@ -57,7 +58,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 
 | Surface | Official package | Android | iOS now |
 | --- | --- | --- | --- |
-| Transcript fold | `ui-chat` / `ui-conversation` | `protocol/Transcript.kt`, `Chat.kt`, `ChatProcess.kt` (Compacted still hidden) | `protocol/…/Transcript.swift`, `ChatProcess.swift`, `Features/Chat/ChatView.swift` — chat shows desktop `CompactionItem`; Android still folds it |
+| Transcript fold | `ui-chat` / `ui-conversation` | `protocol/Transcript.kt`, `Chat.kt`, `ChatProcess.kt` (Compacted still hidden) | `protocol/…/Transcript.swift`, `ChatProcess.swift`, `Features/Chat/ChatView.swift` — chat shows desktop `CompactionItem` + tool-change `ContextInjectionRow`; Android still folds Compacted |
 | Message actions | `ui-chat` `MessageIconActions` | `Chat.kt` `MessageActions` | `ChatView` `MessageActions` (copy / like / dislike / share + turn usage; branch on the session row menu) |
 | Trajectory | `ui-trajectory` | `Trajectory.kt` + Detail/Inspector/Request/Locales; `protocol/TrajectoryTimeline.kt` | `Features/Trajectory/` + `protocol/Trajectory.swift` / `TrajectoryRequest.swift` |
 | WorkspaceChanges | Host `workspaceChanges.summary/diff` | `WorkspaceChanges.kt` | `Features/Chat/WorkspaceChanges.swift` + `protocol/WorkspaceChanges.swift` |
@@ -88,7 +89,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Reasoning disclosure | Think icon + preview | 标题恒为「思考」/Think；运行中 TextShimmer 而非 spinner；收起默认；展开时 chevron 替换 Think 图标；正文 compact 三级色 13/20；预览为首行（流式为已完成段首行） | **present** | **D** / **R12** / **R13** |
 | Tool row → inspector | `Chat.kt` tool card | `ToolProcessSummary` title/icon/receipt + inspect sheet | **present** | **D** |
 | Process group fold | `ChatProcess.kt` | `foldChatItems` / `visibleChatRows` + `ProcessGroupView`；已完成回合为「已完成，用时」+ 右侧 chevron（无左侧图标）；步骤组标题 body 14 + ` · ` 细节；成员与组头同列（无额外缩进）；运行中 shimmer | **present** | **D** / **R13** |
-| Notices (stopped / max-tokens / account) | reducer + official `message.*` | reducer emits; `.notice` / `RetryRow`（active vs scheduled 文案） / `TurnFailureRow`（`INTERRUPTED`=`taskStopped` + `failure.interrupted`） | **present** | **E** / **R20** |
+| Notices (stopped / max-tokens / account) | reducer + official `message.*` | reducer emits; `.notice` / `RetryRow`（active vs scheduled 文案） / `TurnFailureRow`（`INTERRUPTED`/`ACCOUNT_SIGNED_OUT`=`taskStopped`） / `TurnMaxTokensRow`（title+hint 一行） | **present** | **E** / **R20** / **R23** |
+| Context tool-change row | desktop `ContextInjectionRow`; Android hides ordinary Context | `developer/message` / non-user `user/message` 的 `tool-addition`/`tool-removal` 可见；skill-catalog / time-context 仍隐藏 | **missing** → **present** | **R23** |
 | Deliverables | `Item.Deliverable` | tap opens workspace file preview | **present** | **B** |
 | Markdown / code block / tables | `Markdown.kt` | AST + GFM tables / code / file chips | **present** | **D** |
 | Copy / like / dislike / share | `MessageActions` + `FeedbackCategory` | desktop row is share (not branch); branch stays on the session row menu | **present** | **A** / **P1** |
@@ -209,7 +211,7 @@ Port as the matching batch needs them (same JSON, no second protocol):
 | Android `app/core/protocol` | Used by | Batch |
 | --- | --- | --- |
 | `TrajectoryTimeline.kt` | Trajectory swimlane | **A done** (`TrajectoryTimeline.swift`) |
-| `Transcript.kt` extra items (`System`, `Compacted`, `Retry`, `TurnFailure`, `Changes`; System folded; Compacted is desktop `CompactionItem` in chat; Retry/TurnFailure rendered; Changes cards when coding view is on) | Chat + trajectory | A / D / **E** / **F** / **R22** |
+| `Transcript.kt` extra items (`System`, `Compacted`, `Retry`, `TurnFailure`, `Changes`; System folded; Compacted is desktop `CompactionItem` in chat; Retry/TurnFailure rendered; Changes cards when coding view is on; Context tool-addition/removal shown) | Chat + trajectory | A / D / **E** / **F** / **R22** / **R23** |
 | `TurnTokenUsage.kt` | Inspector + usage | **E done** (`TurnTokenUsage.swift`) |
 | `ComposerMetrics.kt` | Composer statistics | **E done** (`ComposerMetrics.swift`) |
 | `WorkspaceChanges.kt` | Changed-file cards | **F done** (`WorkspaceChanges.swift`) |
@@ -516,5 +518,23 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 - Account / shortcuts / open config / open-in-desktop-editor / 快捷键设置页：仍 **hide**。
 - 桌面 popover 系统箭头 / Think 收起无 hover 换 chevron：仍平台残留。CompactionItem 同样无 hover，触屏保持 API/`curlybraces` 图标，不换成 chevron。
 - `AskQuestionRow` `ask.review`：phone 不发明 review 面板。
-- `CompactionCommandCard` / `command/run` 运行中「正在压缩…」：桌面是 slash command 卡，不是 CompactionItem。iOS 没有 command 节点，不发明一层。留给 Round 23。
+- `CompactionCommandCard` / `command/run` 运行中「正在压缩…」：桌面是 slash command 卡，不是 CompactionItem。iOS 没有 command 节点，不发明一层。留给 Round 24+（需先有 Host `command/run`/`command/done` 节点面）。
+- Android `18af5a8`…`c5f8cdd`：无新交互。Desktop 仍赢过 Android 把 Compacted 折进 `isHidden`。
+
+## Round 23 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`）
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| 工具变更 context 行 | `ContextToolChangeRow` + `foldChatItems` | `ui-chat` `isVisibleChatNode` / `ContextInjectionRow`；`dsh-llm` `tool-addition`/`tool-removal` | 纯工具块：单条「已添加工具：{name}」/「已移除工具：{name}」不可展开；多条标题「工具已更新」+ `新增 {n} 个` / `移除 {n} 个` / `新增 {a} 个，移除 {r} 个`，展开 `新增：`/`移除：`。普通 skill-catalog / time-context 仍隐藏。混合块可见，标题 `message.contextInjection`「上下文注入」 |
+| max-tokens 通知 | `TurnMaxTokensRow` | `ui-chat` `TurnMaxTokensItem` `message.maxTokens` / `message.maxTokens.hint` | 一条 warning 点 + 标题「已达到输出 token 上限」+ hint「回答被截断…发送“继续”…」；EN Output token limit reached。不再两条中文 footnote |
+| 退出登录中止 | `TurnFailureRow` | `turn-error.js` `endFailure` aborted signed-out → `ACCOUNT_SIGNED_OUT` | 不再写成 notice；标题「任务已停止」、正文 `failure.accountSignedOut`、保留 code chip |
+| 中断「已停止」 | `.notice` `.stopped` | `message.stopped` | 文案跟 locale，不再写死中文 |
+
+本轮核对后**不改**、确认已对齐或平台/hide：
+
+- `CompactionCommandCard` / generic slash `command/run`（含运行中 `message.compaction.running`「正在压缩…」）：桌面 `CommandNode` 来自 log-only `command/run`/`command/done`。iOS `Item`/`ChatRow`/`TranscriptReducer` **没有** command 节点，follow 遇到这些事件会丢。不发明一层。Round 24+ 前提是先接入 Host command 节点。
+- Account / shortcuts / open config / open-in-desktop-editor / 快捷键设置页：仍 **hide**。
+- 桌面 popover 系统箭头 / Think·CompactionItem 收起无 hover 换 chevron：仍平台残留。
+- `AskQuestionRow` `ask.review`：phone 不发明 review 面板。
+- 绿点 / 会话行 spinner / 标题无 running spinner / 抽屉脚连接入口：已对齐。Android Settings「云端设备」不搬。
 - Android `18af5a8`…`c5f8cdd`：无新交互。Desktop 仍赢过 Android 把 Compacted 折进 `isHidden`。

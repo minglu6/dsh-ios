@@ -112,11 +112,12 @@ final class TrajectoryBuilderTests: XCTestCase {
         XCTAssertTrue(r.apply(try JSONValue.parse("""
         {"type":"event","event":{"type":"assistant/message","seq":4,"time":2500,"data":{"turn":1,"step":1,"interrupted":true,"stream":[],"usage":{},"message":{"content":[{"type":"text","text":"partial"}]}}}}
         """)))
-        let notices = r.items().compactMap { item -> String? in
-            if case .notice(let n) = item { return n.text }
+        let notices = r.items().compactMap { item -> Item.Notice? in
+            if case .notice(let n) = item { return n }
             return nil
         }
-        XCTAssertEqual(notices, ["已停止"])
+        XCTAssertEqual(notices.map(\.kind), [.stopped])
+        XCTAssertEqual(notices.map { noticeChatTitle($0, english: false) }, ["已停止"])
         let assistant = buildTrajectory(r.items(), steps: r.stepRecords())[0].rows.first { $0.kind == TrajL.kindAssistant }
         XCTAssertEqual(assistant?.isError, true)
         XCTAssertEqual(trajectoryStatusLabel(trajRowState(assistant!)), "失败")

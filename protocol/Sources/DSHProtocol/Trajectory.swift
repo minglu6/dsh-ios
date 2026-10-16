@@ -769,9 +769,10 @@ public func buildTrajectory(_ items: [Item], steps: [StepRecord] = []) -> [TrajT
             if let i = stepByTool[tool.callId] { emitStep(i) }
             rows.append(toolRow(tool))
         case .notice(let notice):
+            let text = noticeChatTitle(notice, english: TrajL.en)
             rows.append(TrajRow(
-                key: notice.key, depth: 0, kind: TrajL.kindSystem, title: oneLinePreview(notice.text, max: 80),
-                rawDetail: notice.text, searchText: notice.text
+                key: notice.key, depth: 0, kind: TrajL.kindSystem, title: oneLinePreview(text, max: 80),
+                rawDetail: text, searchText: text
             ))
         }
     }

@@ -98,3 +98,24 @@ struct TurnFailureRow: View {
         .padding(.vertical, 2)
     }
 }
+
+/// Desktop `ui-chat` `TurnMaxTokensItem`: warning StateDot + title + hint.
+struct TurnMaxTokensRow: View {
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Circle().fill(T.warnBorder).frame(width: 8, height: 8).padding(.top, 5)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(maxTokensTitle(english: L.en))
+                    .font(.system(size: CGFloat(AppPrefs.fontSize - 1)))
+                    .fontWeight(.semibold)
+                    .foregroundStyle(T.warnText)
+                Text(maxTokensHint(english: L.en))
+                    .font(.system(size: CGFloat(AppPrefs.fontSize - 1)))
+                    .foregroundStyle(T.text2)
+            }
+        }
+        .padding(.vertical, 2)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(maxTokensTitle(english: L.en)) \(maxTokensHint(english: L.en))")
+    }
+}
