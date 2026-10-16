@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import DSHProtocol
 import UniformTypeIdentifiers
 
@@ -46,9 +47,13 @@ struct SessionDrawer: View {
                     .textInputAutocapitalization(.never)
                     .accessibilityIdentifier("sessionSearch")
                 if !query.isEmpty {
-                    Button(L.clearSearch()) { query = ""; model.searchHits = [] }
-                        .font(.caption)
-                        .foregroundStyle(T.text3)
+                    Button(L.clearSearch()) {
+                        query = ""
+                        model.clearSessionSearch()
+                    }
+                    .font(.caption)
+                    .foregroundStyle(T.text3)
+                    .accessibilityLabel(L.clearSearch())
                 }
             }
             .padding(10)
@@ -83,11 +88,16 @@ struct SessionDrawer: View {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     if searching {
                         if model.searching { Text(L.searchingSessions()).foregroundStyle(T.text3).padding(16) }
-                        if let error = model.searchError { Text(error).foregroundStyle(T.err).padding(16) }
-                        if hits.isEmpty && !model.searching && model.searchError == nil {
+                        if presented.rows.isEmpty && !model.searching {
                             Text(L.noMatchingSessions()).foregroundStyle(T.text3).padding(16)
                         }
-                        sessionRows(hits, groupKey: nil, cap: false)
+                        sessionRows(presented.rows, groupKey: nil, cap: false)
+                        if presented.hasMore {
+                            Text(L.searchHasMore(SessionSearch.resultLimit))
+                                .font(.caption)
+                                .foregroundStyle(T.text3)
+                                .padding(16)
+                        }
                     } else {
                         if pinnedRows.isEmpty && rest.isEmpty && model.workspaces.isEmpty {
                             Text(emptyCopy).foregroundStyle(T.text3).padding(24)
@@ -202,12 +212,15 @@ struct SessionDrawer: View {
 
     private var orderedWorkspaces: [WorkspaceView] { model.workspaces }
 
-    private var hits: [SessionSummary] {
-        let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        let local = SessionSearch.localMatches(sessions: model.sessions, workspaces: model.workspaces, query: needle)
-        return SessionSearch.merge(hits: model.searchHits, local: local).filter {
+    private var presented: SessionSearch.Presented {
+        let needle = query
+        let local = SessionSearch.localMatches(sessions: model.sessions, workspaces: model.workspaces, query: needle).filter {
             visibleDrawerSession($0, current: model.chat?.sessionId, archived: model.archivedIds, filter: filter)
         }
+        let host = model.searchHits.filter {
+            visibleDrawerSession($0, current: model.chat?.sessionId, archived: model.archivedIds, filter: filter)
+        }
+        return SessionSearch.present(hits: host, local: local, hostHasMore: model.searchHostHasMore)
     }
 
     private var pinnedRows: [SessionSummary] {
@@ -268,12 +281,23 @@ struct SessionDrawer: View {
         let archived = model.isArchived(session.sessionId)
         return Button {
             if archived { restoreId = session.sessionId }
-            else { model.openSession(session.sessionId) }
+            else {
+                if searching {
+                    query = ""
+                    model.clearSessionSearch()
+                }
+                model.openSession(session.sessionId)
+            }
         } label: {
             HStack(spacing: 10) {
                 leading(session)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(session.title?.isEmpty == false ? session.title! : L.newSession())
+                    Text(drawerSessionTitle(
+                        session,
+                        current: model.chat?.sessionId,
+                        newSession: L.newSession(),
+                        untitled: L.untitledSession()
+                    ))
                         .foregroundStyle(archived ? T.text3 : T.ink)
                         .lineLimit(1)
                     if let snippet = session.searchSnippet, searching {
@@ -320,6 +344,10 @@ struct SessionDrawer: View {
             if visibleOps.contains("sessions.fork") {
                 Button(L.fork()) { model.fork(session) }
                     .disabled(!model.isOnline)
+            }
+            Button(L.copySessionId()) {
+                UIPasteboard.general.string = session.sessionId
+                model.toast = L.sessionIdCopied()
             }
             if visibleOps.contains("workspace.archiveSession") {
                 if archived {

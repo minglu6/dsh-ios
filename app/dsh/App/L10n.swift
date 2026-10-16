@@ -49,6 +49,11 @@ enum L {
     static func searchingSessions() -> String { en ? "Searching session history…" : "正在搜索会话历史…" }
     static func noMatchingSessions() -> String { en ? "No matching sessions" : "无匹配会话" }
     static func clearSearch() -> String { en ? "Clear search" : "清除搜索" }
+    static func untitledSession() -> String { en ? "Untitled" : "未命名" }
+    static func searchHasMore(_ n: Int) -> String { sessionSearchHasMoreLabel(n, english: en) }
+    static func copySessionId() -> String { en ? "Copy Session ID" : "复制 Session ID" }
+    static func sessionIdCopied() -> String { en ? "Session ID copied" : "Session ID 已复制" }
+    static func sessionIdCopyFailed() -> String { en ? "Copy failed. Try again." : "复制失败，请重试" }
     static func emptyArchivedSessions() -> String { en ? "No archived sessions yet" : "暂无已归档会话" }
     static func archived() -> String { en ? "Archived" : "已归档" }
     static func restoreArchivedBody() -> String {
@@ -124,7 +129,7 @@ enum L {
     static func archiveSession() -> String { en ? "Archive session" : "归档会话" }
     static func unarchiveSession() -> String { en ? "Unarchive session" : "取消归档" }
     static func rename() -> String { en ? "Rename" : "重命名" }
-    static func fork() -> String { en ? "Fork" : "分支" }
+    static func fork() -> String { en ? "Fork session" : "分叉会话" }
     static func savingEllipsis() -> String { en ? "Saving…" : "保存中…" }
     static func cancel() -> String { en ? "Cancel" : "取消" }
     static func save() -> String { en ? "Save" : "保存" }

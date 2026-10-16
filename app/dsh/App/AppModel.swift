@@ -173,8 +173,8 @@ final class AppModel: ObservableObject {
     @Published var draftPreset = ""
     @Published var pendingCreatorPreset: String?
     @Published var searchHits: [SessionSummary] = []
+    @Published var searchHostHasMore = false
     @Published var searching = false
-    @Published var searchError: String?
     @Published var lastArchivedId: String?
 
     let terminal = AnsiTerminal()
@@ -289,6 +289,7 @@ final class AppModel: ObservableObject {
         ops = []
         presetRoster = []
         searchHits = []
+        searchHostHasMore = false
         catalog = nil
         catalogError = nil
         modelPending = nil
@@ -909,9 +910,9 @@ final class AppModel: ObservableObject {
     func searchSessions(_ query: String) {
         searchGeneration += 1
         let generation = searchGeneration
-        searchError = nil
         if !SessionSearch.shouldSearchHost(query: query, ops: ops) {
             searchHits = []
+            searchHostHasMore = false
             searching = false
             return
         }
@@ -921,17 +922,26 @@ final class AppModel: ObservableObject {
             guard searchGeneration == generation else { return }
             do {
                 guard let client else { throw PocketError(code: "transport", message: L.t("未连接到远程主机", "Not connected to the remote host")) }
-                let hits = SessionSearch.parseHits(try await client.searchSessions(query: query))
+                let parsed = SessionSearch.parse(try await client.searchSessions(query: query))
                 guard searchGeneration == generation else { return }
-                searchHits = hits
-                searchError = nil
+                searchHits = parsed.items
+                searchHostHasMore = parsed.hasMore
             } catch {
                 guard searchGeneration == generation else { return }
+                // Desktop: failed content search leaves local metadata matches
+                // visible, without an extra warning.
                 searchHits = []
-                searchError = error.localizedDescription
+                searchHostHasMore = false
             }
             if searchGeneration == generation { searching = false }
         }
+    }
+
+    func clearSessionSearch() {
+        searchGeneration += 1
+        searchHits = []
+        searchHostHasMore = false
+        searching = false
     }
 
     func loadAttachmentBytes(sessionId: String, attachmentId: String) async -> Data? {
