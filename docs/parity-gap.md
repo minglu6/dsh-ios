@@ -41,7 +41,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R10 | 已停止任务按 `JobView`/`exit` 投影；任务 popover 按内容收缩；底栏 `tok`；触发行灰卡；完全权限居中确认；浏览器关闭后保留对话位置；waking step 仅 `openStep` | done (#28) |
 | R11 | 底栏 Token 用量贴 chip 的 popover；已结束任务 SIGTERM 整句；完全权限确认先收键盘 | done (#29) |
 | R12 | Token 用量弹层在 chip 上方；表头图标 + 合计右对齐；本轮用量对齐 `message.turnUsage`；Think 展开保留图标；轨迹吞吐空窗用官方「不可用」；「已结束」一次点按展开 | done (#30) |
-| R13 | 权限/模型 picker 对齐桌面 MenuSurface；去掉标题模型名与预设；landing AgentPresetSeat；连接入口回到抽屉脚；会话绿点/运行 spinner；Think 块对齐 ReasoningRow | this PR |
+| R13 | 权限/模型 picker 对齐桌面 MenuSurface；去掉标题模型名与预设；landing AgentPresetSeat；连接入口回到抽屉脚；会话绿点/运行 spinner；Think 块对齐 ReasoningRow | done (#31) |
+| R14 | 权限/模型 picker 弹层在 composer chip **上方**（同 Token 用量 `arrowEdge: .bottom`）；完全权限 / Auto review 确认不被键盘裁切 | this PR |
 
 ---
 
@@ -97,11 +98,11 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Approvals | official `ApprovalCard` takes composer | official card; `accepted` callback clears busy, success drops the row | **partial** → **present** | **E** |
 | TodoPanel | dock card above composer | `TodoPanel` expand in place | **missing** → **present** | **E** |
 | Goal bar | `goals.get` / `goal.activation` CAS | `GoalBar` + `GoalSheet` pause/resume/clear/edit | **missing** → **present** | **E** |
-| Permission mode | catalog/get/set + risk sheet | composer chip 为桌面 `PermissionSelect` 幽灵按钮 + 官方 SVG + EXP 8/500 + 自定义菜单（非系统 Menu）；斜杠 `/permission` 按桌面 `popupSelect` 在弹层内原地列选项 + ✓；landing 选档写入 `draftPermission`，创建会话时 `permissions.set`；危险档确认；Settings defaults（`auto` 不能当默认） | **partial** → **present** | **E** / **R7** / **R8** / **R13** |
+| Permission mode | catalog/get/set + risk sheet | composer chip 为桌面 `PermissionSelect` 幽灵按钮 + 官方 SVG + EXP 8/500 + 自定义菜单（非系统 Menu，弹层在 chip **上方**，含 Auto review 全行）；斜杠 `/permission` 按桌面 `popupSelect` 在弹层内原地列选项 + ✓；landing 选档写入 `draftPermission`，创建会话时 `permissions.set`；危险档确认（居中、先收键盘、不被键盘挡住）；Settings defaults（`auto` 不能当默认） | **partial** → **present** | **E** / **R7** / **R8** / **R13** / **R14** |
 | Turn trigger row | desktop `TurnTriggerNodeView` | 仅 `waking`（`inbox-next-turn.currentClaimed` 或 idle steer）画触发行；Host 注入的 skill-catalog / time-context 与未唤醒的 tool-jobs 继续隐藏 | **missing** → **present** | **R7** / **R8** |
 | Session title live update | Android `refreshTitles` on status | `drawerSessionTitle` 优先非空 title；status 时重拉 `sessions.list`（停后再 4s）；follow `projection key=title` | **partial** → **present** | **R7** |
 | Session list relative time | `formatSessionTime` / `timeLabel` | `relativeTime` 桶 + `time.now/{unit}`；空白会话不画时间；审批/计划待审/待回答用 `status.compact.*` 替换时间；标题栏无时钟 | **present** | **R13** |
-| Model + effort | two-level picker | composer chip 锚定 `ModelSelect` 两级菜单（模型 / 有推理才出推理等级）；空态「暂无可用模型」；landing 无会话时写入 `draftModel` | **partial** → **present** | **E** / **R13** |
+| Model + effort | two-level picker | composer chip 锚定 `ModelSelect` 两级菜单（模型 / 有推理才出推理等级），弹层在 chip **上方**；空态「暂无可用模型」；landing 无会话时写入 `draftModel` | **partial** → **present** | **E** / **R13** / **R14** |
 | No “scroll to bottom” FAB | `followBottom` | auto-scroll only | **present** | — |
 
 ## 2. Trajectory
@@ -397,3 +398,11 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 | 会话列表时间 | `sessionRowTrailingLabel` | `ui-primitives` `relativeTime` + `ui-workspace` `Rows.tsx` `timeLabel` / `sessionStatuses` | 经过毫秒桶，不是日历今天/昨天；zh 刚刚/N分钟/小时/天/个月/年；en now/Nmin/h/d/mo/y；空白不画；待审批/计划待审/待回答替换时间 |
 | 消息/触发器时间 | `formatMessageClock` | `ui-chat` `message-chrome.ts` `formatMessageClock` + `clock.md`/`clock.ymd` | 本地日历同日 `HH:mm`；同年日期+时钟；跨年日期+时钟；en `10/11 16:08` / `2025-1-3 09:05` |
 | 会话标题栏时间 | 无 | `ConversationSessionHeader` 无 clock | 不发明 header 时间 |
+
+## Round 14 对照清单（桌面 `MenuSurface` + Round 13 实机 `0e5b5b9`）
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| 权限 picker 方向 | `PermissionChipMenu` `composerPickerPopoverOpensAbove` → `arrowEdge: .bottom` | `ui-permission-presets` `PermissionSelect` `MenuSurface` `side: 'top'` | 弹层在 composer chip **上方**；高度按目录行（含 Auto review）收缩，不被屏幕底裁切 |
+| 模型 picker 方向 | `ModelChipMenu` 同一旗标 | `ui-model-selection` `ModelSelect` `MenuSurface` `side: 'top'` | 同上；两级菜单 maxHeight 360，内容不足时 hug |
+| 危险档确认 | `PermissionRiskDialog` `permissionRiskStaysAboveKeyboard` | `RiskConfirmation` 视口居中 overlay | 先收键盘；忽略 keyboard safe area；内容超出则滚，勾选 / 确认可点 |

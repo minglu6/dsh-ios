@@ -47,7 +47,7 @@ struct ModelChipMenu: View {
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
-        .popover(isPresented: $open, attachmentAnchor: .rect(.bounds), arrowEdge: .top) {
+        .popover(isPresented: $open, attachmentAnchor: .rect(.bounds), arrowEdge: composerPickerPopoverOpensAbove ? .bottom : .top) {
             ModelPicker(
                 catalog: catalog,
                 current: current,
@@ -61,9 +61,10 @@ struct ModelChipMenu: View {
             )
             .frame(
                 minWidth: CGFloat(modelPickerMenuMinWidthPoints),
-                maxWidth: CGFloat(modelPickerMenuMaxWidthPoints),
-                maxHeight: CGFloat(modelPickerMenuMaxHeightPoints)
+                maxWidth: CGFloat(modelPickerMenuMaxWidthPoints)
             )
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxHeight: CGFloat(modelPickerMenuMaxHeightPoints), alignment: .top)
             .modifier(PopoverCompactAdaptation())
         }
     }
