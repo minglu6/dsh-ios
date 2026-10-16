@@ -679,6 +679,7 @@ public final class TranscriptReducer {
     private var planActive = false
     private var planProjectionSeq: Int64 = -1
     private var titleValue: String?
+    private var titleProjectionSeq: Int64 = -1
     private var turns = 0
     private var steps = 0
     private var openTurn: Int?
@@ -798,6 +799,15 @@ public final class TranscriptReducer {
                 if seq < planProjectionSeq { return false }
                 planProjectionSeq = seq
                 planActive = frame["value"]["active"].bool() ?? false
+                return true
+            }
+            if key == "title" {
+                if seq < titleProjectionSeq { return false }
+                titleProjectionSeq = seq
+                if let title = frame["value"].str()?.nilIfBlank
+                    ?? frame["value"]["title"].str()?.nilIfBlank {
+                    titleValue = title
+                }
                 return true
             }
             if key == "inbox" { return readInbox(frame["value"], seq: seq) }
@@ -971,6 +981,7 @@ public final class TranscriptReducer {
         planActive = false
         planProjectionSeq = -1
         titleValue = nil
+        titleProjectionSeq = -1
         settledSteps.removeAll()
         stepStartTimes.removeAll()
         compactIndex.removeAll()
@@ -1028,7 +1039,13 @@ public final class TranscriptReducer {
 
     private func readProjections(_ p: JSONValue, atSeq: Int64) {
         composerProjections.baseline(p, fallbackSeq: atSeq)
-        if let title = p["values"]["title"].str() { titleValue = title }
+        if let title = p["values"]["title"].str()?.nilIfBlank {
+            let seq = p["asOfSeq"].long() ?? atSeq
+            if seq >= titleProjectionSeq {
+                titleProjectionSeq = seq
+                titleValue = title
+            }
+        }
         if !p["values"]["inbox"].isNull {
             _ = readInbox(p["values"]["inbox"], seq: p["asOfSeq"].long() ?? atSeq, baseline: true)
         }

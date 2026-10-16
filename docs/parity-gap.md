@@ -34,7 +34,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | tree/slash | 文件树原地展开；斜杠菜单贴输入框 | done (#21) |
 | R4 | collapseTiming 写回 Host；composer / 运行态 / 提问 / 任务输出 / 插件空态对齐桌面文案 | done (#22) |
 | R5 | 文件树去 chevron + 自动刷新；排队附件缩略图/芯片；claimed `/goal` `/plan` 提示条；变更卡 pocket JSON `false` 旗标；斜杠技能组 + 键盘高度；无会话 landing | done (#23) |
-| R6 | 鲸尾 shimmer；任务双击停止；Cmd/Ctrl+Enter；插件 (i)；侧栏浏览器；landing `/` 完整目录；变更卡 `.task` 锚点；技能按会话隔离；用量 popover；文件树滚动恢复 | this PR |
+| R6 | 鲸尾 shimmer；任务双击停止；Cmd/Ctrl+Enter；插件 (i)；侧栏浏览器；landing `/` 完整目录；变更卡 `.task` 锚点；技能按会话隔离；用量 popover；文件树滚动恢复 | done (#24) |
+| R7 | 后台任务 chip 空 Group `.task`；「后台任务状态更新」；标题随 `sessions.list` / title projection 更新；权限 chip 锚定菜单；landing「标准模式」；composer 高度对齐桌面；去掉标题旁 spinner | this PR |
 
 ---
 
@@ -81,7 +82,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Composer statistics | Activity / Usage / Context pills | `ComposerStats` + Host projections | **missing** → **present** | **E** |
 | Composer queue / steer | busyEnter + `queue.update` | `busySend` + `PromptQueue` edit/remove/steer；排队行按桌面 `QueueDock` 画图片缩略图 / 文件芯片（有 `session.attachment` 或本地 preview） | **partial** → **present** | **E** / **R5** |
 | `@` mentions | `MentionMenu.kt` official `@path` / `@"path"` / `@[title](dsh-session:…)` | same tokens + chip row + mention panel | **partial** → **present** | **E** |
-| `/` commands | `CommandPopupSheet` `commands.list/execute` | 贴输入框弹层（#21）；`+` 与 `/` 同菜单；不接受附件的指令先 toast 官方句再执行；claimed `/goal` `/plan` 空参数时输入框上方 hint strip | **missing** → **present** | **E** / **P2** / **#21** / **R4** / **R5** |
+| `/` commands | `CommandPopupSheet` `commands.list/execute` | 贴输入框弹层（#21）；`+` 与 `/` 同菜单；不接受附件的指令先 toast 官方句再执行；claimed `/goal` `/plan` 空参数时输入框上方 hint strip。R6 实机：composer 空白约 140pt 只露约 3 行；R7 对齐桌面 InputBar（加号 28 / 发送 34 / 文本 36·52） | **missing** → **present** | **E** / **P2** / **#21** / **R4** / **R5** / **R7** |
 | Header ⋯ overflow | Android `MoreSheet` (not desktop) | **removed** — desktop conversation header has no ⋯; export/feedback on `/` and `+`; rename/fork on the drawer row menu | **hide** | **P2** (#16) |
 | Session image bubbles | `session.attachment` + ImageBubble | same cache + retry + original preview | **missing** → **present** | **G** |
 | Attachments | `attachments.upload` | image picker + file importer + receipts | **missing** → **present** | **E** |
@@ -89,7 +90,9 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Approvals | official `ApprovalCard` takes composer | official card; `accepted` callback clears busy, success drops the row | **partial** → **present** | **E** |
 | TodoPanel | dock card above composer | `TodoPanel` expand in place | **missing** → **present** | **E** |
 | Goal bar | `goals.get` / `goal.activation` CAS | `GoalBar` + `GoalSheet` pause/resume/clear/edit | **missing** → **present** | **E** |
-| Permission mode | catalog/get/set + risk sheet | session picker + Settings defaults (`auto` not a default) | **partial** → **present** | **E** |
+| Permission mode | catalog/get/set + risk sheet | composer chip 为锚定 `Menu` + 当前项 ✓（斜杠 `/permission` 仍走 sheet）；Settings defaults（`auto` 不能当默认） | **partial** → **present** | **E** / **R7** |
+| Turn trigger row | desktop `TurnTriggerNodeView` | `user/message` 非 `source.kind==user` → `Item.Context` → 可折叠「后台任务状态更新」等官方 `message.trigger.*` | **missing** → **present** | **R7** |
+| Session title live update | Android `refreshTitles` on status | `drawerSessionTitle` 优先非空 title；status 时重拉 `sessions.list`（停后再 4s）；follow `projection key=title` | **partial** → **present** | **R7** |
 | Model + effort | two-level picker | `ModelPicker` root / models / effort | **partial** → **present** | **E** |
 | No “scroll to bottom” FAB | `followBottom` | auto-scroll only | **present** | — |
 
@@ -142,7 +145,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 
 | Item | Android | iOS | Tag | Batch |
 | --- | --- | --- | --- | --- |
-| Header jobs chip | `JobsAction.kt` / desktop `JobListAction` | tabs-row chip；面板为进行中 / 已结束 + 两点击停止（`kill.confirm`） | **present** | **C** / **R6** |
+| Header jobs chip | `JobsAction.kt` / desktop `JobListAction` | tabs-row chip；面板为进行中 / 已结束 + 两点击停止（`kill.confirm`）。R6 实机：空 `Group` 上的 `.task` 不跑、从不 `jobs.list`；R7 把 watch 挂在 1pt 常驻锚点（同变更卡）。插件 `jobs.list` / `follow` / `kill` 已转发，Host `{type:rows, jobs:[…], output.lossy:false}` 可解析 | **present** | **C** / **R6** / **R7** |
 | Failed refresh → 「任务状态不可用」 (not 0) | `JobsAction.kt:62-64` | same copy, stale running count discarded | **present** | **C** |
 | `jobs.list` / `follow` / `kill` | `Pocket.kt` | `PocketClient` + `JobsPanel`; list+live follow share one roster | **present** | **C** |
 | Unread green dot | `CompletionReminders` epoch+revision | epoch+revision; leading slot only | **present** | **C** |
@@ -274,10 +277,22 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 | 变更卡 fetch | `ChangesCard` 1pt 锚点 + `changesCardMountsFetch` | `workspace/changes` → summary | `.task` 不依赖 summary；R5 seq 29 / turn closed / codeWork 会拉卡 |
 | 斜杠高度 | `frame(height: availableHeight)` | composer 上方剩余视口 | 不再只露约 3 行 |
 | 技能描述 | `commandMenuDescriptionLineLimit` = 2 | `InputBar.module.css` `line-clamp: 2` | 与桌面截断一致 |
-| landing chip | `landingWorkspaceRow` + composer `defaultPermission` | `EmptyHero` WorkspaceChip | 「选择工作区」+「工作区内修改」 |
+| landing chip | `landingWorkspaceRow` + composer `defaultPermission` | `EmptyHero` WorkspaceChip | 「选择工作区」+「工作区内修改」。R7：「标准模式」改到 composer 上方与 project 并排，不再占顶栏 |
 | 本轮用量 | `TurnUsageAction` `.popover` | desktop usage pill popover | 不再全屏 sheet |
 | 文件树滚动 | `fileTreeOffsets` + `contentSize` 再恢复 | desktop sidebar files | 离开再进恢复 offset，内容未就绪时不把 0 写回 |
 | 技能隔离 | `skillCatalogScopeKey` | 会话 / 子智能体 | 切会话先清空；失败置空；不回落全局 `skillEntries` |
+
+## Round 7 对照清单（桌面 `packages/client` + Round 6 实机 `REPORT_ceae`）
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| 后台任务 chip | `JobsAction` 1pt 锚点 + `jobsActionShouldWatch` | `ui-jobs` `JobListAction` `watchRows` 在挂载期间一直跑 | 空 roster 也 watch；chip 仅在有任务时出现。hello.ops 含 `jobs.list`（插件 `jobsOps` 已转发）。Host `{type:rows,id:bash-1,output.lossy:false}` 解析为 live chip |
+| 后台任务状态更新 | `ChatRow.turnTrigger` + `TurnTriggerRow` | `ui-chat` `TurnTriggerNodeView` / `turn-trigger.ts` / `message.trigger.job` | 可折叠「⊙ 后台任务状态更新」+「这条通知触发了本轮回复。」 |
+| 会话标题 | `conversationHeaderTitle` / `refreshSessionTitles` / title projection | Android `refreshTitles`；Host `projections.values.title` | 非空 title 压过 `blank`→「新会话」；status 时重拉 list，停后再等 4s |
+| 权限 chip | `PermissionChipMenu` | desktop 贴着 chip 的小菜单 | 当前项 ✓；危险档仍走确认 sheet |
+| landing 预设 | `landingWorkspaceRow` | `conversation.hero.agentPreset` | `project ⌄` 旁「标准模式 ⌄」 |
+| Composer 高度 | `composerAddButtonPoints` 等 | `InputBar.module.css` 28 / 34 / 36 / 52 | 缩小空白，斜杠弹层不再只露约 3 行 |
+| 标题旁 spinner | `ChatView` header | `ConversationSessionHeader` 无 running spinner | 运行态只留对话里的鲸尾，不去顶栏转圈 |
 
 ## Deferred / hide leftovers
 

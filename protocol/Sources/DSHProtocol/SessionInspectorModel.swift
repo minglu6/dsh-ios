@@ -447,6 +447,7 @@ public func inspectorGroupRows(_ st: InspectorChatState, policy: PresentationPol
         case .turnFailure(let item): members = [.turnFailure(item)]
         case .deliverable(let item): members = [.deliverable(item)]
         case .changes(let item): members = [.changes(item)]
+        case .turnTrigger(let item): members = [.context(item)]
         }
         covered.formUnion(members.map(\.key))
         let position = members.first.flatMap { positions[$0.key] } ?? controlAnchors[row.key] ?? lastPosition

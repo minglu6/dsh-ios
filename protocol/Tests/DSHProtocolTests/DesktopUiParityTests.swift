@@ -153,6 +153,17 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertEqual(landingHeadline(english: true), "Into the Unknown")
         XCTAssertEqual(landingPreviewBadge(english: false), "预览版")
         XCTAssertEqual(landingPreviewBadge(english: true), "Preview")
+        XCTAssertEqual(composerAddButtonPoints, 28)
+        XCTAssertEqual(composerSendButtonPoints, 34)
+        XCTAssertEqual(composerChipHeightPoints, 28)
+        XCTAssertEqual(composerTextMinHeightPoints, 36)
+        XCTAssertEqual(composerHeroTextMinHeightPoints, 52)
+        XCTAssertEqual(turnTriggerTitle(sourceKind: "tool-jobs", provider: nil, english: false), "后台任务状态更新")
+        XCTAssertEqual(turnTriggerTitle(sourceKind: "tool-jobs", provider: nil, english: true), "Background task updated")
+        XCTAssertEqual(turnTriggerExplanation(english: false), "这条通知触发了本轮回复。")
+        XCTAssertEqual(turnTriggerIcon(sourceKind: "tool-jobs", provider: nil), .job)
+        XCTAssertTrue(isTurnTriggerKind("tool-jobs"))
+        XCTAssertFalse(isTurnTriggerKind("runtime-context"))
         XCTAssertEqual(commandMenuAvailableHeight(containerHeight: 180), 172)
         XCTAssertEqual(commandMenuAvailableHeight(containerHeight: 80), 72)
         XCTAssertEqual(commandMenuAvailableHeight(containerHeight: 4), 0)
@@ -240,6 +251,17 @@ final class DesktopUiParityTests: XCTestCase {
             "修 bug"
         )
         XCTAssertEqual(
+            conversationHeaderTitle(
+                sessionId: "b",
+                title: "创建parity-r6-card.txt文件",
+                blank: true,
+                newSession: "新会话",
+                untitled: "未命名"
+            ),
+            "创建parity-r6-card.txt文件"
+        )
+        XCTAssertEqual(sessionTitleRefreshDelayNanoseconds, 4_000_000_000)
+        XCTAssertEqual(
             composerPlaceholderText(kind: .steerQueue, english: false),
             "Cmd/Ctrl+Enter 插话发送全部排队消息"
         )
@@ -300,5 +322,52 @@ final class DesktopUiParityTests: XCTestCase {
         )
         XCTAssertGreaterThan(changesCardFetchAnchorPoints, 0)
         XCTAssertEqual(changesCardFetchAnchorPoints, 1)
+    }
+
+    func testTurnTriggerContextIsVisibleInFoldedChat() {
+        let trigger = Item.Context(
+            key: "x29",
+            text: "bash-1 completed",
+            sourceKind: "tool-jobs",
+            at: 1_700_000_000_000
+        )
+        let rows = foldChatItems(
+            [.context(trigger), .text(Item.Text(key: "a1", text: "done", live: false, turn: 2))],
+            policy: presentationPolicyFor(.detailed),
+            sessionRunning: false
+        )
+        XCTAssertTrue(rows.contains { if case .turnTrigger(let item) = $0 { return item.sourceKind == "tool-jobs" }; return false })
+        XCTAssertFalse(
+            foldChatItems(
+                [.context(Item.Context(key: "hidden", text: "cwd=/tmp", sourceKind: "runtime-context"))],
+                policy: presentationPolicyFor(.detailed),
+                sessionRunning: false
+            ).contains { if case .turnTrigger = $0 { return true }; return false }
+        )
+    }
+
+    func testTitleProjectionUpdatesReducerTitle() throws {
+        let reducer = TranscriptReducer()
+        XCTAssertTrue(reducer.apply(try JSONValue.parse(
+            #"{"type":"projection","key":"title","seq":12,"value":"创建parity-r6-card.txt文件"}"#
+        )))
+        XCTAssertEqual(reducer.title, "创建parity-r6-card.txt文件")
+        XCTAssertFalse(reducer.apply(try JSONValue.parse(
+            #"{"type":"projection","key":"title","seq":11,"value":"stale"}"#
+        )))
+        XCTAssertEqual(reducer.title, "创建parity-r6-card.txt文件")
+    }
+
+    func testToolJobsUserMessageFoldsToTurnTrigger() throws {
+        let reducer = TranscriptReducer()
+        XCTAssertTrue(reducer.apply(try JSONValue.parse("""
+        {"type":"event","event":{"seq":29,"time":1700000000000,"type":"user/message","data":{"message":{"content":[{"type":"text","text":"bash-1 completed"}],"source":{"kind":"tool-jobs"}}}}}
+        """)))
+        let rows = foldChatItems(
+            reducer.items(),
+            policy: presentationPolicyFor(.detailed),
+            sessionRunning: false
+        )
+        XCTAssertTrue(rows.contains { if case .turnTrigger(let item) = $0 { return item.sourceKind == "tool-jobs" && item.text == "bash-1 completed" }; return false })
     }
 }
