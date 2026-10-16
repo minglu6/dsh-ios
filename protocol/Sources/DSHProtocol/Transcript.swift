@@ -15,21 +15,70 @@ public struct DeliverableFile: Sendable, Equatable {
     public var description: String?
 }
 
+/// Desktop `QueueDock` attachment: an image thumbnail or a named file chip.
+public struct QueuedAttachment: Sendable, Equatable, Identifiable {
+    public enum Kind: Sendable, Equatable {
+        case image
+        case file
+    }
+
+    public var id: String
+    public var kind: Kind
+    public var attachmentId: String?
+    public var name: String?
+    public var bytes: Int?
+    public var mediaType: String?
+    public var previewData: Data?
+
+    public init(
+        id: String,
+        kind: Kind,
+        attachmentId: String? = nil,
+        name: String? = nil,
+        bytes: Int? = nil,
+        mediaType: String? = nil,
+        previewData: Data? = nil
+    ) {
+        self.id = id
+        self.kind = kind
+        self.attachmentId = attachmentId
+        self.name = name
+        self.bytes = bytes
+        self.mediaType = mediaType
+        self.previewData = previewData
+    }
+}
+
 public struct QueuedPrompt: Sendable, Equatable, Identifiable {
     public var id: String
     public var text: String
-    public var images: Int
-    public var files: Int
+    public var attachments: [QueuedAttachment]
     public var sending: Bool
     public var editable: Bool
 
-    public init(id: String, text: String, images: Int = 0, files: Int = 0, sending: Bool = false) {
+    public var images: Int { attachments.filter { $0.kind == .image }.count }
+    public var files: Int { attachments.filter { $0.kind == .file }.count }
+
+    public init(
+        id: String,
+        text: String,
+        images: Int = 0,
+        files: Int = 0,
+        sending: Bool = false,
+        attachments: [QueuedAttachment] = [],
+        editable: Bool? = nil
+    ) {
         self.id = id
         self.text = text
-        self.images = images
-        self.files = files
+        if attachments.isEmpty && (images > 0 || files > 0) {
+            self.attachments =
+                (0..<images).map { QueuedAttachment(id: "image-\($0)", kind: .image) }
+                + (0..<files).map { QueuedAttachment(id: "file-\($0)", kind: .file) }
+        } else {
+            self.attachments = attachments
+        }
         self.sending = sending
-        self.editable = images == 0 && files == 0
+        self.editable = editable ?? self.attachments.isEmpty
     }
 }
 
@@ -37,6 +86,40 @@ public enum QueueAction: Sendable {
     case edit(String)
     case remove
     case steer
+}
+
+/// Desktop `QueueDock` `queueAttachments`: skip an image/file block that has no durable ref.
+public func queueAttachments(_ blocks: [JSONValue]) -> [QueuedAttachment] {
+    var attachments: [QueuedAttachment] = []
+    for (index, block) in blocks.enumerated() {
+        let type = block["type"].str()
+        let att = block["attachment"]
+        if type == "image" {
+            guard let id = att["attachmentId"].str() ?? block["attachmentId"].str() else { continue }
+            attachments.append(
+                QueuedAttachment(
+                    id: "\(id):\(index)",
+                    kind: .image,
+                    attachmentId: id,
+                    mediaType: att["mediaType"].str() ?? block["mediaType"].str()
+                )
+            )
+        } else if type == "file" {
+            guard let id = att["attachmentId"].str() ?? block["attachmentId"].str() else { continue }
+            let name = att["name"].str() ?? block["name"].str()
+            attachments.append(
+                QueuedAttachment(
+                    id: "\(id):\(name ?? ""):\(index)",
+                    kind: .file,
+                    attachmentId: id,
+                    name: name,
+                    bytes: att["bytes"].int() ?? att["size"].int() ?? block["bytes"].int(),
+                    mediaType: att["mediaType"].str() ?? block["mediaType"].str()
+                )
+            )
+        }
+    }
+    return attachments
 }
 
 public enum ToolStatus: String, Sendable {
@@ -816,9 +899,23 @@ public final class TranscriptReducer {
             || !prior.turnFacts.isEmpty || olderTurnUsage || !prior.retryStarts.isEmpty || !prior.closedSteps.isEmpty
     }
 
-    public func echo(text: String, requestId: String = UUID().uuidString, mode: String = "queue", images: Int = 0, files: Int = 0) {
+    public func echo(
+        text: String,
+        requestId: String = UUID().uuidString,
+        mode: String = "queue",
+        images: Int = 0,
+        files: Int = 0,
+        attachments: [QueuedAttachment] = []
+    ) {
         if localEchoes[requestId] != nil || userByRpc[requestId] != nil || retiredRequests.contains(requestId) { return }
-        let prompt = QueuedPrompt(id: requestId, text: text, images: images, files: files, sending: true)
+        let prompt = QueuedPrompt(
+            id: requestId,
+            text: text,
+            images: images,
+            files: files,
+            sending: true,
+            attachments: attachments
+        )
         let queued = running && mode == "queue"
         localEchoes[requestId] = LocalEcho(prompt: prompt, queued: queued)
         if !queued { addEcho(prompt) }
@@ -1493,12 +1590,14 @@ public final class TranscriptReducer {
 
     private func queuedPrompt(_ message: JSONValue) -> QueuedPrompt {
         let blocks = message["content"].arr() ?? []
+        let attachments = queueAttachments(blocks)
+        let textOnly = blocks.allSatisfy { $0["type"].str() == "text" }
         return QueuedPrompt(
             id: message["id"].str() ?? message["source"]["rpcId"].str() ?? "",
             text: blocks.filter { $0["type"].str() == "text" }.map { $0["text"].str() ?? "" }.joined(separator: "\n"),
-            images: blocks.filter { $0["type"].str() == "image" }.count,
-            files: blocks.filter { $0["type"].str() == "file" }.count,
-            sending: false
+            sending: false,
+            attachments: attachments,
+            editable: textOnly
         )
     }
 

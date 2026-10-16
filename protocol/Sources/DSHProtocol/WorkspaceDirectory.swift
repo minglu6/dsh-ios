@@ -1,9 +1,16 @@
 import Foundation
 
+/// Desktop `DirectoryNode`: the first watch event always lists; later `change`
+/// events reread only while automatic refresh is on. Watches stay open either way.
+public func directoryWatchShouldReload(initialized: Bool, automatic: Bool) -> Bool {
+    !initialized || automatic
+}
+
 /// Read after watch-ready so changes during the initial listing cannot be missed.
 public func observeWorkspaceDirectory(
     list: (String?) async throws -> JSONValue,
     changes: AsyncThrowingStream<JSONValue, Error>?,
+    automatic: @escaping @Sendable () -> Bool = { true },
     onListing: (JSONValue) -> Void,
     onFailure: (Error) -> Void
 ) async throws {
@@ -29,8 +36,10 @@ public func observeWorkspaceDirectory(
         for try await frame in changes {
             if frame["kind"].str() == "ready" || frame["kind"].str() == "change" {
                 watchedPath = frame["path"].str() ?? watchedPath
-                try await reload()
-                listed = true
+                if directoryWatchShouldReload(initialized: listed, automatic: automatic()) {
+                    try await reload()
+                    listed = true
+                }
             }
         }
     } catch is CancellationError {

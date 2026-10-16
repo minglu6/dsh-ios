@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 import UIKit
 import DSHProtocol
@@ -5,6 +6,7 @@ import DSHProtocol
 struct FilesPanel: View {
     @ObservedObject var model: AppModel
     @Environment(\.scenePhase) private var scenePhase
+    @StateObject private var autoRefresh = FileAutoRefresh()
     @State private var tree = FileTreeState.root
     @State private var refreshToken = 0
     @State private var previewPath: String?
@@ -60,6 +62,17 @@ struct FilesPanel: View {
         HStack(spacing: 8) {
             PreviewPathLabel(path: cwdName)
             Spacer(minLength: 8)
+            Button {
+                autoRefresh.enabled.toggle()
+                if autoRefresh.enabled { refreshToken += 1 }
+            } label: {
+                Image(systemName: autoRefresh.enabled ? "pause" : "play.fill")
+                    .foregroundStyle(canWatch ? T.text2 : T.caption)
+            }
+            .disabled(!canWatch)
+            .accessibilityLabel(L.autoRefresh())
+            .accessibilityHint(autoRefresh.enabled ? L.autoRefreshDisable() : L.autoRefreshEnable())
+            .accessibilityAddTraits(autoRefresh.enabled ? [.isSelected] : [])
             Button { refreshToken += 1 } label: {
                 Image(systemName: "arrow.clockwise").foregroundStyle(canList && !(cwd ?? "").isEmpty ? T.text2 : T.caption)
             }
@@ -119,11 +132,7 @@ struct FilesPanel: View {
                 fileTreeToggle(&tree, path: row.path)
             } label: {
                 HStack(spacing: 8) {
-                    Image(systemName: expanded ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(T.text3)
-                        .frame(width: 12)
-                    FileTypeIcon(path: row.name, type: row.type, openable: enabled)
+                    FileTypeIcon(path: row.name, type: row.type, openable: enabled, expanded: expanded)
                     Text(row.name)
                         .font(.system(size: 13))
                         .foregroundStyle(enabled ? T.ink : T.text3)
@@ -146,7 +155,6 @@ struct FilesPanel: View {
                 previewPath = row.path
             } label: {
                 HStack(spacing: 8) {
-                    Color.clear.frame(width: 12, height: 1)
                     FileTypeIcon(path: row.name, type: row.type, openable: enabled)
                     Text(row.name)
                         .font(.system(size: 13))
@@ -165,7 +173,6 @@ struct FilesPanel: View {
             .fileTreeContextMenu(path: row.path)
         case .other:
             HStack(spacing: 8) {
-                Color.clear.frame(width: 12, height: 1)
                 FileTypeIcon(path: row.name, type: row.type, openable: false)
                 Text(row.name)
                     .font(.system(size: 13))
@@ -186,7 +193,7 @@ struct FilesPanel: View {
         Text(text)
             .font(.system(size: 12))
             .foregroundStyle(error ? T.err : T.text3)
-            .padding(.leading, 32 + CGFloat(depth) * 18)
+            .padding(.leading, 40 + CGFloat(depth) * 18)
             .padding(.trailing, 20)
             .padding(.vertical, 6)
     }
@@ -206,6 +213,7 @@ struct FilesPanel: View {
                     try await model.listFiles(sessionId: sessionId, path: path.isEmpty ? "." : path)
                 },
                 changes: canWatch ? model.followFiles(sessionId: sessionId, path: path.isEmpty ? "." : path) : nil,
+                automatic: { [autoRefresh] in autoRefresh.enabled },
                 onListing: { result in
                     Task { @MainActor in
                         let listedPath = result["path"].str() ?? path
@@ -243,6 +251,10 @@ struct FilesPanel: View {
             }
         }
     }
+}
+
+private final class FileAutoRefresh: ObservableObject, @unchecked Sendable {
+    @Published var enabled = true
 }
 
 private extension View {

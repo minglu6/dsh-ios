@@ -399,7 +399,7 @@ final class AppModel: ObservableObject {
             guard !attach.isImage, attach.status == .ready, let receipt = attach.receiptId else { return nil }
             return PromptFile(receiptId: receipt)
         }
-        guard (!text.isEmpty || !images.isEmpty || !files.isEmpty), let chat, let client else { return }
+        guard (!text.isEmpty || !images.isEmpty || !files.isEmpty), let client else { return }
         if !pendingAttaches.isEmpty, let name = slashCommandName(text) {
             let row = commandEntries.first { $0["name"].str() == name }
             if commandRefusesAttachments(name: name, catalogRow: row) {
@@ -407,9 +407,53 @@ final class AppModel: ObservableObject {
                 return
             }
         }
+        let queueAttachments: [QueuedAttachment] = pendingAttaches.compactMap { attach in
+            if attach.isImage {
+                return QueuedAttachment(
+                    id: attach.id.uuidString,
+                    kind: .image,
+                    name: attach.name,
+                    bytes: attach.data.count,
+                    mediaType: attach.mediaType,
+                    previewData: attach.data
+                )
+            }
+            guard attach.status == .ready else { return nil }
+            return QueuedAttachment(
+                id: attach.id.uuidString,
+                kind: .file,
+                name: attach.name,
+                bytes: attach.data.count
+            )
+        }
         composerText = ""
         pendingAttaches = []
-        Task { await sendPrompt(client, chat: chat, text: text, images: images, files: files) }
+        if let chat {
+            Task { await sendPrompt(client, chat: chat, text: text, images: images, files: files, attachments: queueAttachments) }
+            return
+        }
+        Task { await createSessionAndSend(client, text: text, images: images, files: files, attachments: queueAttachments) }
+    }
+
+    private func createSessionAndSend(
+        _ client: PocketClient,
+        text: String,
+        images: [PromptImage],
+        files: [PromptFile],
+        attachments: [QueuedAttachment]
+    ) async {
+        do {
+            let chosen = pendingCreatorPreset ?? draftPreset.nilIfBlank
+            let id = try await client.createSession(agentPreset: chosen)
+            pendingCreatorPreset = nil
+            openSession(id)
+            guard let chat, chat.sessionId == id else {
+                throw PocketError(code: "session", message: L.t("未能打开新会话", "Could not open the new session"))
+            }
+            await sendPrompt(client, chat: chat, text: text, images: images, files: files, attachments: attachments)
+        } catch {
+            emit(error.localizedDescription)
+        }
     }
 
     func stopRun() {
@@ -1924,6 +1968,19 @@ final class AppModel: ObservableObject {
         subId = sid
         chat?.loaded = true
         await loadFeedback(client, sessionId: sessionId)
+        await loadSkills(sessionId)
+    }
+
+    private func loadSkills(_ sessionId: String) async {
+        guard ops.contains("skills.list") else { return }
+        do {
+            _ = try await skillCatalog(sessionId: sessionId)
+        } catch is CancellationError {
+        } catch {
+            #if DEBUG
+            print("[dsh.skills] prefetch failed session=\(sessionId) error=\(error)")
+            #endif
+        }
     }
 
     private func loadFeedback(_ client: PocketClient, sessionId: String) async {
@@ -2005,12 +2062,20 @@ final class AppModel: ObservableObject {
         chat: ChatState,
         text: String,
         images: [PromptImage] = [],
-        files: [PromptFile] = []
+        files: [PromptFile] = [],
+        attachments: [QueuedAttachment] = []
     ) async {
         let target = reducer
         let requestId = UUID().uuidString
         let mode = chat.running ? busySend.mode : "queue"
-        target.echo(text: text, requestId: requestId, mode: mode, images: images.count, files: files.count)
+        target.echo(
+            text: text,
+            requestId: requestId,
+            mode: mode,
+            images: images.count,
+            files: files.count,
+            attachments: attachments
+        )
         publishChat()
         do {
             _ = try await client.prompt(

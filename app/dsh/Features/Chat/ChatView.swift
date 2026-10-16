@@ -317,7 +317,7 @@ struct ChatView: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     if commandMenuVisible {
-                        commandMenuLayer(maxHeight: max(240, geo.size.height * 0.72))
+                        commandMenuLayer(maxHeight: CGFloat(commandMenuAvailableHeight(containerHeight: Double(geo.size.height))))
                     }
                 }
             }
@@ -1011,6 +1011,7 @@ struct ComposerView: View {
     @ObservedObject var model: AppModel
     var interceptKeys = false
     var focusToken = 0
+    var heroPlaceholder = false
     var onPlus: () -> Void = {}
     var onPerm: () -> Void = {}
     var onModel: () -> Void = {}
@@ -1054,9 +1055,24 @@ struct ComposerView: View {
                     .frame(minHeight: 48)
                     .accessibilityLabel(L.planModeOn())
                 }
+                if let hint = claimedComposerHint(
+                    text: model.composerText,
+                    catalog: model.commandEntries,
+                    hasGoal: model.chat?.goal != nil,
+                    english: L.en
+                ) {
+                    Text(hint)
+                        .font(.system(size: 13))
+                        .foregroundStyle(T.text3)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
                 ComposerTextView(
                     text: $model.composerText,
-                    placeholder: composerPlaceholderText(planMode: model.chat?.planMode == true, english: L.en),
+                    placeholder: composerPlaceholderText(
+                        planMode: model.chat?.planMode == true,
+                        english: L.en,
+                        hero: heroPlaceholder
+                    ),
                     interceptKeys: interceptKeys,
                     focusToken: focusToken,
                     onReturn: onCommandReturn,

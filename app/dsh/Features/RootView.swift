@@ -8,6 +8,11 @@ struct RootView: View {
     @ObservedObject private var model = AppModel.shared
     @ObservedObject private var theme = ThemeStateHolder.shared
     @State private var showHomePreset = false
+    @State private var slashMenu = SlashMenuState()
+    @StateObject private var commandHost = CommandMenuHost()
+    @State private var showModels = false
+    @State private var showPermission = false
+    @State private var composerFocus = 0
 
     var body: some View {
         ZStack {
@@ -98,6 +103,9 @@ struct RootView: View {
         }
     }
 
+    private var landingSlashTrigger: ComposerTrigger? { slashMenuTrigger(model.composerText) }
+    private var landingCommandMenuVisible: Bool { slashMenu.isVisible(trigger: landingSlashTrigger) }
+
     private var emptyChat: some View {
         VStack(spacing: 0) {
             HStack {
@@ -116,20 +124,106 @@ struct RootView: View {
             }
             .padding(14)
             .background(T.surface)
-            Spacer()
-            Button(L.newSession(), action: { model.createAndOpenSession() })
-                .foregroundStyle(T.onPrimary)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 12)
-                .background(T.primaryButton, in: Capsule())
-                .disabled(!model.isOnline)
-            Text(model.isOnline ? L.emptySessions() : L.notConnected())
-                .font(.subheadline)
-                .foregroundStyle(T.text3)
-                .padding(.top, 12)
-            Spacer()
+            GeometryReader { geo in
+                ZStack(alignment: .bottom) {
+                    VStack(spacing: 12) {
+                        Spacer()
+                        Text(L.landingHeadline())
+                            .font(.system(size: 28, weight: .semibold))
+                            .foregroundStyle(T.ink)
+                            .multilineTextAlignment(.center)
+                            .accessibilityAddTraits(.isHeader)
+                        Text(L.landingPreview())
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(T.text3)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .overlay(Capsule().stroke(T.border, lineWidth: 1))
+                            .accessibilityLabel(L.landingPreview())
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    if landingCommandMenuVisible {
+                        CommandMenuOverlay(
+                            model: model,
+                            host: commandHost,
+                            query: slashMenuQuery(model.composerText),
+                            leading: slashMenuIsLeading(model.composerText),
+                            consumeSlash: landingSlashTrigger != nil,
+                            onDismiss: { slashMenu.dismiss(trigger: landingSlashTrigger) },
+                            onFile: {},
+                            onGoal: {},
+                            onPlan: {},
+                            onFeedback: {},
+                            onCompact: {},
+                            onPerm: { if model.isOnline { showPermission = true } },
+                            onModel: { if model.isOnline { showModels = true } },
+                            onExport: {}
+                        )
+                        .padding(.horizontal, 14)
+                        .padding(.bottom, 4)
+                        .frame(maxHeight: CGFloat(commandMenuAvailableHeight(containerHeight: Double(geo.size.height))), alignment: .bottom)
+                    }
+                }
+            }
+            ComposerView(
+                model: model,
+                interceptKeys: landingCommandMenuVisible,
+                focusToken: composerFocus,
+                heroPlaceholder: true,
+                onPlus: {
+                    slashMenu.togglePlus(trigger: landingSlashTrigger)
+                    if slashMenu.isVisible(trigger: landingSlashTrigger) {
+                        composerFocus += 1
+                    }
+                },
+                onPerm: { if model.isOnline { showPermission = true } },
+                onModel: { if model.isOnline { showModels = true } },
+                onSend: {
+                    if landingCommandMenuVisible {
+                        commandHost.requestEnter()
+                        return
+                    }
+                    model.sendCurrent()
+                },
+                onCommandReturn: { commandHost.requestEnter() },
+                onCommandMove: { commandHost.requestMove($0) },
+                onCommandEscape: { slashMenu.dismiss(trigger: landingSlashTrigger) }
+            )
         }
         .background(T.bg)
+        .onChange(of: model.composerText) { _ in
+            slashMenu.track(trigger: landingSlashTrigger)
+        }
+        .sheet(isPresented: $showModels) {
+            ModelPicker(
+                catalog: model.catalog,
+                current: model.modelChoice,
+                loading: model.catalogLoading,
+                error: model.catalogError,
+                pending: model.modelPending,
+                enabled: model.isOnline,
+                onReload: { model.reloadModelCatalog() },
+                onDismiss: { showModels = false },
+                onPick: { choice, done in model.selectModel(choice, onComplete: done) }
+            )
+            .padding()
+        }
+        .sheet(isPresented: $showPermission) {
+            PermissionPickerSheet(
+                current: model.sessionPermission ?? "",
+                catalog: model.permissionCatalog,
+                loading: model.permissionCatalogLoading,
+                error: model.permissionCatalogError,
+                enabled: model.isOnline,
+                busy: model.permissionChanging,
+                onRefresh: { model.reloadPermissionCatalog() },
+                onDismiss: { showPermission = false },
+                onPick: { value in
+                    model.setPermission(value) { _ in showPermission = false }
+                }
+            )
+        }
     }
 
     private var homePresetLabel: String {

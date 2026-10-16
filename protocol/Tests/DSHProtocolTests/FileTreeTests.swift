@@ -147,6 +147,11 @@ final class FileTreeTests: XCTestCase {
             "这不是一个目录。"
         )
         XCTAssertFalse(filesFailureMessage(error: PocketError(code: "transport", message: "offline"), english: false).contains("Host"))
+        XCTAssertEqual(fileTreeFolderSymbol(expanded: false), "folder")
+        XCTAssertEqual(fileTreeFolderSymbol(expanded: true), "folder.fill")
+        XCTAssertTrue(directoryWatchShouldReload(initialized: false, automatic: false))
+        XCTAssertFalse(directoryWatchShouldReload(initialized: true, automatic: false))
+        XCTAssertTrue(directoryWatchShouldReload(initialized: true, automatic: true))
     }
 }
 

@@ -87,15 +87,16 @@ public struct WorkspaceChangesSummary: Sendable, Equatable {
 }
 
 extension WorkspaceChangedFile {
-    /// Desktop `isChangedFile`: non-empty path/display, integer counts, `binary`/`oversized` only `true` or absent.
+    /// Desktop in-process `isChangedFile` types flags as `undefined | true`.
+    /// Pocket JSON of that Host object serializes explicit `false` (Android accepts it).
     public static func parse(_ value: JSONValue) -> WorkspaceChangedFile? {
         guard let file = value.obj() else { return nil }
         guard let path = file["path"]?.str(), !path.isEmpty else { return nil }
         guard let display = file["display"]?.str(), !display.isEmpty else { return nil }
         guard let fileAdded = file["added"]?.changeCount() else { return nil }
         guard let fileDeleted = file["deleted"]?.changeCount() else { return nil }
-        guard let binary = trueOnlyFlag(file["binary"]) else { return nil }
-        guard let oversized = trueOnlyFlag(file["oversized"]) else { return nil }
+        guard let binary = wireBoolFlag(file["binary"]) else { return nil }
+        guard let oversized = wireBoolFlag(file["oversized"]) else { return nil }
         return WorkspaceChangedFile(
             path: path, display: display, added: fileAdded, deleted: fileDeleted,
             binary: binary, oversized: oversized
@@ -103,12 +104,11 @@ extension WorkspaceChangedFile {
     }
 }
 
-/// Desktop flags are `undefined | true`. JSON `false` / `null` / other types fail the whole summary.
-private func trueOnlyFlag(_ value: JSONValue?) -> Bool? {
+/// Absent → false. JSON `true`/`false` keep their value. `null` / non-bool fail the file.
+private func wireBoolFlag(_ value: JSONValue?) -> Bool? {
     guard let value else { return false }
     if value.isNull { return nil }
-    guard let flag = value.bool(), flag else { return nil }
-    return true
+    return value.bool()
 }
 
 public struct WorkspaceDiffHunk: Sendable, Equatable {

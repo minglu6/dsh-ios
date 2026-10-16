@@ -188,6 +188,11 @@ public func fileTypeAccent(_ kind: String) -> UInt32 {
     }
 }
 
+/// Desktop folder row: open vs closed sheet, never a disclosure chevron.
+public func fileTreeFolderSymbol(expanded: Bool) -> String {
+    expanded ? "folder.fill" : "folder"
+}
+
 /// SF Symbol for a file-icon kind. Unknown kinds share the generic document glyph.
 public func fileTypeSymbol(_ kind: String) -> String {
     switch kind {

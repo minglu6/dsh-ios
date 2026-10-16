@@ -305,6 +305,52 @@ final class SessionAttachmentTests: XCTestCase {
             jsonObject(["sessionId": .string("s"), "attachmentId": .string("a")])
         )
     }
+
+    func testQueueAttachmentsSkipBlocksWithoutDurableRefs() throws {
+        let blocks = try JSONValue.parse("""
+        [
+          {"type":"text","text":"see"},
+          {"type":"image","attachment":{"attachmentId":"img-1","mediaType":"image/png"}},
+          {"type":"image"},
+          {"type":"file","attachment":{"attachmentId":"doc-1","name":"notes.md","bytes":2048}},
+          {"type":"file"}
+        ]
+        """).arr() ?? []
+        let attachments = queueAttachments(blocks)
+        XCTAssertEqual(attachments.map(\.kind), [.image, .file])
+        XCTAssertEqual(attachments[0].attachmentId, "img-1")
+        XCTAssertEqual(attachments[1].name, "notes.md")
+        XCTAssertEqual(attachments[1].bytes, 2048)
+        let reducer = TranscriptReducer()
+        XCTAssertTrue(reducer.apply(try JSONValue.parse("""
+        {"type":"snapshot","cursor":0,"hasMore":false,"records":[],"projections":{"asOfSeq":1,"values":{"inbox":{"next-turn":[{
+          "id":"q1",
+          "source":{"kind":"user"},
+          "content":[
+            {"type":"text","text":"with files"},
+            {"type":"image","attachment":{"attachmentId":"img-1"}},
+            {"type":"file","attachment":{"attachmentId":"doc-1","name":"notes.md","bytes":512}}
+          ]
+        }]}}}}
+        """)))
+        let queued = reducer.queueMessages()
+        XCTAssertEqual(queued.count, 1)
+        XCTAssertEqual(queued[0].text, "with files")
+        XCTAssertEqual(queued[0].images, 1)
+        XCTAssertEqual(queued[0].files, 1)
+        XCTAssertFalse(queued[0].editable)
+        XCTAssertEqual(queued[0].attachments.map(\.kind), [.image, .file])
+        XCTAssertEqual(queued[0].attachments[1].name, "notes.md")
+        XCTAssertEqual(fileSizeText(512), "512 B")
+        XCTAssertTrue(reducer.apply(try JSONValue.parse("""
+        {"type":"snapshot","cursor":1,"hasMore":false,"records":[],"projections":{"asOfSeq":2,"values":{"inbox":{"next-turn":[{
+          "id":"q2","source":{"kind":"user"},
+          "content":[{"type":"text","text":"see"},{"type":"image"}]
+        }]}}}}
+        """)))
+        XCTAssertTrue(reducer.queueMessages()[0].attachments.isEmpty)
+        XCTAssertFalse(reducer.queueMessages()[0].editable)
+    }
 }
 
 final class WorkspaceOrderTests: XCTestCase {

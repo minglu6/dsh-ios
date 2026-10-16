@@ -183,13 +183,35 @@ public func linkOpeningDescription(english: Bool) -> String {
     english ? "Choose where to open web links" : "对话中网页链接的打开位置"
 }
 
-public func composerPlaceholderText(planMode: Bool, english: Bool) -> String {
+public func composerPlaceholderText(planMode: Bool, english: Bool, hero: Bool = false) -> String {
     if planMode {
         return english ? "describe your task to generate plan" : "描述你的任务以生成计划"
+    }
+    if hero {
+        return english
+            ? "Describe what you want to build, / commands, @ files or sessions"
+            : "描述你想要构建的内容, / 调用指令, @ 文件或对话"
     }
     return english
         ? "Message or run a task, / commands, @ files or sessions"
         : "发消息或创建任务, / 调用指令, @ 文件或对话"
+}
+
+/// Desktop `conversation` `hero.headline`.
+public func landingHeadline(english: Bool) -> String {
+    english ? "Into the Unknown" : "探索未至之境"
+}
+
+/// Desktop `conversation` `hero.preview`.
+public func landingPreviewBadge(english: Bool) -> String {
+    english ? "Preview" : "预览版"
+}
+
+/// Space above the composer (already keyboard-avoided) minus a hairline margin.
+/// Never invent a floor taller than the remaining viewport — that is what
+/// squeezed the slash list into a 3-page scroller under the iOS keyboard.
+public func commandMenuAvailableHeight(containerHeight: Double, margin: Double = 8) -> Double {
+    max(0, containerHeight - margin)
 }
 
 public func composerModelFallback(english: Bool) -> String {
@@ -302,6 +324,69 @@ public func terminalTabTitle(_ title: String?) -> String {
 }
 
 /// Desktop slash-menu glyphs, mapped to SF Symbols on iOS.
+public func autoRefreshLabel(english: Bool) -> String {
+    english ? "Auto refresh" : "自动刷新"
+}
+
+public func autoRefreshEnableLabel(english: Bool) -> String {
+    english ? "Enable auto refresh" : "开启自动刷新"
+}
+
+public func autoRefreshDisableLabel(english: Bool) -> String {
+    english ? "Disable auto refresh" : "关闭自动刷新"
+}
+
+public func queueImageLabel(english: Bool) -> String {
+    english ? "Queued message image" : "排队消息图片"
+}
+
+public func queueFileLabel(name: String, english: Bool) -> String {
+    english ? "Queued file \(name)" : "排队文件 \(name)"
+}
+
+/// Desktop `fileSizeText`: 1024-based, one fractional digit after 1 KiB.
+public func fileSizeText(_ bytes: Int) -> String {
+    let value = Double(max(0, bytes))
+    if value < 1024 { return "\(max(0, bytes)) B" }
+    let units = ["KB", "MB", "GB", "TB"]
+    var size = value / 1024
+    var unit = 0
+    while size >= 1024 && unit < units.count - 1 {
+        size /= 1024
+        unit += 1
+    }
+    let rounded = (size * 10).rounded() / 10
+    if rounded == rounded.rounded() {
+        return "\(Int(rounded)) \(units[unit])"
+    }
+    return String(format: "%.1f \(units[unit])", rounded)
+}
+
+/// Desktop InputBar claimed-command hint: blank args after `/goal` or `/plan`.
+public func claimedComposerHint(text: String, catalog: [JSONValue] = [], hasGoal: Bool, english: Bool) -> String? {
+    guard let token = slashCommandName(text) else { return nil }
+    let afterSlash = text.trimmingCharacters(in: .whitespacesAndNewlines).dropFirst()
+    let rest = afterSlash.drop(while: { !$0.isWhitespace }).trimmingCharacters(in: .whitespacesAndNewlines)
+    guard rest.isEmpty else { return nil }
+    let row = catalog.first { $0["name"].str() == token }
+    let name = builtinCommandName(row?["definitionId"].str()) ?? token
+    switch name {
+    case "goal":
+        if hasGoal {
+            return english
+                ? "goal active — edit / pause / resume / clear"
+                : "当前目标进行中。可输入 edit 修改 / pause 暂停 / resume 继续 / clear 清除"
+        }
+        return english
+            ? "describe the objective for a long-running task"
+            : "输入目标，智能体将持续执行"
+    case "plan":
+        return composerPlaceholderText(planMode: true, english: english)
+    default:
+        return row?["input"]["hint"].str()
+    }
+}
+
 public func commandMenuIconSymbol(_ kind: String?) -> String {
     switch kind {
     case "file": return "paperclip"

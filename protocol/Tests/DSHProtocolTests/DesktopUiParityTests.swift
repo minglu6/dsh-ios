@@ -141,6 +141,21 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertEqual(composerPlaceholderText(planMode: true, english: false), "描述你的任务以生成计划")
         XCTAssertEqual(composerPlaceholderText(planMode: false, english: true), "Message or run a task, / commands, @ files or sessions")
         XCTAssertEqual(composerPlaceholderText(planMode: true, english: true), "describe your task to generate plan")
+        XCTAssertEqual(
+            composerPlaceholderText(planMode: false, english: false, hero: true),
+            "描述你想要构建的内容, / 调用指令, @ 文件或对话"
+        )
+        XCTAssertEqual(
+            composerPlaceholderText(planMode: false, english: true, hero: true),
+            "Describe what you want to build, / commands, @ files or sessions"
+        )
+        XCTAssertEqual(landingHeadline(english: false), "探索未至之境")
+        XCTAssertEqual(landingHeadline(english: true), "Into the Unknown")
+        XCTAssertEqual(landingPreviewBadge(english: false), "预览版")
+        XCTAssertEqual(landingPreviewBadge(english: true), "Preview")
+        XCTAssertEqual(commandMenuAvailableHeight(containerHeight: 180), 172)
+        XCTAssertEqual(commandMenuAvailableHeight(containerHeight: 80), 72)
+        XCTAssertEqual(commandMenuAvailableHeight(containerHeight: 4), 0)
         XCTAssertEqual(composerModelFallback(english: false), "请选择模型")
         XCTAssertEqual(composerModelFallback(english: true), "Select model")
         XCTAssertEqual(loadOlderLabel(loading: false, english: false), "加载更早")
@@ -171,6 +186,40 @@ final class DesktopUiParityTests: XCTestCase {
             commandAttachmentsUnsupportedNotice(command: "goal", english: false),
             "/goal 不接受附件，请先移除附件"
         )
+        XCTAssertEqual(autoRefreshLabel(english: false), "自动刷新")
+        XCTAssertEqual(autoRefreshLabel(english: true), "Auto refresh")
+        XCTAssertEqual(autoRefreshEnableLabel(english: false), "开启自动刷新")
+        XCTAssertEqual(autoRefreshDisableLabel(english: false), "关闭自动刷新")
+        XCTAssertEqual(queueImageLabel(english: false), "排队消息图片")
+        XCTAssertEqual(queueFileLabel(name: "notes.md", english: false), "排队文件 notes.md")
+        XCTAssertEqual(fileSizeText(512), "512 B")
+        XCTAssertEqual(fileSizeText(1536), "1.5 KB")
+        XCTAssertEqual(fileSizeText(1024), "1 KB")
+        XCTAssertEqual(claimedComposerHint(text: "/goal", hasGoal: false, english: false), "输入目标，智能体将持续执行")
+        XCTAssertEqual(claimedComposerHint(text: "/goal ", hasGoal: false, english: false), "输入目标，智能体将持续执行")
+        XCTAssertEqual(
+            claimedComposerHint(text: "/goal", hasGoal: true, english: false),
+            "当前目标进行中。可输入 edit 修改 / pause 暂停 / resume 继续 / clear 清除"
+        )
+        XCTAssertEqual(claimedComposerHint(text: "/plan ", hasGoal: false, english: false), "描述你的任务以生成计划")
+        XCTAssertNil(claimedComposerHint(text: "/goal 发布", hasGoal: false, english: false))
+        XCTAssertNil(claimedComposerHint(text: "hello", hasGoal: false, english: false))
+        XCTAssertEqual(
+            claimedComposerHint(
+                text: "/目标 ",
+                catalog: [jsonObject([
+                    "name": .string("目标"),
+                    "definitionId": .string("@deepseek-ai/dsh-command-goal"),
+                ])],
+                hasGoal: false,
+                english: false
+            ),
+            "输入目标，智能体将持续执行"
+        )
+        XCTAssertEqual(fileTreeFolderSymbol(expanded: false), "folder")
+        XCTAssertEqual(fileTreeFolderSymbol(expanded: true), "folder.fill")
+        XCTAssertFalse(autoRefreshLabel(english: false).contains("Host"))
+        XCTAssertFalse(claimedComposerHint(text: "/goal", hasGoal: false, english: false)!.contains("Host"))
     }
 
     func testConversationHeaderTitleMatchesDrawerUntitledRules() {
