@@ -117,6 +117,9 @@ final class AppModel: ObservableObject {
     @Published var chat: ChatState?
     @Published var approvals: [Approval] = []
     @Published var userQuestions: [UserQuestion] = []
+    @Published var questionDrafts: [String: [String: QuestionDraft]] = [:]
+    @Published var questionPageIndex: [String: Int] = [:]
+    private let questionStore = UserQuestionStore()
     @Published var ops: Set<String> = []
     @Published var catalog: ModelCatalog?
     @Published var modelChoice: ModelChoice?
@@ -295,8 +298,7 @@ final class AppModel: ObservableObject {
         firstPrompt = nil
         firstPromptSessionId = nil
         approvals = []
-        userQuestions = []
-        hiddenQuestionId = nil
+        resetQuestionStore(clearDrafts: true)
         sessionPermission = nil
         goalActivation = nil
         pendingAttaches = []
@@ -1153,8 +1155,11 @@ final class AppModel: ObservableObject {
                 guard result["accepted"].bool() == true else {
                     throw PocketError(code: "rejected", message: L.t("提问已变化或答案未被接受", "The question changed or the answers were not accepted"))
                 }
-                userQuestions.removeAll { $0.callId == callId || $0.questionId == callId }
-                if hiddenQuestionId == callId { hiddenQuestionId = nil }
+                if self.client === client {
+                    questionStore.submitted(sessionId: sessionId, callId: callId)
+                    if hiddenQuestionId == callId { hiddenQuestionId = nil }
+                    publishUserQuestions()
+                }
                 onResult(true)
             } catch {
                 emit(error.localizedDescription)
@@ -1993,6 +1998,7 @@ final class AppModel: ObservableObject {
                     emit(compatibilityError(issue).message)
                 }
                 self.client = client
+                resetQuestionStore(clearDrafts: false)
                 ops = hello.ops
                 routes[profile.id] = client.route ?? hello.route
                 status[profile.id] = .online
@@ -2408,6 +2414,34 @@ final class AppModel: ObservableObject {
         )
     }
 
+    private func resetQuestionStore(clearDrafts: Bool) {
+        questionStore.clear()
+        userQuestions = []
+        if clearDrafts {
+            questionDrafts = [:]
+            questionPageIndex = [:]
+            hiddenQuestionId = nil
+        }
+    }
+
+    private func publishUserQuestions() {
+        userQuestions = questionStore.questions()
+        let live = questionStore.retainedQuestionIds()
+        questionDrafts = questionDrafts.filter { live.contains($0.key) }
+        questionPageIndex = questionPageIndex.filter { live.contains($0.key) }
+    }
+
+    private func applyUserQuestionFollow(_ frame: JSONValue) {
+        let type = frame["type"].str()
+        let key = frame["key"].str()
+        guard type == "snapshot" || type == "resume"
+            || (type == "projection" && (key == "userQuestions" || key == "inbox"))
+        else { return }
+        guard let sessionId = chat?.sessionId else { return }
+        questionStore.apply(sessionId: sessionId, frame: frame)
+        publishUserQuestions()
+    }
+
     private func applyFollowProjections(_ frame: JSONValue) {
         let type = frame["type"].str()
         let projection = (type == "snapshot" || type == "resume") ? frame["projections"] : nil
@@ -2483,6 +2517,7 @@ final class AppModel: ObservableObject {
                     break
                 }
                 applyFollowProjections(frame)
+                applyUserQuestionFollow(frame)
                 transcriptPublisher.flush()
                 if frameType == "snapshot" || frameType == "resume",
                    let sessionId = chat?.sessionId {
@@ -2579,17 +2614,20 @@ final class AppModel: ObservableObject {
                 ConnectionKeeper.shared.notifyTask(event, sessionTitle: title)
             }
         case "user-question":
-            if let q = UserQuestion.parse(m) {
-                userQuestions = userQuestions.filter { $0.questionId != q.questionId } + [q]
-            }
+            questionStore.offer(m)
+            publishUserQuestions()
         case "user-question.closed":
-            userQuestions.removeAll { $0.questionId == m["questionId"].str() }
-            if userQuestionIsCollapsed(
-                questionId: m["questionId"].str() ?? "",
-                callId: m["callId"].str(),
-                hiddenId: hiddenQuestionId
-            ) {
-                hiddenQuestionId = nil
+            if let id = m["questionId"].str() {
+                questionStore.close(questionId: id, sessionId: m["sessionId"].str())
+                publishUserQuestions()
+                let stillOpen = userQuestions.contains { $0.questionId == id || $0.callId == id }
+                if !stillOpen, userQuestionIsCollapsed(
+                    questionId: id,
+                    callId: m["callId"].str(),
+                    hiddenId: hiddenQuestionId
+                ) {
+                    hiddenQuestionId = nil
+                }
             }
         case "goal.activation":
             if m["sessionId"].str() == chat?.sessionId {

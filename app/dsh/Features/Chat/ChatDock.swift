@@ -2,25 +2,6 @@ import SwiftUI
 import UIKit
 import DSHProtocol
 
-struct QuestionDraft: Equatable {
-    var selected: Set<String> = []
-    var custom: String = ""
-    var answered: Bool { !selected.isEmpty || !custom.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-}
-
-func questionAnswers(_ q: UserQuestion, drafts: [String: QuestionDraft]) -> [JSONValue] {
-    q.questions.map { item in
-        let draft = drafts[item.id] ?? QuestionDraft()
-        var object: [String: JSONValue] = [
-            "id": .string(item.id),
-            "selected": .array(draft.selected.map { .string($0) }),
-        ]
-        let custom = draft.custom.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !custom.isEmpty { object["custom"] = .string(custom) }
-        return .object(object)
-    }
-}
-
 func approvalCommand(_ approval: Approval, items: [Item]) -> String? {
     items.compactMap { item -> Item.Tool? in
         if case .tool(let tool) = item { return tool }
@@ -31,11 +12,11 @@ func approvalCommand(_ approval: Approval, items: [Item]) -> String? {
 struct UserQuestionCard: View {
     let question: UserQuestion
     @Binding var drafts: [String: QuestionDraft]
+    @Binding var index: Int
     var enabled: Bool = true
     var onDismiss: () -> Void
     var onAnswer: (String, [JSONValue], @escaping (Bool) -> Void) -> Void
 
-    @State private var index = 0
     @State private var busy = false
     @State private var err: String?
 
@@ -43,11 +24,17 @@ struct UserQuestionCard: View {
         if question.questions.isEmpty { EmptyView() } else { card }
     }
 
-    private var item: UserQuestionItem {
-        question.questions[min(max(index, 0), question.questions.count - 1)]
+    private var currentIndex: Int {
+        coerceQuestionIndex(index, count: question.questions.count)
     }
 
-    private var draft: QuestionDraft { drafts[item.id] ?? QuestionDraft() }
+    private var item: UserQuestionItem {
+        question.questions[currentIndex]
+    }
+
+    private var draft: QuestionDraft { questionDraft(for: item, in: drafts) }
+
+    private var writable: Bool { enabled && !busy }
 
     private var isPlan: Bool {
         question.questions.count == 1 && item.intentKind == "plan-review"
@@ -58,118 +45,185 @@ struct UserQuestionCard: View {
     private var card: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text(isPlan ? L.planReview() : "\(item.header ?? askRowTitle(english: L.en)) · \(index + 1)/\(question.questions.count)")
+                Text(isPlan ? L.planReview() : "\(item.header ?? askRowTitle(english: L.en)) · \(currentIndex + 1)/\(question.questions.count)")
                     .font(.subheadline)
                     .foregroundStyle(T.text2)
                 Spacer()
-                Button(L.t("收起", "Collapse"), action: onDismiss).disabled(busy)
+                Button(questionCollapseLabel(english: L.en), action: onDismiss).disabled(busy)
             }
             .padding(.horizontal, 18)
             .padding(.top, 10)
-            VStack(alignment: .leading, spacing: 8) {
-                Text(item.question).font(.title3).foregroundStyle(T.ink)
-                if let detail = item.detail, !detail.isEmpty {
-                    MarkdownView(source: detail, wrapCode: AppModel.shared.codeWordWrap)
-                }
-                if !isPlan {
-                    ForEach(item.options, id: \.label) { opt in
-                        let selected = draft.selected.contains(opt.label)
-                        Button {
-                            var next = draft
-                            if item.multiSelect {
-                                if selected { next.selected.remove(opt.label) } else { next.selected.insert(opt.label) }
-                            } else {
-                                next.selected = [opt.label]
-                            }
-                            drafts[item.id] = next
-                            err = nil
-                        } label: {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(opt.label).foregroundStyle(T.ink)
-                                    if let description = opt.description {
-                                        Text(description).font(.caption).foregroundStyle(T.text3)
-                                    }
-                                }
-                                Spacer()
-                                if selected { Image(systemName: "checkmark").foregroundStyle(T.accent) }
-                            }
-                            .padding(12)
-                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(selected ? T.accent : T.border, lineWidth: 1))
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(busy)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(item.question).font(.title3).foregroundStyle(T.ink)
+                    if let detail = item.detail, !detail.isEmpty {
+                        MarkdownView(source: detail, wrapCode: AppModel.shared.codeWordWrap)
                     }
-                    TextField(L.typeYourAnswer(), text: Binding(
-                        get: { draft.custom },
-                        set: { drafts[item.id] = QuestionDraft(selected: draft.selected, custom: $0); err = nil }
-                    ), axis: .vertical)
-                    .lineLimit(1...4)
-                    .disabled(busy)
-                    .padding(10)
-                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 1))
+                    if !isPlan {
+                        ForEach(Array(item.options.enumerated()), id: \.offset) { _, opt in
+                            optionRow(opt)
+                        }
+                        TextField(L.typeYourAnswer(), text: Binding(
+                            get: { draft.custom },
+                            set: { value in
+                                drafts[item.id] = QuestionDraft(
+                                    selected: item.multiSelect ? draft.selected : [],
+                                    custom: value,
+                                    skipped: false
+                                )
+                                err = nil
+                            }
+                        ), axis: .vertical)
+                        .lineLimit(1...4)
+                        .disabled(!writable)
+                        .padding(10)
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 1))
+                    }
                 }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 8)
+            }
+            VStack(alignment: .leading, spacing: 8) {
                 if let err { Text(err).font(.caption).foregroundStyle(T.err) }
-                if busy { Text(L.t("正在提交…", "Submitting…")).foregroundStyle(T.text3) }
+                if busy { Text(questionSubmitting(english: L.en)).foregroundStyle(T.text3) }
                 else if question.state == "continued" {
-                    Text(askPendingDetail(english: L.en))
+                    Text(questionWaitContinued(english: L.en))
                         .font(.caption)
                         .foregroundStyle(T.text3)
                 }
                 if isPlan {
                     Button(L.approvePlan()) {
-                        drafts[item.id] = QuestionDraft(selected: [item.approveLabel ?? ""], custom: "")
+                        drafts[item.id] = QuestionDraft(selected: [item.approveLabel ?? ""])
                         submit()
                     }
                     .frame(maxWidth: .infinity, minHeight: 48)
                     .foregroundStyle(T.onPrimary)
                     .background(T.primaryButton, in: RoundedRectangle(cornerRadius: 12))
-                    .disabled(!enabled || busy)
+                    .disabled(!writable)
                     Button(L.t("继续讨论", "Keep discussing"), action: onDismiss)
                         .frame(maxWidth: .infinity, minHeight: 48)
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 1))
                         .disabled(busy)
                 } else {
                     HStack {
-                        if index > 0 {
-                            Button(L.t("上一题", "Previous")) { index -= 1; err = nil }.disabled(busy)
+                        if currentIndex > 0 {
+                            Button(questionPreviousLabel(english: L.en)) {
+                                index = currentIndex - 1
+                                err = nil
+                            }
+                            .disabled(busy)
                         }
-                        Button(L.skip()) {
-                            drafts[item.id] = QuestionDraft()
-                            if index < question.questions.count - 1 { index += 1 } else { submit() }
-                        }
-                        .disabled(busy || (index >= question.questions.count - 1 && !enabled))
+                        Button(L.skip()) { skipCurrent() }
+                            .disabled(!writable)
                         Spacer()
-                        Button(index < question.questions.count - 1 ? L.nextQuestion() : L.t("提交答案", "Submit answers")) {
-                            if !draft.answered { err = L.completeQuestionFirst() }
-                            else if index < question.questions.count - 1 { index += 1; err = nil }
-                            else { submit() }
+                        Button(currentIndex < question.questions.count - 1
+                               ? L.nextQuestion()
+                               : questionSubmitAnswersLabel(english: L.en)) {
+                            continueOrSubmit()
                         }
-                        .disabled(busy || (index >= question.questions.count - 1 && !enabled))
+                        .disabled(!writable || !draft.completed)
                     }
                 }
             }
-            .padding(18)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 8)
         }
         .frame(maxHeight: 420)
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(T.border, lineWidth: 1))
         .padding(.horizontal, 14)
         .padding(.vertical, 6)
         .onChange(of: question.questionId) { _ in
-            index = 0
             busy = false
             err = nil
         }
+        .onChange(of: question.state) { state in
+            if busy, state == "continued" {
+                busy = false
+                err = questionResubmitHint(english: L.en)
+            }
+        }
+    }
+
+    private func optionRow(_ opt: UserQuestionOption) -> some View {
+        let selected = draft.selected.contains(opt.label)
+        let display = parseRecommendedLabel(opt.label)
+        return Button {
+            choose(opt.label)
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(display.label).foregroundStyle(T.ink)
+                    if display.recommended {
+                        Text(questionRecommendedBadge(english: L.en))
+                            .font(.caption)
+                            .foregroundStyle(T.accent)
+                    }
+                    if let description = opt.description, !description.isEmpty {
+                        Text(description).font(.caption).foregroundStyle(T.text3)
+                    }
+                }
+                Spacer()
+                if selected { Image(systemName: "checkmark").foregroundStyle(T.accent) }
+            }
+            .padding(12)
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(selected ? T.accent : T.border, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .disabled(!writable)
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
+    }
+
+    private func choose(_ label: String) {
+        if item.multiSelect {
+            var next = draft
+            if next.selected.contains(label) { next.selected.remove(label) } else { next.selected.insert(label) }
+            next.skipped = false
+            drafts[item.id] = next
+        } else {
+            drafts[item.id] = QuestionDraft(selected: [label])
+            if currentIndex < question.questions.count - 1 {
+                index = currentIndex + 1
+            }
+        }
+        err = nil
+    }
+
+    private func skipCurrent() {
+        drafts[item.id] = QuestionDraft(skipped: true)
+        err = nil
+        if currentIndex < question.questions.count - 1 {
+            index = currentIndex + 1
+        } else {
+            submit()
+        }
+    }
+
+    private func continueOrSubmit() {
+        if currentIndex == question.questions.count - 1 {
+            submit()
+            return
+        }
+        if !draft.completed {
+            err = questionUnansweredError(english: L.en)
+            return
+        }
+        index = currentIndex + 1
+        err = nil
     }
 
     private func submit() {
-        if busy || !enabled { return }
+        if !writable { return }
+        if let missing = firstIncompleteQuestionIndex(question, drafts: drafts) {
+            index = missing
+            err = questionIncompleteError(english: L.en)
+            return
+        }
         busy = true
         err = nil
         onAnswer(question.callId ?? question.questionId, questionAnswers(question, drafts: drafts)) { success in
             if !success {
                 busy = false
-                err = L.t("提交失败，答案已保留，请重试", "Submit failed; answers kept. Try again.")
+                err = questionSubmitFailed(english: L.en)
             }
         }
     }

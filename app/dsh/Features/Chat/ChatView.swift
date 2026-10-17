@@ -22,7 +22,6 @@ struct ChatView: View {
     @StateObject private var commandHost = CommandMenuHost()
     @State private var composerFocus = 0
     @State private var showGoal = false
-    @State private var questionDrafts: [String: QuestionDraft] = [:]
     @State private var showFileImporter = false
     @State private var showSessionFeedback = false
 
@@ -390,8 +389,12 @@ struct ChatView: View {
             UserQuestionCard(
                 question: question,
                 drafts: Binding(
-                    get: { questionDrafts },
-                    set: { questionDrafts = $0 }
+                    get: { model.questionDrafts[question.questionId] ?? [:] },
+                    set: { model.questionDrafts[question.questionId] = $0 }
+                ),
+                index: Binding(
+                    get: { model.questionPageIndex[question.questionId] ?? 0 },
+                    set: { model.questionPageIndex[question.questionId] = $0 }
                 ),
                 enabled: model.isOnline,
                 onDismiss: {
