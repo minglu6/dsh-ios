@@ -1820,17 +1820,17 @@ final class AppModel: ObservableObject {
     }
 
     func setFontSize(_ value: Int) {
-        fontSize = clampFontSize(value, range: 10...22)
+        fontSize = clampFontSize(value, range: themeFontSizeSpec(.text).range)
         AppPrefs.fontSize = fontSize
     }
 
     func setCodeFontSize(_ value: Int) {
-        codeFontSize = clampFontSize(value, range: 10...16)
+        codeFontSize = clampFontSize(value, range: themeFontSizeSpec(.code).range)
         AppPrefs.codeFontSize = codeFontSize
     }
 
     func setTerminalFontSize(_ value: Int) {
-        terminalFontSize = clampFontSize(value, range: 10...20)
+        terminalFontSize = clampFontSize(value, range: themeFontSizeSpec(.terminal).range)
         AppPrefs.terminalFontSize = terminalFontSize
     }
 

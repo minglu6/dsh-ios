@@ -35,7 +35,7 @@ private struct RetryAttemptRow: View {
                 HStack {
                     if active { ProgressView().controlSize(.mini) }
                     Text(summary)
-                        .font(.system(size: CGFloat(AppPrefs.fontSize - 1)))
+                        .font(LocalFonts.text(size: CGFloat(AppPrefs.fontSize - 1)))
                         .foregroundStyle(T.text3)
                     Spacer()
                     Image(systemName: "chevron.down")
@@ -73,7 +73,7 @@ private struct RetryAttemptRow: View {
 
     private func detail(_ label: String, _ value: String) -> some View {
         (Text(label).foregroundColor(T.text2) + Text(value).foregroundColor(T.text3))
-            .font(.system(size: CGFloat(AppPrefs.fontSize - 1)))
+            .font(LocalFonts.text(size: CGFloat(AppPrefs.fontSize - 1)))
     }
 }
 
@@ -86,11 +86,11 @@ struct TurnFailureRow: View {
             Circle().fill(T.err).frame(width: 8, height: 8).padding(.top, 5)
             VStack(alignment: .leading, spacing: 2) {
                 (Text(title).foregroundColor(T.err).fontWeight(.semibold) + Text("  ") + Text(chatFailureMessage(item.message, code: item.code, en: L.en)))
-                    .font(.system(size: CGFloat(AppPrefs.fontSize - 1)))
+                    .font(LocalFonts.text(size: CGFloat(AppPrefs.fontSize - 1)))
                     .foregroundStyle(T.text2)
                 if turnFailureShowsCode(item.code), let code = item.code {
                     Text(code)
-                        .font(.system(size: CGFloat(AppPrefs.fontSize - 1), design: .monospaced))
+                        .font(LocalFonts.code(size: CGFloat(AppPrefs.fontSize - 1)))
                         .foregroundStyle(T.text3)
                 }
             }
@@ -106,11 +106,11 @@ struct TurnMaxTokensRow: View {
             Circle().fill(T.warnBorder).frame(width: 8, height: 8).padding(.top, 5)
             VStack(alignment: .leading, spacing: 2) {
                 Text(maxTokensTitle(english: L.en))
-                    .font(.system(size: CGFloat(AppPrefs.fontSize - 1)))
+                    .font(LocalFonts.text(size: CGFloat(AppPrefs.fontSize - 1)))
                     .fontWeight(.semibold)
                     .foregroundStyle(T.warnText)
                 Text(maxTokensHint(english: L.en))
-                    .font(.system(size: CGFloat(AppPrefs.fontSize - 1)))
+                    .font(LocalFonts.text(size: CGFloat(AppPrefs.fontSize - 1)))
                     .foregroundStyle(T.text2)
             }
         }

@@ -41,8 +41,9 @@ enum TerminalTypeface {
     }
 
     static func resolved(ofSize size: CGFloat) -> Resolved {
-        memo.value(for: Double(size), prepare: registerBundledFontNow, create: {
-            makeResolved(ofSize: size)
+        let family = AppPrefs.terminalFontFamily
+        memo.value(for: Double(size), family: family, prepare: registerBundledFontNow, create: {
+            makeResolved(ofSize: size, family: family)
         })
     }
 
@@ -51,8 +52,8 @@ enum TerminalTypeface {
         CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
     }
 
-    private static func makeResolved(ofSize size: CGFloat) -> Resolved {
-        let uiFont = makeUIFont(ofSize: size)
+    private static func makeResolved(ofSize size: CGFloat, family: String) -> Resolved {
+        let uiFont = makeUIFont(ofSize: size, family: family)
         let cellWidth = CGFloat(TerminalCellLayout.cellWidth(
             glyphWidth: Double("M".size(withAttributes: [.font: uiFont]).width)
         ))
@@ -68,8 +69,9 @@ enum TerminalTypeface {
         )
     }
 
-    private static func makeUIFont(ofSize size: CGFloat) -> UIFont {
-        let primary = UIFont(name: TerminalTypefacePolicy.bundledPostScript, size: size)
+    private static func makeUIFont(ofSize size: CGFloat, family: String) -> UIFont {
+        let primary = preferredTerminalFont(family, size: size)
+            ?? UIFont(name: TerminalTypefacePolicy.bundledPostScript, size: size)
             ?? UIFont(name: TerminalTypefacePolicy.bundledFamily, size: size)
             ?? UIFont.monospacedSystemFont(ofSize: size, weight: .regular)
         let cascade = TerminalTypefacePolicy.cascadeFamilies.compactMap { name -> CTFontDescriptor? in
@@ -79,5 +81,22 @@ enum TerminalTypeface {
             UIFontDescriptor.AttributeName(rawValue: kCTFontCascadeListAttribute as String): cascade,
         ]
         return UIFont(descriptor: primary.fontDescriptor.addingAttributes(attributes), size: size)
+    }
+
+    private static func preferredTerminalFont(_ value: String, size: CGFloat) -> UIFont? {
+        for entry in value.split(separator: ",") {
+            let name = entry.trimmingCharacters(in: .whitespacesAndNewlines)
+                .trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+            if name.isEmpty { continue }
+            switch name.lowercased() {
+            case "monospace", "ui-monospace":
+                return UIFont.monospacedSystemFont(ofSize: size, weight: .regular)
+            case "menlo":
+                if let font = UIFont(name: "Menlo-Regular", size: size) { return font }
+            default:
+                if let font = UIFont(name: name, size: size) { return font }
+            }
+        }
+        return nil
     }
 }

@@ -56,12 +56,12 @@ public enum TerminalCellLayout {
     }
 }
 
-/// One prepared value per font size, plus a process-wide prepare hook (font registration).
-/// `create` / `prepare` run while the lock is held so a size is materialized at most once.
+/// One prepared value per font size + family, plus a process-wide prepare hook (font registration).
+/// `create` / `prepare` run while the lock is held so a size/family pair is materialized at most once.
 public final class TerminalTypefaceMemo<Value>: @unchecked Sendable {
     private let lock = NSLock()
     private var prepared = false
-    private var storage: [Double: Value] = [:]
+    private var storage: [String: Value] = [:]
 
     public init() {}
 
@@ -74,15 +74,20 @@ public final class TerminalTypefaceMemo<Value>: @unchecked Sendable {
     }
 
     public func value(for size: Double, prepare: () -> Void, create: () -> Value) -> Value {
+        value(for: size, family: "", prepare: prepare, create: create)
+    }
+
+    public func value(for size: Double, family: String, prepare: () -> Void, create: () -> Value) -> Value {
         lock.lock()
         defer { lock.unlock() }
         if !prepared {
             prepare()
             prepared = true
         }
-        if let existing = storage[size] { return existing }
+        let token = "\(family)\u{1e}\(size)"
+        if let existing = storage[token] { return existing }
         let created = create()
-        storage[size] = created
+        storage[token] = created
         return created
     }
 }

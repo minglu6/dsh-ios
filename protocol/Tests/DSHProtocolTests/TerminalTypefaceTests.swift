@@ -118,4 +118,12 @@ final class TerminalTypefaceTests: XCTestCase {
         XCTAssertEqual(prepares, 1)
         XCTAssertEqual(creates, 1)
     }
+
+    func testMemoSeparatesFamilyFromSize() {
+        let memo = TerminalTypefaceMemo<String>()
+        XCTAssertEqual(memo.value(for: 13, family: "", prepare: {}, create: { "meslo" }), "meslo")
+        XCTAssertEqual(memo.value(for: 13, family: "Menlo", prepare: {}, create: { "menlo" }), "menlo")
+        XCTAssertEqual(memo.value(for: 13, family: "", prepare: {}, create: { "other" }), "meslo")
+        XCTAssertEqual(memo.value(for: 13, prepare: {}, create: { "still-meslo" }), "meslo")
+    }
 }

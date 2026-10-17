@@ -89,6 +89,50 @@ final class DesktopUiParityTests: XCTestCase {
         )
         XCTAssertEqual(conversationFontSizeLabel(14), "14 px")
         XCTAssertEqual(ConversationFontSize.range, 10...22)
+        XCTAssertEqual(themeFontSizeSpec(.text).range, 10...22)
+        XCTAssertEqual(themeFontSizeSpec(.text).default, 14)
+        XCTAssertEqual(themeFontSizeSpec(.code).range, 10...16)
+        XCTAssertEqual(themeFontSizeSpec(.code).default, 11)
+        XCTAssertEqual(themeFontSizeSpec(.terminal).range, 10...20)
+        XCTAssertEqual(themeFontSizeSpec(.terminal).default, 13)
+        XCTAssertTrue(themeFontSettingsStartCollapsed)
+        XCTAssertEqual(themeFontFamilyMaxLength, 200)
+        XCTAssertEqual(themeFontSizeUnit, "px")
+        XCTAssertEqual(
+            ThemeFontExpandedRow.allCases.map(\.rawValue),
+            ["textFamily", "codeFamily", "codeSize", "terminalFamily", "terminalSize"]
+        )
+        XCTAssertFalse(themeFontSizeCanDecrease(.text, value: 10))
+        XCTAssertTrue(themeFontSizeCanIncrease(.text, value: 10))
+        XCTAssertFalse(themeFontSizeCanIncrease(.text, value: 22))
+        XCTAssertEqual(themeFontSizeStepped(.code, value: 11, delta: 1), 12)
+        XCTAssertEqual(themeFontSizeStepped(.code, value: 16, delta: 1), 16)
+        XCTAssertEqual(themeFontSizeStepped(.terminal, value: 10, delta: -1), 10)
+        XCTAssertEqual(themeFontSizeTitle(.text, english: false), "字号大小")
+        XCTAssertEqual(themeFontSizeDescription(.text, english: false), "仅影响会话内容的字号")
+        XCTAssertEqual(themeFontSizeStepLabel(.text, increase: true, english: false), "增大字号")
+        XCTAssertEqual(themeFontSizeStepLabel(.text, increase: false, english: false), "减小字号")
+        XCTAssertEqual(themeFontSizeTitle(.code, english: false), "代码字号")
+        XCTAssertEqual(themeFontSizeDescription(.code, english: false), "用于代码块、行内代码与工具输出")
+        XCTAssertEqual(themeFontSizeTitle(.terminal, english: false), "终端字号")
+        XCTAssertEqual(themeFontSizeDescription(.terminal, english: false), "用于侧栏终端")
+        XCTAssertEqual(themeFontFamilyTitle(.text, english: false), "正文字体")
+        XCTAssertEqual(
+            themeFontFamilyDescription(.text, english: false),
+            "用于界面与会话正文。多个字体用逗号分隔，留空使用默认字体"
+        )
+        XCTAssertEqual(themeFontFamilyTitle(.code, english: false), "代码字体")
+        XCTAssertEqual(themeFontFamilyTitle(.terminal, english: false), "终端字体")
+        XCTAssertEqual(themeFontFamilyPlaceholder(english: false), "默认")
+        XCTAssertEqual(themeFontFamilyPlaceholder(english: true), "Default")
+        XCTAssertEqual(themeFontSettingsMoreLabel(english: false), "更多字体设置")
+        XCTAssertEqual(themeFontSettingsMoreLabel(english: true), "More font settings")
+        XCTAssertEqual(themeFontFamilyFieldTag(.text), "textFontFamily")
+        XCTAssertEqual(themeFontFamilyDraft(String(repeating: "a", count: 201)).count, 200)
+        XCTAssertEqual(themeFontSizeTitle(.text, english: true), "Font size")
+        XCTAssertEqual(themeFontFamilyDescription(.terminal, english: true), "Used for the sidebar terminal. Separate fonts with commas; leave empty for the default")
+        XCTAssertEqual(themeFontSizeStepLabel(.code, increase: true, english: true), "Increase code font size")
+        XCTAssertEqual(themeFontSizeStepLabel(.terminal, increase: false, english: true), "Decrease terminal font size")
     }
 
     func testPermissionChipUsesWorkspaceWriteCopy() {

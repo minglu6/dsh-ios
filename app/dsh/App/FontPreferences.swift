@@ -22,8 +22,12 @@ func normalizeFontFamily(_ value: String) -> String {
 }
 
 enum LocalFonts {
-    static func text() -> Font { resolve(AppPrefs.textFontFamily, monospace: false, size: CGFloat(AppPrefs.fontSize)) }
-    static func code() -> Font { resolve(AppPrefs.codeFontFamily, monospace: true, size: CGFloat(AppPrefs.codeFontSize)) }
+    static func text(size: CGFloat? = nil) -> Font {
+        resolve(AppPrefs.textFontFamily, monospace: false, size: size ?? CGFloat(AppPrefs.fontSize))
+    }
+    static func code(size: CGFloat? = nil) -> Font {
+        resolve(AppPrefs.codeFontFamily, monospace: true, size: size ?? CGFloat(AppPrefs.codeFontSize))
+    }
     static func terminal() -> Font { resolve(AppPrefs.terminalFontFamily, monospace: true, size: CGFloat(AppPrefs.terminalFontSize)) }
 
     static func resolve(_ value: String, monospace: Bool, size: CGFloat) -> Font {
