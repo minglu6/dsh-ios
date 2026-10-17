@@ -70,10 +70,15 @@ struct SessionDrawer: View {
                     .font(.system(size: 13))
                     .foregroundStyle(T.text3)
                 Spacer()
-                Button { viewOptions = true } label: {
-                    Image(systemName: D.sliders).foregroundStyle(T.text2)
+                Button { viewOptions.toggle() } label: {
+                    OfficialGlyph(kind: .slidersTwo, size: 16, color: T.text2)
+                        .frame(width: 28, height: 28)
                 }
                 .accessibilityLabel(L.viewOptions())
+                .accessibilityIdentifier("viewOptionsButton")
+                .popover(isPresented: $viewOptions, arrowEdge: .top) {
+                    ViewOptionsMenu(model: model)
+                }
                 if visibleOps.contains("workspace.create") {
                     Button { addWorkspace = true } label: {
                         Image(systemName: D.projectAdd).foregroundStyle(T.text2)
@@ -144,17 +149,6 @@ struct SessionDrawer: View {
         }
         .onChange(of: model.isOnline) { _ in rememberOps() }
         .onChange(of: model.ops) { _ in rememberOps() }
-        .confirmationDialog(L.viewOptions(), isPresented: $viewOptions, titleVisibility: .visible) {
-            Button(L.groupByWorkspace()) { model.setSessionGroupBy(.workspace) }
-            Button(L.groupByWorkspaceTree()) { model.setSessionGroupBy(.workspaceTree) }
-            Button(L.groupByFlat()) { model.setSessionGroupBy(.flat) }
-            Button(L.orderByManual()) { model.setSessionOrderBy(.manual) }
-            Button(L.orderByUpdated()) { model.setSessionOrderBy(.updated) }
-            Button(L.hideArchived()) { model.setArchivedFilter(.hide) }
-            Button(L.showArchived()) { model.setArchivedFilter(.show) }
-            Button(L.onlyArchived()) { model.setArchivedFilter(.only) }
-            Button(L.cancel(), role: .cancel) {}
-        }
         .sheet(isPresented: $addWorkspace) {
             WorkspaceDirectorySheet(model: model, onDismiss: { addWorkspace = false })
         }
@@ -338,61 +332,75 @@ struct SessionDrawer: View {
     private func sessionRow(_ session: SessionSummary, groupKey: String?) -> some View {
         let selected = model.chat?.sessionId == session.sessionId
         let archived = model.isArchived(session.sessionId)
-        return Button {
-            if archived { restoreId = session.sessionId }
-            else {
-                if searching {
-                    query = ""
-                    model.clearSessionSearch()
-                }
-                model.openSession(session.sessionId)
-            }
-        } label: {
-            HStack(spacing: 10) {
-                leading(session)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(drawerSessionTitle(
-                        session,
-                        current: model.chat?.sessionId,
-                        newSession: L.newSession(),
-                        untitled: L.untitledSession()
-                    ))
-                        .foregroundStyle(archived ? T.text3 : T.ink)
-                        .lineLimit(1)
-                    if searching, searchResultShowsWorkspaceContext {
-                        Text(workspaceContext(for: session.sessionId))
-                            .font(.caption)
-                            .foregroundStyle(T.text3)
-                            .lineLimit(1)
+        let trailing = searching ? nil : sessionRowTrailingLabel(
+            blank: session.blank,
+            pending: sessionPendingInteraction(
+                awaitingApproval: model.approvals.contains { $0.sessionId == session.sessionId },
+                planReview: model.userQuestions.contains { question in
+                    question.sessionId == session.sessionId
+                        && question.questions.contains { $0.intentKind == "plan-review" }
+                },
+                awaitingAnswer: model.userQuestions.contains { $0.sessionId == session.sessionId }
+            ),
+            updatedAt: session.updatedAt,
+            now: now,
+            english: L.en
+        )
+        return HStack(spacing: 0) {
+            Button {
+                if archived { restoreId = session.sessionId }
+                else {
+                    if searching {
+                        query = ""
+                        model.clearSessionSearch()
                     }
-                    if let snippet = session.searchSnippet, searching {
-                        Text(snippet).font(.caption).foregroundStyle(T.accent).lineLimit(2)
-                    } else if !searching, let trailing = sessionRowTrailingLabel(
-                        blank: session.blank,
-                        pending: sessionPendingInteraction(
-                            awaitingApproval: model.approvals.contains { $0.sessionId == session.sessionId },
-                            planReview: model.userQuestions.contains { question in
-                                question.sessionId == session.sessionId
-                                    && question.questions.contains { $0.intentKind == "plan-review" }
-                            },
-                            awaitingAnswer: model.userQuestions.contains { $0.sessionId == session.sessionId }
-                        ),
-                        updatedAt: session.updatedAt,
-                        now: now,
-                        english: L.en
-                    ) {
-                        Text(trailing)
-                            .font(.caption)
-                            .foregroundStyle(T.text3)
+                    model.openSession(session.sessionId)
+                }
+            } label: {
+                HStack(spacing: 10) {
+                    leading(session)
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 8) {
+                            Text(drawerSessionTitle(
+                                session,
+                                current: model.chat?.sessionId,
+                                newSession: L.newSession(),
+                                untitled: L.untitledSession()
+                            ))
+                                .foregroundStyle(archived ? T.text3 : T.ink)
+                                .lineLimit(1)
+                            Spacer(minLength: 0)
+                            if SessionRowChromePolicy.timeSharesTitleLine, let trailing {
+                                Text(trailing)
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(T.text3)
+                                    .lineLimit(1)
+                                    .layoutPriority(1)
+                                    .accessibilityIdentifier("sessionRowTime")
+                            }
+                        }
+                        if searching, searchResultShowsWorkspaceContext {
+                            Text(workspaceContext(for: session.sessionId))
+                                .font(.caption)
+                                .foregroundStyle(T.text3)
+                                .lineLimit(1)
+                        }
+                        if let snippet = session.searchSnippet, searching {
+                            Text(snippet).font(.caption).foregroundStyle(T.text2).lineLimit(2)
+                        }
                     }
                 }
-                Spacer()
+                .padding(.leading, 12)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(selected ? T.sidebarActiveAccent : Color.clear, in: RoundedRectangle(cornerRadius: 10))
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+            sessionRowActions(session, archived: archived)
+                .padding(.trailing, 8)
         }
+        .background(selected ? T.sidebarActiveAccent : Color.clear, in: RoundedRectangle(cornerRadius: 10))
+        .accessibilityIdentifier("sessionRow.\(session.sessionId)")
         .padding(.horizontal, 8)
         .onDrag {
             draggingSession = session.sessionId
@@ -492,7 +500,7 @@ struct SessionDrawer: View {
             }
             if visibleOps.contains("schedule.catalog") {
                 panel(L.scheduleNav(), .schedule) {
-                    Image(systemName: D.clock)
+                    OfficialGlyph(kind: .clockOutline, size: 16, color: T.ink)
                 }
             }
         }
@@ -517,32 +525,80 @@ struct SessionDrawer: View {
         .disabled(!model.isOnline)
     }
 
-    private var footer: some View {
-        VStack(spacing: 0) {
-            if sidebarFooterActionAboveSettings {
-                footerPeerDevice
-                footerSettings
-            } else {
-                footerSettings
-                footerPeerDevice
+    @ViewBuilder
+    private func sessionRowActions(_ session: SessionSummary, archived: Bool) -> some View {
+        HStack(spacing: 0) {
+            if !archived, visibleOps.contains("workspace.pinSession") {
+                Button {
+                    model.pin(session)
+                } label: {
+                    OfficialGlyph(
+                        kind: model.pinnedIds.contains(session.sessionId) ? .pinFill : .pinOutline,
+                        size: 14,
+                        color: T.text2
+                    )
+                    .frame(width: 28, height: 28)
+                }
+                .disabled(!model.isOnline)
+                .accessibilityLabel(model.pinnedIds.contains(session.sessionId) ? L.unpinSession() : L.pinSession())
             }
+            if visibleOps.contains("workspace.archiveSession") {
+                Button {
+                    if archived { model.unarchive(session.sessionId) }
+                    else { model.archive(session) }
+                } label: {
+                    OfficialGlyph(kind: .archiveOutline, size: 14, color: T.text2)
+                        .frame(width: 28, height: 28)
+                }
+                .disabled(!model.isOnline)
+                .accessibilityLabel(archived ? L.unarchiveSession() : L.archiveSession())
+            }
+            Menu {
+                if visibleOps.contains("sessions.rename") {
+                    Button(L.rename()) {
+                        renameTitle = session.title ?? ""
+                        renameSession = session
+                    }
+                    .disabled(!model.isOnline)
+                }
+                if visibleOps.contains("sessions.fork") {
+                    Button(L.fork()) { model.fork(session) }
+                        .disabled(!model.isOnline)
+                }
+                Button(L.copySessionId()) {
+                    UIPasteboard.general.string = session.sessionId
+                    model.showToast(L.sessionIdCopied())
+                }
+            } label: {
+                OfficialGlyph(kind: .ellipsis, size: 14, color: T.text2)
+                    .frame(width: 28, height: 28)
+            }
+            .accessibilityLabel(L.moreActions())
         }
+        .accessibilityIdentifier("sessionRowActions")
+    }
+
+    private var footer: some View {
+        HStack(spacing: CGFloat(sidebarSettingsTriggerGapPoints)) {
+            footerSettings
+            footerPeerDevice
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
         .background(T.surface)
     }
 
     private var footerPeerDevice: some View {
         Button { model.push(.connections) } label: {
-            HStack {
-                Circle().fill(dotColor).frame(width: 8, height: 8)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(model.activeProfile?.name ?? L.notConnected()).foregroundStyle(T.ink)
-                    Text(footerSubtitle).font(.caption).foregroundStyle(T.text3)
-                }
-                Spacer()
-                Image(systemName: "chevron.right").font(.caption).foregroundStyle(T.text3)
-            }
-            .padding(12)
+            Circle()
+                .fill(dotColor)
+                .frame(width: 8, height: 8)
+                .frame(
+                    width: CGFloat(sidebarFooterActionButtonPoints),
+                    height: CGFloat(sidebarFooterActionButtonPoints)
+                )
         }
+        .accessibilityLabel(footerDeviceAria)
         .accessibilityIdentifier("drawerPeerDeviceRow")
     }
 
@@ -551,13 +607,25 @@ struct SessionDrawer: View {
             model.push(.settings)
             model.showDrawer = false
         } label: {
-            Label(L.settings(), systemImage: D.gear)
-                .foregroundStyle(T.ink)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
+            HStack(spacing: CGFloat(sidebarSettingsTriggerGapPoints)) {
+                Image(systemName: D.gear)
+                    .font(.system(size: CGFloat(sidebarSettingsTriggerIconSizePoints)))
+                Text(L.settings())
+                    .font(.system(size: CGFloat(sidebarSettingsTriggerFontSizePoints)))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(T.ink)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.leading, 8)
+            .padding(.trailing, 10)
+            .frame(minHeight: CGFloat(sidebarSettingsTriggerHeightPoints))
         }
         .accessibilityIdentifier("drawerSettingsRow")
+    }
+
+    private var footerDeviceAria: String {
+        let name = model.activeProfile?.name ?? L.notConnected()
+        return "\(name) · \(footerSubtitle)"
     }
 
     private var dotColor: Color {
@@ -596,5 +664,97 @@ private struct SessionDropDelegate: DropDelegate {
         model.moveWorkspaceSession(workspaceId: workspaceId, sessionId: source, beforeSessionId: target.sessionId)
         dragging = nil
         return true
+    }
+}
+
+/// Desktop `ui-workspace` `ViewOptionsMenu`: grouped popover, not a system ActionSheet.
+struct ViewOptionsMenu: View {
+    @ObservedObject var model: AppModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            section(.groupBy)
+            Divider()
+            section(.orderBy)
+            Divider()
+            section(.filter)
+        }
+        .frame(minWidth: 220)
+        .padding(.vertical, 6)
+        .background(T.surface)
+        .accessibilityIdentifier("viewOptionsMenu")
+    }
+
+    private func section(_ section: ViewOptionsSection) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(ViewOptionsMenuPolicy.title(section, english: L.en))
+                .font(.system(size: 12))
+                .foregroundStyle(T.text3)
+                .padding(.horizontal, 12)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
+            ForEach(ViewOptionsMenuPolicy.rows(in: section), id: \.self) { row in
+                Button {
+                    apply(row)
+                } label: {
+                    HStack(spacing: 8) {
+                        leadingIcon(row)
+                            .frame(width: 16, height: 16)
+                        Text(ViewOptionsMenuPolicy.label(row, english: L.en))
+                            .font(.system(size: 14))
+                            .foregroundStyle(T.ink)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                        Spacer(minLength: 8)
+                        if selected(row) {
+                            Text("✓")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(T.ink)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .frame(minHeight: 34)
+                    .background(selected(row) ? T.fill : Color.clear)
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(selected(row) ? [.isSelected] : [])
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func leadingIcon(_ row: ViewOptionsRow) -> some View {
+        switch row {
+        case .groupWorkspace: OfficialGlyph(kind: .folderClose, size: 14, color: T.ink)
+        case .groupWorkspaceTree: OfficialGlyph(kind: .workspaceTree, size: 14, color: T.ink)
+        case .groupFlat: OfficialGlyph(kind: .flatList, size: 14, color: T.ink)
+        default: Color.clear
+        }
+    }
+
+    private func selected(_ row: ViewOptionsRow) -> Bool {
+        switch row {
+        case .groupWorkspace: return model.sessionGroupBy == .workspace
+        case .groupWorkspaceTree: return model.sessionGroupBy == .workspaceTree
+        case .groupFlat: return model.sessionGroupBy == .flat
+        case .orderManual: return model.sessionOrderBy == .manual
+        case .orderUpdated: return model.sessionOrderBy == .updated
+        case .filterHide: return model.archivedFilter == .hide
+        case .filterShow: return model.archivedFilter == .show
+        case .filterOnly: return model.archivedFilter == .only
+        }
+    }
+
+    private func apply(_ row: ViewOptionsRow) {
+        switch row {
+        case .groupWorkspace: model.setSessionGroupBy(.workspace)
+        case .groupWorkspaceTree: model.setSessionGroupBy(.workspaceTree)
+        case .groupFlat: model.setSessionGroupBy(.flat)
+        case .orderManual: model.setSessionOrderBy(.manual)
+        case .orderUpdated: model.setSessionOrderBy(.updated)
+        case .filterHide: model.setArchivedFilter(.hide)
+        case .filterShow: model.setArchivedFilter(.show)
+        case .filterOnly: model.setArchivedFilter(.only)
+        }
     }
 }

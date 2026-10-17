@@ -118,6 +118,7 @@ struct RootView: View {
             ConnectionsView(model: model)
         } else {
             emptyChat
+                .accessibilityIdentifier("landingHero")
         }
     }
 

@@ -23,14 +23,21 @@ enum ArchivedFilter: String, Codable { case hide, show, only }
 
 final class ThemeState: ObservableObject {
     @Published var dark = false
+    private var lastSystemDark = false
     var colors: DswColors { dark ? .dark : .light }
 
     func resolve(appearance: Appearance, systemDark: Bool) {
+        lastSystemDark = systemDark
         switch appearance {
         case .dark: dark = true
         case .light: dark = false
         case .system: dark = systemDark
         }
+    }
+
+    /// Apply a local appearance tap without waiting for a SwiftUI `onChange` cycle.
+    func applyAppearance(_ appearance: Appearance) {
+        resolve(appearance: appearance, systemDark: lastSystemDark)
     }
 }
 

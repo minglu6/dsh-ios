@@ -53,16 +53,24 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertEqual(increasedForkTitle("a(1)(2)"), "a(1)(3)")
     }
 
-    func testStartPanelMirrorsDesktopTwoColoredEntries() {
+    func testStartPanelMirrorsDesktopGuideThenInspector() {
         XCTAssertEqual(
             StartPanelPolicy.entries(files: true, terminal: true),
-            [.workspaceFiles, .newTerminal]
+            [.workspaceFiles, .newTerminal, .browser, .sessionInspector]
         )
-        XCTAssertEqual(StartPanelPolicy.entries(files: true, terminal: false), [.workspaceFiles])
-        XCTAssertEqual(StartPanelPolicy.entries(files: false, terminal: true), [.newTerminal])
-        XCTAssertTrue(StartPanelPolicy.entries(files: false, terminal: false).isEmpty)
-        XCTAssertFalse(StartPanelPolicy.includesBrowser)
-        XCTAssertFalse(StartPanelPolicy.includesSessionInspector)
+        XCTAssertEqual(
+            StartPanelPolicy.entries(files: true, terminal: false, browser: false, inspector: false),
+            [.workspaceFiles]
+        )
+        XCTAssertEqual(
+            StartPanelPolicy.entries(files: false, terminal: true, browser: false, inspector: false),
+            [.newTerminal]
+        )
+        XCTAssertTrue(StartPanelPolicy.entries(files: false, terminal: false, browser: false, inspector: false).isEmpty)
+        XCTAssertTrue(StartPanelPolicy.includesBrowser)
+        XCTAssertTrue(StartPanelPolicy.includesSessionInspector)
+        XCTAssertFalse(StartPanelPolicy.desktopGuideIncludesSessionInspector)
+        XCTAssertEqual(DesktopSidebarInventory.rightGuideCards.map(\.id), ["workspace", "new", "browser"])
         XCTAssertEqual(StartPanelPolicy.desktopShortcut(.workspaceFiles), "⌘P")
         XCTAssertNil(StartPanelPolicy.desktopShortcut(.newTerminal))
         XCTAssertNil(StartPanelPolicy.shortcut(.workspaceFiles))
@@ -183,9 +191,14 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertEqual(permissionLabel(value: "workspace-write"), "工作区内修改")
     }
 
-    func testDesktopDoesNotExposeBrowserOrInspectorOnStart() {
-        XCTAssertFalse(StartPanelPolicy.includesBrowser)
-        XCTAssertFalse(StartPanelPolicy.includesSessionInspector)
+    func testDesktopGuideHasBrowserButNotSessionInspector() {
+        XCTAssertTrue(DesktopSidebarInventory.desktopGuideIncludesBrowser)
+        XCTAssertFalse(DesktopSidebarInventory.desktopGuideIncludesSessionInspector)
+        XCTAssertEqual(ViewOptionsMenuPolicy.label(.groupWorkspace, english: true), "WorkSpace")
+        XCTAssertEqual(ViewOptionsMenuPolicy.label(.groupFlat, english: false), "单列表")
+        XCTAssertEqual(SchedulePagePolicy.headerNewLabel(english: false), "新建")
+        XCTAssertFalse(SchedulePagePolicy.showsUnofficialRefresh)
+        XCTAssertTrue(SessionRowChromePolicy.timeSharesTitleLine)
     }
 
     func testConversationHeaderHasNoOverflowMenu() {
@@ -195,7 +208,8 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertFalse(conversationHeaderShowsTimestamp)
         XCTAssertFalse(settingsIncludesPhoneConnection)
         XCTAssertTrue(phoneConnectionLivesInDrawerFooter)
-        XCTAssertTrue(sidebarFooterActionAboveSettings)
+        XCTAssertFalse(sidebarFooterActionAboveSettings)
+        XCTAssertTrue(sidebarFooterActionSharesSettingsRow)
     }
 
     func testGeneralSettingsCopyMatchesDesktopLocale() {
@@ -406,7 +420,8 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertEqual(planChipLabel(english: false), "计划")
         XCTAssertEqual(planChipAria(english: false), "计划模式已开启，按下关闭")
         XCTAssertTrue(planChipLivesInComposerModesRow)
-        XCTAssertTrue(sidebarFooterActionAboveSettings)
+        XCTAssertFalse(sidebarFooterActionAboveSettings)
+        XCTAssertTrue(sidebarFooterActionSharesSettingsRow)
         XCTAssertEqual(composerCommandsAria(english: false), "添加文件或调用指令")
         XCTAssertEqual(addWorkspaceMenuLabel(english: false), "添加工作区…")
         XCTAssertEqual(pendingAttachmentsLabel(english: false), "待发送附件")

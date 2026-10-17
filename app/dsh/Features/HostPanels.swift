@@ -31,6 +31,15 @@ struct HostPanelView: View {
                     sessionKey: model.activeId ?? model.chat?.sessionId ?? "landing",
                     onDismiss: { model.pop() }
                 )
+            case .inspector:
+                if let sessionId = model.chat?.sessionId {
+                    SessionInspectorPanel(model: model, sessionId: sessionId) { model.pop() }
+                } else {
+                    Color.clear
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(T.bg)
+                        .onAppear { model.pop() }
+                }
             case .settings:
                 Color.clear
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -39,11 +48,12 @@ struct HostPanelView: View {
             }
         }
         .background(T.bg.ignoresSafeArea())
+        .accessibilityIdentifier("hostPanel.\(panel.rawValue)")
     }
 
     private var showsSharedHeader: Bool {
         switch panel {
-        case .files, .terminal, .jobs, .plugins, .schedule, .browser: return false
+        case .files, .terminal, .jobs, .plugins, .schedule, .browser, .inspector: return false
         default: return true
         }
     }
@@ -56,19 +66,23 @@ struct HostPanelView: View {
         case .terminal: return L.terminal()
         case .trajectory: return L.trajectory()
         case .jobs: return L.jobs()
-        case .browser: return L.t("浏览器", "Browser")
+        case .browser: return L.browser()
+        case .inspector: return L.sessionInspector()
         case .settings: return L.settings()
         }
     }
 
 }
 
-/// Desktop Start / Guide body: compass + workspace files + new terminal.
-/// Browser and session inspector are not on this panel.
+/// Desktop Start / Guide: files + terminal + browser (order 10/20/30).
+/// Session inspector is not a desktop Guide card; it is appended on the phone
+/// so the Android diagnostics surface has a visible entry.
 struct StartPanel: View {
     @ObservedObject var model: AppModel
     var onFiles: () -> Void
     var onTerminal: () -> Void
+    var onBrowser: () -> Void
+    var onInspector: () -> Void
     var onDismiss: () -> Void
 
     var body: some View {
@@ -76,17 +90,23 @@ struct StartPanel: View {
             header(L.startPanel()) { onDismiss() }
             ScrollView {
                 VStack(spacing: 14) {
-                    Image(systemName: "safari")
-                        .font(.system(size: 40))
-                        .foregroundStyle(T.caption)
+                    OfficialGlyph(kind: .globe, size: 40, color: T.caption)
                         .padding(.bottom, 16)
-                    ForEach(StartPanelPolicy.entries(files: model.canShowFiles, terminal: model.canShowTerminal), id: \.self) { entry in
+                    ForEach(
+                        StartPanelPolicy.entries(
+                            files: model.canShowFiles,
+                            terminal: model.canShowTerminal,
+                            browser: true,
+                            inspector: model.chat?.sessionId != nil
+                        ),
+                        id: \.self
+                    ) { entry in
                         switch entry {
                         case .workspaceFiles:
                             guideEntry(
                                 L.workspaceFiles(),
                                 L.workspaceFilesHint(),
-                                D.folderFill,
+                                .folderClose,
                                 tint: Color(hex: 0xFFF5B942),
                                 shortcut: StartPanelPolicy.shortcut(entry),
                                 chevron: StartPanelPolicy.showsChevron(entry),
@@ -96,11 +116,31 @@ struct StartPanel: View {
                             guideEntry(
                                 L.newTerminal(),
                                 L.terminalHint(),
-                                D.terminal,
-                                tint: T.accent,
+                                .terminalPrompt,
+                                tint: T.ink,
                                 shortcut: StartPanelPolicy.shortcut(entry),
                                 chevron: StartPanelPolicy.showsChevron(entry),
                                 action: onTerminal
+                            )
+                        case .browser:
+                            guideEntry(
+                                L.browser(),
+                                L.browserHint(),
+                                .globe,
+                                tint: T.ink,
+                                shortcut: StartPanelPolicy.shortcut(entry),
+                                chevron: StartPanelPolicy.showsChevron(entry),
+                                action: onBrowser
+                            )
+                        case .sessionInspector:
+                            guideEntry(
+                                L.sessionInspector(),
+                                L.sessionInspector(),
+                                .slidersTwo,
+                                tint: T.ink,
+                                shortcut: StartPanelPolicy.shortcut(entry),
+                                chevron: StartPanelPolicy.showsChevron(entry),
+                                action: onInspector
                             )
                         }
                     }
@@ -112,12 +152,13 @@ struct StartPanel: View {
             }
         }
         .background(T.bg.ignoresSafeArea())
+        .accessibilityIdentifier("startPanel")
     }
 
     private func guideEntry(
         _ title: String,
         _ description: String,
-        _ system: String,
+        _ icon: OfficialGlyph.Kind,
         tint: Color,
         shortcut: String?,
         chevron: Bool,
@@ -125,9 +166,7 @@ struct StartPanel: View {
     ) -> some View {
         Button(action: action) {
             HStack(spacing: 14) {
-                Image(systemName: system)
-                    .font(.system(size: 22))
-                    .foregroundStyle(tint)
+                OfficialGlyph(kind: icon, size: 22, color: tint)
                     .frame(width: 26)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title).font(.system(size: 14)).foregroundStyle(T.ink).lineLimit(1)
@@ -141,7 +180,7 @@ struct StartPanel: View {
                 }
                 if chevron {
                     Image(systemName: "chevron.down")
-                        .font(.system(size: 11).weight(.semibold))
+                        .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(T.caption)
                 }
             }
@@ -154,5 +193,6 @@ struct StartPanel: View {
         .buttonStyle(.plain)
         .accessibilityLabel(title)
         .accessibilityHint(description)
+        .accessibilityIdentifier("start.\(title)")
     }
 }

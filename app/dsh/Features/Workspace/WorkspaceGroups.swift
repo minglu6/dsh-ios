@@ -172,9 +172,11 @@ struct WorkspaceGroupHeader: View {
             HStack(spacing: 0) {
                 Button(action: onToggle) {
                     HStack(spacing: 8) {
-                        Image(systemName: collapsed ? "folder" : "folder.fill")
-                            .font(.system(size: 14))
-                            .foregroundStyle(active ? T.accent : T.text3)
+                        OfficialGlyph(
+                            kind: collapsed ? .folderClose : .folderOpen,
+                            size: 14,
+                            color: active ? T.sidebarActiveAccent : T.text3
+                        )
                         Text(title)
                             .font(.system(size: 14))
                             .foregroundStyle(T.ink)

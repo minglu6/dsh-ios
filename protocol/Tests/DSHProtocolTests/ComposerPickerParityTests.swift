@@ -12,7 +12,14 @@ final class ComposerPickerParityTests: XCTestCase {
     func testPhoneConnectionLivesInDrawerFooterNotSettings() {
         XCTAssertFalse(settingsIncludesPhoneConnection)
         XCTAssertTrue(phoneConnectionLivesInDrawerFooter)
-        XCTAssertTrue(sidebarFooterActionAboveSettings)
+        XCTAssertFalse(sidebarFooterActionAboveSettings)
+        XCTAssertTrue(sidebarFooterActionSharesSettingsRow)
+        XCTAssertEqual(sidebarSettingsTriggerIconSizePoints, 16)
+        XCTAssertEqual(sidebarSettingsTriggerHeightPoints, 42)
+        XCTAssertEqual(sidebarSettingsTriggerGapPoints, 8)
+        XCTAssertEqual(sidebarSettingsTriggerFontSizePoints, 14)
+        XCTAssertEqual(sidebarFooterActionButtonPoints, 28)
+        XCTAssertEqual(sidebarFooterActionIconSizePoints, 16)
     }
 
     func testLandingWorkspaceChipMatchesDesktopHeroChip() {
@@ -43,6 +50,7 @@ final class ComposerPickerParityTests: XCTestCase {
         XCTAssertEqual(planChipHeightPoints, 28)
         XCTAssertEqual(planChipFontSizePoints, 13)
         XCTAssertTrue(permissionChipRequiresCatalog)
+        XCTAssertFalse(permissionChipTriggerShowsLabel)
         XCTAssertEqual(composerCommandsAria(english: false), "添加文件或调用指令")
         XCTAssertEqual(composerCommandsAria(english: true), "Add files or run commands")
         XCTAssertTrue(composerAddButtonUsesFilledCircle)
@@ -138,8 +146,144 @@ final class ComposerPickerParityTests: XCTestCase {
         XCTAssertEqual(modelPickerEffortProviderDefault(english: true), "Default")
         XCTAssertEqual(modelPickerSearchPlaceholder(english: false), "搜索模型…")
         XCTAssertTrue(modelPickerRootShowsEffortOnlyWhenReasoning)
+        XCTAssertTrue(composerModelNameUsesRemainingWidth)
         XCTAssertEqual(modelPickerMenuMinWidthPoints, 240)
         XCTAssertEqual(modelPickerRowMinHeightPoints, 34)
+    }
+
+    func testLandingModelSeatShowsCatalogDefaultEffort() throws {
+        let catalog = ModelCatalog(
+            groups: [
+                ModelGroup(
+                    id: "deepseek-official",
+                    name: "DeepSeek",
+                    models: [
+                        ModelInfo(
+                            provider: "deepseek-official",
+                            id: "deepseek-v4-pro",
+                            name: "DeepSeek V4 Pro",
+                            description: nil,
+                            efforts: [
+                                ReasoningLevel(id: "low", name: "Low", description: nil),
+                                ReasoningLevel(id: "high", name: "High", description: nil),
+                            ],
+                            defaultEffort: "high",
+                            hasReasoning: true
+                        ),
+                    ]
+                ),
+            ],
+            defaultProvider: "deepseek-official",
+            defaultModel: "deepseek-v4-pro",
+            failures: [],
+            defaultEffort: "high"
+        )
+        XCTAssertEqual(
+            composerResolvedModel(
+                provider: nil,
+                model: nil,
+                name: nil,
+                effort: nil,
+                catalog: catalog
+            ),
+            ComposerResolvedModel(
+                provider: "deepseek-official",
+                model: "deepseek-v4-pro",
+                name: "DeepSeek V4 Pro",
+                effort: "high"
+            )
+        )
+        XCTAssertEqual(
+            modelEffortLabel(catalog: catalog, provider: nil, model: nil, effort: nil),
+            "High"
+        )
+        XCTAssertEqual(
+            composerModelDisplayName(choiceName: nil, catalog: catalog),
+            "DeepSeek V4 Pro"
+        )
+        XCTAssertEqual(
+            modelEffortLabel(
+                catalog: catalog,
+                provider: "deepseek-official",
+                model: "deepseek-v4-pro",
+                effort: "low"
+            ),
+            "Low"
+        )
+        XCTAssertNil(modelEffortLabel(catalog: nil, provider: nil, model: nil, effort: nil))
+        XCTAssertNil(modelEffortLabel(
+            catalog: ModelCatalog(
+                groups: catalog.groups,
+                defaultProvider: nil,
+                defaultModel: nil,
+                failures: [],
+                defaultEffort: nil
+            ),
+            provider: nil,
+            model: nil,
+            effort: nil
+        ))
+        let noReasoning = ModelCatalog(
+            groups: [
+                ModelGroup(
+                    id: "google",
+                    name: "Google",
+                    models: [
+                        ModelInfo(
+                            provider: "google",
+                            id: "gemini-3-flash",
+                            name: "Gemini 3 Flash",
+                            description: nil,
+                            efforts: [],
+                            defaultEffort: nil,
+                            hasReasoning: false
+                        ),
+                    ]
+                ),
+            ],
+            defaultProvider: "google",
+            defaultModel: "gemini-3-flash",
+            failures: [],
+            defaultEffort: nil
+        )
+        XCTAssertNil(modelEffortLabel(catalog: noReasoning, provider: nil, model: nil, effort: nil))
+        let providerDefault = ModelCatalog(
+            groups: [
+                ModelGroup(
+                    id: "pi",
+                    name: "Pi",
+                    models: [
+                        ModelInfo(
+                            provider: "pi",
+                            id: "think",
+                            name: "Think",
+                            description: nil,
+                            efforts: [ReasoningLevel(id: "high", name: "High", description: nil)],
+                            defaultEffort: nil,
+                            hasReasoning: true
+                        ),
+                    ]
+                ),
+            ],
+            defaultProvider: "pi",
+            defaultModel: "think",
+            failures: [],
+            defaultEffort: nil
+        )
+        XCTAssertEqual(
+            modelEffortLabel(catalog: providerDefault, provider: nil, model: nil, effort: nil),
+            "Default"
+        )
+        let parsed = ModelCatalog.parse(try JSONValue.parse("""
+        {"groups":[{"id":"deepseek-official","name":"DeepSeek","models":[{
+          "id":"deepseek-v4-pro","name":"DeepSeek V4 Pro",
+          "reasoning":{"defaultEffort":"high","efforts":[{"id":"low","name":"Low"},{"id":"high","name":"High"}]}
+        }]}],
+        "default":{"provider":"deepseek-official","model":"deepseek-v4-pro","reasoningEffort":"high"}}
+        """))
+        XCTAssertEqual(parsed.defaultEffort, "high")
+        XCTAssertEqual(modelEffortLabel(catalog: parsed, provider: nil, model: nil, effort: nil), "High")
+        XCTAssertEqual(composerModelDisplayName(choiceName: nil, catalog: parsed), "DeepSeek V4 Pro")
     }
 
     func testReasoningRowMatchesDesktopDisclosure() {

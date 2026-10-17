@@ -100,28 +100,41 @@ private func incrementDecimalDigits(_ digits: String) -> String {
     return String(chars)
 }
 
-/// Desktop right-hand Start / Guide body: workspace files + new terminal only.
+/// Desktop right-hand Start / Guide cards from `ui-sidebar-files` /
+/// `ui-sidebar-terminal` / `ui-sidebar-browser` (`order` 10 / 20 / 30).
+/// Session inspector is **not** a desktop Guide card; the phone still exposes
+/// the Android `SessionInspectorPanel` after the official three because the
+/// user asked for a visible entry (locale: 会话数据诊断 / Session diagnostics).
 public enum StartPanelEntry: String, Equatable, Hashable, Sendable {
     case workspaceFiles
     case newTerminal
+    case browser
+    case sessionInspector
 }
 
 public enum StartPanelPolicy {
-    public static func entries(files: Bool, terminal: Bool) -> [StartPanelEntry] {
+    public static func entries(files: Bool, terminal: Bool, browser: Bool = true, inspector: Bool = true) -> [StartPanelEntry] {
         var result: [StartPanelEntry] = []
         if files { result.append(.workspaceFiles) }
         if terminal { result.append(.newTerminal) }
+        if browser { result.append(.browser) }
+        if inspector { result.append(.sessionInspector) }
         return result
     }
 
-    public static var includesBrowser: Bool { false }
-    public static var includesSessionInspector: Bool { false }
+    public static var includesBrowser: Bool { true }
+    public static var includesSessionInspector: Bool { true }
+    public static var desktopGuideIncludesSessionInspector: Bool {
+        DesktopSidebarInventory.desktopGuideIncludesSessionInspector
+    }
 
     /// Desktop Start labels still use these; the phone controller must not render them.
     public static func desktopShortcut(_ entry: StartPanelEntry) -> String? {
         switch entry {
         case .workspaceFiles: return "⌘P"
         case .newTerminal: return nil
+        case .browser: return nil
+        case .sessionInspector: return nil
         }
     }
 

@@ -31,12 +31,63 @@ public func modelPickerProviderLabel(_ id: String, hostName: String, english: Bo
     return hostName
 }
 
+/// Desktop `ModelSelect` trigger / root Effort row. Host blank sessions already
+/// carry `directory.current`; phone landing and the first follow before snapshot
+/// do not. Resolve the catalog default model so the seat matches desktop
+/// (name + effort) the moment `models.catalog` is available.
+public struct ComposerResolvedModel: Equatable, Sendable {
+    public var provider: String
+    public var model: String
+    public var name: String
+    public var effort: String?
+
+    public init(provider: String, model: String, name: String, effort: String?) {
+        self.provider = provider
+        self.model = model
+        self.name = name
+        self.effort = effort
+    }
+}
+
+public func composerResolvedModel(
+    provider: String?,
+    model: String?,
+    name: String?,
+    effort: String?,
+    catalog: ModelCatalog?
+) -> ComposerResolvedModel? {
+    let provider = nonemptyModelToken(provider) ?? catalog?.defaultProvider
+    let model = nonemptyModelToken(model) ?? catalog?.defaultModel
+    guard let provider, let model else { return nil }
+    let info = catalog?.find(provider: provider, model: model)
+    return ComposerResolvedModel(
+        provider: provider,
+        model: model,
+        name: nonemptyModelToken(name) ?? info?.name ?? model,
+        effort: nonemptyModelToken(effort) ?? info?.defaultEffort ?? catalog?.defaultEffort
+    )
+}
+
 public func modelEffortLabel(catalog: ModelCatalog?, provider: String?, model: String?, effort: String?) -> String? {
-    guard let model = catalog?.find(provider: provider, model: model) else { return nil }
-    if !model.hasReasoning { return nil }
-    let resolved = effort ?? model.defaultEffort
-    if resolved == nil { return "Default" }
-    return model.efforts.first { $0.id == resolved }?.name ?? resolved
+    guard let resolved = composerResolvedModel(
+        provider: provider,
+        model: model,
+        name: nil,
+        effort: effort,
+        catalog: catalog
+    ) else { return nil }
+    guard let info = catalog?.find(provider: resolved.provider, model: resolved.model) else { return nil }
+    if !info.hasReasoning { return nil }
+    let level = resolved.effort
+    if level == nil { return "Default" }
+    return info.efforts.first { $0.id == level }?.name ?? level
+}
+
+private func nonemptyModelToken(_ value: String?) -> String? {
+    guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else {
+        return nil
+    }
+    return value
 }
 
 private func pickerRank(_ id: String) -> Int {

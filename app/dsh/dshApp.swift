@@ -23,7 +23,11 @@ struct dshApp: App {
             RootView()
                 .environmentObject(theme)
                 .onOpenURL { AppModel.shared.handleIncomingURL($0) }
-                .onAppear { ConnectionKeeper.shared.start() }
+                .onAppear {
+                    if !UITestLaunch.isEnabled {
+                        ConnectionKeeper.shared.start()
+                    }
+                }
         }
     }
 }

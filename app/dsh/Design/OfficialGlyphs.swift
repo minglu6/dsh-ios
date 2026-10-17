@@ -7,6 +7,20 @@ struct OfficialGlyph: View {
         case think
         case agentPreset
         case permission(String)
+        case folderClose
+        case folderOpen
+        case pinOutline
+        case pinFill
+        case archiveOutline
+        case ellipsis
+        case slidersTwo
+        case workspaceTree
+        case flatList
+        case globe
+        case clockOutline
+        case downloadOutline
+        case shareOutline
+        case terminalPrompt
     }
 
     let kind: Kind
@@ -31,6 +45,51 @@ struct OfficialGlyph: View {
                 ctx.stroke(Path(SVGPath.cgPath(Self.presetRight)), with: .color(color), style: stroke)
             case .permission(let value):
                 drawPermission(&ctx, value: value, color: color, stroke: stroke)
+            case .folderClose:
+                ctx.stroke(Path(SVGPath.cgPath(Self.folderCloseBody)), with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(Self.folderCloseLine)), with: .color(color), style: stroke)
+            case .folderOpen:
+                ctx.stroke(Path(SVGPath.cgPath(Self.folderOpenFront)), with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(Self.folderOpenBack)), with: .color(color), style: stroke)
+            case .pinOutline, .pinFill:
+                ctx.stroke(Path(SVGPath.cgPath(Self.pinBody)), with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(Self.pinNeedle)), with: .color(color), style: stroke)
+            case .archiveOutline:
+                ctx.stroke(Path(SVGPath.cgPath(Self.archiveLid)), with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(Self.archiveBox)), with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(Self.archiveSlot)), with: .color(color), style: stroke)
+            case .ellipsis:
+                ctx.fill(Path(SVGPath.cgPath(Self.ellipsisA)), with: .color(color))
+                ctx.fill(Path(SVGPath.cgPath(Self.ellipsisB)), with: .color(color))
+                ctx.fill(Path(SVGPath.cgPath(Self.ellipsisC)), with: .color(color))
+            case .slidersTwo:
+                ctx.stroke(Path(SVGPath.cgPath(Self.slidersA)), with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(Self.slidersB)), with: .color(color), style: stroke)
+            case .workspaceTree:
+                ctx.stroke(Path(SVGPath.cgPath(Self.workspaceTreeBody)), with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(Self.workspaceTreeLegs)), with: .color(color), style: stroke)
+            case .flatList:
+                ctx.stroke(Path(SVGPath.cgPath(Self.flatListRows)), with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(Self.flatListDots)), with: .color(color), style: stroke)
+            case .globe:
+                ctx.stroke(Path(SVGPath.cgPath(Self.globeRim)), with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(Self.globeEquator)), with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(Self.globeMeridianA)), with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(Self.globeMeridianB)), with: .color(color), style: stroke)
+            case .clockOutline:
+                ctx.stroke(Path(SVGPath.cgPath(Self.clockRim)), with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(Self.clockHands)), with: .color(color), style: stroke)
+            case .downloadOutline:
+                ctx.stroke(Path(SVGPath.cgPath(Self.downloadStem)), with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(Self.downloadArrow)), with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(Self.downloadTray)), with: .color(color), style: stroke)
+            case .shareOutline:
+                ctx.fill(Path(SVGPath.cgPath(Self.shareBody)), with: .color(color))
+            case .terminalPrompt:
+                let term = StrokeStyle(lineWidth: 1.55, lineCap: .round, lineJoin: .round)
+                ctx.scaleBy(x: 16 / 36, y: 16 / 36)
+                ctx.stroke(Path(SVGPath.cgPath(Self.terminalPrompt)), with: .color(color), style: term)
+                ctx.stroke(Path(SVGPath.cgPath(Self.terminalCursor)), with: .color(color), style: term)
             }
         }
         .frame(width: size, height: size)
@@ -77,4 +136,34 @@ struct OfficialGlyph: View {
     private static let fullBangStem = "M8 4.39209V9.89209"
     private static let fullBangDot = "M8 10.8081V11.8081"
     private static let autoA = "M5.75 10.15L8 4.95L10.25 10.15M6.43 8.59H9.57"
+    private static let folderCloseBody = "M1.50439 3.11059C1.50439 2.55831 1.95211 2.1106 2.50439 2.1106H5.43389C5.67773 2.1106 5.91318 2.19969 6.09593 2.36113L7.71649 3.79265C7.89924 3.95409 8.1347 4.04319 8.3785 4.04319H13.4958C14.0481 4.04319 14.4958 4.4909 14.4958 5.04319V12.8894C14.4958 13.4417 14.0481 13.8894 13.4958 13.8894H2.50439C1.95211 13.8894 1.50439 13.4417 1.50439 12.8894V4.04319V3.11059Z"
+    private static let folderCloseLine = "M3.63501 7.66614H12.3647"
+    private static let folderOpenFront = "M12.3994 13.5986H2.04956C1.49728 13.5986 1.04956 13.1509 1.04956 12.5986V3.40137C1.04956 2.84908 1.49728 2.40137 2.04956 2.40137H4.76632C5.01016 2.40137 5.24561 2.49046 5.42836 2.6519L7.04892 4.08342"
+    private static let folderOpenBack = "M2.55911 7.93683C2.67584 7.49906 3.07229 7.19446 3.52536 7.19446H13.6491C14.3061 7.19446 14.7846 7.81725 14.6153 8.45209L13.4411 12.856C13.3244 13.2938 12.9279 13.5984 12.4748 13.5984H2.35113C1.69411 13.5984 1.21562 12.9756 1.38489 12.3407L2.55911 7.93683Z"
+    private static let pinBody = "M9.96976 1.70572L13.1554 3.93629L10.9019 8.12317L11.5158 11.605L10.7192 12.7427L2.52767 7.00693L3.3243 5.86922L6.80612 5.25528L9.96976 1.70572Z"
+    private static let pinNeedle = "M6.05285 9.47511C6.27284 9.16094 6.70586 9.08458 7.02003 9.30457C7.3342 9.52455 7.41055 9.95757 7.19057 10.2717L3.98587 14.4708L3.21223 13.9291L6.05285 9.47511Z"
+    private static let archiveLid = "M13.5 2.5H2.5C1.94772 2.5 1.5 2.94772 1.5 3.5V4.5C1.5 5.05228 1.94772 5.5 2.5 5.5H13.5C14.0523 5.5 14.5 5.05228 14.5 4.5V3.5C14.5 2.94772 14.0523 2.5 13.5 2.5Z"
+    private static let archiveBox = "M2.5 5.5V13.5C2.5 13.7652 2.60536 14.0196 2.79289 14.2071C2.98043 14.3946 3.23478 14.5 3.5 14.5H12.5C12.7652 14.5 13.0196 14.3946 13.2071 14.2071C13.3946 14.0196 13.5 13.7652 13.5 13.5V5.5"
+    private static let archiveSlot = "M6.5 9.5H9.5"
+    private static let ellipsisA = "M3 9C3.55228 9 4 8.55228 4 8C4 7.44772 3.55228 7 3 7C2.44772 7 2 7.44772 2 8C2 8.55228 2.44772 9 3 9Z"
+    private static let ellipsisB = "M8 9C8.55228 9 9 8.55228 9 8C9 7.44772 8.55228 7 8 7C7.44772 7 7 7.44772 7 8C7 8.55228 7.44772 9 8 9Z"
+    private static let ellipsisC = "M13 9C13.5523 9 14 8.55228 14 8C14 7.44772 13.5523 7 13 7C12.4477 7 12 7.44772 12 8C12 8.55228 12.4477 9 13 9Z"
+    private static let slidersA = "M2.3 5H8.15M12.05 5H13.7"
+    private static let slidersB = "M2.3 11H3.95M7.85 11H13.7"
+    private static let workspaceTreeBody = "M14 12.05c0 .8-.65 1.45-1.46 1.45H3.46C2.65 13.5 2 12.85 2 12.05v-8.1c0-.8.65-1.45 1.46-1.45h2.4c.49 0 .94.24 1.21.65l.5.73c.27.4.73.65 1.21.65h3.76c.8 0 1.46.65 1.46 1.45v6.02Z"
+    private static let workspaceTreeLegs = "M8.7 8.1V11M11.2 8.1V11"
+    private static let flatListRows = "M6 3.5H13.5M6 8H13.5M6 12.5H13.5"
+    private static let flatListDots = "M2.6 3.5H2.61M2.6 8H2.61M2.6 12.5H2.61"
+    private static let globeRim = "M7.99986 14.0887C11.3626 14.0887 14.0886 11.3627 14.0886 7.99998C14.0886 4.63727 11.3626 1.91125 7.99986 1.91125C4.63715 1.91125 1.91113 4.63727 1.91113 7.99998C1.91113 11.3627 4.63715 14.0887 7.99986 14.0887Z"
+    private static let globeEquator = "M2.34619 8H13.6538"
+    private static let globeMeridianA = "M7.99976 14.0889C9.23509 14.0889 10.1743 11.3629 10.1743 8.00006C10.1743 4.63739 9.23509 1.91138 7.99976 1.91138"
+    private static let globeMeridianB = "M7.99973 14.0889C6.76445 14.0889 5.8252 11.3629 5.8252 8.00006C5.8252 4.63739 6.76445 1.91138 7.99973 1.91138"
+    private static let clockRim = "M8 14C11.3137 14 14 11.3137 14 8C14 4.68629 11.3137 2 8 2C4.68629 2 2 4.68629 2 8C2 11.3137 4.68629 14 8 14Z"
+    private static let clockHands = "M8 4.31V8.46L11 10.08"
+    private static let downloadStem = "M8 1.95317V10.0469"
+    private static let downloadArrow = "M4.25 6.29688L8 10.0469L11.75 6.29688"
+    private static let downloadTray = "M1.5 10.0469V13.158C1.5 13.3937 1.60536 13.6198 1.79289 13.7865C1.98043 13.9532 2.23478 14.0469 2.5 14.0469H13.5C13.7652 14.0469 14.0196 13.9532 14.2071 13.7865C14.3946 13.6198 14.5 13.3937 14.5 13.158V10.0469"
+    private static let shareBody = "M14.1256 7.58723C14.3483 7.81942 14.3482 8.18589 14.1254 8.41799L8.6646 14.1077C8.53985 14.2377 8.32031 14.1494 8.32031 13.9692L8.32035 10.2039C8.32035 10.1943 8.31534 10.1864 8.30592 10.1849C8.08306 10.148 5.30067 9.7729 1.50993 13.2904C1.49711 13.3023 1.47561 13.2943 1.4757 13.2768C1.49273 9.87168 3.42001 5.07166 8.29999 5.05835C8.31103 5.05832 8.32035 5.04937 8.32035 5.03832L8.32031 2.03109C8.32031 1.85088 8.53993 1.76259 8.66466 1.89266L14.1256 7.58723Z"
+    private static let terminalPrompt = "M10 11L16.606 17.606C16.6841 17.6841 16.6841 17.8107 16.606 17.8888L10 24.4948"
+    private static let terminalCursor = "M20.1211 24.4946H26.8685"
 }

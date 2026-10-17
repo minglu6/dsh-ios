@@ -19,3 +19,4 @@ app/derivedData/
 *.perspectivev3
 !default.perspectivev3
 protocol/.build/
+screenshots/

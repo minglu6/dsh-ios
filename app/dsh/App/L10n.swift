@@ -68,6 +68,10 @@ enum L {
     static func share() -> String { en ? "Share" : "分享" }
     static func pairingCode() -> String { pairingCodeFieldLabel(english: en) }
     static func sessionInspector() -> String { en ? "Session diagnostics" : "会话数据诊断" }
+    static func browser() -> String { en ? "Browser" : "浏览器" }
+    static func browserHint() -> String { en ? "Browse web pages" : "浏览网页" }
+    static func groupByLabel() -> String { ViewOptionsMenuPolicy.title(.groupBy, english: en) }
+    static func scheduleNewShort() -> String { SchedulePagePolicy.headerNewLabel(english: en) }
     static func sessionFeedback() -> String { en ? "Feedback" : "反馈" }
     static func sessionFeedbackHint() -> String { messageFeedbackHint(english: en) }
     static func imageLoading() -> String { messageImageLoading(english: en) }

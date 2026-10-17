@@ -37,6 +37,7 @@ struct ScheduleScreen: View {
             )
         } else {
             catalog
+                .accessibilityIdentifier("scheduleScreen")
         }
     }
 
@@ -46,8 +47,10 @@ struct ScheduleScreen: View {
                 Button { model.pop() } label: { Image(systemName: "chevron.left").foregroundStyle(T.ink) }
                 Text(L.automation()).font(.headline).foregroundStyle(T.ink)
                 Spacer()
-                Button(L.newAutomation()) { newTask() }
+                Button(SchedulePagePolicy.headerNewLabel(english: L.en)) { newTask() }
+                    .foregroundStyle(T.ink)
                     .disabled(!model.isOnline)
+                    .accessibilityIdentifier("scheduleNew")
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -55,29 +58,44 @@ struct ScheduleScreen: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        tab("all", L.t("全部", "All"))
-                        tab("active", L.t("已开启", "Enabled"))
-                        tab("inactive", L.t("已结束", "Inactive"))
+                        tab("all", SchedulePagePolicy.tabLabel("all", english: L.en))
+                        tab("active", SchedulePagePolicy.tabLabel("active", english: L.en))
+                        tab("inactive", SchedulePagePolicy.tabLabel("inactive", english: L.en))
                         Spacer()
-                        Button(L.refresh()) { Task { await reload() } }
-                            .disabled(!model.isOnline || loading || !model.ops.contains("schedule.catalog"))
                     }
                     .padding(.horizontal, 18)
-                    TextField(L.t("搜索自动化任务", "Search automation tasks"), text: $query)
-                        .padding(10)
-                        .background(T.fill, in: RoundedRectangle(cornerRadius: 8))
-                        .padding(.horizontal, 18)
+                    HStack {
+                        TextField(L.t("搜索自动化任务", "Search automation tasks"), text: $query)
+                        if !query.isEmpty {
+                            Button(L.clearSearch()) { query = "" }
+                                .font(.caption)
+                                .foregroundStyle(T.text3)
+                        }
+                    }
+                    .padding(10)
+                    .background(T.fill, in: RoundedRectangle(cornerRadius: 8))
+                    .padding(.horizontal, 18)
                     if let notice { Text(notice).foregroundStyle(T.text3).padding(.horizontal, 18) }
                     if let error {
                         settingsMessage(error, error: true)
-                        Button(L.retry()) { Task { await reload() } }.padding(.horizontal, 18)
+                        Button(L.retry()) { Task { await reload() } }
+                            .foregroundStyle(T.ink)
+                            .padding(.horizontal, 18)
                     }
                     if loading { ProgressView().frame(maxWidth: .infinity).padding() }
                     if loaded && visible.isEmpty {
-                        settingsMessage(emptyText)
-                        Button(L.newAutomation()) { newTask() }
-                            .disabled(!model.isOnline)
-                            .frame(maxWidth: .infinity)
+                        VStack(spacing: 10) {
+                            OfficialGlyph(kind: .clockOutline, size: 36, color: T.caption)
+                            Text(emptyText)
+                                .font(.subheadline)
+                                .foregroundStyle(T.text3)
+                                .multilineTextAlignment(.center)
+                            Button(SchedulePagePolicy.emptyActionLabel(english: L.en)) { newTask() }
+                                .foregroundStyle(T.ink)
+                                .disabled(!model.isOnline)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 28)
                     }
                     ForEach(Array(visible.enumerated()), id: \.offset) { _, row in
                         Button { selected = row } label: {
@@ -113,13 +131,7 @@ struct ScheduleScreen: View {
     }
 
     private var emptyText: String {
-        if filter == "inactive" && query.trimmingCharacters(in: .whitespaces).isEmpty {
-            return L.t("没有已结束的自动化任务", "No inactive automation tasks")
-        }
-        if rows.isEmpty {
-            return L.t("还没有自动化任务，在会话中创建的任务会显示在这里", "No tasks yet. Tasks created in your sessions appear here.")
-        }
-        return L.t("没有匹配的自动化任务", "No matching tasks")
+        SchedulePagePolicy.emptyBody(hasRows: !rows.isEmpty, filter: filter, query: query, english: L.en)
     }
 
     private func tab(_ value: String, _ label: String) -> some View {

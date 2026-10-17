@@ -66,7 +66,9 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R37 | audit-only：Android 仍 `c5f8cdd`；Host 仍 alpha.5 | done (NO_PR) |
 | R38 | audit-only：#50 后抽查；Android 仍 `c5f8cdd` | done (NO_PR) |
 | R39 | 用户选择卡片 + `userQuestions`/`inbox` 投影恢复（Android `56dcaa9` / 桌面 `QuestionComposer`） | done (#51) |
-| R40 | 计划 `plan.discuss` / `planReviewOf`；晚答 `QuestionReplyView` | this PR |
+| R40 | 计划 `plan.discuss` / `planReviewOf`；晚答 `QuestionReplyView` | done (#52) |
+| R41 | landing 模型座显示推理强度；权限 chip 只留图标；抽屉脚设置与设备同一行 | this PR |
+| R42 | 抽屉会话行时间/操作、官方文件夹图标、视图选项 popover、外观点一次生效、自动化任务页、右侧栏浏览器+会话诊断、CI 模拟器截图 | this PR |
 
 ---
 
@@ -78,8 +80,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Message actions | `ui-chat` `MessageIconActions` | `Chat.kt` `MessageActions` | `ChatView` `MessageActions` (copy / like / dislike / share / branch + turn usage；会话行菜单仍保留无 seq 的 `sessions.fork`) |
 | Trajectory | `ui-trajectory` | `Trajectory.kt` + Detail/Inspector/Request/Locales; `protocol/TrajectoryTimeline.kt` | `Features/Trajectory/` + `protocol/Trajectory.swift` / `TrajectoryRequest.swift` |
 | WorkspaceChanges | Host `workspaceChanges.summary/diff` | `WorkspaceChanges.kt` | `Features/Chat/WorkspaceChanges.swift` + `protocol/WorkspaceChanges.swift` |
-| Session Inspector | desktop session-inspector | `SessionInspectorPanel.kt` / Log / Model / Navigation | implemented, unexposed (desktop Start / ⋯ have no entry) |
-| Browser | local HTTP(S) panel | `BrowserPanel.kt` + `BrowserPolicy.kt` | implemented, unexposed (desktop Start / ⋯ have no entry) |
+| Session Inspector | Android `SessionInspectorPanel`（桌面 Guide **无**此卡） | `SessionInspectorPanel.kt` / Log / Model / Navigation | Start 第四项「会话数据诊断」+ `DrawerPanel.inspector`；桌面 0.2.1-alpha.5 Guide 只有 files/terminal/browser |
+| Browser | `ui-sidebar-browser` Guide `order: 30` | `BrowserPanel.kt` + `BrowserPolicy.kt` | Start 第三项「浏览器 / 浏览网页」+ 既有 `BrowserPanel` |
 | Code preview | shiki offline preview | `CodePreview.kt` | `Features/Files/CodePreview.swift` + `CodePreviewAssets/` |
 | Terminal | Host `terminalController` | `TerminalPanel.kt`, `TerminalView.kt`, `TerminalEmulator.kt` | `Features/Terminal/` + `protocol/TerminalEmulator.swift`; bundled MesloLGL DZ Nerd Font + CoreText cascade; default fg/bg follow appearance; ANSI 16 = desktop xterm.js Tango (#20) |
 | Files | `workspaceFiles` | `FilesPanel.kt` | `Features/Files/` + workspace tree / browse |
@@ -125,11 +127,11 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Approvals | official `ApprovalCard` takes composer | official card; `accepted` callback clears busy, success drops the row | **partial** → **present** | **E** |
 | TodoPanel | dock card above composer | `TodoPanel` expand in place | **missing** → **present** | **E** |
 | Goal bar | `goals.get` / `goal.activation` CAS | `GoalBar` + `GoalSheet` pause/resume/clear/edit | **missing** → **present** | **E** |
-| Permission mode | catalog/get/set + risk sheet | composer chip 为桌面 `PermissionSelect` 幽灵按钮 + 官方 SVG + EXP 8/500 + 自定义菜单（非系统 Menu，弹层在 chip **上方**，含 Auto review 全行）；斜杠 `/permission` 按桌面 `popupSelect` 在弹层内原地列选项 + ✓；landing 选档写入 `draftPermission`，创建会话时 `permissions.set`；危险档确认（居中、先收键盘、不被键盘挡住）；Settings defaults（`auto` 不能当默认） | **partial** → **present** | **E** / **R7** / **R8** / **R13** / **R14** |
+| Permission mode | catalog/get/set + risk sheet | composer chip 为桌面 `PermissionSelect` 幽灵按钮 + 官方 SVG + EXP 8/500 + 自定义菜单（非系统 Menu，弹层在 chip **上方**，含 Auto review 全行）。**窄屏适配，用户已拍板**：操作栏只显示图标（无文字标签），菜单里保留文字，腾出的宽度给模型名。斜杠 `/permission` 按桌面 `popupSelect` 在弹层内原地列选项 + ✓；landing 选档写入 `draftPermission`，创建会话时 `permissions.set`；危险档确认（居中、先收键盘、不被键盘挡住）；Settings defaults（`auto` 不能当默认） | **partial** → **present** | **E** / **R7** / **R8** / **R13** / **R14** / **R41** |
 | Turn trigger row | desktop `TurnTriggerNodeView` | 仅 `waking`（`inbox-next-turn.currentClaimed` 或 idle steer）画触发行；Host 注入的 skill-catalog / time-context 与未唤醒的 tool-jobs 继续隐藏 | **missing** → **present** | **R7** / **R8** |
 | Session title live update | Android `refreshTitles` on status | `drawerSessionTitle` 优先非空 title；status 时重拉 `sessions.list`（停后再 4s）；follow `projection key=title` | **partial** → **present** | **R7** |
 | Session list relative time | `formatSessionTime` / `timeLabel` | `relativeTime` 桶 + `time.now/{unit}`；空白会话不画时间；审批/计划待审/待回答用 `status.compact.*` 替换时间；标题栏无时钟 | **present** | **R13** |
-| Model + effort | two-level picker | composer chip 锚定 `ModelSelect` 两级菜单（模型 / 有推理才出推理等级），弹层在 chip **上方**；空态「暂无可用模型」；landing 无会话时写入 `draftModel` | **partial** → **present** | **E** / **R13** / **R14** |
+| Model + effort | two-level picker | composer chip 锚定 `ModelSelect` 两级菜单（模型 / 有推理才出推理等级），弹层在 chip **上方**；空态「暂无可用模型」；landing / 首次连上在 `models.catalog` 到达后即用 catalog 默认模型+effort 显示并可改（不等 snapshot）；无会话时写入 `draftModel`；模型名占剩余宽度 | **partial** → **present** | **E** / **R13** / **R14** / **R41** |
 | No “scroll to bottom” FAB | `followBottom` | auto-scroll only | **present** | — |
 
 ## 2. Trajectory
@@ -174,8 +176,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Open-in-desktop-editor | desktop only | — | **hide** | — |
 | WorkspaceChanges cards | `WorkspaceChanges.kt` | chat cards + review sheet (`workspaceChanges.summary/diff`); `workspace/changes` announcement; attached to last answer when visible, otherwise an independent card outside 「已完成」. Pocket JSON 的 `binary`/`oversized: false` 按 Android 接受（#19 只修了 `{summary:…}` 解包，运行时 Host 序列化带 false 仍整卡解析失败）。R5 实机：空 `Group` 上的 `.task` 不跑；R6 把 fetch 挂在 1pt 常驻锚点 | **missing** → **present** | **F** / P1 / **R5** / **R6** |
 | File tree live updates | `files.follow` + `observeWorkspaceDirectory` | same; watch-unsupported 回退 list；工具栏 pause/play「自动刷新」按桌面 `DirectoryNode.setAutomatic`：关则保留 watch、不因 change 再 list | **partial** → **present** | **F** / **H** / **R5** |
-| Browser | `BrowserPanel.kt` + `BrowserTabs.kt` HTTP(S)-only, addresses-only checkpoints | implemented (multi-tab `{selected, pages:[{id,url,title}]}`); chat HTTP(S) links open this panel when `linkOpening=sidebar` (desktop default). Start / ⋯ still have no entry | **present** | **P1** / **H** / **R6** |
-| Session Inspector | `SessionInspectorPanel` raw/grouped + pick | implemented, unexposed — desktop Start / ⋯ have no entry | **hide** | **P1** |
+| Browser | `BrowserPanel.kt` + `BrowserTabs.kt` HTTP(S)-only, addresses-only checkpoints | implemented + Start Guide 第三项（桌面 `guide.title`「浏览器」） | **present** | **P1** / **H** / **R6** / **R42** |
+| Session Inspector | `SessionInspectorPanel` raw/grouped + pick | Start 第四项「会话数据诊断」；**不是**桌面 Guide 卡 | **hide** → **present** | **R42** |
 
 ## 5. Jobs + unread
 
@@ -443,7 +445,7 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 | 计划 chip | `ComposerView` modes 行 | `ui-plan` `PlanModeControl` + `InputBar.js` `.modes` | 可见「计划」；a11y `chip.on.aria`；tooltip `chip.on.title`；在权限 chip 旁，不在输入框上方 |
 | + 按钮 | `ComposerView` plus | `InputBar` `input.commands` | aria「添加文件或调用指令」；landing `/file` 打开文件选择（图可挂草稿） |
 | 权限 chip 目录 | `permissionChipRequiresCatalog` | `PermissionSelect` `catalog === null → null` | 目录未到不画死 chip |
-| 抽屉脚顺序 | `SessionDrawer.footer` | `ui-sidebar` `SidebarRoot` `sidebar.footer.action` 然后 `sidebar.settings` | 主机/设备行在 Settings **之上**；Settings 仍不含「手机连接」 |
+| 抽屉脚顺序 | `SessionDrawer.footer` | `ui-settings-general` `SettingsRoot` `triggerRow`：Settings 左、trailing 动作右 | 设置与远程主机入口同一行；Settings 仍不含「手机连接」 |
 | Agent 预设菜单 | `AgentPresetSeat` | `ui-agent-preset` `noDescription` / `seatHint` | 空描述「暂无描述。」；hint「选择新任务使用的 Agent 预设」 |
 | 设置默认权限说明 | `PermissionPickerSheet` | `settings.permission` `description` | 仅「选择新会话的默认权限模式」，去掉自撰「自动审查仅适用于…」 |
 | 斜杠空态 | `CommandMenuOverlay` | `ui-commands` `status.loading` / `status.empty` | 「正在加载选项…」/「无选项」 |
@@ -627,7 +629,7 @@ Android `main` `729ef2e..c5f8cdd`（4 commits）仍是既有项：`18af5a8` 外�
 | 未读绿点 | `CompletionReminders.accept` + `sidebarSessionLeading` + `SidebarSessionLeadingView` 14pt 槽、半径 `3/14`；idle+未归档才画 | `ui-workspace` `SessionStatusDots` / `StateDot` |
 | 标题无 running spinner | `ChatView.header` 只有抽屉 / 标题或 crumbs / Start；运行态在 transcript `RunningStatusRow` | `ConversationSessionHeader` 无 spinner |
 | 连接页（#43） | `ConnectionsView` + `ConnectionsLayout` | Android `ConnectionsScreen` / `ConnDeviceRow` |
-| 抽屉脚连接入口 | `SessionDrawer.footer`：`footerPeerDevice` 在 Settings **之上**；`SettingsView` 仅 General/Models/Presets/Plugins | `ui-sidebar` `sidebar.footer.action` 然后 `sidebar.settings` |
+| 抽屉脚连接入口 | `SessionDrawer.footer`：`footerPeerDevice` 在 Settings **同一行靠右**；`SettingsView` 仅 General/Models/Presets/Plugins | `ui-settings-general` `SettingsRoot` `triggerRow` |
 | 鲸尾 shimmer | `RunningWhaleTail` + `TextShimmer` | `ui-chat` `RunningWhaleTail` / `TextShimmer` |
 | 任务两次点按停止 | `jobKillPress` + `KILL_ARM_MS` 3s；`JobsPanel.killButton` 是 `Button`，不是 `TapGesture(count: 2)` | `ui-jobs` `JobListAction` `kill.confirm` |
 | 插件 (i) | `PluginsScreen` `pluginInfoLabel` / `pluginInfoDescription` popover | `ui-plugin-manager` `infoLabel` / `infoDescription`（市场页，不是内置插件 inventory） |
@@ -656,7 +658,7 @@ Android `main` `729ef2e..c5f8cdd`（4 commits）仍是既有项：`18af5a8` 外�
 | 2. Android `729ef2e..c5f8cdd` | **PASS**（#63 外观本机此前未落地 → 本轮修；其余已有） | `#63` `18af5a8`：Android `SharedSetting` 去掉 `Appearance`；`AppPrefs.appearance` 本机。iOS 修前仍 `SharedSetting.appearance` + `hostSettings.write(.appearance)`。`#64` 发布 bump：无 UI。`#65` `d30825c` `skills.list`：iOS `PocketClient.listSkills` + `CommandPolicy` 技能组。`#66` `c5f8cdd` 无 sessionId 目录：`listCatalogArgs(nil)` → `{}`；`CommandMenuOverlay.load` `sessionId = model.chat?.sessionId`（landing 为 nil）；`commandMenuClientRows(landing:)` 只注入 `/file` `/model`，goal/plan/… 与技能来自 Host 目录。插件侧（Android `plugin/src/extra-ops.js`）才按默认 preset/workspace 列目录；iOS 客户端不硬编码。 |
 | 3. Connections | **PASS** | `ConnectionsView` / `ConnDeviceRow` / `connectionsStatusLine` vs Android `Screens.kt` `ConnectionsScreen` / `ConnDeviceRow` / `buildConnStatusLine`：空配对/附近不画节；标题 `L.connections()`「连接」；底卡扫码/输入地址；行 8pt 点 + `在线 · route · 当前` + host:port + 非当前「切换」+ 管理 chevron。点行开管理，Switch 才 `connect`。Android `CompatibilityBanner` / `NEARBY_WIFI_DEVICES` 不搬（iOS 配对走 `compatibilityError`；Local Network 由系统提示）。 |
 | 4. 矩阵 partial / 「留给」 | **PASS**（已对齐未改文档，或后续轮已闭环） | 表内现存 `**partial**` 均为 `**partial** → **present**`。Round 22「留给 Round 24+」的 CommandNode 已由 R24 落地。无未闭环 partial。 |
-| 5. 交互小巧思 | **PASS** | 未读绿点：`CompletionReminders` + `sidebarSessionLeading` + `SidebarSessionLeadingView`（idle+未归档 3/14 of 14）。标题无 running spinner：`ChatView.header` 仅抽屉 / 标题或 crumbs / Start；运行态 `RunningStatusRow` 鲸尾 shimmer。云端设备不进设置：`SettingsView` 仅 General/Models/Presets/Plugins；入口 `SessionDrawer.footerPeerDevice` 在 Settings 之上。 |
+| 5. 交互小巧思 | **PASS** | 未读绿点：`CompletionReminders` + `sidebarSessionLeading` + `SidebarSessionLeadingView`（idle+未归档 3/14 of 14）。标题无 running spinner：`ChatView.header` 仅抽屉 / 标题或 crumbs / Start；运行态 `RunningStatusRow` 鲸尾 shimmer。云端设备不进设置：`SettingsView` 仅 General/Models/Presets/Plugins；入口 `SessionDrawer.footerPeerDevice` 在 Settings 同一行靠右。 |
 | 6. Composer / 斜杠 / Ask / 用量 / 任务 / 轨迹 / 抽屉 / 设置抽查 | **PASS**（无新「桌面有、iOS 缺」的语义） | 斜杠分组「添加/指令/技能」无数量（`commandMenuSectionTitle`）。Ask 工具行 `ask.rowTitle`，无 `ask.review` 面板。用量 pill 上方 popover。任务两次 Button 点按停止。轨迹 `ui-trajectory` 账本+inspector。抽屉搜索/归档/footer。设置无 Account/shortcuts/open config。中文用户可见 Host 称呼为「远程主机」（`L.t`）；`L.phoneConnection()`「手机连接」仅 Host 文案存根，UI 用「连接」。 |
 
 本轮修复：
@@ -741,7 +743,7 @@ Host 加载 dist-tag `alpha` 仍是 `0.2.1-alpha.5`。`next`=`0.2.1-rc.1`，loca
 | 任务面板 | **PASS** | 进行中/已结束；`jobKillPress` 两次 Button，不是 `TapGesture(count: 2)`；SIGTERM 整句 |
 | 轨迹 | **PASS** | 账本 + inspector；吞吐空窗 `timingNotAvailable` |
 | 抽屉绿点 / spinner | **PASS** | idle+未归档 3/14 of 14 绿点；运行 spinner 仅会话行；标题栏无 running spinner |
-| 连接入口 | **PASS** | `SessionDrawer.footerPeerDevice` 在 Settings **之上**。页面 `ConnectionsView` 对齐 Android `ConnectionsScreen`。Settings 无连接分组 |
+| 连接入口 | **PASS** | `SessionDrawer.footerPeerDevice` 在 Settings **同一行靠右**。页面 `ConnectionsView` 对齐 Android `ConnectionsScreen`。Settings 无连接分组 |
 | 中文 Host 称呼 | **PASS** | 用户可见「远程主机」。`L.phoneConnection()`「手机连接」仅 Host 存根 |
 
 ### 本轮修复
@@ -884,4 +886,49 @@ Android `c5f8cdd...56dcaa9` 一笔：`feat(android): 补齐用户选择卡片与
 - `chat.turnNavigation.*` / `chat.toBottom` FAB / hover chevron：仍 skip。
 - Account / shortcuts / open config / Settings 下挂连接 / CompatibilityBanner / 审批通知：仍 **hide**。
 - 插件 `user-question-hook` / `parity-ops` 在 Host（dsh-android）；iOS 只消费 pocket 帧。
+
+## Round 41 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`）
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| Composer 模型座 | `composerResolvedModel` / `modelEffortLabel` / `ModelChipMenu` | `ui-model-selection` `ModelSelect` trigger：`model.name` + effort（`reasoning.defaultEffort` / `effort.providerDefault`） | landing / 首次连上在 catalog 到后即显示默认模型名 + 推理强度，菜单可改；与 `models.catalog` default 及后续 `modelSelection` 投影同步 |
+| 权限 chip | `permissionChipTriggerShowsLabel = false` | 桌面 `PermissionSelect` 触发器有文字；**窄屏适配，用户已拍板** | 操作栏只留图标；菜单仍有官方标签 |
+| 模型名宽度 | `composerModelNameUsesRemainingWidth` | 窄栏下模型名尽量完整，截断只在真放不下 | 权限去文字后把剩余宽度给模型名 |
+| 抽屉脚 | `SessionDrawer.footer` 同一 `HStack` | `ui-settings-general` `SettingsRoot` `.triggerRow`：Settings（`IconSettingsOutlineMedium` 16、高 42）+ 右侧 trailing 动作；`ui-sidebar` `.iconButton` 28 | 删掉 Settings 上方单独「云端设备」行；设置左、远程主机入口右 |
+
+## Round 42 侧栏清单（桌面 `0.2.1-alpha.5` ↔ iOS）
+
+源码：`dsh-web-app` `cordis.patch.yml` browser roster + `ui-sidebar-right` / `ui-sidebar` / `ui-workspace` / `ui-sidebar-files` / `ui-sidebar-terminal` / `ui-sidebar-browser` / `ui-schedule` / `ui-plugin-manager` / `ui-settings-general`。
+
+### 左侧抽屉（桌面左栏）
+
+| 入口 | 桌面 | iOS | 判定 |
+| --- | --- | --- | --- |
+| 工作区 / 会话列表 | `ui-workspace` 分组/树/扁平 + 搜索 + 视图选项 | `SessionDrawer` | **有**；本轮时间改同行、操作钮常显、视图选项改 popover |
+| 插件 | `ui-plugin-manager` | `DrawerPanel.plugins`（`plugins.list`） | **有** |
+| 自动化任务 | `ui-schedule` | `DrawerPanel.schedule`（`schedule.catalog`） | **有**；本轮去掉自创刷新/重复新建 |
+| 设置 | `ui-settings-general` `triggerRow` | 抽屉脚左侧 Settings | **有** |
+| 远程主机指示 | Settings trailing `ConnectionIndicator` | 抽屉脚右侧圆点 | **有**（窄屏用点，不是桌面图标） |
+
+### 右侧栏 / 会话标题栏右上角（桌面 `ui-sidebar-right`）
+
+| 面板 / tab | 桌面 | iOS | 判定 |
+| --- | --- | --- | --- |
+| 展开按钮 | header `conversation.session.header.corner` | `openStartPanel` | **有** |
+| Guide / 开始 | compass + guide cards | `StartPanel` | **有** |
+| 工作区文件 | `ui-sidebar-files` guide order 10「工作区文件」 | Start 第一项 + `FilesPanel` | **有** |
+| 新建终端 | `ui-sidebar-terminal` guide order 20「新建终端」 | Start 第二项 + `TerminalPanel` | **有** |
+| 浏览器 | `ui-sidebar-browser` guide order 30「浏览器」；web profile `disabled`，desktop 启用 | Start 第三项 + `BrowserPanel` | **本轮补入口** |
+| 文档预览 | `ui-sidebar-documentpreview`（打开文件时的 tab，不是 Guide 卡） | 文件预览 sheet | **有**（形态不同：sheet 不是 dock tab） |
+| 会话数据诊断 | **桌面 Guide / 右栏无此 tab**；Android `SessionInspectorPanel` | Start 第四项 + `SessionInspectorPanel` | **本轮按用户要求暴露**；文案用既有「会话数据诊断 / Session diagnostics」 |
+| Jobs | `ui-jobs` 在会话 header，不是右栏 tab | header chip | **有** |
+| 轨迹 | 对话内 tab，不是右栏 | 对话 / 轨迹 tabs | **有** |
+
+### 终端 `follow` 根因（不改 `dsh-android`）
+
+桌面 Host `0.2.1-alpha.5` `TerminalController` 只有 `@Remote` `attach` / `retain`（stream），**没有** `follow`。iOS pocket op 名是 `terminal.follow`。Mac mini 加载的 `~/repo/dsh-android/plugin/src/extra-ops.js` 把该 op 转成 `terminalController.follow(...)`，因此报 `is not a function or its return value is not async iterable`。建议补丁：plugin 改为调用 `attach`（或 `retain`），不要改 iOS 客户端协议名以外的 Host API。
+
+### CI 截图
+
+`.github/workflows/ci.yml` job `screenshots`：macos-15 启动模拟器，跑 `dshUITests`（`-UITestFixture` 假主机：两工作区、已完成「你好」、带推理强度的模型），浅色/深色各一套，artifact `ios-simulator-screenshots`。Mac Studio 实机对照由 parent 另跑。
 

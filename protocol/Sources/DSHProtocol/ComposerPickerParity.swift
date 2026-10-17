@@ -24,9 +24,20 @@ public let settingsIncludesPhoneConnection = false
 /// Drawer footer is the desktop location for switching / managing the remote Host.
 public let phoneConnectionLivesInDrawerFooter = true
 
-/// Desktop `ui-sidebar` `SidebarRoot` foot: `sidebar.footer.action` then `sidebar.settings`.
-/// The peer/device switcher is that footer action, never a Settings group.
-public let sidebarFooterActionAboveSettings = true
+/// Desktop `ui-settings-general` `SettingsRoot` `triggerRow` is one flex row:
+/// Settings (`IconSettingsOutlineMedium` 16 + `settings.trigger`) then the
+/// trailing action (`ConnectionIndicator`). Phone maps the Host switcher to
+/// that trailing seat — not a full-width row above Settings.
+/// `SidebarRoot` still lists `sidebar.footer.action` above `sidebar.settings`,
+/// but that seat is empty on a stock Host; the visible foot is the trigger row.
+public let sidebarFooterActionAboveSettings = false
+public let sidebarFooterActionSharesSettingsRow = true
+public let sidebarSettingsTriggerIconSizePoints: Double = 16
+public let sidebarSettingsTriggerHeightPoints: Double = 42
+public let sidebarSettingsTriggerGapPoints: Double = 8
+public let sidebarSettingsTriggerFontSizePoints: Double = 14
+public let sidebarFooterActionButtonPoints: Double = 28
+public let sidebarFooterActionIconSizePoints: Double = 16
 
 // MARK: - Permission chip + menu
 
@@ -130,6 +141,9 @@ public let modelPickerMenuMaxWidthPoints: Double = 420
 public let modelPickerMenuMaxHeightPoints: Double = 360
 public let modelPickerRowMinHeightPoints: Double = 34
 public let modelPickerRootShowsEffortOnlyWhenReasoning = true
+
+/// Composer model name takes leftover toolbar width; effort / chevron stay intrinsic.
+public let composerModelNameUsesRemainingWidth = true
 
 // MARK: - Agent preset seat
 
@@ -334,6 +348,11 @@ public let planChipIconSizePoints: Double = 14
 
 /// Desktop `PermissionSelect` returns null until `catalog` is loaded.
 public let permissionChipRequiresCatalog = true
+
+/// Desktop `PermissionSelect` trigger shows icon + label. Phone composer is
+/// too narrow; the toolbar keeps the icon (and chevron), the menu keeps labels.
+/// User-confirmed narrow-screen adaptation — do not restore the chip label.
+public let permissionChipTriggerShowsLabel = false
 
 /// Desktop `conversation` `input.commands` (plus button aria / tooltip).
 public func composerCommandsAria(english: Bool) -> String {

@@ -293,6 +293,7 @@ struct GeneralSettingsView: View {
         .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? [.isSelected] : [])
         .accessibilityLabel(title)
+        .accessibilityIdentifier("appearance.\(value.rawValue)")
     }
 
     private var defaultPermissionLabel: String {
@@ -470,7 +471,8 @@ func picker<Selection: Hashable, Content: View>(
             Spacer()
             Picker("", selection: selection, content: content)
                 .labelsHidden()
-                .tint(T.accent)
+                .tint(T.ink)
+                .accentColor(T.ink)
                 .disabled(!enabled)
         }
         .padding(.horizontal, 16)
