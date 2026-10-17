@@ -23,6 +23,17 @@ final class SidebarParityTests: XCTestCase {
         XCTAssertEqual(ViewOptionsMenuPolicy.rows(in: .filter), [.filterHide, .filterShow, .filterOnly])
         XCTAssertEqual(ViewOptionsMenuPolicy.title(.groupBy, english: false), "分组方式")
         XCTAssertEqual(ViewOptionsMenuPolicy.label(.filterShow, english: false), "全部对话（显示已归档）")
+        XCTAssertEqual(ViewOptionsMenuPolicy.icon(.groupWorkspace), "folderClose")
+        XCTAssertEqual(ViewOptionsMenuPolicy.icon(.orderManual), "chevronsUpDown")
+        XCTAssertEqual(ViewOptionsMenuPolicy.icon(.orderUpdated), "clockOutline")
+        XCTAssertEqual(ViewOptionsMenuPolicy.icon(.filterHide), "archiveOff")
+        XCTAssertEqual(ViewOptionsMenuPolicy.icon(.filterShow), "queue")
+        XCTAssertEqual(ViewOptionsMenuPolicy.icon(.filterOnly), "archiveCheck")
+        XCTAssertFalse(ViewOptionsRow.allCases.contains { ViewOptionsMenuPolicy.icon($0) == "check" })
+        XCTAssertTrue(viewOptionsUsesCompactPopover)
+        XCTAssertTrue(viewOptionsEveryRowHasOfficialLeadingIcon)
+        XCTAssertEqual(viewOptionsMenuMinWidthPoints, 200)
+        XCTAssertEqual(viewOptionsMenuRowMinHeightPoints, 34)
     }
 
     func testSchedulePageDropsUnofficialChrome() {

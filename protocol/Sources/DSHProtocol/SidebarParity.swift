@@ -119,10 +119,21 @@ public enum ViewOptionsMenuPolicy {
         case .groupWorkspace: return "folderClose"
         case .groupWorkspaceTree: return "workspaceTree"
         case .groupFlat: return "flatList"
-        case .orderManual, .orderUpdated, .filterHide, .filterShow, .filterOnly: return "check"
+        case .orderManual: return "chevronsUpDown"
+        case .orderUpdated: return "clockOutline"
+        case .filterHide: return "archiveOff"
+        case .filterShow: return "queue"
+        case .filterOnly: return "archiveCheck"
         }
     }
 }
+
+/// Desktop `ui-workspace` `ViewOptionsMenu` is a dense `Menu` (`min-width: 200px`)
+/// anchored to the sliders trigger — not an iPhone compact sheet.
+public let viewOptionsUsesCompactPopover = true
+public let viewOptionsMenuMinWidthPoints: Double = 200
+public let viewOptionsMenuRowMinHeightPoints: Double = 34
+public let viewOptionsEveryRowHasOfficialLeadingIcon = true
 
 public enum SchedulePagePolicy {
     public static let headerNewActionUsesShortLabel = true

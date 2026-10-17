@@ -18,6 +18,10 @@ struct OfficialGlyph: View {
         case flatList
         case globe
         case clockOutline
+        case chevronsUpDown
+        case archiveOff
+        case archiveCheck
+        case queue
         case downloadOutline
         case shareOutline
         case terminalPrompt
@@ -94,6 +98,31 @@ struct OfficialGlyph: View {
             case .clockOutline:
                 ctx.stroke(Path(SVGPath.cgPath(Self.clockRim)), with: .color(color), style: stroke)
                 ctx.stroke(Path(SVGPath.cgPath(Self.clockHands)), with: .color(color), style: stroke)
+            case .chevronsUpDown:
+                ctx.stroke(Path(SVGPath.cgPath(Self.chevronsUp)), with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(Self.chevronsDown)), with: .color(color), style: stroke)
+            case .archiveOff:
+                var lid = Path()
+                lid.addRoundedRect(
+                    in: CGRect(x: 1.9, y: 2.1, width: 12.2, height: 3.4),
+                    cornerSize: CGSize(width: 1.1, height: 1.1)
+                )
+                ctx.stroke(lid, with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(Self.archiveOffBox)), with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(Self.archiveOffSlash)), with: .color(color), style: stroke)
+            case .archiveCheck:
+                var lid = Path()
+                lid.addRoundedRect(
+                    in: CGRect(x: 1.9, y: 2.1, width: 12.2, height: 3.4),
+                    cornerSize: CGSize(width: 1.1, height: 1.1)
+                )
+                ctx.stroke(lid, with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(Self.archiveOffBox)), with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(Self.archiveCheckMark)), with: .color(color), style: stroke)
+            case .queue:
+                ctx.stroke(Path(SVGPath.cgPath(Self.queueLineA)), with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(Self.queueLineB)), with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(Self.queueBubble)), with: .color(color), style: stroke)
             case .downloadOutline:
                 ctx.stroke(Path(SVGPath.cgPath(Self.downloadStem)), with: .color(color), style: stroke)
                 ctx.stroke(Path(SVGPath.cgPath(Self.downloadArrow)), with: .color(color), style: stroke)
@@ -176,6 +205,14 @@ struct OfficialGlyph: View {
     private static let globeMeridianB = "M7.99973 14.0889C6.76445 14.0889 5.8252 11.3629 5.8252 8.00006C5.8252 4.63739 6.76445 1.91138 7.99973 1.91138"
     private static let clockRim = "M8 14C11.3137 14 14 11.3137 14 8C14 4.68629 11.3137 2 8 2C4.68629 2 2 4.68629 2 8C2 11.3137 4.68629 14 8 14Z"
     private static let clockHands = "M8 4.31V8.46L11 10.08"
+    private static let chevronsUp = "m5.1 6 2.9-2.9L10.9 6"
+    private static let chevronsDown = "m5.1 10 2.9 2.9 2.9-2.9"
+    private static let archiveOffBox = "M2.95 5.7v4.8a2.9 2.9 0 0 0 2.9 2.9h4.3a2.9 2.9 0 0 0 2.9-2.9V5.7"
+    private static let archiveOffSlash = "m2.2 1.3 11.6 12.8"
+    private static let archiveCheckMark = "m6 9.35 1.4 1.4 2.6-2.6"
+    private static let queueLineA = "M5 6.75H11"
+    private static let queueLineB = "M5 9H8"
+    private static let queueBubble = "M2.37067 11.2497C1.5872 9.89252 1.32042 8.29798 1.61945 6.7597C1.91847 5.22141 2.76317 3.84293 3.99801 2.87809C5.23285 1.91325 6.7747 1.427 8.33964 1.50888C9.90458 1.59076 11.3873 2.23526 12.5147 3.32369C13.6422 4.41232 14.3384 5.8717 14.4751 7.43304C14.6118 8.99438 14.1797 10.5525 13.2585 11.8205C12.3372 13.0885 10.9889 13.9809 9.4617 14.3334C8.18666 14.6277 6.8587 14.529 5.64964 14.0601C5.17095 13.8745 4.76937 13.4929 4.26509 13.3963C3.67389 13.2832 2.95232 13.5595 2.0377 14.3334"
     private static let downloadStem = "M8 1.95317V10.0469"
     private static let downloadArrow = "M4.25 6.29688L8 10.0469L11.75 6.29688"
     private static let downloadTray = "M1.5 10.0469V13.158C1.5 13.3937 1.60536 13.6198 1.79289 13.7865C1.98043 13.9532 2.23478 14.0469 2.5 14.0469H13.5C13.7652 14.0469 14.0196 13.9532 14.2071 13.7865C14.3946 13.6198 14.5 13.3937 14.5 13.158V10.0469"
