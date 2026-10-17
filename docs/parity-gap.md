@@ -60,7 +60,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R31 | 通用设置 `FontSettingsGroup`：步进器 +「更多字体设置」展开代码/终端字号与字体族 | done (#46) |
 | R32 | 语言跟 Host `locale.preference`：`L.en` 写回 AppPrefs；离线不可改 | done (#47) |
 | R33 | audit-only：Android `c5f8cdd` 无新 commit；`next` 当时 `0.2.1-rc.1` 无 API 增量 | done (NO_PR) |
-| R34 | 落地页首条发送立刻 pending echo（Android `FirstPrompt` / 桌面 `echo`） | this PR |
+| R34 | 落地页首条发送立刻 pending echo（Android `FirstPrompt` / 桌面 `echo`） | done (#48) |
+| R35 | 助手消息行动作行补 branch（桌面 `MessageIconActions.onBranch` / Android `messageBranch`） | this PR |
 
 ---
 
@@ -69,7 +70,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Surface | Official package | Android | iOS now |
 | --- | --- | --- | --- |
 | Transcript fold | `ui-chat` / `ui-conversation` | `protocol/Transcript.kt`, `Chat.kt`, `ChatProcess.kt` (Compacted still hidden; no CommandNode) | `protocol/…/Transcript.swift`, `ChatProcess.swift`, `Features/Chat/ChatView.swift` — chat shows desktop `CompactionItem` + `CommandNode` (`command/run`+`command/done`) + tool-change `ContextInjectionRow`; Android still folds Compacted |
-| Message actions | `ui-chat` `MessageIconActions` | `Chat.kt` `MessageActions` | `ChatView` `MessageActions` (copy / like / dislike / share + turn usage; branch on the session row menu) |
+| Message actions | `ui-chat` `MessageIconActions` | `Chat.kt` `MessageActions` | `ChatView` `MessageActions` (copy / like / dislike / share / branch + turn usage；会话行菜单仍保留无 seq 的 `sessions.fork`) |
 | Trajectory | `ui-trajectory` | `Trajectory.kt` + Detail/Inspector/Request/Locales; `protocol/TrajectoryTimeline.kt` | `Features/Trajectory/` + `protocol/Trajectory.swift` / `TrajectoryRequest.swift` |
 | WorkspaceChanges | Host `workspaceChanges.summary/diff` | `WorkspaceChanges.kt` | `Features/Chat/WorkspaceChanges.swift` + `protocol/WorkspaceChanges.swift` |
 | Session Inspector | desktop session-inspector | `SessionInspectorPanel.kt` / Log / Model / Navigation | implemented, unexposed (desktop Start / ⋯ have no entry) |
@@ -105,7 +106,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Context tool-change row | desktop `ContextInjectionRow`; Android hides ordinary Context | `developer/message` / non-user `user/message` 的 `tool-addition`/`tool-removal` 可见；skill-catalog / time-context / session-reference / agent-instructions 仍隐藏（桌面 `isVisibleChatNode` 同样隐藏）；recall 标签投到用户气泡 | **missing** → **present** | **R23** / **R25** |
 | Deliverables | `Item.Deliverable` | tap opens workspace file preview | **present** | **B** |
 | Markdown / code block / tables | `Markdown.kt` | AST + GFM tables / code / file chips | **present** | **D** |
-| Copy / like / dislike / share | `MessageActions` + `FeedbackCategory` | desktop row is share (not branch); branch stays on the session row menu | **present** | **A** / **P1** |
+| Copy / like / dislike / share / branch | `MessageActions` + `FeedbackCategory` | desktop `MessageIconActions`：copy → extraActions（赞/踩/分享）→ branch → usage；无 `sessions.fork` 不画；无 `endSeq` 灰显。会话行菜单仍保留无 seq 的分叉 | **present** | **A** / **P1** / **R35** |
 | Message / trigger clock | `formatMessageClock` | 同日 `HH:mm`；同年 `clock.md`+时钟；跨年 `clock.ymd`+时钟（zh `m月d日` / `y年m月d日`，en `m/d` / `y-m-d`）；本地时区；无今天/昨天 | **present** | **R13** |
 | Turn usage pill | `ComposerStats.kt` `TurnUsageAction` | `TurnUsagePanel`：chip `用量 {n} tok`；popover 在 pill 上方；表头图标 +「本轮用量」左、合计右；无「合计」行；推理挂在输出行 `（其中推理 {n} tok）` | **missing** → **present** | **E** / **R6** / **R12** |
 | Composer statistics | Activity / Usage / Context pills | `ComposerStats` 单行 HStack；Activity / Token 用量 / ContextMeter 均为贴 chip 的 popover（在 chip **上方**）。用量 pill 用数据库图标；上下文为 14px 环 + 百分比；弹层文案 `stats.dialog.*` / `context.*`（「工具定义」「对话消息」） | **missing** → **present** | **E** / **R8** / **R11** / **R12** / **R18** |
@@ -241,7 +242,7 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 
 - Trajectory: session header tabs 对话 / 轨迹 — data is the current follow transcript (no extra Host op). Hidden when coding view is off.
 - Opening a Session that the Host answers `session/not-found` for: drop the row (and refresh `sessions.list`), `sessions.clear()` if it was current, **no toast**. Desktop does not surface that wire code.
-- Conversation header has no ⋯ overflow. Export and session feedback live on `/` and `+`. Rename, fork, and Copy Session ID live on the drawer session row menu. Header title uses the same rule as the drawer: current blank → 「新会话」, any other missing title → 「未命名」.
+- Conversation header has no ⋯ overflow. Export and session feedback live on `/` and `+`. Rename, Copy Session ID, and session-level fork (no seq = last completed turn) live on the drawer session row menu. Assistant turn tails also expose desktop `message.branch` (`sessions.fork` + `endSeq`). Header title uses the same rule as the drawer: current blank → 「新会话」, any other missing title → 「未命名」.
 - Terminal / files / jobs: expose when the matching op is in `hello.ops` (same as Android).
 - Browser / Session Inspector: desktop Start and session ⋯ do not list them. Do not invent an entry; implementations stay unexposed.
 - WorkspaceChanges: consume Host `workspace/changes`; chat cards when `showCodeWorkView` and `workspaceChanges.summary` is advertised; diff sheet needs `workspaceChanges.diff`. Keep the card outside the 「已完成」 fold (attach to the last answer when that answer is visible). Pocket wire flags are `absent | true | false` (Android); do not reject JSON `false`.
@@ -772,6 +773,29 @@ Android `4052adb` / `50257c1` / `825b235`：落地页首条发送立刻画出 pe
 - `chat.turnNavigation.*` / `chat.toBottom` FAB / `ask.review` / hover chevron：仍 skip。
 - Account / shortcuts / open config / CompatibilityBanner / Settings 嵌套「云端设备」：仍 **hide**。入口只在抽屉脚。
 - Android `prepareSidebarSession`（打开文件/终端/@ 时先建空白会话）：桌面 landing 已有 blank session；iOS landing 用无会话 hero 替代（R19）。本轮只补首条 echo，不发明空白会话。
-- 消息行 branch：桌面 `MessageIconActions` 是 share，不是 branch。Desktop 赢。
+- 消息行 branch：R34 误读为「桌面只有 share」。桌面 `TurnTailNodeView` 在 `session/fork` 时接线 `onBranch`。留给 Round 35。
+- 审批通知开关：Android 本机偏好，桌面 Settings 无此行。
+
+## Round 35 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*` alpha=`0.2.1-alpha.5` / next=`0.2.1-rc.2`；Android `c5f8cdd`）
+
+直播核对（2026-10-17）：`alpha` 仍 `0.2.1-alpha.5`。`next` 仍 `0.2.1-rc.2`。pack 对比 ui-chat / conversation locale 与 `MessageIconActions` **无增量**（仅 `package.json`）。Android `main` tip 仍 `c5f8cdd`，其后 0 commits。
+
+#48 后怀疑式重审：落地页 FirstPrompt echo / `queue.sending` / send·plus·perm·model·Start 锁已对齐。用户行无 `onBranch`（桌面 `UserMessageNodeView` 同样不传）。本轮发现 R34 把桌面消息行读成「只有 share」是错的。
+
+| 模块 | iOS | 对照的源码 | 对齐点 |
+| --- | --- | --- | --- |
+| 助手消息行 branch | `MessageActions` + `messageBranchChrome` | 桌面 `ui-chat` `MessageIconActions` / `TurnTailNodeView`；Android `Chat.kt` `messageBranch` | 顺序 copy → 赞/踩/分享 → branch → 用量 → 时钟。`sessions.fork` 才画；`endSeq` 有则 `forkCurrent(atSeq:)`，无则灰显 `message.branchUnavailable`。用户行不画。会话行菜单仍保留无 seq 分叉 |
+| 文案 | `messageBranchLabel` | 桌面 `message.branch` / `message.branchUnavailable` | 「在新对话中分支」/「仅可从已完成轮次的最后一条消息分支」 |
+
+本轮核对后**不改**（平台 / hide / 禁止发明）
+
+- `chat.turnNavigation.*`：桌面长 transcript 右侧跳轮；phone 无窄屏切片，不发明。
+- `chat.toBottom` FAB：桌面无独立 FAB；phone 仍自动贴底。
+- `AskQuestionRow` `ask.review`：phone 不发明 review 面板。
+- 桌面 `DisclosureRow` hover 才把图标换成 chevron：触屏无 hover。
+- Account / shortcuts / open config / open-in-desktop-editor / 快捷键设置页：仍 **hide**。
+- Settings 下挂连接：必须留在抽屉脚。桌面 `ui-settings` 没有 controller 连接节。
+- Android `CompatibilityBanner`：不发明连接页横幅。
+- Android `prepareSidebarSession`：桌面 landing 已有 blank session；iOS landing 用无会话 hero 替代（R19）。不发明空白会话。
 - 审批通知开关：Android 本机偏好，桌面 Settings 无此行。
 

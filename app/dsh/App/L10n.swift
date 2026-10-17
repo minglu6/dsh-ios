@@ -37,10 +37,8 @@ enum L {
             ("other", en ? "Other" : "其他"),
         ]
     }
-    static func branch() -> String { en ? "Branch into a new conversation" : "在新对话中分支" }
-    static func branchUnavailable() -> String {
-        en ? "Available only on the last message of a completed turn" : "仅可从已完成轮次的最后一条消息分支"
-    }
+    static func branch() -> String { messageBranchLabel(unavailable: false, english: en) }
+    static func branchUnavailable() -> String { messageBranchLabel(unavailable: true, english: en) }
     static func chatTab() -> String { en ? "Chat" : "对话" }
     static func stop() -> String { en ? "Stop" : "停止" }
     static func newSession() -> String { en ? "New session" : "新会话" }

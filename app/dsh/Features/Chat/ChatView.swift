@@ -1426,6 +1426,9 @@ struct MessageRow: View {
         let rating = mid.flatMap { model.feedback[$0]?.rating }
         let canFeedback = mid != nil && model.ops.contains("feedback.set")
         let usage = (model.performanceUsage == .detailed ? turn.flatMap { model.chat?.turnTokenUsage[$0] } : nil)
+        let canFork = model.firstPrompt == nil && model.ops.contains("sessions.fork")
+        let endSeq = turn.flatMap { owned in model.chat?.turns.first { $0.turn == owned }?.endSeq }
+        let branch = messageBranchChrome(canFork: canFork, turnEndSeq: endSeq)
         return MessageActions(
             text: text.text,
             timeMs: text.at,
@@ -1441,6 +1444,11 @@ struct MessageRow: View {
                 if rating == "negative" { model.setMessageFeedback(messageId: mid!, rating: nil) }
                 else { onOpenFeedback(mid!, "negative") }
             } : nil,
+            branch: branch,
+            onBranch: {
+                guard let seq = branch?.atSeq else { return }
+                model.forkCurrent(atSeq: seq)
+            },
             usageAction: {
                 if let usage, let turn { return { TurnUsageAction(turn: turn, usage: usage) } }
                 return nil
@@ -1451,7 +1459,7 @@ struct MessageRow: View {
 
 private enum MessageClock { case start, end }
 
-/// Desktop MessageIconActions: copy → like/dislike → share. Branch stays on the session row menu.
+/// Desktop MessageIconActions: copy → like/dislike → share → branch → usage → clock.
 private struct MessageActions: View {
     let text: String
     let timeMs: Int64?
@@ -1461,6 +1469,8 @@ private struct MessageActions: View {
     var rating: String? = nil
     var onLike: (() -> Void)? = nil
     var onDislike: (() -> Void)? = nil
+    var branch: MessageBranchChrome? = nil
+    var onBranch: (() -> Void)? = nil
     var usageAction: (() -> TurnUsageAction)? = nil
     @State private var copied = false
     @State private var sharing = false
@@ -1502,6 +1512,16 @@ private struct MessageActions: View {
                     sharing = true
                 }
             }
+            if let branch {
+                iconButton(
+                    system: D.branch,
+                    label: messageBranchLabel(unavailable: branch.unavailable, english: L.en),
+                    accessibilityLabel: L.branch(),
+                    enabled: branch.enabled,
+                    faded: branch.unavailable,
+                    action: { onBranch?() }
+                )
+            }
             if let usageAction {
                 usageAction()
             }
@@ -1524,18 +1544,22 @@ private struct MessageActions: View {
     private func iconButton(
         system: String,
         label: String,
+        accessibilityLabel: String? = nil,
         enabled: Bool = true,
+        faded: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
             Image(systemName: system)
                 .font(.system(size: 15))
                 .foregroundStyle(T.text3)
+                .opacity(faded ? 0.4 : 1)
                 .frame(width: 36, height: 48)
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
-        .accessibilityLabel(label)
+        .accessibilityLabel(accessibilityLabel ?? label)
+        .accessibilityHint(faded ? label : "")
     }
 }
 
