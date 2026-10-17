@@ -166,7 +166,6 @@ final class AppModel: ObservableObject {
     @Published var pendingBrowserURL: URL?
     var fileTreeStates: [String: FileTreeState] = [:]
     var fileTreeOffsets: [String: CGFloat] = [:]
-    private var appearanceOverride: Appearance?
     @Published var hiddenQuestionId: String?
     @Published var nearby: [DiscoveredHost] = []
     @Published var composerText = ""
@@ -1506,48 +1505,6 @@ final class AppModel: ObservableObject {
             language = Locale.current.language.languageCode?.identifier.hasPrefix("zh") == true ? .zh : .en
         }
         TrajL.en = language == .en
-        if let hosted = hostSettings.value(.appearance)?.str() {
-            appearanceOverride = nil
-            switch hosted {
-            case "light": appearance = .light
-            case "dark": appearance = .dark
-            default: appearance = .system
-            }
-        } else if let appearanceOverride {
-            appearance = appearanceOverride
-        } else if !hostSettings.ready {
-            appearance = .system
-        }
-        if let value = hostSettings.value(.fontSize)?.int() {
-            fontSize = clampFontSize(value, range: 10...22)
-        } else if !hostSettings.ready {
-            fontSize = 14
-        }
-        if let value = hostSettings.value(.codeFontSize)?.int() {
-            codeFontSize = clampFontSize(value, range: 10...16)
-        } else if !hostSettings.ready {
-            codeFontSize = 11
-        }
-        if let value = hostSettings.value(.terminalFontSize)?.int() {
-            terminalFontSize = clampFontSize(value, range: 10...20)
-        } else if !hostSettings.ready {
-            terminalFontSize = 13
-        }
-        if hostSettings.hasField(.textFontFamily) {
-            textFontFamily = hostSettings.value(.textFontFamily)?.str() ?? ""
-        } else if !hostSettings.ready {
-            textFontFamily = ""
-        }
-        if hostSettings.hasField(.codeFontFamily) {
-            codeFontFamily = hostSettings.value(.codeFontFamily)?.str() ?? ""
-        } else if !hostSettings.ready {
-            codeFontFamily = ""
-        }
-        if hostSettings.hasField(.terminalFontFamily) {
-            terminalFontFamily = hostSettings.value(.terminalFontFamily)?.str() ?? ""
-        } else if !hostSettings.ready {
-            terminalFontFamily = ""
-        }
     }
 
     func setSessionGroupBy(_ value: SessionGroupBy) {
@@ -1858,46 +1815,38 @@ final class AppModel: ObservableObject {
     }
 
     func setAppearance(_ value: Appearance) {
-        if hostSettings.writable(.appearance) {
-            appearanceOverride = nil
-            appearance = value
-            hostSettings.write(.appearance, value: .string(value.rawValue))
-        } else if !hostSettings.online {
-            appearanceOverride = value
-            appearance = value
-        } else {
-            hostSettings.write(.appearance, value: .string(value.rawValue))
-        }
+        appearance = value
+        AppPrefs.appearance = value
     }
 
     func setFontSize(_ value: Int) {
         fontSize = clampFontSize(value, range: 10...22)
-        hostSettings.write(.fontSize, value: .number(Double(fontSize)))
+        AppPrefs.fontSize = fontSize
     }
 
     func setCodeFontSize(_ value: Int) {
         codeFontSize = clampFontSize(value, range: 10...16)
-        hostSettings.write(.codeFontSize, value: .number(Double(codeFontSize)))
+        AppPrefs.codeFontSize = codeFontSize
     }
 
     func setTerminalFontSize(_ value: Int) {
         terminalFontSize = clampFontSize(value, range: 10...20)
-        hostSettings.write(.terminalFontSize, value: .number(Double(terminalFontSize)))
+        AppPrefs.terminalFontSize = terminalFontSize
     }
 
     func setTextFontFamily(_ value: String) {
         textFontFamily = normalizeFontFamily(value)
-        hostSettings.write(.textFontFamily, value: .string(textFontFamily))
+        AppPrefs.textFontFamily = textFontFamily
     }
 
     func setCodeFontFamily(_ value: String) {
         codeFontFamily = normalizeFontFamily(value)
-        hostSettings.write(.codeFontFamily, value: .string(codeFontFamily))
+        AppPrefs.codeFontFamily = codeFontFamily
     }
 
     func setTerminalFontFamily(_ value: String) {
         terminalFontFamily = normalizeFontFamily(value)
-        hostSettings.write(.terminalFontFamily, value: .string(terminalFontFamily))
+        AppPrefs.terminalFontFamily = terminalFontFamily
     }
 
     func followFiles(sessionId: String, path: String) -> AsyncThrowingStream<JSONValue, Error>? {

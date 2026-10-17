@@ -1,15 +1,14 @@
 import Foundation
 import DSHProtocol
 
+/// Exact fields owned by the official Host settings namespaces.
+/// Appearance and fonts stay on the phone (`isPhoneLocalThemeField`); they are
+/// not Host `ui-theme` mirrors.
 enum SharedSetting: String, CaseIterable {
-    case appearance, fontSize, codeFontSize, terminalFontSize
-    case textFontFamily, codeFontFamily, terminalFontFamily
     case language, busySend, codeWork, transcript, collapse, performance, permission, sessionLog, linkOpening
 
     var namespace: String {
         switch self {
-        case .appearance, .fontSize, .codeFontSize, .terminalFontSize, .textFontFamily, .codeFontFamily, .terminalFontFamily:
-            return "ui-theme"
         case .language: return "locale"
         case .busySend: return "ui-conversation"
         case .codeWork: return "ui-settings"
@@ -21,13 +20,6 @@ enum SharedSetting: String, CaseIterable {
 
     var field: String {
         switch self {
-        case .appearance: return "preference"
-        case .fontSize: return "fontSize"
-        case .codeFontSize: return "codeFontSize"
-        case .terminalFontSize: return "terminalFontSize"
-        case .textFontFamily: return "textFontFamily"
-        case .codeFontFamily: return "codeFontFamily"
-        case .terminalFontFamily: return "terminalFontFamily"
         case .language: return "preference"
         case .busySend: return "busyEnter"
         case .codeWork: return "enabled"
@@ -40,6 +32,8 @@ enum SharedSetting: String, CaseIterable {
         }
     }
 
+    /// Compile-time fence: every Host-mirrored field must stay off the phone-local theme set.
+    var isPhoneLocalTheme: Bool { isPhoneLocalThemeField(namespace: namespace, field: field) }
 }
 
 /// Live Host settings mirror. Never a persisted mobile copy.
@@ -62,6 +56,7 @@ final class HostSettings: ObservableObject {
         describe: @escaping () async throws -> JSONValue,
         mutate: ((String, JSONValue, Int) async throws -> JSONValue)? = nil
     ) {
+        precondition(SharedSetting.allCases.allSatisfy { !$0.isPhoneLocalTheme })
         clear()
         self.describe = describe
         self.mutate = mutate
@@ -143,6 +138,9 @@ final class HostSettings: ObservableObject {
     }
 
     func write(_ setting: SharedSetting, value: JSONValue, onSaved: @escaping () -> Void = {}) {
+        if setting.isPhoneLocalTheme {
+            fatalError("phone-local theme \(setting.rawValue) must not mutate Host")
+        }
         guard let mutate else {
             error = L.t("远程主机设置尚未连接、不可用或只读，未保存", "Remote host settings are disconnected, unavailable, or read-only; nothing was saved")
             return

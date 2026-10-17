@@ -1,6 +1,6 @@
 # iOS ↔ Android / desktop parity gap
 
-Phone is a controller. Layout may change for a narrow portrait screen. Features, copy, icons, colors, states, and interactions follow the official desktop UI (`@deepseek-ai/dsh@0.2.1-alpha.2`, git `d743267`) as already ported by [dsh-android](https://github.com/minglu6/dsh-android) `main` at **`729ef2e`**.
+Phone is a controller. Layout may change for a narrow portrait screen. Features, copy, icons, colors, states, and interactions follow the official desktop UI (`@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`) as already ported by [dsh-android](https://github.com/minglu6/dsh-android) `main` at **`c5f8cdd`**.
 
 **Do not invent** settings groups, credential pages, extra security, or placeholder shells. Hide only what desktop itself hides (local OS editor, keyboard shortcuts).
 
@@ -55,7 +55,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R25 | fileOpen locale + PDF 失败句；Workbook excel locale 核对；用户气泡 referenceSummary | done (#42) |
 | R26 | audit-only：turnNavigation / ask.review / hover chevron / toBottom / Settings 云端设备 保持 skip | done (NO_PR) |
 | R27 | ConnectionsView 对齐 Android `ConnectionsScreen` / `ConnDeviceRow` | done (#43) |
-| R28 | #43 后源码审计；npm `next` `0.2.1-rc.1` 无 locale/component API 增量 | this PR |
+| R28 | #43 后源码审计；npm `next` `0.2.1-rc.1` 无 locale/component API 增量 | done (#44) |
+| R30 | 外观/字体只写本机 AppPrefs，不再读写 Host `ui-theme`（对齐 Android #63 外观 + 控制器字体） | this PR |
 
 ---
 
@@ -193,7 +194,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Drawer 自动化 (not a settings section) | `ScheduleScreen.kt` | drawer only; Settings 自动化 row removed | **present** | **D** |
 | Schedule catalog / edit / history | `ScheduleScreen.kt` | CAS update + delete + history; New → chat | **present** | **D** |
 | Agent presets | `AgentPresetSettingsScreen.kt` | Settings row + guide + Creator CTA when `presets.list`/`presets.settings` | **missing** → **present** | **G** |
-| General: fonts, transcript, collapse, busy, performance, log upload, link opening | `GeneralSettingsScreen` | appearance 3 cards + `14 px` menu; fonts **local only**; `collapseTiming` 与桌面一样写 Host `ui-chat.collapseTiming`（`next-input`）；链接行标题「网页链接默认打开方式」 | **present** | **D** / **P1** / **#20** / **R4** |
+| General: fonts, transcript, collapse, busy, performance, log upload, link opening | `GeneralSettingsScreen` | appearance 3 cards + `14 px` menu; **appearance + fonts local only**（`AppPrefs`，不读写 Host `ui-theme`）；`collapseTiming` 与桌面一样写 Host `ui-chat.collapseTiming`（`next-input`）；链接行标题「网页链接默认打开方式」 | **present** | **D** / **P1** / **#20** / **R4** / **R30** |
 | Offline gray-out (no unofficial banner) | Android `SettingsScaffold` invents 「远程主机未连接，需连接的操作暂不可用」; desktop has no such chrome | **desktop-first:** no top banner / no extra copy; status 「未连接」; Models / 内置插件 / Agent 预设 / drawer 插件·自动化 gray + unclickable; `lastOps` keeps rows | **missing** → **present** | **H** |
 | Qoder CN card | `QoderConnectionCard.kt` last in `llm-qoder` | same PAT write-only + revision fence | **missing** → **present** | **H** |
 | Models intro | `modelsSettingsIntro` | 「填入各提供商的 API 密钥即可使用其模型。」 | **partial** → **present** | **P1** / **H** |
@@ -631,3 +632,38 @@ Android `main` `729ef2e..c5f8cdd`（4 commits）仍是既有项：`18af5a8` 外�
 - Account / shortcuts / open config / open-in-desktop-editor / 快捷键设置页：仍 **hide**。
 - Android Settings「移动端」分组下的「连接」（文档旧称「云端设备」）不搬。桌面 `ui-settings` **没有** controller 侧连接节；pocket `settings.section` id=`pocket` 是 **Host** QR「手机连接」，且 `installHostUi` 的 phone 窗口提前 return、不注册该节。iOS 入口只在抽屉脚。Desktop 赢。
 - Android `18af5a8`…`c5f8cdd`：无新交互。
+
+## Round 30 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*` alpha=`0.2.1-alpha.5` / next=`0.2.1-rc.1`；Android `c5f8cdd`）
+
+本轮**怀疑式**源码核对，不复读 R26–R28 的 NO_PR 句。发现可落地缺口：iOS 外观/字体仍走 Host `ui-theme` 镜像（`setAppearance` / `setFontSize*` 写 Host；`applyHostMirroredPrefs` 读 Host；断线 `!ready` 把外观打回「跟随系统」、字号打回 14）。对话渲染读 `AppPrefs.fontSize`，设置却不写 AppPrefs，离线改字号还会弹出「远程主机设置尚未连接…」。Android `#63` / `18af5a8` 已把外观改成本机；字体 Android 仍 Host-backed。控制器规则 + 硬约束「外观/字体保持本机」：iOS 两者都只写 `AppPrefs`，不 mutate Host。
+
+### 必须核对
+
+| 项 | 判定 | 证据 |
+| --- | --- | --- |
+| 1. 桌面 package | **PASS**（无 locale/API 增量可搬） | Host 加载 dist-tag `alpha`=`0.2.1-alpha.5`。`npm view` `next`=`0.2.1-rc.1`，`latest` 仍是旧线（如 ui-chat `0.1.2-alpha.2`）。pack 对比 ui-chat / conversation / workspace / sidebar / plugin-manager / jobs / commands / permission-presets / model-selection / agent-preset / plan / tool / primitives / deliverables / settings-plugins / sidebar-files / sidebar-documentpreview / settings / trajectory / schedule：locale 与组件相对 alpha.5 **无增量**；仅 `package.json` 版本，以及 `ui-sidebar` `localBuildVersion` `0.2.1-alpha.5-aeba8e9` → `0.2.1-rc.1-ed75efe`。 |
+| 2. Android `729ef2e..c5f8cdd` | **PASS**（#63 外观本机此前未落地 → 本轮修；其余已有） | `#63` `18af5a8`：Android `SharedSetting` 去掉 `Appearance`；`AppPrefs.appearance` 本机。iOS 修前仍 `SharedSetting.appearance` + `hostSettings.write(.appearance)`。`#64` 发布 bump：无 UI。`#65` `d30825c` `skills.list`：iOS `PocketClient.listSkills` + `CommandPolicy` 技能组。`#66` `c5f8cdd` 无 sessionId 目录：`listCatalogArgs(nil)` → `{}`；`CommandMenuOverlay.load` `sessionId = model.chat?.sessionId`（landing 为 nil）；`commandMenuClientRows(landing:)` 只注入 `/file` `/model`，goal/plan/… 与技能来自 Host 目录。插件侧（Android `plugin/src/extra-ops.js`）才按默认 preset/workspace 列目录；iOS 客户端不硬编码。 |
+| 3. Connections | **PASS** | `ConnectionsView` / `ConnDeviceRow` / `connectionsStatusLine` vs Android `Screens.kt` `ConnectionsScreen` / `ConnDeviceRow` / `buildConnStatusLine`：空配对/附近不画节；标题 `L.connections()`「连接」；底卡扫码/输入地址；行 8pt 点 + `在线 · route · 当前` + host:port + 非当前「切换」+ 管理 chevron。点行开管理，Switch 才 `connect`。Android `CompatibilityBanner` / `NEARBY_WIFI_DEVICES` 不搬（iOS 配对走 `compatibilityError`；Local Network 由系统提示）。 |
+| 4. 矩阵 partial / 「留给」 | **PASS**（已对齐未改文档，或后续轮已闭环） | 表内现存 `**partial**` 均为 `**partial** → **present**`。Round 22「留给 Round 24+」的 CommandNode 已由 R24 落地。无未闭环 partial。 |
+| 5. 交互小巧思 | **PASS** | 未读绿点：`CompletionReminders` + `sidebarSessionLeading` + `SidebarSessionLeadingView`（idle+未归档 3/14 of 14）。标题无 running spinner：`ChatView.header` 仅抽屉 / 标题或 crumbs / Start；运行态 `RunningStatusRow` 鲸尾 shimmer。云端设备不进设置：`SettingsView` 仅 General/Models/Presets/Plugins；入口 `SessionDrawer.footerPeerDevice` 在 Settings 之上。 |
+| 6. Composer / 斜杠 / Ask / 用量 / 任务 / 轨迹 / 抽屉 / 设置抽查 | **PASS**（无新「桌面有、iOS 缺」的语义） | 斜杠分组「添加/指令/技能」无数量（`commandMenuSectionTitle`）。Ask 工具行 `ask.rowTitle`，无 `ask.review` 面板。用量 pill 上方 popover。任务两次 Button 点按停止。轨迹 `ui-trajectory` 账本+inspector。抽屉搜索/归档/footer。设置无 Account/shortcuts/open config。中文用户可见 Host 称呼为「远程主机」（`L.t`）；`L.phoneConnection()`「手机连接」仅 Host 文案存根，UI 用「连接」。 |
+
+本轮修复：
+
+| GAP | fix |
+| --- | --- |
+| 外观读写 Host `ui-theme.preference`；断线/Host 事件打回「跟随系统」 | `setAppearance` 只写 `AppPrefs`；`SharedSetting` 删除 appearance；`applyHostMirroredPrefs` 不再读 Host 外观 |
+| 字号/字体写 Host；对话读 `AppPrefs` 却从未写入；离线改字号报 Host 未连接 | `setFontSize*` / family 只写 `AppPrefs`；删除全部 `ui-theme` SharedSetting；断线保留本机值 |
+| 误把 Host 窗口 chrome 同步到手机 | `isPhoneLocalThemeField`；`HostSettings.write` 若再带入 phone-local 字段 `fatalError` |
+
+本轮核对后**不改**（平台 / hide / 禁止发明）：
+
+- `chat.turnNavigation.*`：桌面长 transcript 右侧跳轮；phone 不发明。
+- `chat.toBottom` FAB：phone 仍自动贴底。
+- `AskQuestionRow` `ask.review`：phone 不发明 review 面板。
+- 桌面 `DisclosureRow` hover 才把图标换成 chevron：触屏无 hover。
+- Account / shortcuts / open config / open-in-desktop-editor / 快捷键设置页：仍 **hide**。
+- Android Settings「移动端」分组下的「连接」不搬。桌面 `ui-settings` 没有 controller 连接节；iOS 入口只在抽屉脚。
+- Android 字体仍 Host-backed（`SharedSetting.FontSize`…）。冲突以控制器为准：Host `ui-theme` 是远程窗口 chrome，不写回 Host。
+- Android `CompatibilityBanner`：iOS 在配对/连接失败时用 `compatibilityError`，不发明连接页横幅。
+
