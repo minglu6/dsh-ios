@@ -50,7 +50,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R20 | Ask 行「提问」+ waiting/pending；改动 diff.*；图片 image.failed；重试 scheduled；INTERRUPTED 失败 | done (#37) |
 | R21 | 工具行 tool.title.* / preparing 保留标题；Goal `detail.goal.*` | done (#38) |
 | R22 | Chat `CompactionItem` `message.compaction*` | done (#39) |
-| R23 | ContextInjectionRow 工具变更行；TurnMaxTokensItem；signed-out TurnErrorItem | this PR |
+| R23 | ContextInjectionRow 工具变更行；TurnMaxTokensItem；signed-out TurnErrorItem | done (#40) |
+| R24 | Host `command/run`+`command/done` 折叠；GenericCommandCard；CompactionCommandCard 运行中「正在压缩…」 | this PR |
 
 ---
 
@@ -58,7 +59,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 
 | Surface | Official package | Android | iOS now |
 | --- | --- | --- | --- |
-| Transcript fold | `ui-chat` / `ui-conversation` | `protocol/Transcript.kt`, `Chat.kt`, `ChatProcess.kt` (Compacted still hidden) | `protocol/…/Transcript.swift`, `ChatProcess.swift`, `Features/Chat/ChatView.swift` — chat shows desktop `CompactionItem` + tool-change `ContextInjectionRow`; Android still folds Compacted |
+| Transcript fold | `ui-chat` / `ui-conversation` | `protocol/Transcript.kt`, `Chat.kt`, `ChatProcess.kt` (Compacted still hidden; no CommandNode) | `protocol/…/Transcript.swift`, `ChatProcess.swift`, `Features/Chat/ChatView.swift` — chat shows desktop `CompactionItem` + `CommandNode` (`command/run`+`command/done`) + tool-change `ContextInjectionRow`; Android still folds Compacted |
 | Message actions | `ui-chat` `MessageIconActions` | `Chat.kt` `MessageActions` | `ChatView` `MessageActions` (copy / like / dislike / share + turn usage; branch on the session row menu) |
 | Trajectory | `ui-trajectory` | `Trajectory.kt` + Detail/Inspector/Request/Locales; `protocol/TrajectoryTimeline.kt` | `Features/Trajectory/` + `protocol/Trajectory.swift` / `TrajectoryRequest.swift` |
 | WorkspaceChanges | Host `workspaceChanges.summary/diff` | `WorkspaceChanges.kt` | `Features/Chat/WorkspaceChanges.swift` + `protocol/WorkspaceChanges.swift` |
@@ -90,6 +91,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Tool row → inspector | `Chat.kt` tool card | `ToolProcessSummary` title/icon/receipt + inspect sheet | **present** | **D** |
 | Process group fold | `ChatProcess.kt` | `foldChatItems` / `visibleChatRows` + `ProcessGroupView`；已完成回合为「已完成，用时」+ 右侧 chevron（无左侧图标）；步骤组标题 body 14 + ` · ` 细节；成员与组头同列（无额外缩进）；运行中 shimmer | **present** | **D** / **R13** |
 | Notices (stopped / max-tokens / account) | reducer + official `message.*` | reducer emits; `.notice` / `RetryRow`（active vs scheduled 文案） / `TurnFailureRow`（`INTERRUPTED`/`ACCOUNT_SIGNED_OUT`=`taskStopped`） / `TurnMaxTokensRow`（title+hint 一行） | **present** | **E** / **R20** / **R23** |
+| Slash command cards | desktop `CommandNode` / `GenericCommandCard` / `CompactionCommandCard` | `command/run`+`command/done` 按 `commandId` 折叠；通用卡 `command.*`；`/compact` 运行中「正在压缩…」，checkpoint 后只留 CompactionItem；`/permission` 隐藏 | **missing** → **present** | **R24** |
 | Context tool-change row | desktop `ContextInjectionRow`; Android hides ordinary Context | `developer/message` / non-user `user/message` 的 `tool-addition`/`tool-removal` 可见；skill-catalog / time-context 仍隐藏 | **missing** → **present** | **R23** |
 | Deliverables | `Item.Deliverable` | tap opens workspace file preview | **present** | **B** |
 | Markdown / code block / tables | `Markdown.kt` | AST + GFM tables / code / file chips | **present** | **D** |
@@ -211,7 +213,7 @@ Port as the matching batch needs them (same JSON, no second protocol):
 | Android `app/core/protocol` | Used by | Batch |
 | --- | --- | --- |
 | `TrajectoryTimeline.kt` | Trajectory swimlane | **A done** (`TrajectoryTimeline.swift`) |
-| `Transcript.kt` extra items (`System`, `Compacted`, `Retry`, `TurnFailure`, `Changes`; System folded; Compacted is desktop `CompactionItem` in chat; Retry/TurnFailure rendered; Changes cards when coding view is on; Context tool-addition/removal shown) | Chat + trajectory | A / D / **E** / **F** / **R22** / **R23** |
+| `Transcript.kt` extra items (`System`, `Compacted`, `Retry`, `TurnFailure`, `Changes`; System folded; Compacted is desktop `CompactionItem` in chat; Retry/TurnFailure rendered; Changes cards when coding view is on; Context tool-addition/removal shown; CommandNode from `command/run`+`command/done`) | Chat + trajectory | A / D / **E** / **F** / **R22** / **R23** / **R24** |
 | `TurnTokenUsage.kt` | Inspector + usage | **E done** (`TurnTokenUsage.swift`) |
 | `ComposerMetrics.kt` | Composer statistics | **E done** (`ComposerMetrics.swift`) |
 | `WorkspaceChanges.kt` | Changed-file cards | **F done** (`WorkspaceChanges.swift`) |
@@ -532,9 +534,31 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 
 本轮核对后**不改**、确认已对齐或平台/hide：
 
-- `CompactionCommandCard` / generic slash `command/run`（含运行中 `message.compaction.running`「正在压缩…」）：桌面 `CommandNode` 来自 log-only `command/run`/`command/done`。iOS `Item`/`ChatRow`/`TranscriptReducer` **没有** command 节点，follow 遇到这些事件会丢。不发明一层。Round 24+ 前提是先接入 Host command 节点。
 - Account / shortcuts / open config / open-in-desktop-editor / 快捷键设置页：仍 **hide**。
 - 桌面 popover 系统箭头 / Think·CompactionItem 收起无 hover 换 chevron：仍平台残留。
 - `AskQuestionRow` `ask.review`：phone 不发明 review 面板。
 - 绿点 / 会话行 spinner / 标题无 running spinner / 抽屉脚连接入口：已对齐。Android Settings「云端设备」不搬。
 - Android `18af5a8`…`c5f8cdd`：无新交互。Desktop 仍赢过 Android 把 Compacted 折进 `isHidden`。
+
+## Round 24 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`）
+
+Host-loaded dist-tag `alpha` 仍是 `0.2.1-alpha.5`（本轮核对）。
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| Command 节点 | `Item.Command` + `TranscriptReducer` | `ui-conversation` `CommandNode`；`ui-chat` `commandDefinition` | log-only `command/run`+`command/done` 按 `commandId` 折叠；窗口切开：无 run 的 done 仍建节点（name/args null）；run 无 done 为执行中 |
+| GenericCommandCard | `CommandRow` + `commandRow*` | `ui-chat` `GenericCommandCard` `command.*` | 标题 `name ?? 指令`；运行「执行中…」+ TextShimmer；成功无正文「已完成」；失败「指令失败」；`outcome.text` 含换行才可展开；错误色 `state-error-primary` |
+| CompactionCommandCard | 同一 `CommandRow` + 既有 `CompactionRow` | `CompactionCommandCard` / `ManualCompactionNodeView` | `/compact` 运行中 `message.compaction.running`「正在压缩…」；checkpoint 后只画 CompactionItem（`commandTitle` + `fallbackSummary`=`outcome.text`）；失败/取消/无可压缩历史留 GenericCommandCard |
+| permission 卡 | `commandItemIsVisible` | `isVisibleChatNode` | `name === "permission"` 隐藏 |
+| 手动压缩 marker | `compactionItemIsVisible` | `compactionDefinition.match` 遇 `sourceCommandId` 返回 null | 有 `sourceCommandId` 的 Compacted 只在 `hasCheckpoint` 时可见 |
+
+本轮核对后**不改**、确认已对齐或平台/hide：
+
+- Account / shortcuts / open config / open-in-desktop-editor / 快捷键设置页：仍 **hide**。
+- 桌面 popover 系统箭头 / Think·CompactionItem·Command 收起无 hover 换 chevron：仍平台残留。Command 触屏保持 API/`curlybraces` 图标。
+- `AskQuestionRow` `ask.review`：phone 不发明 review 面板。
+- 绿点 / 会话行 spinner / 标题无 running spinner / 抽屉脚连接入口：已对齐。Android Settings「云端设备」不搬。
+- `chat.turnNavigation.*`：桌面长 transcript 跳轮，phone 不发明一层。
+- `fileOpen.title`/`fileOpen.unknown`：PDF 失败英文仍是自撰 `Could not open file`（桌面 `Can't open file`）；WorkbookPreview 自撰整句。留给 Round 25。
+- `message.contextRecall` / `message.referenceSummary` / `message.context.instructions.*`：非 tool-change 的 context 注入细节，桌面有、iOS 仍隐藏普通 Context。
+- Android `18af5a8`…`c5f8cdd`：无新交互。Desktop 仍赢过 Android（Compacted + CommandNode）。

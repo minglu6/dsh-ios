@@ -184,6 +184,8 @@ public enum Item: Sendable, Equatable, Identifiable {
     case retry(Retry)
     case turnFailure(TurnFailure)
     case changes(Changes)
+    /// Desktop `CommandNode` from log-only `command/run` + `command/done`.
+    case command(Command)
 
     public var id: String { key }
     public var key: String {
@@ -200,6 +202,7 @@ public enum Item: Sendable, Equatable, Identifiable {
         case .retry(let v): return v.key
         case .turnFailure(let v): return v.key
         case .changes(let v): return v.key
+        case .command(let v): return v.key
         }
     }
 
@@ -445,6 +448,8 @@ public enum Item: Sendable, Equatable, Identifiable {
         public var sourceCommandId: String?
         /// Desktop `compactionDefinition` only builds the marker after the checkpoint lands.
         public var hasCheckpoint: Bool
+        /// Desktop `CompactionCommandCard` `fallbackSummary` from `command/done` `outcome.text`.
+        public var commandOutcomeText: String?
 
         public init(
             key: String,
@@ -459,7 +464,8 @@ public enum Item: Sendable, Equatable, Identifiable {
             shadowedItemCount: Int? = nil,
             shadowedTokenCount: Int? = nil,
             sourceCommandId: String? = nil,
-            hasCheckpoint: Bool = false
+            hasCheckpoint: Bool = false,
+            commandOutcomeText: String? = nil
         ) {
             self.key = key
             self.compactionId = compactionId
@@ -474,6 +480,48 @@ public enum Item: Sendable, Equatable, Identifiable {
             self.shadowedTokenCount = shadowedTokenCount
             self.sourceCommandId = sourceCommandId
             self.hasCheckpoint = hasCheckpoint
+            self.commandOutcomeText = commandOutcomeText
+        }
+    }
+
+    public enum CommandOutcomeKind: String, Sendable, Equatable {
+        case success
+        case error
+    }
+
+    /// Desktop `ui-conversation` `CommandNode` (paired `command/run` + `command/done`).
+    public struct Command: Sendable, Equatable {
+        public var key: String
+        public var commandId: String
+        public var name: String?
+        public var args: String?
+        public var seq: Int64?
+        public var at: Int64?
+        /// `nil` while executing (`command/run` with no `command/done`).
+        public var outcomeKind: CommandOutcomeKind?
+        public var outcomeText: String?
+        public var sourceEventSeq: Int64?
+
+        public init(
+            key: String,
+            commandId: String,
+            name: String? = nil,
+            args: String? = nil,
+            seq: Int64? = nil,
+            at: Int64? = nil,
+            outcomeKind: CommandOutcomeKind? = nil,
+            outcomeText: String? = nil,
+            sourceEventSeq: Int64? = nil
+        ) {
+            self.key = key
+            self.commandId = commandId
+            self.name = name
+            self.args = args
+            self.seq = seq
+            self.at = at
+            self.outcomeKind = outcomeKind
+            self.outcomeText = outcomeText
+            self.sourceEventSeq = sourceEventSeq
         }
     }
 
@@ -741,6 +789,7 @@ public final class TranscriptReducer {
     private var settledSteps: [StepRecord] = []
     private var stepStartTimes: [String: Int64] = [:]
     private var compactIndex: [String: Int] = [:]
+    private var commandIndex: [String: Int] = [:]
     private var systemPromptSeen = false
     private var lastSystemPromptText: String?
     private var retryIndex: [RetryIdentity: Int] = [:]
@@ -1039,6 +1088,7 @@ public final class TranscriptReducer {
         settledSteps.removeAll()
         stepStartTimes.removeAll()
         compactIndex.removeAll()
+        commandIndex.removeAll()
         systemPromptSeen = false
         lastSystemPromptText = nil
         retryIndex.removeAll()
@@ -1064,6 +1114,7 @@ public final class TranscriptReducer {
         userByRpc.removeAll()
         userByMessage.removeAll()
         compactIndex.removeAll()
+        commandIndex.removeAll()
         for (index, item) in committed.enumerated() {
             switch item {
             case .tool(let tool):
@@ -1073,6 +1124,8 @@ public final class TranscriptReducer {
                 if let messageId = user.messageId { userByMessage[messageId] = index }
             case .compacted(let compacted):
                 compactIndex[compacted.compactionId] = index
+            case .command(let command):
+                commandIndex[command.commandId] = index
             case .retry(let retry):
                 retryIndex[retry.identity] = index
             default:
@@ -1391,6 +1444,10 @@ public final class TranscriptReducer {
             upsertCompactionSummary(data)
         case "compaction/end":
             upsertCompactionEnd(data, time: e["time"].long())
+        case "command/run":
+            upsertCommandRun(data, seq: seq, time: e["time"].long())
+        case "command/done":
+            upsertCommandDone(data, seq: seq, time: e["time"].long())
         case "assistant/attempt":
             settleAttempt(e)
         case "tool/call":
@@ -1789,6 +1846,9 @@ public final class TranscriptReducer {
             if existing.sourceCommandId == nil { existing.sourceCommandId = commandId }
             if existing.startedAt == nil { existing.startedAt = time }
             if existing.turn == nil { existing.turn = data["turn"].int() ?? openTurn }
+            if existing.commandOutcomeText == nil {
+                existing.commandOutcomeText = commandId.flatMap(commandOutcomeText(for:))
+            }
             committed[i] = .compacted(existing)
             return
         }
@@ -1796,7 +1856,8 @@ public final class TranscriptReducer {
         committed.append(.compacted(Item.Compacted(
             key: "cmp\(id)", compactionId: id, status: .running,
             startedAt: time, turn: data["turn"].int() ?? openTurn,
-            sourceCommandId: commandId
+            sourceCommandId: commandId,
+            commandOutcomeText: commandId.flatMap(commandOutcomeText(for:))
         )))
     }
 
@@ -1843,6 +1904,9 @@ public final class TranscriptReducer {
         if let i = compactIndex[id], case .compacted(var compacted) = committed[i] {
             compacted.hasCheckpoint = true
             if compacted.sourceCommandId == nil { compacted.sourceCommandId = commandId }
+            if compacted.commandOutcomeText == nil {
+                compacted.commandOutcomeText = commandId.flatMap(commandOutcomeText(for:))
+            }
             committed[i] = .compacted(compacted)
         } else {
             compactIndex[id] = committed.count
@@ -1853,7 +1917,8 @@ public final class TranscriptReducer {
                 startedAt: event["time"].long(),
                 turn: data["turn"].int() ?? openTurn,
                 sourceCommandId: commandId,
-                hasCheckpoint: true
+                hasCheckpoint: true,
+                commandOutcomeText: commandId.flatMap(commandOutcomeText(for:))
             )))
         }
         return true
@@ -1861,14 +1926,101 @@ public final class TranscriptReducer {
 
     private func ensureCompacted(id: String, data: JSONValue) {
         if compactIndex[id] != nil { return }
+        let commandId = data["sourceCommandId"].str()?.nilIfBlank
         compactIndex[id] = committed.count
         committed.append(.compacted(Item.Compacted(
             key: "cmp\(id)",
             compactionId: id,
             status: .running,
             turn: data["turn"].int() ?? openTurn,
-            sourceCommandId: data["sourceCommandId"].str()?.nilIfBlank
+            sourceCommandId: commandId,
+            commandOutcomeText: commandId.flatMap(commandOutcomeText(for:))
         )))
+    }
+
+    /// Desktop `commandFromRun`: seq/time/name/args from `command/run`; outcome stays null.
+    private func upsertCommandRun(_ data: JSONValue, seq: Int64, time: Int64?) {
+        guard let id = data["commandId"].str()?.nilIfBlank else { return }
+        let name = data["name"].str()?.nilIfBlank
+        let args = data["args"].str()
+        if let i = commandIndex[id], case .command(var existing) = committed[i] {
+            existing.name = name ?? existing.name
+            if existing.args == nil { existing.args = args }
+            existing.seq = seq
+            if existing.at == nil { existing.at = time }
+            committed[i] = .command(existing)
+            return
+        }
+        commandIndex[id] = committed.count
+        committed.append(.command(Item.Command(
+            key: "cmd\(id)",
+            commandId: id,
+            name: name,
+            args: args,
+            seq: seq,
+            at: time
+        )))
+    }
+
+    /// Desktop `commandFromDone`: window-cut done with no run still builds a node
+    /// (`name`/`args` null). `sourceEventSeq` only on success, safe integer ≥ 0.
+    private func upsertCommandDone(_ data: JSONValue, seq: Int64, time: Int64?) {
+        guard let id = data["commandId"].str()?.nilIfBlank else { return }
+        guard let kindRaw = data["kind"].str(),
+              let kind = Item.CommandOutcomeKind(rawValue: kindRaw) else { return }
+        let text = data["text"].str()
+        let sourceEventSeq: Int64?
+        if kind == .success, let value = data["sourceEventSeq"].long(), value >= 0 {
+            sourceEventSeq = value
+        } else {
+            sourceEventSeq = nil
+        }
+        if let i = commandIndex[id], case .command(var existing) = committed[i] {
+            existing.outcomeKind = kind
+            if text != nil { existing.outcomeText = text }
+            existing.sourceEventSeq = sourceEventSeq
+            if existing.name == nil, compactCheckpointExists(forCommandId: id) {
+                existing.name = "compact"
+            }
+            committed[i] = .command(existing)
+            attachCommandOutcomeToCompacted(commandId: id, text: existing.outcomeText)
+            return
+        }
+        let name = compactCheckpointExists(forCommandId: id) ? "compact" : nil
+        commandIndex[id] = committed.count
+        committed.append(.command(Item.Command(
+            key: "cmd\(id)",
+            commandId: id,
+            name: name,
+            seq: seq,
+            at: time,
+            outcomeKind: kind,
+            outcomeText: text,
+            sourceEventSeq: sourceEventSeq
+        )))
+        attachCommandOutcomeToCompacted(commandId: id, text: text)
+    }
+
+    private func commandOutcomeText(for commandId: String) -> String? {
+        guard let i = commandIndex[commandId], case .command(let command) = committed[i] else { return nil }
+        return command.outcomeText
+    }
+
+    private func compactCheckpointExists(forCommandId commandId: String) -> Bool {
+        committed.contains { item in
+            if case .compacted(let compacted) = item {
+                return compacted.sourceCommandId == commandId && compacted.hasCheckpoint
+            }
+            return false
+        }
+    }
+
+    private func attachCommandOutcomeToCompacted(commandId: String, text: String?) {
+        for (index, item) in committed.enumerated() {
+            guard case .compacted(var compacted) = item, compacted.sourceCommandId == commandId else { continue }
+            compacted.commandOutcomeText = text
+            committed[index] = .compacted(compacted)
+        }
     }
 
     private func inboxIdentity(_ message: JSONValue) -> String? {

@@ -87,6 +87,8 @@ public enum ChatRow: Equatable, Sendable {
     case compacted(Item.Compacted)
     /// Desktop `ContextInjectionRow` tool-addition / tool-removal notice.
     case context(Item.Context)
+    /// Desktop `CommandNode` / `GenericCommandCard` / `CompactionCommandCard`.
+    case command(Item.Command)
 
     public var key: String {
         switch self {
@@ -103,6 +105,7 @@ public enum ChatRow: Equatable, Sendable {
         case .turnTrigger(let v): return v.key
         case .compacted(let v): return v.key
         case .context(let v): return v.key
+        case .command(let v): return v.key
         }
     }
 
@@ -405,11 +408,13 @@ private func isBlankAssistant(_ item: Item) -> Bool {
     }
 }
 
-private func isHidden(_ item: Item) -> Bool {
+private func isHidden(_ item: Item, compactCheckpointCommandIds: Set<String>) -> Bool {
     switch item {
     case .context(let ctx): return !contextItemIsVisible(ctx)
     case .system: return true
     case .compacted(let compacted): return !compactionItemIsVisible(compacted)
+    case .command(let command):
+        return !commandItemIsVisible(command, compactCheckpointCommandIds: compactCheckpointCommandIds)
     default: return isBlankAssistant(item)
     }
 }
@@ -424,7 +429,8 @@ public func foldChatItems(
     en: Bool = false
 ) -> [ChatRow] {
     let facts = Dictionary(uniqueKeysWithValues: turnRecords.map { ($0.turn, $0) })
-    let visible = items.filter { !isHidden($0) }
+    let compactCheckpointIds = compactCheckpointCommandIds(in: items)
+    let visible = items.filter { !isHidden($0, compactCheckpointCommandIds: compactCheckpointIds) }
     let positions = Dictionary(uniqueKeysWithValues: visible.enumerated().map { ($0.element.key, $0.offset) })
     var byTurn: [Int: [Item]] = [:]
     for item in visible {
@@ -542,9 +548,10 @@ public func foldChatItems(
                 if finalPosition == nil || (positions[row.key] ?? Int.max) < finalPosition! {
                     controlled.insert(row.key)
                 }
-            case .changes, .compacted, .context:
-                // Desktop keeps WorkspaceChanges, CompactionItem, and context
-                // tool-change rows outside the completed-turn fold.
+            case .changes, .compacted, .context, .command:
+                // Desktop keeps WorkspaceChanges, CompactionItem, context
+                // tool-change rows, and CommandNode cards outside the
+                // completed-turn fold.
                 break
             default:
                 break
@@ -692,6 +699,7 @@ private func emitPlain(_ out: inout [ChatRow], _ item: Item) {
     case .deliverable(let v): out.append(.deliverable(v))
     case .changes(let v): out.append(.changes(v))
     case .compacted(let v): out.append(.compacted(v))
+    case .command(let v): out.append(.command(v))
     case .context(let v) where v.waking:
         out.append(.turnTrigger(v))
     case .context(let v) where contextHasToolChanges(v):
