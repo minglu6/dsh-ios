@@ -263,5 +263,137 @@ final class UserQuestionDraftTests: XCTestCase {
         XCTAssertEqual(questionResubmitHint(english: false), "回答未送达，工作已继续，请再提交一次。")
         XCTAssertEqual(questionPreviousLabel(english: true), "Previous question")
         XCTAssertEqual(askPendingDetail(english: false), "等待中的问题仍可在输入框中回答")
+        XCTAssertEqual(questionPlanDiscuss(english: false), "要求修改")
+        XCTAssertEqual(questionPlanDiscuss(english: true), "Request changes")
+        XCTAssertEqual(questionPlanHeader(english: false), "计划待审")
+        XCTAssertEqual(questionPlanApprove(english: false), "同意执行")
+    }
+
+    func testPlanReviewRequiresDetailAndApproveOption() {
+        let options = [UserQuestionOption(label: "Approve")]
+        XCTAssertNil(planReviewOf([
+            UserQuestionItem(id: "p", question: "Review", options: options, intentKind: "plan-review", approveLabel: "Approve"),
+        ]))
+        XCTAssertNotNil(planReviewOf([
+            UserQuestionItem(
+                id: "p",
+                question: "Review",
+                detail: "# Plan",
+                options: options,
+                intentKind: "plan-review",
+                approveLabel: "Approve"
+            ),
+        ]))
+        XCTAssertNil(planReviewOf([
+            UserQuestionItem(
+                id: "p",
+                question: "Review",
+                detail: "# Plan",
+                options: options,
+                multiSelect: true,
+                intentKind: "plan-review",
+                approveLabel: "Approve"
+            ),
+        ]))
+    }
+
+    func testReplyPairsAndClipboardMatchDesktop() {
+        let text = """
+        {"questions":[{"id":"one","question":"Ship it?","header":"Release","options":[{"label":"Yes","description":"now"}],"multiSelect":false}],"answers":[{"id":"one","selected":["Yes"],"custom":" tonight"}]}
+        """
+        let pairs = replyPairsOf(text)
+        XCTAssertEqual(pairs.questions.first?.id, "one")
+        XCTAssertEqual(pairs.questions[0].header, "Release")
+        XCTAssertEqual(replyAnswerValues(answers: pairs.answers, id: "one"), ["Yes", "tonight"])
+        XCTAssertEqual(
+            replyClipboardText(text: text, questions: pairs.questions, answers: pairs.answers, english: false),
+            "Release — Ship it?\n回答：Yes, tonight"
+        )
+        XCTAssertEqual(questionReplySummary(questions: pairs.questions, answers: pairs.answers, english: false), "Yes, tonight")
+        let skipped = replyPairsOf(#"{"questions":[{"id":"one","question":"Skip?"}],"answers":[{"id":"one","selected":[]}]}"#)
+        XCTAssertEqual(replyAnswerValues(answers: skipped.answers, id: "one"), [])
+        XCTAssertEqual(
+            replyClipboardText(text: "raw", questions: skipped.questions, answers: skipped.answers, english: true),
+            "Skip?\nSkipped"
+        )
+        XCTAssertEqual(replyPairsOf("not-json").questions.count, 0)
+        XCTAssertTrue(replyPairsOf(#"{"questions":[{"id":"one","question":"Q"}],"answers":[{"id":"one"}]}"#).answers.isEmpty)
+    }
+
+    func testQuestionReplyRequiresAppendAnsweredSource() throws {
+        let message = try JSONValue.parse("""
+        {"content":[{"type":"text","text":"{\\"questions\\":[{\\"id\\":\\"q\\",\\"question\\":\\"Go?\\"}],\\"answers\\":[{\\"id\\":\\"q\\",\\"selected\\":[\\"Yes\\"]}]}"}],"source":{"kind":"user-question-reply","callId":"call","outcome":"answered"}}
+        """)
+        XCTAssertNil(questionReplyItem(
+            event: try JSONValue.parse(#"{"type":"user/message","surfaceOp":"replace"}"#),
+            message: message,
+            key: "qr1",
+            at: 1,
+            seq: 1
+        ))
+        XCTAssertNil(questionReplyItem(
+            event: try JSONValue.parse(#"{"type":"user/message"}"#),
+            message: message,
+            key: "qr1",
+            at: 1,
+            seq: 1
+        ))
+        let cancelled = try JSONValue.parse("""
+        {"content":[{"type":"text","text":"{}"}],"source":{"kind":"user-question-reply","callId":"call","outcome":"cancelled"}}
+        """)
+        XCTAssertNil(questionReplyItem(
+            event: try JSONValue.parse(#"{"type":"user/message","surfaceOp":"append"}"#),
+            message: cancelled,
+            key: "qr1",
+            at: 1,
+            seq: 1
+        ))
+        let reply = try XCTUnwrap(questionReplyItem(
+            event: try JSONValue.parse(#"{"type":"user/message","surfaceOp":"append"}"#),
+            message: message,
+            key: "qr9",
+            at: 90,
+            seq: 9
+        ))
+        XCTAssertEqual(reply.callId, "call")
+        XCTAssertEqual(reply.questions.first?.question, "Go?")
+        XCTAssertEqual(replyAnswerValues(answers: reply.answers, id: "q"), ["Yes"])
+    }
+}
+
+final class QuestionReplyTranscriptTests: XCTestCase {
+    func testAppendAnsweredReplyBecomesVisibleBubbleAndReplaceDoesNot() throws {
+        let reducer = TranscriptReducer()
+        XCTAssertTrue(reducer.apply(try JSONValue.parse(#"{"type":"snapshot","cursor":0,"records":[],"projections":{}}"#)))
+        XCTAssertTrue(reducer.apply(try JSONValue.parse("""
+        {"type":"event","event":{"type":"user/message","seq":8,"time":80,"surfaceOp":"replace","data":{"message":{
+          "id":"shadow",
+          "content":[{"type":"text","text":"{\\"questions\\":[{\\"id\\":\\"q\\",\\"question\\":\\"Hidden?\\"}],\\"answers\\":[{\\"id\\":\\"q\\",\\"selected\\":[\\"No\\"]}]}"}],
+          "source":{"kind":"user-question-reply","callId":"call","outcome":"answered"}
+        }}}}
+        """)))
+        XCTAssertFalse(reducer.items().contains { if case .questionReply = $0 { return true }; return false })
+        XCTAssertTrue(reducer.apply(try JSONValue.parse("""
+        {"type":"event","event":{"type":"user/message","seq":9,"time":90,"surfaceOp":"append","data":{"message":{
+          "id":"reply-1",
+          "content":[{"type":"text","text":"{\\"questions\\":[{\\"id\\":\\"q\\",\\"question\\":\\"Ship it?\\"}],\\"answers\\":[{\\"id\\":\\"q\\",\\"selected\\":[\\"Yes\\"]}]}"}],
+          "source":{"kind":"user-question-reply","callId":"call","outcome":"answered"}
+        }}}}
+        """)))
+        let replies = reducer.items().compactMap { item -> Item.QuestionReply? in
+            if case .questionReply(let reply) = item { return reply }
+            return nil
+        }
+        XCTAssertEqual(replies.count, 1)
+        XCTAssertEqual(replies[0].callId, "call")
+        XCTAssertEqual(replies[0].questions.first?.question, "Ship it?")
+        let rows = foldChatItems(reducer.items(), policy: presentationPolicyFor(.detailed), sessionRunning: false)
+        XCTAssertEqual(rows.count, 1)
+        guard case .questionReply(let row) = rows[0] else {
+            return XCTFail("late reply must stay visible instead of a hidden context row")
+        }
+        XCTAssertEqual(row.callId, "call")
+        XCTAssertFalse(rows.contains { if case .user = $0 { return true }; return false })
+        XCTAssertFalse(rows.contains { if case .context = $0 { return true }; return false })
     }
 }

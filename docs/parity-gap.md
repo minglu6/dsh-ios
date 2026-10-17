@@ -65,7 +65,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R36 | fork 子会话 `increaseTitle`（桌面 `increasedForkTitle`） | done (#50) |
 | R37 | audit-only：Android 仍 `c5f8cdd`；Host 仍 alpha.5 | done (NO_PR) |
 | R38 | audit-only：#50 后抽查；Android 仍 `c5f8cdd` | done (NO_PR) |
-| R39 | 用户选择卡片 + `userQuestions`/`inbox` 投影恢复（Android `56dcaa9` / 桌面 `QuestionComposer`） | this PR |
+| R39 | 用户选择卡片 + `userQuestions`/`inbox` 投影恢复（Android `56dcaa9` / 桌面 `QuestionComposer`） | done (#51) |
+| R40 | 计划 `plan.discuss` / `planReviewOf`；晚答 `QuestionReplyView` | this PR |
 
 ---
 
@@ -120,7 +121,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Header ⋯ overflow | Android `MoreSheet` (not desktop) | **removed** — desktop conversation header has no ⋯; export/feedback on `/` and `+`; rename/fork on the drawer row menu | **hide** | **P2** (#16) |
 | Session image bubbles | `session.attachment` + ImageBubble | same cache + retry + original preview | **missing** → **present** | **G** |
 | Attachments | `attachments.upload` | image picker + file importer + receipts；landing 无会话也可草稿非图文件，创建后上传 | **missing** → **present** | **E** / **R19** |
-| User questions | `UserQuestionCard` `userQuestions.answer` + `UserQuestionStore` | composer 接管卡片；推荐首项默认草稿；多选保留选项+自定义、单选互斥；跳过 `{selected:[]}`；草稿按 request 保存在 AppModel；follow snapshot/resume/`userQuestions`+`inbox` 投影恢复待回答；工具行 `ask.rowTitle`「提问」；可回答时点行「回答」重开。无 `ask.review`、无 countdown / Take time | **partial** → **present** | **E** / **R19** / **R20** / **R39** |
+| User questions | `UserQuestionCard` `userQuestions.answer` + `UserQuestionStore` + `QuestionReplyRow` | composer 接管卡片；推荐首项默认草稿；多选保留选项+自定义、单选互斥；跳过 `{selected:[]}`；草稿按 request 保存在 AppModel；follow snapshot/resume/`userQuestions`+`inbox` 投影恢复待回答；工具行 `ask.rowTitle`「提问」；可回答时点行「回答」重开。计划审阅 `plan.discuss`「要求修改」且必须有 plan body。晚答 `user-question-reply` 画桌面 `QuestionReplyView` 气泡（仅 `surfaceOp=append` + `outcome=answered`）。无 `ask.review`、无 countdown / Take time | **partial** → **present** | **E** / **R19** / **R20** / **R39** / **R40** |
 | Approvals | official `ApprovalCard` takes composer | official card; `accepted` callback clears busy, success drops the row | **partial** → **present** | **E** |
 | TodoPanel | dock card above composer | `TodoPanel` expand in place | **missing** → **present** | **E** |
 | Goal bar | `goals.get` / `goal.activation` CAS | `GoalBar` + `GoalSheet` pause/resume/clear/edit | **missing** → **present** | **E** |
@@ -848,6 +849,33 @@ Android `c5f8cdd...56dcaa9` 一笔：`feat(android): 补齐用户选择卡片与
 | 投影恢复 | `UserQuestionStore` | Android `UserQuestionStore`；桌面 `useProjection("userQuestions")` `view.active` + inbox `user-question-reply` | snapshot/resume/`userQuestions`/`inbox` 合并 live offer；continued 不被 foreground close 清掉；queued reply 隐藏；submitted 竞态；跨会话隔离；重连清 watermark |
 | 卡片 chrome | `UserQuestionCard` 头/滚动体/脚 | desktop capped card；Android sticky header/footer | 长问题滚动不挡收起/提交。continued 用 `wait.continued` |
 | 提交失败再投 | `question.state == continued` 解开 busy | desktop `error.resubmit` | waterfall 未确认但投影已 continued 时重开同一草稿 |
+
+本轮核对后**不改**（平台 / hide / 禁止发明）
+
+- `AskQuestionRow` `ask.review` 只读回看：phone 不发明 review 面板。
+- 桌面 countdown / `wait.takeTime` / focus 暂停：Host 插件限时等待；Android `56dcaa9` 卡片也未画倒计时。
+- `chat.turnNavigation.*` / `chat.toBottom` FAB / hover chevron：仍 skip。
+- Account / shortcuts / open config / Settings 下挂连接 / CompatibilityBanner / 审批通知：仍 **hide**。
+- 插件 `user-question-hook` / `parity-ops` 在 Host（dsh-android）；iOS 只消费 pocket 帧。
+
+## Round 40 对照清单（桌面 `@deepseek-ai/dsh-client-ui-user-questions@0.2.1-alpha.5`；Android `56dcaa9`）
+
+直播核对：`alpha` 仍 `0.2.1-alpha.5`。`next`=`0.2.1-rc.2`。ui-user-questions / ui-chat / ui-conversation pack 对比 locale 与组件相对 alpha.5 **无增量**（仅 `package.json` 版本）。Android `compare/56dcaa9...main` `ahead_by: 0`。`c5f8cdd...56dcaa9` 仍是 #51 已搬的那一笔（卡片 + Store + Host 插件）。Host 插件不搬。
+
+#51 后怀疑式重审 QuestionComposer / UserQuestionStore / 投影：
+
+| 项 | 判定 | 证据 |
+| --- | --- | --- |
+| 推荐首项 / 单选多选 / 跳过 / 草稿 / 重连 | **PASS** | `parseRecommendedLabel` / `questionAnswers` / `UserQuestionStore` 与桌面 `submitDrafts`、`useProjection("userQuestions")`+inbox 合并一致。无 pager 时 Next 以 `completed`（含 skipped）为准 |
+| `plan.discuss` | **GAP → 本轮** | 桌面 `plan.discuss`「要求修改」/ Request changes；修前 iOS/Android 自撰「继续讨论」。动作仍是 dismiss/hide |
+| `planReviewOf` | **GAP → 本轮** | 桌面要求 `detail != undefined`；修前 iOS 无 plan body 也走计划卡 |
+| 晚答气泡 | **GAP → 本轮** | 桌面 `questionReplyDefinition` 独占 `user/message` `source.kind=user-question-reply`。iOS/Android 把它当普通 Context 藏掉。桌面赢：`surfaceOp=append` + `outcome=answered` 画 `QuestionReplyView` |
+
+| 模块 | iOS | 对照的源码 | 对齐点 |
+| --- | --- | --- | --- |
+| 计划讨论 | `questionPlanDiscuss` | `ui-user-questions` `plan.discuss` | 「要求修改」/ Request changes；点按收起，不提交 skip |
+| 计划路由 | `planReviewOf` | `planReviewOf` | 单题 + plan-review + 有 detail + ≤2 选项 + approve |
+| 晚答气泡 | `Item.QuestionReply` + `QuestionReplyRow` | `QuestionReplyView` / `replyPairsOf` | 右对齐；收起摘要；展开问答对；复制 `replyClipboardText`。非 append / 非 answered 不画 |
 
 本轮核对后**不改**（平台 / hide / 禁止发明）
 

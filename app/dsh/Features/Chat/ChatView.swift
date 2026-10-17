@@ -710,6 +710,8 @@ struct ChatRowView: View {
             CompactionRow(item: item)
         case .command(let item):
             CommandRow(item: item)
+        case .questionReply(let item):
+            QuestionReplyRow(item: item)
         case .context(let item):
             ContextToolChangeRow(item: item)
         case .changes(let item):
@@ -1407,7 +1409,7 @@ struct MessageRow: View {
                     .disabled(!model.canShowFiles)
                 }
             }
-        case .context, .system, .compacted, .retry, .turnFailure, .changes, .command:
+        case .context, .system, .compacted, .retry, .turnFailure, .changes, .command, .questionReply:
             EmptyView()
         }
     }
