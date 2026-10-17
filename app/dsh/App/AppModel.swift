@@ -52,13 +52,6 @@ struct PendingAttach: Equatable, Identifiable {
     var status: AttachStatus
 }
 
-/// Android `FirstPrompt`: first send creating a session. iOS has no that path yet; kept for canFork.
-struct FirstPrompt: Equatable {
-    var requestId: String
-    var text: String
-    var error: String? = nil
-}
-
 struct ModelChoice: Equatable {
     var provider: String
     var model: String
@@ -176,6 +169,7 @@ final class AppModel: ObservableObject {
     @Published var showDrawer = false
     @Published var feedback: [String: MessageFeedback] = [:]
     @Published var firstPrompt: FirstPrompt? = nil
+    private var firstPromptSessionId: String?
     @Published var sessionGroupBy: SessionGroupBy = AppPrefs.sessionGroupBy
     @Published var sessionOrderBy: SessionOrderBy = AppPrefs.sessionOrderBy
     @Published var archivedFilter: ArchivedFilter = AppPrefs.archivedFilter
@@ -299,6 +293,7 @@ final class AppModel: ObservableObject {
         sessions = []
         chat = nil
         firstPrompt = nil
+        firstPromptSessionId = nil
         approvals = []
         userQuestions = []
         hiddenQuestionId = nil
@@ -386,7 +381,12 @@ final class AppModel: ObservableObject {
 
     func openSession(_ sessionId: String) {
         if isArchived(sessionId) { return }
-        initializeChat(sessionId)
+        clearFirstPrompt()
+        beginSession(sessionId)
+    }
+
+    private func beginSession(_ sessionId: String, seed: FirstPrompt? = nil) {
+        initializeChat(sessionId, seed: seed)
         showDrawer = false
         loadSessionPermission(sessionId)
         Task {
@@ -509,6 +509,7 @@ final class AppModel: ObservableObject {
             !attach.isImage && attach.receiptId == nil
         }
         guard (!text.isEmpty || !images.isEmpty || !files.isEmpty || !draftFiles.isEmpty), let client else { return }
+        if firstPrompt != nil { return }
         if chat == nil, landingComposerNeedsWorkspace(
             selectedWorkspaceId: draftWorkspaceId ?? workspaces.first?.workspaceId,
             workspaceCount: workspaces.count
@@ -545,12 +546,26 @@ final class AppModel: ObservableObject {
         composerText = ""
         pendingAttaches = []
         if let chat {
-            Task { await sendPrompt(client, chat: chat, text: text, images: images, files: files, attachments: queueAttachments, gesture: gesture) }
+            Task {
+                do {
+                    try await sendPrompt(client, chat: chat, text: text, images: images, files: files, attachments: queueAttachments, gesture: gesture)
+                } catch {
+                    emit(error.localizedDescription)
+                }
+            }
             return
         }
+        let first = FirstPrompt(
+            requestId: UUID().uuidString,
+            text: text,
+            images: images.count,
+            files: files.count + draftFiles.count
+        )
+        firstPrompt = first
         Task {
             await createSessionAndSend(
                 client,
+                first: first,
                 text: text,
                 images: images,
                 files: files,
@@ -563,6 +578,7 @@ final class AppModel: ObservableObject {
 
     private func createSessionAndSend(
         _ client: PocketClient,
+        first: FirstPrompt,
         text: String,
         images: [PromptImage],
         files: [PromptFile],
@@ -570,17 +586,21 @@ final class AppModel: ObservableObject {
         draftFiles: [PendingAttach] = [],
         gesture: ComposerSubmitGesture
     ) async {
+        func current() -> Bool { firstPrompt?.requestId == first.requestId }
         do {
             let chosen = pendingCreatorPreset ?? draftPreset.nilIfBlank
             let workspaceId = draftWorkspaceId ?? workspaces.first?.workspaceId
             let id = try await client.createSession(agentPreset: chosen, workspaceId: workspaceId)
+            guard current() else { return }
             pendingCreatorPreset = nil
-            openSession(id)
+            firstPromptSessionId = id
+            beginSession(id, seed: first)
             guard let chat, chat.sessionId == id else {
                 throw PocketError(code: "session", message: L.t("未能打开新会话", "Could not open the new session"))
             }
             await applyDraftPermission(sessionId: id)
             await applyDraftModel(sessionId: id)
+            guard current() else { return }
             var uploaded = files
             if landingAllowsDraftFileAttachments, !draftFiles.isEmpty {
                 pendingAttaches.append(contentsOf: draftFiles)
@@ -598,14 +618,52 @@ final class AppModel: ObservableObject {
                     pendingAttaches.removeAll { attach in
                         draftFiles.contains { $0.id == attach.id } && attach.status != .failed
                     }
+                    if current() {
+                        failFirstPrompt(nil)
+                    }
                     return
                 }
                 pendingAttaches.removeAll { attach in draftFiles.contains { $0.id == attach.id } }
             }
-            await sendPrompt(client, chat: chat, text: text, images: images, files: uploaded, attachments: attachments, gesture: gesture)
+            guard current(), let live = self.chat, live.sessionId == id else { return }
+            try await sendPrompt(
+                client,
+                chat: live,
+                text: text,
+                images: images,
+                files: uploaded,
+                attachments: attachments,
+                gesture: gesture,
+                requestId: first.requestId
+            )
+            if current() {
+                firstPrompt = nil
+                firstPromptSessionId = nil
+            }
         } catch {
-            emit(error.localizedDescription)
+            if current() {
+                failFirstPrompt(error.localizedDescription)
+            }
         }
+    }
+
+    private func clearFirstPrompt() {
+        if let first = firstPrompt {
+            reducer.discardEcho(first.requestId)
+            if chat != nil { publishChat() }
+        }
+        firstPrompt = nil
+        firstPromptSessionId = nil
+    }
+
+    private func failFirstPrompt(_ message: String?) {
+        guard let first = firstPrompt else { return }
+        composerText = first.text
+        reducer.discardEcho(first.requestId)
+        if chat != nil { publishChat() }
+        firstPrompt = nil
+        firstPromptSessionId = nil
+        if let message { emit(message) }
     }
 
     func stopRun() {
@@ -2113,13 +2171,21 @@ final class AppModel: ObservableObject {
         }
     }
 
-    private func initializeChat(_ sessionId: String) {
+    private func initializeChat(_ sessionId: String, seed: FirstPrompt? = nil) {
         followEpoch += 1
         detachFollow()
         transcriptPublisher.cancel()
         reducer = TranscriptReducer()
         inspectorLog = SessionInspectorLog()
         reducer.setRunning(sessions.first { $0.sessionId == sessionId }?.running ?? false)
+        if let seed {
+            reducer.echo(
+                text: seed.text,
+                requestId: seed.requestId,
+                images: seed.images,
+                files: seed.files
+            )
+        }
         chat = ChatState(
             sessionId: sessionId,
             items: reducer.items(),
@@ -2265,10 +2331,11 @@ final class AppModel: ObservableObject {
         images: [PromptImage] = [],
         files: [PromptFile] = [],
         attachments: [QueuedAttachment] = [],
-        gesture: ComposerSubmitGesture = .enter
-    ) async {
+        gesture: ComposerSubmitGesture = .enter,
+        requestId: String? = nil
+    ) async throws {
         let target = reducer
-        let requestId = UUID().uuidString
+        let requestId = requestId ?? UUID().uuidString
         let mode = resolveSubmitMode(
             preferred: busySend.mode,
             running: chat.running,
@@ -2296,7 +2363,7 @@ final class AppModel: ObservableObject {
         } catch {
             target.discardEcho(requestId)
             publishChat()
-            emit(error.localizedDescription)
+            throw error
         }
     }
 

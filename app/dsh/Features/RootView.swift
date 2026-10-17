@@ -111,7 +111,7 @@ struct RootView: View {
 
     @ViewBuilder
     private var persistentChat: some View {
-        if model.chat != nil {
+        if model.chat != nil || model.firstPrompt != nil {
             ChatView(model: model)
                 .allowsHitTesting(!isBrowserOnTop)
         } else if model.profiles.isEmpty {

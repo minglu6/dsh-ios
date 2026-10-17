@@ -237,6 +237,7 @@ struct ChatView: View {
             Button { showStart = true } label: {
                 Image(systemName: D.panelRight).foregroundStyle(T.ink)
             }
+            .disabled(firstPromptBlocksComposerActions(model.firstPrompt))
             .accessibilityLabel(L.startPanel())
         }
         .padding(.horizontal, 14)
@@ -294,7 +295,9 @@ struct ChatView: View {
 
     private var slashTrigger: ComposerTrigger? { slashMenuTrigger(model.composerText) }
 
-    private var commandMenuVisible: Bool { slashMenu.isVisible(trigger: slashTrigger) }
+    private var commandMenuVisible: Bool {
+        !firstPromptBlocksComposerActions(model.firstPrompt) && slashMenu.isVisible(trigger: slashTrigger)
+    }
 
     private var chatTab: some View {
         VStack(spacing: 0) {
@@ -311,6 +314,15 @@ struct ChatView: View {
                 }
             }
             if !questionVisible && sessionApproval == nil {
+                if firstPromptBlocksComposerActions(model.firstPrompt) {
+                    Text(firstPromptSendingLabel(english: L.en))
+                        .font(.caption)
+                        .foregroundStyle(T.text3)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 4)
+                        .accessibilityIdentifier("firstPromptStatus")
+                }
                 composer
             }
             if let metrics = model.chat?.composerMetrics {
@@ -364,6 +376,7 @@ struct ChatView: View {
     }
 
     private func submitCommandMenuOrSend() {
+        if firstPromptBlocksComposerActions(model.firstPrompt) { return }
         if commandMenuVisible {
             commandHost.requestEnter()
             return
@@ -418,7 +431,7 @@ struct ChatView: View {
     private var foldedRows: [ChatRow] {
         let policy = presentationPolicyFor(model.transcriptView, collapseTiming: model.collapseTiming)
         return foldChatItems(
-            model.chat?.items ?? [],
+            firstPromptVisibleItems(chatItems: model.chat?.items ?? [], prompt: model.firstPrompt),
             policy: policy,
             sessionRunning: model.chat?.running == true,
             turnRecords: model.chat?.turns ?? [],
@@ -555,6 +568,7 @@ struct ChatView: View {
             resignKeyboard: riskPermission != nil,
             focusToken: composerFocus,
             onPlus: {
+                if firstPromptBlocksComposerActions(model.firstPrompt) { return }
                 slashMenu.togglePlus(trigger: slashTrigger)
                 if slashMenu.isVisible(trigger: slashTrigger) {
                     composerFocus += 1
@@ -1559,6 +1573,7 @@ struct ComposerView: View {
         model.isOnline
             && !needsWorkspace
             && filesReady
+            && !firstPromptBlocksComposerActions(model.firstPrompt)
             && (!model.composerText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || hasPending)
     }
     private var runningIdle: Bool {
@@ -1623,6 +1638,7 @@ struct ComposerView: View {
                             .frame(width: CGFloat(composerAddButtonPoints), height: CGFloat(composerAddButtonPoints))
                     }
                     .background(T.selector, in: Circle())
+                    .disabled(firstPromptBlocksComposerActions(model.firstPrompt))
                     .accessibilityLabel(composerCommandsAria(english: L.en))
                     if !permissionChipRequiresCatalog || model.permissionCatalog != nil {
                         if let perm = model.sessionPermission ?? model.draftPermission ?? (heroPlaceholder ? model.defaultPermission : nil), !perm.isEmpty {
@@ -1630,7 +1646,7 @@ struct ComposerView: View {
                                 current: perm,
                                 catalog: model.permissionCatalog,
                                 loading: model.permissionCatalogLoading,
-                                enabled: model.isOnline && !model.permissionChanging,
+                                enabled: model.isOnline && !model.permissionChanging && !firstPromptBlocksComposerActions(model.firstPrompt),
                                 onSelect: onSelectPermission
                             )
                         }
@@ -1661,7 +1677,7 @@ struct ComposerView: View {
                         loading: model.catalogLoading,
                         error: model.catalogError,
                         pending: model.modelPending,
-                        enabled: model.isOnline,
+                        enabled: model.isOnline && !firstPromptBlocksComposerActions(model.firstPrompt),
                         open: $modelMenuOpen,
                         onReload: { model.reloadModelCatalog() },
                         onPick: { choice, done in model.selectModel(choice, onComplete: done) }

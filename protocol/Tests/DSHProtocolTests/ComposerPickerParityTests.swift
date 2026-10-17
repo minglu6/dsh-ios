@@ -1323,4 +1323,54 @@ final class ComposerPickerParityTests: XCTestCase {
         }
         XCTAssertEqual(later.referenceLabels, ["Gamma"])
     }
+
+    func testFirstPromptPendingItemMatchesReducerEchoIdentity() {
+        let prompt = FirstPrompt(requestId: "rpc-first", text: "第一条消息", images: 1, files: 2)
+        guard case .user(let synthetic) = firstPromptPendingItem(prompt) else {
+            return XCTFail("expected pending user")
+        }
+        XCTAssertEqual(synthetic.key, "local-rpc-first")
+        XCTAssertEqual(synthetic.text, "第一条消息")
+        XCTAssertEqual(synthetic.images, 1)
+        XCTAssertTrue(synthetic.pending)
+        XCTAssertEqual(synthetic.requestId, "rpc-first")
+
+        XCTAssertEqual(
+            firstPromptVisibleItems(chatItems: [], prompt: prompt).map(\.key),
+            ["local-rpc-first"]
+        )
+        let seeded = Item.user(Item.User(key: "local-rpc-first", text: "第一条消息", pending: true, requestId: "rpc-first"))
+        XCTAssertEqual(
+            firstPromptVisibleItems(chatItems: [seeded], prompt: prompt).map(\.key),
+            ["local-rpc-first"]
+        )
+        XCTAssertTrue(firstPromptVisibleItems(chatItems: [], prompt: nil).isEmpty)
+        XCTAssertTrue(firstPromptBlocksComposerActions(prompt))
+        XCTAssertFalse(firstPromptBlocksComposerActions(nil))
+        XCTAssertEqual(firstPromptSendingLabel(english: false), "发送中…")
+        XCTAssertEqual(firstPromptSendingLabel(english: true), "Sending…")
+
+        let reducer = TranscriptReducer()
+        reducer.echo(text: prompt.text, requestId: prompt.requestId, images: prompt.images, files: prompt.files)
+        let echoed = reducer.items()
+        XCTAssertEqual(echoed.map(\.key), ["local-rpc-first"])
+        guard case .user(let user) = echoed[0] else {
+            return XCTFail("expected echo user")
+        }
+        XCTAssertEqual(user.key, synthetic.key)
+        XCTAssertTrue(user.pending)
+        XCTAssertEqual(user.requestId, prompt.requestId)
+        reducer.echo(text: prompt.text, requestId: prompt.requestId)
+        XCTAssertEqual(reducer.items().count, 1)
+        let rows = foldChatItems(
+            firstPromptVisibleItems(chatItems: [], prompt: prompt),
+            policy: presentationPolicyFor(.detailed),
+            sessionRunning: false
+        )
+        XCTAssertEqual(rows.map(\.key), ["local-rpc-first"])
+        guard case .user(let visible) = rows[0] else {
+            return XCTFail("pending first prompt must render as a user bubble")
+        }
+        XCTAssertTrue(visible.pending)
+    }
 }
