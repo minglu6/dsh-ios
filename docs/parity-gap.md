@@ -52,7 +52,10 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R22 | Chat `CompactionItem` `message.compaction*` | done (#39) |
 | R23 | ContextInjectionRow 工具变更行；TurnMaxTokensItem；signed-out TurnErrorItem | done (#40) |
 | R24 | Host `command/run`+`command/done` 折叠；GenericCommandCard；CompactionCommandCard 运行中「正在压缩…」 | done (#41) |
-| R25 | fileOpen locale + PDF 失败句；Workbook excel locale 核对；用户气泡 referenceSummary | this PR |
+| R25 | fileOpen locale + PDF 失败句；Workbook excel locale 核对；用户气泡 referenceSummary | done (#42) |
+| R26 | audit-only：turnNavigation / ask.review / hover chevron / toBottom / Settings 云端设备 保持 skip | done (NO_PR) |
+| R27 | ConnectionsView 对齐 Android `ConnectionsScreen` / `ConnDeviceRow` | done (#43) |
+| R28 | #43 后源码审计；npm `next` `0.2.1-rc.1` 无 locale/component API 增量 | this PR |
 
 ---
 
@@ -79,6 +82,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Markdown | `ui-chat` primitives | `Markdown.kt` | `protocol/Markdown.swift` + `Features/Chat/MarkdownView.swift` |
 | Official icons | desktop `D.*` | Android vector set | `Design/Icons.swift` SF Symbol map |
 | Connection keep-alive | — | `ConnectionService` FGS | `ConnectionKeeper` `beginBackgroundTask` + ping + `BGAppRefreshTask` `dev.dsh.pocket.ios.refresh` + path monitor + local notify |
+| Controller connections | Host pocket `settings.section` `pocket` is QR on the **computer**; Android `ConnectionsScreen` | `Screens.kt` `ConnectionsScreen` / `ConnDeviceRow` | `Features/Connections/ConnectionsView.swift` + `ConnectionsLayout.swift`（#43 / R27）：「连接」、空节隐藏、扫码/地址在列表后、deviceRow chrome。入口在抽屉脚，Settings 无连接分组 |
 
 ---
 
@@ -198,7 +202,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | 「移动端」 group / 代码自动换行 | Android still has these (audit S2/S5) | wrap is local; no extra mobile group copied | **present** | — |
 | Version only on General | audit S3 | General only | **present** | — |
 | Account / shortcuts / open config file | desktop-local | — | **hide** | — |
-| Phone connection + 复制诊断报告 | connections | 抽屉脚（计算机名 + 状态），Settings 无「手机连接」分组 | **present** | **R13** |
+| Phone connection + 复制诊断报告 | connections | 抽屉脚（计算机名 + 状态），Settings 无「手机连接」分组。页面 chrome 对齐 Android `ConnectionsScreen`（#43） | **present** | **R13** / **R27** |
 | LAN / NSD discovery | `_dshpocket._tcp` protocol=1 + 64-hex instanceId | same TXT gate; unpaired filter; address bind | **partial** → **present** | **G** |
 | Paired-device online poll | TCP probe, 10s, max 2 | same policy (`PairedDeviceStatusPolicy`) | **missing** → **present** | **G** |
 | Reconnect restore gate | `ConnectionRestorePolicy` Offline/Connecting only | same; `NWPathMonitor` wakes the loop | **partial** → **present** | **G** |
@@ -583,3 +587,47 @@ Host-loaded dist-tag `alpha` 仍是 `0.2.1-alpha.5`（本轮 `npm view` + `ui-ch
 - `AskQuestionRow` `ask.review`：phone 不发明 review 面板。
 - 绿点 / 会话行 spinner / 标题无 running spinner / 抽屉脚连接入口：已对齐。Android Settings「云端设备」不搬。
 - Android `18af5a8`…`c5f8cdd`：无新交互（外观本机、发布 bump、`skills.list`、无 session 目录）。Desktop 仍赢。
+
+## Round 27 对照清单（Android `ConnectionsScreen` @ `c5f8cdd`；桌面 Settings「手机连接」是 Host QR，不是 controller）
+
+Merged as `#43` / `e55a2de`. Phone is the controller — this page twins Android `Screens.kt` `ConnectionsScreen` / `ConnDeviceRow`, **not** desktop `settings.section` id=`pocket`（Host 「手机连接」/ Phone connection QR）。
+
+| 模块 | iOS | 对照的源码 | 对齐点 |
+| --- | --- | --- | --- |
+| 标题 | `L.connections()` | Android `L.connections()` | 「连接」/ Connections。`L.phoneConnection()` 仅 Host 文案存根，UI 不引用 |
+| 空已配对 | `sortedProfiles.isEmpty` 不画节 | `if (sorted.isNotEmpty())` | 无设备时隐藏整块「已配对设备」，不留「未连接」占位 |
+| 附近设备 | `model.nearby.isEmpty` 不画节 | `if (nearby.isNotEmpty())` | 空则隐藏；mDNS 未配对过滤不变 |
+| 操作行 | 配对/附近之后一张卡：扫码 / 输入地址 | `ConnActionRow` 全宽 icon+title+chevron | 不再是顶栏并排黑 chip |
+| 已配对行 | `ConnDeviceRow` + `connectionsStatusLine` | `buildConnStatusLine` / `ConnDeviceRow` | 8pt 状态点、名、`在线 · Tailscale · 当前`、`host:port`、非当前「切换」、管理 chevron。点行开管理，Switch 才连接 |
+| Host 文案 | `nameHint` / `pairTimeout` | 既有 iOS copy | 用户可见 Host 称呼仍是「远程主机」 |
+| Overflow | 仅「复制诊断报告」 | Android 另有 `NEARBY_WIFI_DEVICES` | iOS Local Network 由 `NWBrowser` 系统提示，无对等 request API |
+
+## Round 28 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*` alpha=`0.2.1-alpha.5` / next=`0.2.1-rc.1`）
+
+`npm view`：`alpha` 仍是 `0.2.1-alpha.5`。`next` 已发 `0.2.1-rc.1`。对本轮 pack 的 ui-chat / conversation / workspace / sidebar / plugin-manager / jobs / commands / permission-presets / model-selection / agent-preset / plan / tool / primitives / deliverables / settings-plugins / sidebar-files / sidebar-documentpreview：locale 与组件文件相对 alpha.5 **无增量**（仅 `package.json` 版本/依赖，以及 `ui-sidebar` `localBuildVersion` 字符串 `0.2.1-alpha.5-aeba8e9` → `0.2.1-rc.1-ed75efe`）。没有新 package API 可搬。
+
+Android `main` `729ef2e..c5f8cdd`（4 commits）仍是既有项：`18af5a8` 外观本机、`9e580d4` 发布 bump、`d30825c` `skills.list`、`c5f8cdd` 无 session 目录。无新 controller 交互（Settings 下的连接行见 skip）。
+
+源码核对 **present**（相对桌面；连接页相对 Android `ConnectionsScreen`）：
+
+| 项 | iOS 证据 | 对照 |
+| --- | --- | --- |
+| 未读绿点 | `CompletionReminders.accept` + `sidebarSessionLeading` + `SidebarSessionLeadingView` 14pt 槽、半径 `3/14`；idle+未归档才画 | `ui-workspace` `SessionStatusDots` / `StateDot` |
+| 标题无 running spinner | `ChatView.header` 只有抽屉 / 标题或 crumbs / Start；运行态在 transcript `RunningStatusRow` | `ConversationSessionHeader` 无 spinner |
+| 连接页（#43） | `ConnectionsView` + `ConnectionsLayout` | Android `ConnectionsScreen` / `ConnDeviceRow` |
+| 抽屉脚连接入口 | `SessionDrawer.footer`：`footerPeerDevice` 在 Settings **之上**；`SettingsView` 仅 General/Models/Presets/Plugins | `ui-sidebar` `sidebar.footer.action` 然后 `sidebar.settings` |
+| 鲸尾 shimmer | `RunningWhaleTail` + `TextShimmer` | `ui-chat` `RunningWhaleTail` / `TextShimmer` |
+| 任务两次点按停止 | `jobKillPress` + `KILL_ARM_MS` 3s；`JobsPanel.killButton` 是 `Button`，不是 `TapGesture(count: 2)` | `ui-jobs` `JobListAction` `kill.confirm` |
+| 插件 (i) | `PluginsScreen` `pluginInfoLabel` / `pluginInfoDescription` popover | `ui-plugin-manager` `infoLabel` / `infoDescription`（市场页，不是内置插件 inventory） |
+| 侧栏打开链接 | `openChatLink`：`sidebar` → `BrowserPanel`；`new-tab` → 系统浏览器 | `ui-chat.linkOpening` |
+| 斜杠完整目录、无计数 | landing 只注入 `/file` `/model`；goal/plan/… 与技能来自 `commands.list` / `skills.list`；`commandMenuSectionTitle` 无 N | Host catalog；桌面分组标题无 count |
+
+本轮核对后**不改**（R26 skip 仍成立；桌面 rc.1 未提供新 API）：
+
+- `chat.turnNavigation.*`：桌面长 transcript 右侧跳轮；phone 无源码级窄屏切片，不发明。
+- `chat.toBottom` FAB：桌面跟随滚动按钮；phone 仍自动贴底，不发明。
+- `AskQuestionRow` `ask.review`：phone 不发明 review 面板。
+- 桌面 `DisclosureRow` hover 才把图标换成 chevron：触屏无 hover。
+- Account / shortcuts / open config / open-in-desktop-editor / 快捷键设置页：仍 **hide**。
+- Android Settings「移动端」分组下的「连接」（文档旧称「云端设备」）不搬。桌面 `ui-settings` **没有** controller 侧连接节；pocket `settings.section` id=`pocket` 是 **Host** QR「手机连接」，且 `installHostUi` 的 phone 窗口提前 return、不注册该节。iOS 入口只在抽屉脚。Desktop 赢。
+- Android `18af5a8`…`c5f8cdd`：无新交互。
