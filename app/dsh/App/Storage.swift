@@ -23,6 +23,9 @@ struct Profile: Codable, Equatable, Identifiable {
         case nil: return L.repairNeeded()
         }
     }
+
+    /// One-line host:port on the connections list (hidden when `needsRepair`).
+    var subtitle: String { "\(host):\(port)" }
 }
 
 func clipProfileName(_ name: String) throws -> String {
