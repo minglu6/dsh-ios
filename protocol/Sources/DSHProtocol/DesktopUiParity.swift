@@ -877,6 +877,19 @@ public func landingPreviewBadge(english: Bool) -> String {
     english ? "Preview" : "预览版"
 }
 
+/// Desktop `HeroShell.module.css` `.root` / `.stack` / `.headline` (figma 75:8208).
+/// The title block, workspace row, and InputBar card are one centered column.
+/// Leftover viewport space sits *outside* that stack — never between the
+/// headline and the composer.
+public let landingHeroCentersStack = true
+public let landingHeroPreviewSharesHeadlineLine = true
+public let landingHeroStackGapPoints: Double = 12
+public let landingHeroHeadlineSizePoints: Double = 26
+public let landingHeroHeadlineLineHeightPoints: Double = 32
+public let landingHeroHeadlineWeight: Double = 500
+public let landingHeroPreviewFontSizePoints: Double = 12
+public let landingHeroPreviewLineHeightPoints: Double = 18
+
 /// Space above the composer (already keyboard-avoided) minus a hairline margin.
 /// Never invent a floor taller than the remaining viewport — that is what
 /// squeezed the slash list into a 3-page scroller under the iOS keyboard.

@@ -928,6 +928,10 @@ Android `c5f8cdd...56dcaa9` 一笔：`feat(android): 补齐用户选择卡片与
 
 桌面 Host `0.2.1-alpha.5` `TerminalController` 只有 `@Remote` `attach` / `retain`（stream），**没有** `follow`。iOS pocket op 名是 `terminal.follow`。Mac mini 加载的 `~/repo/dsh-android/plugin/src/extra-ops.js` 把该 op 转成 `terminalController.follow(...)`，因此报 `is not a function or its return value is not async iterable`。建议补丁：plugin 改为调用 `attach`（或 `retain`），不要改 iOS 客户端协议名以外的 Host API。
 
+### #13 新会话空页（HeroShell）
+
+桌面 `HeroShell.module.css`：`.root` 把标题块 / 工作区行 / InputBar 卡当成一列居中（`align-items: center; justify-content: center; height: 100%`），`.stack` gap 12，headline 26/32/500，`hero.preview` 与标题同一行。iOS 原先用两个 `Spacer` 夹标题、Composer 钉底，中间空洞、上下挤。现 `emptyChat` 按同一 stack 重排；不新增元素、不用系统 tint。
+
 ### CI 截图
 
 `.github/workflows/ci.yml` job `screenshots`：macos-15 启动可用 iPhone 模拟器（优先 iPhone 17e），`xcodebuild test` 把 `TEST_RUNNER_DSH_SCREENSHOT_DIR` 传进 `dshUITests`（`-UITestFixture` 假主机：两工作区、已完成「你好」、带推理强度的模型），浅色/深色各一套，artifact `ios-simulator-screenshots`。Mac Studio 实机对照由 parent 另跑。
