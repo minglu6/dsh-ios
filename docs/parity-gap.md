@@ -51,7 +51,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R21 | 工具行 tool.title.* / preparing 保留标题；Goal `detail.goal.*` | done (#38) |
 | R22 | Chat `CompactionItem` `message.compaction*` | done (#39) |
 | R23 | ContextInjectionRow 工具变更行；TurnMaxTokensItem；signed-out TurnErrorItem | done (#40) |
-| R24 | Host `command/run`+`command/done` 折叠；GenericCommandCard；CompactionCommandCard 运行中「正在压缩…」 | this PR |
+| R24 | Host `command/run`+`command/done` 折叠；GenericCommandCard；CompactionCommandCard 运行中「正在压缩…」 | done (#41) |
+| R25 | fileOpen locale + PDF 失败句；Workbook excel locale 核对；用户气泡 referenceSummary | this PR |
 
 ---
 
@@ -85,14 +86,14 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 
 | Item | Android | iOS | Tag | Batch |
 | --- | --- | --- | --- | --- |
-| User bubble, pending echo | `Chat.kt` | `MessageRow` `.user` | **present** | — |
+| User bubble, pending echo | `Chat.kt` | `MessageRow` `.user`；跟随的 `session-reference` 在气泡下画 `message.referenceSummary`，Context 行仍隐藏 | **present** | **R25** |
 | Assistant text stream | follow reducer | `.text` live/committed | **present** | — |
 | Reasoning disclosure | Think icon + preview | 标题恒为「思考」/Think；运行中 TextShimmer 而非 spinner；收起默认；展开时 chevron 替换 Think 图标；正文 compact 三级色 13/20；预览为首行（流式为已完成段首行） | **present** | **D** / **R12** / **R13** |
 | Tool row → inspector | `Chat.kt` tool card | `ToolProcessSummary` title/icon/receipt + inspect sheet | **present** | **D** |
 | Process group fold | `ChatProcess.kt` | `foldChatItems` / `visibleChatRows` + `ProcessGroupView`；已完成回合为「已完成，用时」+ 右侧 chevron（无左侧图标）；步骤组标题 body 14 + ` · ` 细节；成员与组头同列（无额外缩进）；运行中 shimmer | **present** | **D** / **R13** |
 | Notices (stopped / max-tokens / account) | reducer + official `message.*` | reducer emits; `.notice` / `RetryRow`（active vs scheduled 文案） / `TurnFailureRow`（`INTERRUPTED`/`ACCOUNT_SIGNED_OUT`=`taskStopped`） / `TurnMaxTokensRow`（title+hint 一行） | **present** | **E** / **R20** / **R23** |
 | Slash command cards | desktop `CommandNode` / `GenericCommandCard` / `CompactionCommandCard` | `command/run`+`command/done` 按 `commandId` 折叠；通用卡 `command.*`；`/compact` 运行中「正在压缩…」，checkpoint 后只留 CompactionItem；`/permission` 隐藏 | **missing** → **present** | **R24** |
-| Context tool-change row | desktop `ContextInjectionRow`; Android hides ordinary Context | `developer/message` / non-user `user/message` 的 `tool-addition`/`tool-removal` 可见；skill-catalog / time-context 仍隐藏 | **missing** → **present** | **R23** |
+| Context tool-change row | desktop `ContextInjectionRow`; Android hides ordinary Context | `developer/message` / non-user `user/message` 的 `tool-addition`/`tool-removal` 可见；skill-catalog / time-context / session-reference / agent-instructions 仍隐藏（桌面 `isVisibleChatNode` 同样隐藏）；recall 标签投到用户气泡 | **missing** → **present** | **R23** / **R25** |
 | Deliverables | `Item.Deliverable` | tap opens workspace file preview | **present** | **B** |
 | Markdown / code block / tables | `Markdown.kt` | AST + GFM tables / code / file chips | **present** | **D** |
 | Copy / like / dislike / share | `MessageActions` + `FeedbackCategory` | desktop row is share (not branch); branch stays on the session row menu | **present** | **A** / **P1** |
@@ -213,7 +214,7 @@ Port as the matching batch needs them (same JSON, no second protocol):
 | Android `app/core/protocol` | Used by | Batch |
 | --- | --- | --- |
 | `TrajectoryTimeline.kt` | Trajectory swimlane | **A done** (`TrajectoryTimeline.swift`) |
-| `Transcript.kt` extra items (`System`, `Compacted`, `Retry`, `TurnFailure`, `Changes`; System folded; Compacted is desktop `CompactionItem` in chat; Retry/TurnFailure rendered; Changes cards when coding view is on; Context tool-addition/removal shown; CommandNode from `command/run`+`command/done`) | Chat + trajectory | A / D / **E** / **F** / **R22** / **R23** / **R24** |
+| `Transcript.kt` extra items (`System`, `Compacted`, `Retry`, `TurnFailure`, `Changes`; System folded; Compacted is desktop `CompactionItem` in chat; Retry/TurnFailure rendered; Changes cards when coding view is on; Context tool-addition/removal shown; CommandNode from `command/run`+`command/done`; session-reference labels on the user bubble) | Chat + trajectory | A / D / **E** / **F** / **R22** / **R23** / **R24** / **R25** |
 | `TurnTokenUsage.kt` | Inspector + usage | **E done** (`TurnTokenUsage.swift`) |
 | `ComposerMetrics.kt` | Composer statistics | **E done** (`ComposerMetrics.swift`) |
 | `WorkspaceChanges.kt` | Changed-file cards | **F done** (`WorkspaceChanges.swift`) |
@@ -559,6 +560,26 @@ Host-loaded dist-tag `alpha` 仍是 `0.2.1-alpha.5`（本轮核对）。
 - `AskQuestionRow` `ask.review`：phone 不发明 review 面板。
 - 绿点 / 会话行 spinner / 标题无 running spinner / 抽屉脚连接入口：已对齐。Android Settings「云端设备」不搬。
 - `chat.turnNavigation.*`：桌面长 transcript 跳轮，phone 不发明一层。
-- `fileOpen.title`/`fileOpen.unknown`：PDF 失败英文仍是自撰 `Could not open file`（桌面 `Can't open file`）；WorkbookPreview 自撰整句。留给 Round 25。
-- `message.contextRecall` / `message.referenceSummary` / `message.context.instructions.*`：非 tool-change 的 context 注入细节，桌面有、iOS 仍隐藏普通 Context。
+- `fileOpen.title`/`fileOpen.unknown`、WorkbookPreview 句、`message.referenceSummary`：Round 25。
+- `message.contextRecall` / `message.context.instructions.*`：普通 Context 行桌面 `isVisibleChatNode` 也隐藏；Round 25 只把 recall 标签投到用户气泡。
 - Android `18af5a8`…`c5f8cdd`：无新交互。Desktop 仍赢过 Android（Compacted + CommandNode）。
+
+## Round 25 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`）
+
+Host-loaded dist-tag `alpha` 仍是 `0.2.1-alpha.5`（本轮 `npm view` + `ui-chat` / `ui-sidebar-documentpreview` pack 核对）。英文 `fileOpen.*` 是 `Couldn’t`（U+2019），不是 Round 24 leftover 里的 `Can't`。
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| PDF 打开失败 | `pdfDocumentOpenFailed` + `FilePreview` `PdfPreviewBody` | `ui-chat` `fileOpen.title` / `fileOpen.unknown`；`ui-sidebar-documentpreview` `sidebarPdf.failed` | PDFKit `nil` 无引擎 Error，用 `failed` 套 `fileOpen.title`：「无法显示 PDF：无法打开文件」/ `Cannot display PDF: Couldn’t open file`。去掉自撰 `Could not open file` |
+| Workbook 失败句 | `workbookPreviewErrorMessage` | `sidebarExcel` `invalid` / `tooLarge`；`sidebarOffice` `changed`（chunk 读中途换源） | Round 24 当自撰的英文就是桌面 excel locale，保留；不另发明句 |
+| 用户气泡引用摘要 | `applyingUserReferenceLabels` + `referenceSummaryText` | `ui-chat` `ReferenceLabelProjector` / `message.referenceSummary`；Host `SessionReferenceSource` | `user/message` `source.kind=session-reference` 仍隐藏为 Context 行（`isVisibleChatNode`）；`seq-1` 用户气泡下「引用会话 · {labels}」/ `Referenced session · {labels}`；分隔 zh `、` / en `, ` |
+| 普通 Context 行 | `contextItemIsVisible` | `isVisibleChatNode`：无 tool-addition/removal 的 Context 隐藏 | `message.contextRecall` / `message.context.instructions.*` 只在可见 ContextInjectionRow 上用。普通 recall / agent-instructions **桌面也不画行**，不发明 |
+
+本轮核对后**不改**、确认已对齐或平台/hide：
+
+- `chat.turnNavigation.*`：桌面长 transcript 右侧跳轮 + `TurnNavigator`；phone 无源码级窄屏切片，不发明一层。
+- Account / shortcuts / open config / open-in-desktop-editor / 快捷键设置页：仍 **hide**。
+- 桌面 popover 系统箭头 / Think·CompactionItem·Command 收起无 hover 换 chevron：仍平台残留。
+- `AskQuestionRow` `ask.review`：phone 不发明 review 面板。
+- 绿点 / 会话行 spinner / 标题无 running spinner / 抽屉脚连接入口：已对齐。Android Settings「云端设备」不搬。
+- Android `18af5a8`…`c5f8cdd`：无新交互（外观本机、发布 bump、`skills.list`、无 session 目录）。Desktop 仍赢。

@@ -388,6 +388,34 @@ final class AndroidParityTests: XCTestCase {
         )
     }
 
+    func testWorkbookPreviewErrorsMatchDesktopExcelLocales() {
+        func unavailable(_ raw: String) -> String { "unused:\(raw)" }
+        XCTAssertEqual(
+            workbookPreviewErrorMessage(WorkbookReadFailure("invalid"), english: true, unavailable: unavailable),
+            "This spreadsheet could not be opened. Check its format, contents, or password protection."
+        )
+        XCTAssertEqual(
+            workbookPreviewErrorMessage(WorkbookReadFailure("invalid"), english: false, unavailable: unavailable),
+            "无法打开此表格。请检查文件格式、内容或密码保护。"
+        )
+        XCTAssertEqual(
+            workbookPreviewErrorMessage(WorkbookReadFailure("tooLarge"), english: true, unavailable: unavailable),
+            "This workbook exceeds the preview size limit."
+        )
+        XCTAssertEqual(
+            workbookPreviewErrorMessage(WorkbookReadFailure("tooLarge"), english: false, unavailable: unavailable),
+            "此表格超过预览大小限制。"
+        )
+        XCTAssertEqual(
+            workbookPreviewErrorMessage(WorkbookReadFailure("source-changed"), english: true, unavailable: unavailable),
+            "The file changed while being read. Reopen the preview."
+        )
+        XCTAssertEqual(
+            workbookPreviewErrorMessage(WorkbookReadFailure("source-changed"), english: false, unavailable: unavailable),
+            "文件在读取时已更改，请重新打开预览。"
+        )
+    }
+
     func testPocketClientOfficeCancellationReleasesHandle() async throws {
         let transport = FakeTransport()
         let client = PocketClient()

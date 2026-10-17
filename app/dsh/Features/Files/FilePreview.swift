@@ -476,7 +476,7 @@ private struct PdfPreviewBody: View {
             }
             .background(T.documentPreviewBg)
         } else {
-            Text(L.pdfFailed(L.t("无法打开文件", "Could not open file"))).foregroundStyle(T.err).padding(16)
+            Text(L.pdfDocumentOpenFailed()).foregroundStyle(T.err).padding(16)
         }
     }
 }

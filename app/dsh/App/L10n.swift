@@ -243,9 +243,8 @@ enum L {
         en ? "Incomplete file response; cannot preview" : "文件未读取完整，无法预览"
     }
     static func pdfRendering() -> String { en ? "Rendering page…" : "正在绘制页面…" }
-    static func pdfFailed(_ message: String) -> String {
-        en ? "Cannot display PDF: \(message)" : "无法显示 PDF：\(message)"
-    }
+    static func pdfFailed(_ message: String) -> String { pdfFailedMessage(message, english: en) }
+    static func pdfDocumentOpenFailed() -> String { DSHProtocol.pdfDocumentOpenFailed(english: en) }
     static func pdfPage(_ page: Int) -> String { en ? "PDF page \(page)" : "PDF 第 \(page) 页" }
     static func docErrorUnavailable(_ message: String) -> String {
         en ? "Read failed: \(message)" : "读取失败：\(message)"
