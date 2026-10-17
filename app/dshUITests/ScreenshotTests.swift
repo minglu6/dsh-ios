@@ -38,10 +38,21 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertTrue(app.descendants(matching: .any)["viewOptionsMenu"].waitForExistence(timeout: 8))
             }
             if screen == "sessionActions" {
-                XCTAssertTrue(app.descendants(matching: .any)["sessionRow.s-hello"].waitForExistence(timeout: 15), "fixture session row missing")
-                XCTAssertTrue(app.buttons["sessionRowPin"].waitForExistence(timeout: 8), "pin action missing")
-                XCTAssertTrue(app.buttons["sessionRowArchive"].waitForExistence(timeout: 4), "archive action missing")
-                XCTAssertTrue(app.descendants(matching: .any)["sessionRowMore"].waitForExistence(timeout: 4), "more action missing")
+                var row = app.descendants(matching: .any)["sessionRow.s-hello"]
+                if !row.waitForExistence(timeout: 8) {
+                    let open = app.buttons["openDrawer"]
+                    if open.waitForExistence(timeout: 4) { open.tap() }
+                }
+                row = app.descendants(matching: .any)["sessionRow.s-hello"]
+                XCTAssertTrue(row.waitForExistence(timeout: 15), "fixture session row missing")
+                XCTAssertTrue(
+                    waitAny(app, row, id: "sessionRowActions", timeout: 8)
+                        || waitAny(app, row, id: "sessionRowPin", timeout: 2),
+                    "session row action tray missing"
+                )
+                XCTAssertTrue(waitAny(app, row, id: "sessionRowPin", timeout: 4), "pin action missing")
+                XCTAssertTrue(waitAny(app, row, id: "sessionRowArchive", timeout: 4), "archive action missing")
+                XCTAssertTrue(waitAny(app, row, id: "sessionRowMore", timeout: 4), "more action missing")
             }
             if screen == "start" {
                 XCTAssertTrue(app.descendants(matching: .any)["startPanel"].waitForExistence(timeout: 15))
@@ -69,6 +80,15 @@ final class ScreenshotTests: XCTestCase {
             add(attachment)
             app.terminate()
         }
+    }
+
+    /// Parent `sessionRowActions` can stay missing on iOS 18 even with
+    /// `.contain`; query the pin/archive/more children as the fallback.
+    @discardableResult
+    private func waitAny(_ app: XCUIApplication, _ row: XCUIElement, id: String, timeout: TimeInterval) -> Bool {
+        app.descendants(matching: .any)[id].waitForExistence(timeout: timeout)
+            || row.descendants(matching: .any)[id].waitForExistence(timeout: 1)
+            || app.buttons[id].waitForExistence(timeout: 1)
     }
 
     private func screenshotRoot() throws -> URL {

@@ -110,6 +110,11 @@ extension AppModel {
             fatalError("UITest fixture permission catalog is invalid: \(error)")
         }
         sessionPermission = "workspace-write"
+        sessionGroupBy = .workspace
+        archivedFilter = .hide
+        collapsedWorkspaces = []
+        pinnedIds = []
+        archivedIds = []
 
         let clock = now - 5 * 60_000
         chat = ChatState(

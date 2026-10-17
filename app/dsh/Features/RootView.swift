@@ -136,6 +136,7 @@ struct RootView: View {
                 Button { model.showDrawer = true } label: {
                     Image(systemName: D.panelLeft).foregroundStyle(T.ink)
                 }
+                .accessibilityIdentifier("openDrawer")
                 BrandWordmark(height: 20)
                 Spacer()
             }

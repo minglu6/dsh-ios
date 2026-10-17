@@ -199,6 +199,7 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertEqual(SchedulePagePolicy.headerNewLabel(english: false), "新建")
         XCTAssertFalse(SchedulePagePolicy.showsUnofficialRefresh)
         XCTAssertTrue(SessionRowChromePolicy.timeSharesTitleLine)
+        XCTAssertTrue(SessionRowChromePolicy.trailingActionsAlwaysVisibleOnTouch)
     }
 
     func testConversationHeaderHasNoOverflowMenu() {

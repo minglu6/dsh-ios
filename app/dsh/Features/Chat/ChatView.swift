@@ -213,6 +213,7 @@ struct ChatView: View {
             Button { model.showDrawer = true } label: {
                 Image(systemName: D.panelLeft).foregroundStyle(T.ink)
             }
+            .accessibilityIdentifier("openDrawer")
             if conversationHeaderShowsCrumbs(headerCrumbs) {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 4) {

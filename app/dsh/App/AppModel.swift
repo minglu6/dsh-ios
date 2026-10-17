@@ -1402,6 +1402,7 @@ final class AppModel: ObservableObject {
     }
 
     func onBecameActive() {
+        if uiTestFixture { return }
         refreshPairedStatus()
         resumeTask?.cancel()
         resumeTask = Task { await resumeForegroundSession() }
@@ -1409,6 +1410,7 @@ final class AppModel: ObservableObject {
     }
 
     func refreshSessionsWhenVisible() {
+        if uiTestFixture { return }
         Task { await refreshSessionRoster() }
     }
 

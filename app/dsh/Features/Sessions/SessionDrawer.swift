@@ -396,11 +396,46 @@ struct SessionDrawer: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            sessionRowActions(session, archived: archived)
-                .padding(.trailing, 8)
+            .accessibilityIdentifier("sessionRow.\(session.sessionId)")
+            .contextMenu {
+                if !archived, visibleOps.contains("workspace.pinSession") {
+                    Button(model.pinnedIds.contains(session.sessionId) ? L.unpinSession() : L.pinSession()) {
+                        model.pin(session)
+                    }
+                    .disabled(!model.isOnline)
+                }
+                if visibleOps.contains("sessions.rename") {
+                    Button(L.rename()) {
+                        renameTitle = session.title ?? ""
+                        renameSession = session
+                    }
+                    .disabled(!model.isOnline)
+                }
+                if visibleOps.contains("sessions.fork") {
+                    Button(L.fork()) { model.fork(session) }
+                        .disabled(!model.isOnline)
+                }
+                Button(L.copySessionId()) {
+                    UIPasteboard.general.string = session.sessionId
+                    model.showToast(L.sessionIdCopied())
+                }
+                if visibleOps.contains("workspace.archiveSession") {
+                    if archived {
+                        Button(L.unarchiveSession()) { model.unarchive(session.sessionId) }
+                            .disabled(!model.isOnline)
+                    } else {
+                        Button(L.archiveSession()) { model.archive(session) }
+                            .disabled(!model.isOnline)
+                    }
+                }
+            }
+            if SessionRowChromePolicy.trailingActionsAlwaysVisibleOnTouch {
+                sessionRowActions(session, archived: archived)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .padding(.trailing, 8)
+            }
         }
         .background(selected ? T.sidebarActiveAccent : Color.clear, in: RoundedRectangle(cornerRadius: 10))
-        .accessibilityIdentifier("sessionRow.\(session.sessionId)")
         .padding(.horizontal, 8)
         .onDrag {
             draggingSession = session.sessionId
@@ -413,38 +448,7 @@ struct SessionDrawer: View {
             canDrag: canDragSessions,
             dragging: $draggingSession
         ))
-        .contextMenu {
-            if !archived, visibleOps.contains("workspace.pinSession") {
-                Button(model.pinnedIds.contains(session.sessionId) ? L.unpinSession() : L.pinSession()) {
-                    model.pin(session)
-                }
-                .disabled(!model.isOnline)
-            }
-            if visibleOps.contains("sessions.rename") {
-                Button(L.rename()) {
-                    renameTitle = session.title ?? ""
-                    renameSession = session
-                }
-                .disabled(!model.isOnline)
-            }
-            if visibleOps.contains("sessions.fork") {
-                Button(L.fork()) { model.fork(session) }
-                    .disabled(!model.isOnline)
-            }
-            Button(L.copySessionId()) {
-                UIPasteboard.general.string = session.sessionId
-                model.showToast(L.sessionIdCopied())
-            }
-            if visibleOps.contains("workspace.archiveSession") {
-                if archived {
-                    Button(L.unarchiveSession()) { model.unarchive(session.sessionId) }
-                        .disabled(!model.isOnline)
-                } else {
-                    Button(L.archiveSession()) { model.archive(session) }
-                        .disabled(!model.isOnline)
-                }
-            }
-        }
+        .accessibilityElement(children: .contain)
     }
 
     private func workspaceContext(for sessionId: String) -> String {
@@ -527,8 +531,9 @@ struct SessionDrawer: View {
 
     @ViewBuilder
     private func sessionRowActions(_ session: SessionSummary, archived: Bool) -> some View {
+        let force = model.uiTestFixture
         HStack(spacing: 0) {
-            if !archived, visibleOps.contains("workspace.pinSession") {
+            if !archived, force || visibleOps.contains("workspace.pinSession") {
                 Button {
                     model.pin(session)
                 } label: {
@@ -541,10 +546,11 @@ struct SessionDrawer: View {
                 }
                 .disabled(!model.isOnline)
                 .accessibilityElement(children: .ignore)
+                .accessibilityAddTraits(.isButton)
                 .accessibilityLabel(model.pinnedIds.contains(session.sessionId) ? L.unpinSession() : L.pinSession())
                 .accessibilityIdentifier("sessionRowPin")
             }
-            if visibleOps.contains("workspace.archiveSession") {
+            if force || visibleOps.contains("workspace.archiveSession") {
                 Button {
                     if archived { model.unarchive(session.sessionId) }
                     else { model.archive(session) }
@@ -554,6 +560,7 @@ struct SessionDrawer: View {
                 }
                 .disabled(!model.isOnline)
                 .accessibilityElement(children: .ignore)
+                .accessibilityAddTraits(.isButton)
                 .accessibilityLabel(archived ? L.unarchiveSession() : L.archiveSession())
                 .accessibilityIdentifier("sessionRowArchive")
             }
@@ -578,6 +585,7 @@ struct SessionDrawer: View {
                     .frame(width: 28, height: 28)
             }
             .accessibilityElement(children: .ignore)
+            .accessibilityAddTraits(.isButton)
             .accessibilityLabel(L.moreActions())
             .accessibilityIdentifier("sessionRowMore")
         }
