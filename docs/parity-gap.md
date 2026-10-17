@@ -1,6 +1,6 @@
 # iOS ↔ Android / desktop parity gap
 
-Phone is a controller. Layout may change for a narrow portrait screen. Features, copy, icons, colors, states, and interactions follow the official desktop UI (`@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`) as already ported by [dsh-android](https://github.com/minglu6/dsh-android) `main` at **`56dcaa9`**.
+Phone is a controller. Layout may change for a narrow portrait screen. Features, copy, icons, colors, states, and interactions follow the official desktop UI (`@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`) as already ported by [dsh-android](https://github.com/minglu6/dsh-android) `main` at **`ce7d345`** (#67 Host plugin `terminal.follow`→`retain`+`attach` only; last client UI commit remains `56dcaa9`).
 
 **Do not invent** settings groups, credential pages, extra security, or placeholder shells. Hide only what desktop itself hides (local OS editor, keyboard shortcuts).
 
@@ -67,8 +67,11 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R38 | audit-only：#50 后抽查；Android 仍 `c5f8cdd` | done (NO_PR) |
 | R39 | 用户选择卡片 + `userQuestions`/`inbox` 投影恢复（Android `56dcaa9` / 桌面 `QuestionComposer`） | done (#51) |
 | R40 | 计划 `plan.discuss` / `planReviewOf`；晚答 `QuestionReplyView` | done (#52) |
-| R41 | landing 模型座显示推理强度；权限 chip 只留图标；抽屉脚设置与设备同一行 | this PR |
-| R42 | 抽屉会话行时间/操作、官方文件夹图标、视图选项 popover、外观点一次生效、自动化任务页、右侧栏浏览器+会话诊断、CI 模拟器截图 | this PR |
+| R41 | landing 模型座显示推理强度；权限 chip 只留图标；抽屉脚设置与设备同一行 | done (#53) |
+| R42 | 抽屉会话行时间/操作、官方文件夹图标、视图选项 popover、外观点一次生效、自动化任务页、右侧栏浏览器+会话诊断、CI 模拟器截图 | done (#53) |
+| R43 | audit-only：#53 后源码对照 desktop alpha.5；`next` rc.2 无 locale/API 增量；Android #67 仅 Host plugin | done (NO_PR) |
+| R44 | audit-only：#53 CI 截图视觉对照；mandated 项对齐 | done (NO_PR) |
+| R45 | 视图选项 iPhone compact popover + 每行官方 leading 图标 | this PR |
 
 ---
 
@@ -939,4 +942,38 @@ Android `c5f8cdd...56dcaa9` 一笔：`feat(android): 补齐用户选择卡片与
 ### CI 截图
 
 `.github/workflows/ci.yml` job `screenshots`：macos-15 启动可用 iPhone 模拟器（优先 iPhone 17e），`xcodebuild test` 把 `TEST_RUNNER_DSH_SCREENSHOT_DIR` 传进 `dshUITests`（`-UITestFixture` 假主机：两工作区、已完成「你好」、带推理强度的模型），浅色/深色各一套，artifact `ios-simulator-screenshots`。Mac Studio 实机对照由 parent 另跑。
+
+## Round 45 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*` alpha=`0.2.1-alpha.5` / next=`0.2.1-rc.2`；Android `ce7d345`）
+
+直播核对（2026-10-17）：main tip `ba155b56`（#53）。CI run 39054533362：`protocol` / `screenshots` / `ios` 全绿。`npm view`：`alpha` 仍 `0.2.1-alpha.5`，`next` 仍 `0.2.1-rc.2`。26 包 pack 对比 locale / `.tsx` / CSS / 组件 API **无增量**（仅 `package.json` 版本；`ui-sidebar` `localBuildVersion`、`ui-settings-general` `CurrentVersionRow` 版本字符串）。Android `compare/ce7d345...main` `ahead_by: 0`。`56dcaa9...ce7d345` 仅 #67 Host plugin `terminal.follow`→`retain`+`attach`，无新 controller 交互。
+
+#53 CI 截图怀疑式重审（相对 R43 源码 / R44 视觉 NO_PR）：
+
+| 项 | 判定 | 证据 |
+| --- | --- | --- |
+| 抽屉脚「设置」+ 远程主机同一行靠右 | **PASS** | `light/dark-drawer.png`：设置左、8pt 绿点右。Settings 无「云端设备」分组 |
+| OfficialGlyph 文件夹 | **PASS** | landing / drawer / start 工作区行走 `folderClose/Open`；CI 断言无 SF `folder` |
+| effort 行仅 reasoning | **PASS** | `light-models.png` 有「推理等级」；`modelPickerRootShowsEffortOnlyWhenReasoning` |
+| landing Hero 12pt stack、无中空夹心 | **PASS** | `light/dark-landing.png` 标题+预览版 / 工作区 / composer 一列居中 |
+| 未读绿点 / 运行 spinner 仅会话行 | **PASS**（fixture 空闲，源码仍实现） | header 无 spinner；`sidebarSessionLeading` |
+| 远程主机文案 | **PASS** | 用户可见「远程主机」；抽屉脚窄屏用点 |
+| 鲸尾 / Jobs 两次点按 / Cmd+Enter / 插件 (i) / 侧栏链接 / 斜杠无 count | **PASS**（源码；本轮截图未覆盖运行态） | 与 R43 同 |
+| 视图选项 | **GAP → 本轮** | `light/dark-viewOptions.png` 是 iPhone compact **整屏 sheet**。桌面 `ui-workspace` `ViewOptionsMenu` 是 sliders 锚定的 dense `Menu`（`min-width: 200`）。iOS 已用 `.popover` 但缺 `PopoverCompactAdaptation`（ModelPicker / Permission / Jobs / Plugins 已有）。排序/过滤行 `icon()` 误标 `"check"`、无 leading 图标；桌面每行都有官方 icon |
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| 视图选项形态 | `SessionDrawer` `.popover` + `PopoverCompactAdaptation` | `ui-workspace` `ViewOptionsMenu` `Menu` `dense` `align=end` `portal` | iPhone 保持 popover，不再整屏 sheet |
+| 视图选项图标 | `OfficialGlyph` 9 行全有 leading | `IconFolderClose` / `IconWorkspaceTree` / `IconFlatList` / `IconChevronsUpDown` / `IconClock` / `IconArchiveOff` / `IconQueue` / `IconArchiveCheck` | 路径来自 `@deepseek-ai/dsh-client-ui-primitives@0.2.1-alpha.5`；`archive-off` 无 Canvas mask，slash 叠在盒上 |
+
+本轮核对后**不改**（平台 / hide / 禁止发明）
+
+- `chat.turnNavigation.*`：桌面仍有右侧跳轮（`ui-chat` locale + `TurnNavigator`）。phone 无源码级窄屏切片，搬过去要自撰布局 → **不 shippable without inventing**。
+- `chat.toBottom`：桌面仍有官方「回到底部」chevron 钮。phone 自动贴底。官方控件可搬、但不属于本轮缺口；保持 skip。
+- `AskQuestionRow` `ask.review`：桌面仍有只读回看面板。phone 无该面板，不发明一层。
+- hover chevron：桌面 `DisclosureRow` hover 才换标。触屏无 hover。
+- Account / shortcuts / open config / open-in-desktop-editor / 快捷键设置页：桌面仍有，属 Host 本机 chrome → **hide**。
+- FishLogo：桌面 Hero 有；#53 列的是 title / preview / workspace / InputBar，不发明 logo。
+- Settings 齿轮仍 SF `gearshape`：桌面 `IconSettingsOutlineMedium`。R43 已记 leftover；本轮只修截图打脸的 ViewOptions。
+- Android Settings「移动端 → 连接」/ CompatibilityBanner / 审批通知：不搬。
+- permission / schedule / terminal / inspector CI 截图的系统蓝「取消」/ `transport:` 失败：fixture 无真 Host，不是 composer chip 缺口。
 

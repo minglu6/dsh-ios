@@ -76,8 +76,10 @@ struct SessionDrawer: View {
                 }
                 .accessibilityLabel(L.viewOptions())
                 .accessibilityIdentifier("viewOptionsButton")
-                .popover(isPresented: $viewOptions, arrowEdge: .top) {
+                .popover(isPresented: $viewOptions, attachmentAnchor: .rect(.bounds), arrowEdge: .top) {
                     ViewOptionsMenu(model: model)
+                        .frame(minWidth: CGFloat(viewOptionsMenuMinWidthPoints))
+                        .modifier(PopoverCompactAdaptation())
                 }
                 if visibleOps.contains("workspace.create") {
                     Button { addWorkspace = true } label: {
@@ -694,7 +696,6 @@ struct ViewOptionsMenu: View {
             Divider()
             section(.filter)
         }
-        .frame(minWidth: 220)
         .padding(.vertical, 6)
         .background(T.surface)
         .accessibilityIdentifier("viewOptionsMenu")
@@ -728,7 +729,7 @@ struct ViewOptionsMenu: View {
                         }
                     }
                     .padding(.horizontal, 12)
-                    .frame(minHeight: 34)
+                    .frame(minHeight: CGFloat(viewOptionsMenuRowMinHeightPoints))
                     .background(selected(row) ? T.fill : Color.clear)
                 }
                 .buttonStyle(.plain)
@@ -739,11 +740,19 @@ struct ViewOptionsMenu: View {
 
     @ViewBuilder
     private func leadingIcon(_ row: ViewOptionsRow) -> some View {
+        OfficialGlyph(kind: officialGlyph(for: row), size: 14, color: T.ink)
+    }
+
+    private func officialGlyph(for row: ViewOptionsRow) -> OfficialGlyph.Kind {
         switch row {
-        case .groupWorkspace: OfficialGlyph(kind: .folderClose, size: 14, color: T.ink)
-        case .groupWorkspaceTree: OfficialGlyph(kind: .workspaceTree, size: 14, color: T.ink)
-        case .groupFlat: OfficialGlyph(kind: .flatList, size: 14, color: T.ink)
-        default: Color.clear
+        case .groupWorkspace: return .folderClose
+        case .groupWorkspaceTree: return .workspaceTree
+        case .groupFlat: return .flatList
+        case .orderManual: return .chevronsUpDown
+        case .orderUpdated: return .clockOutline
+        case .filterHide: return .archiveOff
+        case .filterShow: return .queue
+        case .filterOnly: return .archiveCheck
         }
     }
 
