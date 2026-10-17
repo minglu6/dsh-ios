@@ -1,18 +1,51 @@
 import Foundation
 
-/// Desktop chat `MessageIconActions` as captured on the Chinese locale main thread.
-/// Branch is a session-level ⋯ action, not a message-row icon.
+/// Desktop `ui-chat` `MessageIconActions`: copy → extraActions (like / dislike / share)
+/// → branch → usage → clock. User rows omit `onBranch`. Session-row fork remains
+/// (`ui-workspace` `menu.fork`) for last-completed-turn branching without a seq.
 public enum MessageActionKind: String, Equatable, CaseIterable, Sendable {
     case copy
     case like
     case dislike
     case share
+    case branch
 }
 
 public enum MessageActionPolicy {
-    public static var assistantRow: [MessageActionKind] { [.copy, .like, .dislike, .share] }
+    public static var assistantRow: [MessageActionKind] { [.copy, .like, .dislike, .share, .branch] }
     public static var userRow: [MessageActionKind] { [.copy] }
-    public static var includesBranch: Bool { false }
+    public static var includesBranch: Bool { true }
+}
+
+/// Desktop `TurnTailNodeView` branch control. `onBranch` is omitted when
+/// `session/fork` / `sessions.fork` is not allowed. The icon stays visible but
+/// inert when the turn has no closing `endSeq` (desktop `branchUnavailable`,
+/// Android `missingTurnBoundaryCannotFallBackToForkingLatestTurn`).
+public struct MessageBranchChrome: Equatable, Sendable {
+    public var atSeq: Int64?
+    public var unavailable: Bool
+
+    public var enabled: Bool { !unavailable && atSeq != nil }
+
+    public init(atSeq: Int64?, unavailable: Bool) {
+        self.atSeq = atSeq
+        self.unavailable = unavailable
+    }
+}
+
+public func messageBranchChrome(canFork: Bool, turnEndSeq: Int64?) -> MessageBranchChrome? {
+    guard canFork else { return nil }
+    return MessageBranchChrome(atSeq: turnEndSeq, unavailable: turnEndSeq == nil)
+}
+
+/// Desktop `message.branch` / `message.branchUnavailable`.
+public func messageBranchLabel(unavailable: Bool, english: Bool) -> String {
+    if unavailable {
+        return english
+            ? "Available only on the last message of a completed turn"
+            : "仅可从已完成轮次的最后一条消息分支"
+    }
+    return english ? "Branch into a new conversation" : "在新对话中分支"
 }
 
 /// Desktop right-hand Start / Guide body: workspace files + new terminal only.

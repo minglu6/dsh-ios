@@ -2,11 +2,37 @@ import XCTest
 @testable import DSHProtocol
 
 final class DesktopUiParityTests: XCTestCase {
-    func testMessageRowFollowsDesktopCopyLikeDislikeShare() {
-        XCTAssertEqual(MessageActionPolicy.assistantRow, [.copy, .like, .dislike, .share])
+    func testMessageRowFollowsDesktopCopyFeedbackShareBranch() {
+        XCTAssertEqual(MessageActionPolicy.assistantRow, [.copy, .like, .dislike, .share, .branch])
         XCTAssertEqual(MessageActionPolicy.userRow, [.copy])
-        XCTAssertFalse(MessageActionPolicy.includesBranch)
+        XCTAssertTrue(MessageActionPolicy.includesBranch)
         XCTAssertTrue(MessageActionPolicy.assistantRow.contains(.share))
+        XCTAssertFalse(MessageActionPolicy.userRow.contains(.branch))
+    }
+
+    func testMessageBranchChromeMatchesTurnTail() {
+        XCTAssertNil(messageBranchChrome(canFork: false, turnEndSeq: 5))
+        XCTAssertNil(messageBranchChrome(canFork: false, turnEndSeq: nil))
+
+        let ready = messageBranchChrome(canFork: true, turnEndSeq: 5)
+        XCTAssertEqual(ready, MessageBranchChrome(atSeq: 5, unavailable: false))
+        XCTAssertEqual(ready?.enabled, true)
+
+        let missingBoundary = messageBranchChrome(canFork: true, turnEndSeq: nil)
+        XCTAssertEqual(missingBoundary, MessageBranchChrome(atSeq: nil, unavailable: true))
+        XCTAssertEqual(missingBoundary?.enabled, false)
+
+        let laterTurn = messageBranchChrome(canFork: true, turnEndSeq: 9)
+        XCTAssertEqual(laterTurn?.atSeq, 9)
+        XCTAssertEqual(laterTurn?.enabled, true)
+
+        XCTAssertEqual(messageBranchLabel(unavailable: false, english: false), "在新对话中分支")
+        XCTAssertEqual(messageBranchLabel(unavailable: false, english: true), "Branch into a new conversation")
+        XCTAssertEqual(messageBranchLabel(unavailable: true, english: false), "仅可从已完成轮次的最后一条消息分支")
+        XCTAssertEqual(
+            messageBranchLabel(unavailable: true, english: true),
+            "Available only on the last message of a completed turn"
+        )
     }
 
     func testStartPanelMirrorsDesktopTwoColoredEntries() {
