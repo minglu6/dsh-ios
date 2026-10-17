@@ -16,6 +16,7 @@ struct RootView: View {
     @State private var showWorkspacePicker = false
     @State private var showFileImporter = false
     @State private var composerFocus = 0
+    @State private var landingComposerHeight: CGFloat = 0
 
     var body: some View {
         ZStack {
@@ -142,67 +143,25 @@ struct RootView: View {
             }
             .padding(14)
             .background(T.surface)
-            GeometryReader { _ in
-                VStack(spacing: 0) {
-                    ZStack(alignment: .bottom) {
-                        landingHeadlineRow
-                        if landingCommandMenuVisible {
-                            GeometryReader { top in
-                                CommandMenuOverlay(
-                                    model: model,
-                                    host: commandHost,
-                                    query: slashMenuQuery(model.composerText),
-                                    leading: slashMenuIsLeading(model.composerText),
-                                    consumeSlash: landingSlashTrigger != nil,
-                                    availableHeight: max(0, top.size.height - 4),
-                                    onDismiss: { slashMenu.dismiss(trigger: landingSlashTrigger) },
-                                    onFile: { showFileImporter = true },
-                                    onGoal: { model.insertComposer("/goal ") },
-                                    onPlan: { model.executeCommand("/plan") },
-                                    onFeedback: { model.createAndOpenSession() },
-                                    onCompact: { model.executeCommand("/compact") },
-                                    onPerm: { if model.isOnline { showPermission = true } },
-                                    onModel: { if model.isOnline { showModels = true } },
-                                    onExport: { model.createAndOpenSession() },
-                                    onSelectPermission: { applyLandingPermission($0) }
-                                )
-                                .padding(.horizontal, 14)
-                                .frame(width: top.size.width, height: top.size.height, alignment: .bottom)
-                            }
+            GeometryReader { geo in
+                ZStack {
+                    VStack(spacing: 0) {
+                        Color.clear.frame(maxHeight: .infinity)
+                        VStack(spacing: CGFloat(landingHeroStackGapPoints)) {
+                            landingHeadlineRow
+                            landingWorkspaceRow
+                            landingComposer
                         }
+                        Color.clear.frame(maxHeight: .infinity)
                     }
-                    .frame(maxHeight: .infinity)
-                    .padding(.bottom, CGFloat(landingHeroStackGapPoints))
-                    VStack(spacing: CGFloat(landingHeroStackGapPoints)) {
-                        landingWorkspaceRow
-                        ComposerView(
-                            model: model,
-                            interceptKeys: landingCommandMenuVisible && riskPermission == nil,
-                            resignKeyboard: riskPermission != nil,
-                            focusToken: composerFocus,
-                            heroPlaceholder: true,
-                            onPlus: {
-                                slashMenu.togglePlus(trigger: landingSlashTrigger)
-                                if slashMenu.isVisible(trigger: landingSlashTrigger) {
-                                    composerFocus += 1
-                                }
-                            },
-                            onSelectPermission: { applyLandingPermission($0) },
-                            modelMenuOpen: $showModels,
-                            onSend: {
-                                if landingCommandMenuVisible {
-                                    commandHost.requestEnter()
-                                    return
-                                }
-                                model.sendCurrent()
-                            },
-                            onCommandReturn: { commandHost.requestEnter() },
-                            onCommandMove: { commandHost.requestMove($0) },
-                            onCommandEscape: { slashMenu.dismiss(trigger: landingSlashTrigger) }
+                    if landingCommandMenuVisible {
+                        landingCommandMenuLayer(
+                            availableHeight: max(0, geo.size.height - landingComposerHeight - 8)
                         )
+                        .padding(.bottom, landingComposerHeight + 4)
                     }
-                    Color.clear.frame(maxHeight: .infinity)
                 }
+                .onPreferenceChange(LandingComposerHeightKey.self) { landingComposerHeight = $0 }
             }
         }
         .background(T.bg)
@@ -265,6 +224,66 @@ struct RootView: View {
         }
     }
 
+    /// Desktop `HeroShell` `.root` + `.stack` + `.body`: headline, workspace
+    /// row, and InputBar are one column (`gap: 12`). Leftover viewport sits
+    /// outside that stack. Slash menu overlays the space above the composer
+    /// without inserting space between the three rows.
+    private var landingComposer: some View {
+        ComposerView(
+            model: model,
+            interceptKeys: landingCommandMenuVisible && riskPermission == nil,
+            resignKeyboard: riskPermission != nil,
+            focusToken: composerFocus,
+            heroPlaceholder: true,
+            onPlus: {
+                slashMenu.togglePlus(trigger: landingSlashTrigger)
+                if slashMenu.isVisible(trigger: landingSlashTrigger) {
+                    composerFocus += 1
+                }
+            },
+            onSelectPermission: { applyLandingPermission($0) },
+            modelMenuOpen: $showModels,
+            onSend: {
+                if landingCommandMenuVisible {
+                    commandHost.requestEnter()
+                    return
+                }
+                model.sendCurrent()
+            },
+            onCommandReturn: { commandHost.requestEnter() },
+            onCommandMove: { commandHost.requestMove($0) },
+            onCommandEscape: { slashMenu.dismiss(trigger: landingSlashTrigger) }
+        )
+        .background(
+            GeometryReader { proxy in
+                Color.clear.preference(key: LandingComposerHeightKey.self, value: proxy.size.height)
+            }
+        )
+    }
+
+    private func landingCommandMenuLayer(availableHeight: CGFloat) -> some View {
+        CommandMenuOverlay(
+            model: model,
+            host: commandHost,
+            query: slashMenuQuery(model.composerText),
+            leading: slashMenuIsLeading(model.composerText),
+            consumeSlash: landingSlashTrigger != nil,
+            availableHeight: availableHeight,
+            onDismiss: { slashMenu.dismiss(trigger: landingSlashTrigger) },
+            onFile: { showFileImporter = true },
+            onGoal: { model.insertComposer("/goal ") },
+            onPlan: { model.executeCommand("/plan") },
+            onFeedback: { model.createAndOpenSession() },
+            onCompact: { model.executeCommand("/compact") },
+            onPerm: { if model.isOnline { showPermission = true } },
+            onModel: { if model.isOnline { showModels = true } },
+            onExport: { model.createAndOpenSession() },
+            onSelectPermission: { applyLandingPermission($0) }
+        )
+        .padding(.horizontal, 14)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+    }
+
     /// Desktop `HeroShell` `.headline`: title + preview pill on one row.
     /// Tokens: 26/32/500 primary; badge 12/18 code, business-tertiary fill,
     /// bluish label — not system tint.
@@ -311,5 +330,12 @@ struct RootView: View {
         case .dark: return .dark
         case .system: return nil
         }
+    }
+}
+
+private struct LandingComposerHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }

@@ -71,7 +71,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R42 | 抽屉会话行时间/操作、官方文件夹图标、视图选项 popover、外观点一次生效、自动化任务页、右侧栏浏览器+会话诊断、CI 模拟器截图 | done (#53) |
 | R43 | audit-only：#53 后源码对照 desktop alpha.5；`next` rc.2 无 locale/API 增量；Android #67 仅 Host plugin | done (NO_PR) |
 | R44 | audit-only：#53 CI 截图视觉对照；mandated 项对齐 | done (NO_PR) |
-| R45 | 视图选项 iPhone compact popover + 每行官方 leading 图标 | this PR |
+| R45 | 视图选项 iPhone compact popover + 每行官方 leading 图标 | done (#54) |
+| R46 | 空会话 HeroShell 整列居中 gap 12（#54 CI `*-landing.png` 标题与工作区之间仍是夹心空隙） | this PR |
 
 ---
 
@@ -976,4 +977,31 @@ Android `c5f8cdd...56dcaa9` 一笔：`feat(android): 补齐用户选择卡片与
 - Settings 齿轮仍 SF `gearshape`：桌面 `IconSettingsOutlineMedium`。R43 已记 leftover；本轮只修截图打脸的 ViewOptions。
 - Android Settings「移动端 → 连接」/ CompatibilityBanner / 审批通知：不搬。
 - permission / schedule / terminal / inspector CI 截图的系统蓝「取消」/ `transport:` 失败：fixture 无真 Host，不是 composer chip 缺口。
+
+## Round 46 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*` alpha=`0.2.1-alpha.5` / next=`0.2.1-rc.2`；Android `ce7d345`）
+
+直播核对（2026-10-17）：iOS `main` tip `7b7f340`（#54 squash）。CI run 39066419702：`protocol` / `screenshots` / `ios` 全绿。`npm view` 34 个 `@deepseek-ai/dsh-client-ui-*`：`alpha` 仍 `0.2.1-alpha.5`，`next` 仍 `0.2.1-rc.2`。pack 对比 locale / `.tsx` / CSS / 组件 API **无增量**（仅 `package.json` 版本号与依赖 tag；`ui-sidebar` `localBuildVersion` `0.2.1-alpha.5-aeba8e9` → `0.2.1-rc.2-332895e`；`ui-settings-general` `CurrentVersionRow` 版本字符串）。Android `main` `ce7d345`；`compare/ce7d345...main` `ahead_by: 0`。#67 仅 Host plugin `terminal.follow`→`retain`+`attach`，无新 iOS UI 可搬。
+
+#54 CI 截图怀疑式重审（`ios-simulator-screenshots`）：
+
+| 项 | 判定 | 证据 |
+| --- | --- | --- |
+| 视图选项 compact popover + 官方 leading | **PASS** | `light/dark-viewOptions.png`：sliders 锚定气泡，不是整屏 sheet。9 行 OfficialGlyph（folderClose / workspaceTree / flatList / chevronsUpDown / clockOutline / archiveOff / queue / archiveCheck）；选中勾在右侧，无 `icon()=="check"` 占位 |
+| 抽屉脚设置 + 连接同一行靠右 | **PASS** | `light/dark-drawer.png`：设置左、8pt 绿点右。`sidebarFooterActionSharesSettingsRow` |
+| OfficialGlyph 文件夹 | **PASS** | landing / drawer / start 工作区行走 `folderClose/Open`；CI 断言无 SF `folder` |
+| 有 reasoning 才画推理行；权限 chip 仅图标 | **PASS** | `light-models.png` 有「推理等级」；`light-chat.png` / landing composer 权限座只有盾标，无文字。窄屏例外已拍板 |
+| 空会话 HeroShell 居中 gap 12 | **GAP → 本轮** | `light/dark-landing.png` 标题与工作区之间仍是大块空白。#53 把 `landingHeadlineRow` 放进 `.frame(maxHeight: .infinity)`，剩余空间夹在标题和 InputBar 之间。桌面 `HeroShell.module.css` `.root` `justify-content:center` + `.stack` / `.body` `gap:12`；协议 `landingHeroCentersStack`：「Leftover viewport space sits *outside* that stack」 |
+| 未读绿点 / 运行 spinner 仅会话行 | **PASS**（fixture 空闲，源码仍实现） | header 无 spinner；`sidebarSessionLeading` + `SidebarSessionLeadingView` |
+| Settings 齿轮 | leftover | `light/dark-drawer.png` 仍 SF `gearshape`。桌面 `IconSettingsOutlineMedium` 路径可搬；本轮只修截图打脸的 Hero 夹心 |
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| 空会话 Hero | `RootView.emptyChat` 标题 / 工作区 / composer 同一 `VStack(spacing: 12)`，两侧 `Color.clear` 吃剩余高度 | `ui-conversation` `HeroShell.module.css` `.root` / `.stack` / `.body` | 不再把标题放进独立弹性区；斜杠菜单 overlay 在 composer 上方，不插入行间距 |
+
+本轮核对后**不改**（平台 / hide / 禁止发明）
+
+- `chat.turnNavigation.*` / `chat.toBottom` / `ask.review` / hover chevron：仍 skip。
+- Account / shortcuts / open config / CompatibilityBanner / 审批通知 / FishLogo：仍 **hide** / 不发明。
+- Settings 齿轮仍 SF `gearshape`：记 leftover，路径在 `ui-primitives` `IconSettingsOutlineArtwork`，本轮不改。
+- Android Settings「移动端 → 连接」不搬。
 
