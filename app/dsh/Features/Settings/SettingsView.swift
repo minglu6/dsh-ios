@@ -90,7 +90,7 @@ struct GeneralSettingsView: View {
                         picker(L.language(), selection: Binding(
                             get: { model.language },
                             set: { model.setLanguage($0); sheet = nil }
-                        ), divider: true) {
+                        ), divider: true, enabled: shared.writable(.language)) {
                             Text("中文").tag(AppLanguage.zh)
                             Text("English").tag(AppLanguage.en)
                         }

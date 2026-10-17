@@ -676,6 +676,27 @@ public func isPhoneLocalThemeField(namespace: String, field: String) -> Bool {
     namespace == phoneLocalThemeNamespace && phoneLocalThemeFields.contains(field)
 }
 
+/// Desktop `locale.preference` / Android `SharedSetting.Language`. Controller copy
+/// follows the Host window language. This is not phone-local `ui-theme`.
+public let controllerLanguageFollowsHost = true
+/// Android `enabled = shared.writable(SharedSetting.Language)`.
+public let languagePickerRequiresHostWritable = true
+public let hostLanguageNamespace = "locale"
+public let hostLanguageField = "preference"
+
+/// Host `locale.preference` wins. When the mirror is not ready, follow the system
+/// language (Android `AppPrefs.language` getter). `nil` keeps the current value
+/// (Host ready but the locale namespace is absent).
+public func controllerLanguageIsZh(
+    hostedPreference: String?,
+    hostReady: Bool,
+    systemIsZh: Bool
+) -> Bool? {
+    if let hosted = hostedPreference { return hosted.hasPrefix("zh") }
+    if !hostReady { return systemIsZh }
+    return nil
+}
+
 /// Desktop hero is already a blank session, so permission lives on the Host.
 /// iOS landing has no session: the draft stays in memory and is not persisted.
 public let landingPermissionPersistsAcrossLaunch = false

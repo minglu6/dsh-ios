@@ -3,7 +3,7 @@ import DSHProtocol
 
 /// Exact fields owned by the official Host settings namespaces.
 /// Appearance and fonts stay on the phone (`isPhoneLocalThemeField`); they are
-/// not Host `ui-theme` mirrors.
+/// not Host `ui-theme` mirrors. Language is Host `locale.preference`.
 enum SharedSetting: String, CaseIterable {
     case language, busySend, codeWork, transcript, collapse, performance, permission, sessionLog, linkOpening
 

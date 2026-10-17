@@ -57,7 +57,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R27 | ConnectionsView 对齐 Android `ConnectionsScreen` / `ConnDeviceRow` | done (#43) |
 | R28 | #43 后源码审计；npm `next` `0.2.1-rc.1` 无 locale/component API 增量 | done (#44) |
 | R30 | 外观/字体只写本机 AppPrefs，不再读写 Host `ui-theme`（对齐 Android #63 外观 + 控制器字体） | done (#45) |
-| R31 | 通用设置 `FontSettingsGroup`：步进器 +「更多字体设置」展开代码/终端字号与字体族 | this PR |
+| R31 | 通用设置 `FontSettingsGroup`：步进器 +「更多字体设置」展开代码/终端字号与字体族 | done (#46) |
+| R32 | 语言跟 Host `locale.preference`：`L.en` 写回 AppPrefs；离线不可改 | this PR |
 
 ---
 
@@ -195,7 +196,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Drawer 自动化 (not a settings section) | `ScheduleScreen.kt` | drawer only; Settings 自动化 row removed | **present** | **D** |
 | Schedule catalog / edit / history | `ScheduleScreen.kt` | CAS update + delete + history; New → chat | **present** | **D** |
 | Agent presets | `AgentPresetSettingsScreen.kt` | Settings row + guide + Creator CTA when `presets.list`/`presets.settings` | **missing** → **present** | **G** |
-| General: fonts, transcript, collapse, busy, performance, log upload, link opening | `GeneralSettingsScreen` | appearance 3 cards; **appearance + fonts local only**（`AppPrefs`，不读写 Host `ui-theme`）；字号为桌面 `FontSizeRow` 步进器 + `px`，「更多字体设置」展开正文/代码/终端字体族与代码·终端字号（默认折叠）；`collapseTiming` 与桌面一样写 Host `ui-chat.collapseTiming`（`next-input`）；链接行标题「网页链接默认打开方式」 | **present** | **D** / **P1** / **#20** / **R4** / **R30** / **R31** |
+| General: fonts, transcript, collapse, busy, performance, log upload, link opening | `GeneralSettingsScreen` | appearance 3 cards; **appearance + fonts local only**（`AppPrefs`，不读写 Host `ui-theme`）；字号为桌面 `FontSizeRow` 步进器 + `px`，「更多字体设置」展开正文/代码/终端字体族与代码·终端字号（默认折叠）；语言跟 Host `locale.preference`（`L.en` 经 AppPrefs，离线不可改）；`collapseTiming` 与桌面一样写 Host `ui-chat.collapseTiming`（`next-input`）；链接行标题「网页链接默认打开方式」 | **present** | **D** / **P1** / **#20** / **R4** / **R30** / **R31** / **R32** |
 | Offline gray-out (no unofficial banner) | Android `SettingsScaffold` invents 「远程主机未连接，需连接的操作暂不可用」; desktop has no such chrome | **desktop-first:** no top banner / no extra copy; status 「未连接」; Models / 内置插件 / Agent 预设 / drawer 插件·自动化 gray + unclickable; `lastOps` keeps rows | **missing** → **present** | **H** |
 | Qoder CN card | `QoderConnectionCard.kt` last in `llm-qoder` | same PAT write-only + revision fence | **missing** → **present** | **H** |
 | Models intro | `modelsSettingsIntro` | 「填入各提供商的 API 密钥即可使用其模型。」 | **partial** → **present** | **P1** / **H** |
@@ -247,6 +248,7 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 - Permissions / models / commands / attachments / queue / goals / presets / session search / export / session feedback / unarchive / Host reorder: expose when the matching op is advertised.
 - `ui-chat.collapseTiming` is Host-backed (`completion` / `next-input`), same as desktop `TranscriptViewRow`. Do not keep a phone-only copy.
 - Appearance and fonts stay on the phone; they must not be written to the remote host.
+- Language follows Host `locale.preference` (Android `SharedSetting.Language`). The picker is disabled when that Host field is not writable. `L.en` reads the resolved value via `AppPrefs.language`.
 - Do not show a row that opens an empty TODO page.
 - Do not invent banners, buttons, or copy that desktop does not have. Android `SettingsScaffold` / schedule offline banners are **not** official desktop chrome — iOS omits them.
 
@@ -691,4 +693,63 @@ Host 加载 dist-tag `alpha` 仍是 `0.2.1-alpha.5`。`next`=`0.2.1-rc.1`，loca
 - Account / shortcuts / open config / open-in-desktop-editor / 快捷键设置页：仍 **hide**。
 - Android Settings「移动端」分组下的「连接」不搬。
 - Android `CompatibilityBanner`：不发明连接页横幅。
+
+## Round 32 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*` alpha=`0.2.1-alpha.5` / next=`0.2.1-rc.1`；Android `c5f8cdd`）
+
+本轮**怀疑式**源码核对，不复读 R26–R31 的 NO_PR 句。#46 / `a30dc51` 已在 `main`。
+
+### 直播版本
+
+| 源 | 判定 | 证据 |
+| --- | --- | --- |
+| 桌面 dist-tag | **PASS**（无 locale/API/组件增量，不 bump） | 2026-10-17 `npm view`：`alpha`=`0.2.1-alpha.5`，`next`=`0.2.1-rc.1`，`latest` 仍是旧线。pack 对比 21 包（theme / settings / chat / conversation / workspace / sidebar / jobs / commands / tool / permission-presets / model-selection / plugin-manager / agent-preset / plan / primitives / deliverables / settings-plugins / sidebar-files / sidebar-documentpreview / trajectory / schedule）：locale 与组件相对 alpha.5 **无增量**。唯一文件差是 `ui-sidebar` `lib/client.js` `localBuildVersion` `0.2.1-alpha.5-aeba8e9` → `0.2.1-rc.1-ed75efe`。 |
+| Android `main` | **PASS**（无新 commit） | `gh` tip 仍是 `c5f8cdd44689784376cf2a4ecab5117fc1b4c79b`（#66 无 session 目录）。`compare/c5f8cdd...main` `ahead_by: 0`。`729ef2e..c5f8cdd` 仍是 4 个提交：`18af5a8` 外观本机 / `9e580d4` 发布 / `d30825c` skills.list / `c5f8cdd` 无 session 目录。无新 controller UI。 |
+
+### FontSettingsGroup / General（#46 后）
+
+桌面 `ui-theme` `FontSettingsGroup` / `FontSizeRow` / `FontFamilyRow` / `FONT_SIZE_SPECS` / `settings.theme` zh+en（alpha.5 `client.js` ~1011–1356、1463–1516）。iOS `SettingsView` + `ThemeFontSettings.swift`。
+
+| 项 | 判定 | 证据 |
+| --- | --- | --- |
+| 会话字号步进器 + `px` | **PASS** | `SettingsFontSizeRow` role `.text`；范围 10–22 默认 14；触屏常显箭头（桌面 hover 才显） |
+| 「更多字体设置」默认折叠 | **PASS** | `@State fontsExpanded = false`；`themeFontSettingsStartCollapsed`；aria `fontSize.more` |
+| 展开顺序 | **PASS** | textFamily → codeFamily → codeSize → terminalFamily → terminalSize = 桌面 `FontSettingsGroup` |
+| 代码/终端规格 | **PASS** | code 10–16/11；terminal 10–20/13 |
+| 字体族 | **PASS** | blur/Enter 提交；`normalizeFontFamily` 与桌面同一套 generic + 去引号/控制符；max 200；占位「默认」 |
+| 文案 | **PASS** | 全句桌面 `settings.theme`（不用 Android 缩短句） |
+| 本机写入 | **PASS** | `setFontSize*` / family → `AppPrefs`；`SharedSetting` 无 ui-theme；`isPhoneLocalThemeField` |
+| 外观三卡 | **PASS** | 浅色/深色/跟随系统；只写 `AppPrefs` |
+| General 其余 Host 行 | **PASS** | 权限 / 语言 / 工作步骤 / collapseTiming / 代码工作视图 / 繁忙发送 / 性能 / session-log / 链接打开 / 代码换行 / 版本 |
+| Settings 壳 | **PASS** | 仅 General / Models / Presets / Plugins。无 Account / shortcuts / open-config / 连接 |
+
+### 抽查
+
+| 项 | 判定 | 证据 |
+| --- | --- | --- |
+| Composer | **PASS** | 占位、计划 chip、权限/模型 chip 上方弹层、+ selector、测高 36/52、停止一次点按（任务才是两次） |
+| 斜杠 | **PASS** | 添加/指令/技能无 N；landing 只注入 `/file` `/model`；其余来自 `commands.list` / `skills.list` |
+| Ask 工具行 | **PASS** | `ask.rowTitle`「提问」；waiting/pending；trailing「回答」重开。无 `ask.review` 面板 |
+| 用量 pill | **PASS** | 数据库图标；popover 在 chip 上方；本轮用量 `message.turnUsage.*` |
+| 任务面板 | **PASS** | 进行中/已结束；`jobKillPress` 两次 Button，不是 `TapGesture(count: 2)`；SIGTERM 整句 |
+| 轨迹 | **PASS** | 账本 + inspector；吞吐空窗 `timingNotAvailable` |
+| 抽屉绿点 / spinner | **PASS** | idle+未归档 3/14 of 14 绿点；运行 spinner 仅会话行；标题栏无 running spinner |
+| 连接入口 | **PASS** | `SessionDrawer.footerPeerDevice` 在 Settings **之上**。页面 `ConnectionsView` 对齐 Android `ConnectionsScreen`。Settings 无连接分组 |
+| 中文 Host 称呼 | **PASS** | 用户可见「远程主机」。`L.phoneConnection()`「手机连接」仅 Host 存根 |
+
+### 本轮修复
+
+| GAP | fix |
+| --- | --- |
+| 语言选择写 Host `locale.preference`，但 `L.en` 读从未写入的 `AppPrefs.language`（#11 删了 AppPrefs 写），iOS 文案不随 Host/选择切换。Android `AppPrefs.language` getter 直接读 Host。 | `setLanguage` / `applyHostMirroredPrefs` 把解析后的语言写回 `AppPrefs`（`controllerLanguageIsZh`）。选择器 `enabled: shared.writable(.language)`（Android 离线不可改）。外观/字体仍只写本机，不碰 `ui-theme`。 |
+
+### 本轮核对后**不改**（平台 / hide / 禁止发明）
+
+- `chat.turnNavigation.*`：桌面长 transcript 右侧跳轮；phone 无窄屏切片，不发明。
+- `chat.toBottom` FAB：phone 仍自动贴底。用户禁止。
+- `AskQuestionRow` `ask.review`：phone 不发明 review 面板。
+- 桌面 `DisclosureRow` / `FontSizeRow` hover 才换 chevron / 显步进箭头：触屏常显图标+箭头。
+- Account / shortcuts / open config / open-in-desktop-editor / 快捷键设置页：仍 **hide**。
+- Android Settings「移动端」分组下的「连接」/ 审批通知 / CompatibilityBanner：不搬。桌面 `ui-settings` 没有 controller 连接节；`installHostUi` phone 窗口不注册 Host QR「手机连接」。iOS 入口只在抽屉脚。
+- Android 字体仍 Host-backed。冲突以控制器为准：外观/字体只写 `AppPrefs`。
+- npm `next` `0.2.1-rc.1`：无新 API，Host 仍加载 `alpha.5`。
 
