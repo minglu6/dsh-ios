@@ -20,7 +20,7 @@ final class ScreenshotTests: XCTestCase {
     }
 
     private func capture(appearance: String) throws {
-        let root = screenshotRoot()
+        let root = try screenshotRoot()
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         for screen in screens {
             let app = XCUIApplication()
@@ -30,19 +30,20 @@ final class ScreenshotTests: XCTestCase {
                 "-UITestScreen", screen,
             ]
             app.launch()
+            XCTAssertTrue(app.wait(for: .runningForeground, timeout: 15), "\(appearance) \(screen) did not reach foreground")
             if screen == "viewOptions" {
                 let button = app.buttons["viewOptionsButton"]
-                XCTAssertTrue(button.waitForExistence(timeout: 4), "view options trigger missing")
+                XCTAssertTrue(button.waitForExistence(timeout: 15), "view options trigger missing")
                 button.tap()
-                XCTAssertTrue(app.descendants(matching: .any)["viewOptionsMenu"].waitForExistence(timeout: 3))
+                XCTAssertTrue(app.descendants(matching: .any)["viewOptionsMenu"].waitForExistence(timeout: 8))
             }
             if screen == "sessionActions" {
-                XCTAssertTrue(app.descendants(matching: .any)["sessionRowActions"].waitForExistence(timeout: 4))
+                XCTAssertTrue(app.descendants(matching: .any)["sessionRowActions"].waitForExistence(timeout: 15))
             }
             if screen == "start" {
                 let open = app.buttons["openStartPanel"]
-                if open.waitForExistence(timeout: 4) { open.tap() }
-                XCTAssertTrue(app.descendants(matching: .any)["startPanel"].waitForExistence(timeout: 4))
+                if open.waitForExistence(timeout: 8) { open.tap() }
+                XCTAssertTrue(app.descendants(matching: .any)["startPanel"].waitForExistence(timeout: 15))
             }
             let shot = XCUIScreen.main.screenshot()
             let url = root.appendingPathComponent("\(appearance.lowercased())-\(screen).png")
@@ -55,11 +56,20 @@ final class ScreenshotTests: XCTestCase {
         }
     }
 
-    private func screenshotRoot() -> URL {
-        if let raw = ProcessInfo.processInfo.environment["DSH_SCREENSHOT_DIR"], !raw.isEmpty {
-            return URL(fileURLWithPath: raw, isDirectory: true)
+    private func screenshotRoot() throws -> URL {
+        // xcodebuild only forwards TEST_RUNNER_* into the UITest process,
+        // stripping the prefix. CI must set TEST_RUNNER_DSH_SCREENSHOT_DIR.
+        guard let raw = ProcessInfo.processInfo.environment["DSH_SCREENSHOT_DIR"], !raw.isEmpty else {
+            throw ScreenshotExportError.missingDirectory
         }
-        return URL(fileURLWithPath: FileManager.default.currentDirectoryPath, isDirectory: true)
-            .appendingPathComponent("screenshots", isDirectory: true)
+        return URL(fileURLWithPath: raw, isDirectory: true)
+    }
+}
+
+private enum ScreenshotExportError: Error, CustomStringConvertible {
+    case missingDirectory
+
+    var description: String {
+        "DSH_SCREENSHOT_DIR is missing; pass TEST_RUNNER_DSH_SCREENSHOT_DIR to xcodebuild"
     }
 }

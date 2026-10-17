@@ -930,5 +930,5 @@ Android `c5f8cdd...56dcaa9` 一笔：`feat(android): 补齐用户选择卡片与
 
 ### CI 截图
 
-`.github/workflows/ci.yml` job `screenshots`：macos-15 启动模拟器，跑 `dshUITests`（`-UITestFixture` 假主机：两工作区、已完成「你好」、带推理强度的模型），浅色/深色各一套，artifact `ios-simulator-screenshots`。Mac Studio 实机对照由 parent 另跑。
+`.github/workflows/ci.yml` job `screenshots`：macos-15 启动可用 iPhone 模拟器（优先 iPhone 17e），`xcodebuild test` 把 `TEST_RUNNER_DSH_SCREENSHOT_DIR` 传进 `dshUITests`（`-UITestFixture` 假主机：两工作区、已完成「你好」、带推理强度的模型），浅色/深色各一套，artifact `ios-simulator-screenshots`。Mac Studio 实机对照由 parent 另跑。
 
