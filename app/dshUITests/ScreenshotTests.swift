@@ -38,9 +38,9 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertTrue(app.descendants(matching: .any)["viewOptionsMenu"].waitForExistence(timeout: 8))
             }
             if screen == "sessionActions" {
-                XCTAssertTrue(app.descendants(matching: .any)["sessionRowActions"].waitForExistence(timeout: 15), "session row action tray missing")
-                XCTAssertTrue(app.descendants(matching: .any)["sessionRowPin"].waitForExistence(timeout: 4), "pin action missing")
-                XCTAssertTrue(app.descendants(matching: .any)["sessionRowArchive"].waitForExistence(timeout: 4), "archive action missing")
+                XCTAssertTrue(app.descendants(matching: .any)["sessionRow.s-hello"].waitForExistence(timeout: 15), "fixture session row missing")
+                XCTAssertTrue(app.buttons["sessionRowPin"].waitForExistence(timeout: 8), "pin action missing")
+                XCTAssertTrue(app.buttons["sessionRowArchive"].waitForExistence(timeout: 4), "archive action missing")
                 XCTAssertTrue(app.descendants(matching: .any)["sessionRowMore"].waitForExistence(timeout: 4), "more action missing")
             }
             if screen == "start" {

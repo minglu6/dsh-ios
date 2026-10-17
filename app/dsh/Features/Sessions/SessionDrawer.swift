@@ -540,6 +540,7 @@ struct SessionDrawer: View {
                     .frame(width: 28, height: 28)
                 }
                 .disabled(!model.isOnline)
+                .accessibilityElement(children: .ignore)
                 .accessibilityLabel(model.pinnedIds.contains(session.sessionId) ? L.unpinSession() : L.pinSession())
                 .accessibilityIdentifier("sessionRowPin")
             }
@@ -552,6 +553,7 @@ struct SessionDrawer: View {
                         .frame(width: 28, height: 28)
                 }
                 .disabled(!model.isOnline)
+                .accessibilityElement(children: .ignore)
                 .accessibilityLabel(archived ? L.unarchiveSession() : L.archiveSession())
                 .accessibilityIdentifier("sessionRowArchive")
             }
@@ -575,6 +577,7 @@ struct SessionDrawer: View {
                 OfficialGlyph(kind: .ellipsis, size: 14, color: T.text2)
                     .frame(width: 28, height: 28)
             }
+            .accessibilityElement(children: .ignore)
             .accessibilityLabel(L.moreActions())
             .accessibilityIdentifier("sessionRowMore")
         }
