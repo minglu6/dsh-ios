@@ -656,6 +656,26 @@ public let permissionRiskStaysAboveKeyboard = true
 /// Desktop keeps the conversation mounted while the in-app browser is open.
 public let chatPreservesPositionAcrossBrowser = true
 
+/// Phone chrome. Host `ui-theme` appearance / fonts belong to the Host window
+/// (`ui-theme.preference`, `fontSize`, families). Android `#63` stopped mirroring
+/// appearance; the controller also keeps fonts local so a phone size/family
+/// change cannot mutate the remote Host, and disconnect cannot reset the phone.
+public let phoneLocalThemeNamespace = "ui-theme"
+
+public let phoneLocalThemeFields: Set<String> = [
+    "preference",
+    "fontSize",
+    "codeFontSize",
+    "terminalFontSize",
+    "textFontFamily",
+    "codeFontFamily",
+    "terminalFontFamily",
+]
+
+public func isPhoneLocalThemeField(namespace: String, field: String) -> Bool {
+    namespace == phoneLocalThemeNamespace && phoneLocalThemeFields.contains(field)
+}
+
 /// Desktop hero is already a blank session, so permission lives on the Host.
 /// iOS landing has no session: the draft stays in memory and is not persisted.
 public let landingPermissionPersistsAcrossLaunch = false

@@ -461,6 +461,20 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertEqual(skillCatalogScopeKey(sessionId: "s1", subagent: true), "subagent:s1")
         XCTAssertEqual(listCatalogArgs(sessionId: nil), jsonObject([:]))
         XCTAssertEqual(listCatalogArgs(sessionId: "s1")["sessionId"].str(), "s1")
+        XCTAssertEqual(phoneLocalThemeNamespace, "ui-theme")
+        XCTAssertTrue(isPhoneLocalThemeField(namespace: "ui-theme", field: "preference"))
+        XCTAssertTrue(isPhoneLocalThemeField(namespace: "ui-theme", field: "fontSize"))
+        XCTAssertTrue(isPhoneLocalThemeField(namespace: "ui-theme", field: "codeFontSize"))
+        XCTAssertTrue(isPhoneLocalThemeField(namespace: "ui-theme", field: "terminalFontSize"))
+        XCTAssertTrue(isPhoneLocalThemeField(namespace: "ui-theme", field: "textFontFamily"))
+        XCTAssertTrue(isPhoneLocalThemeField(namespace: "ui-theme", field: "codeFontFamily"))
+        XCTAssertTrue(isPhoneLocalThemeField(namespace: "ui-theme", field: "terminalFontFamily"))
+        XCTAssertFalse(isPhoneLocalThemeField(namespace: "locale", field: "preference"))
+        XCTAssertFalse(isPhoneLocalThemeField(namespace: "ui-chat", field: "transcriptView"))
+        XCTAssertEqual(
+            phoneLocalThemeFields,
+            Set(["preference", "fontSize", "codeFontSize", "terminalFontSize", "textFontFamily", "codeFontFamily", "terminalFontFamily"])
+        )
     }
 
     /// Round 5 real device: `workspace/changes` seq 29, turn 1 closed, codeWork on,
