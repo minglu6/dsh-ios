@@ -380,8 +380,8 @@ enum L {
     static func landingHeadline() -> String { DSHProtocol.landingHeadline(english: en) }
     static func landingPreview() -> String { landingPreviewBadge(english: en) }
     static func landingPlaceholder() -> String { composerPlaceholderText(planMode: false, english: en, hero: true) }
-    static func planReview() -> String { en ? "Plan review" : "计划待审" }
-    static func approvePlan() -> String { en ? "Approve" : "同意执行" }
+    static func planReview() -> String { questionPlanHeader(english: en) }
+    static func approvePlan() -> String { questionPlanApprove(english: en) }
     static func typeYourAnswer() -> String { en ? "Type your answer" : "输入你的答案" }
     static func skip() -> String { en ? "Skip" : "跳过" }
     static func nextQuestion() -> String { en ? "Next" : "下一题" }

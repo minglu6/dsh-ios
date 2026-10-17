@@ -136,3 +136,28 @@ public func questionSubmitAnswersLabel(english: Bool) -> String {
 public func questionCollapseLabel(english: Bool) -> String {
     english ? "Collapse" : "收起"
 }
+
+public func questionPlanHeader(english: Bool) -> String {
+    english ? "Plan review" : "计划待审"
+}
+
+public func questionPlanApprove(english: Bool) -> String {
+    english ? "Approve" : "同意执行"
+}
+
+/// Desktop `plan.discuss` — dismisses the plan-review takeover (hide, not a skip answer).
+public func questionPlanDiscuss(english: Bool) -> String {
+    english ? "Request changes" : "要求修改"
+}
+
+/// Desktop `planReviewOf`: one plan-review question with a plan body and an approve option.
+public func planReviewOf(_ questions: [UserQuestionItem]) -> UserQuestionItem? {
+    guard questions.count == 1 else { return nil }
+    let item = questions[0]
+    guard item.intentKind == "plan-review", item.detail != nil else { return nil }
+    guard !item.multiSelect, item.options.count <= 2 else { return nil }
+    guard let approve = item.approveLabel, item.options.contains(where: { $0.label == approve }) else {
+        return nil
+    }
+    return item
+}

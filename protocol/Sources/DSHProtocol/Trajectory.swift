@@ -686,6 +686,28 @@ public func buildTrajectory(_ items: [Item], steps: [StepRecord] = []) -> [TrajT
             break
         case .retry, .turnFailure, .command:
             break
+        case .questionReply(let reply):
+            flush()
+            turnIdx += 1
+            liveAssistantKey = nil
+            if !pendingPrefix.isEmpty {
+                rows.append(contentsOf: pendingPrefix)
+                pendingPrefix.removeAll()
+            }
+            rows.append(TrajRow(
+                key: reply.key, depth: 0, kind: TrajL.kindUser,
+                title: oneLinePreview(questionReplySummary(
+                    questions: reply.questions,
+                    answers: reply.answers,
+                    english: TrajL.en
+                )),
+                time: formatElapsed(0),
+                inputDetail: reply.text, rawDetail: reply.text,
+                turn: turnIdx,
+                startedAt: reply.at,
+                timeSeconds: 0.0,
+                searchText: [reply.text, reply.callId].joined(separator: "\n")
+            ))
         case .system(let sys):
             addPrefixOrRow(TrajRow(
                 key: sys.key, depth: 0, kind: TrajL.kindSystem, title: sys.label,

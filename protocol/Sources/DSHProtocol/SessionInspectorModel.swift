@@ -451,6 +451,7 @@ public func inspectorGroupRows(_ st: InspectorChatState, policy: PresentationPol
         case .compacted(let item): members = [.compacted(item)]
         case .context(let item): members = [.context(item)]
         case .command(let item): members = [.command(item)]
+        case .questionReply(let item): members = [.questionReply(item)]
         }
         covered.formUnion(members.map(\.key))
         let position = members.first.flatMap { positions[$0.key] } ?? controlAnchors[row.key] ?? lastPosition
@@ -640,6 +641,14 @@ private func inspectorItemRow(_ item: Item) -> InspectorRow {
             "outcomeText": v.outcomeText.map { .string($0) },
             "sourceEventSeq": v.sourceEventSeq.map { .number(Double($0)) },
         ])
+    case .questionReply(let v):
+        type = "Item.QuestionReply"
+        fields = jsonObject([
+            "callId": .string(v.callId),
+            "text": .string(v.text),
+            "seq": v.seq.map { .number(Double($0)) },
+            "at": v.at.map { .number(Double($0)) },
+        ])
     case .deliverable(let v):
         type = "Item.Deliverable"
         fields = jsonObject([
@@ -790,6 +799,7 @@ extension Item {
         case .reasoning(let v): return v.seq
         case .changes(let v): return v.seq
         case .command(let v): return v.seq
+        case .questionReply(let v): return v.seq
         case .retry(let v): return v.attempts.first?.seq
         default: return nil
         }

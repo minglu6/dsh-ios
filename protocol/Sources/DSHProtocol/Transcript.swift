@@ -186,6 +186,8 @@ public enum Item: Sendable, Equatable, Identifiable {
     case changes(Changes)
     /// Desktop `CommandNode` from log-only `command/run` + `command/done`.
     case command(Command)
+    /// Desktop `questionReplyDefinition` / `QuestionReplyView`.
+    case questionReply(QuestionReply)
 
     public var id: String { key }
     public var key: String {
@@ -203,6 +205,7 @@ public enum Item: Sendable, Equatable, Identifiable {
         case .turnFailure(let v): return v.key
         case .changes(let v): return v.key
         case .command(let v): return v.key
+        case .questionReply(let v): return v.key
         }
     }
 
@@ -534,6 +537,35 @@ public enum Item: Sendable, Equatable, Identifiable {
             self.outcomeKind = outcomeKind
             self.outcomeText = outcomeText
             self.sourceEventSeq = sourceEventSeq
+        }
+    }
+
+    /// Desktop `QuestionReplyData` claimed on Chat so the generic user bubble never presents it.
+    public struct QuestionReply: Sendable, Equatable {
+        public var key: String
+        public var callId: String
+        public var text: String
+        public var questions: [QuestionReplyQuestion]
+        public var answers: [QuestionReplyAnswer]
+        public var at: Int64?
+        public var seq: Int64?
+
+        public init(
+            key: String,
+            callId: String,
+            text: String,
+            questions: [QuestionReplyQuestion] = [],
+            answers: [QuestionReplyAnswer] = [],
+            at: Int64? = nil,
+            seq: Int64? = nil
+        ) {
+            self.key = key
+            self.callId = callId
+            self.text = text
+            self.questions = questions
+            self.answers = answers
+            self.at = at
+            self.seq = seq
         }
     }
 
@@ -1342,6 +1374,16 @@ public final class TranscriptReducer {
             if applyCompactionCheckpoint(e, data: data) { break }
             let msg = data["content"].isNull ? data["message"] : data
             retireMessage(msg)
+            if let reply = questionReplyItem(
+                event: e,
+                message: msg,
+                key: "qr\(seq)",
+                at: e["time"].long(),
+                seq: seq
+            ) {
+                committed.append(.questionReply(reply))
+                break
+            }
             if isTyped(msg) {
                 upsertUser(msg, key: "u\(seq)", pending: false, at: e["time"].long(), seq: seq)
             } else {

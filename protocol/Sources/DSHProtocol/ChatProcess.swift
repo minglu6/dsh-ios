@@ -89,6 +89,8 @@ public enum ChatRow: Equatable, Sendable {
     case context(Item.Context)
     /// Desktop `CommandNode` / `GenericCommandCard` / `CompactionCommandCard`.
     case command(Item.Command)
+    /// Desktop `QuestionReplyView` late answer to a continued question.
+    case questionReply(Item.QuestionReply)
 
     public var key: String {
         switch self {
@@ -106,6 +108,7 @@ public enum ChatRow: Equatable, Sendable {
         case .compacted(let v): return v.key
         case .context(let v): return v.key
         case .command(let v): return v.key
+        case .questionReply(let v): return v.key
         }
     }
 
@@ -441,10 +444,18 @@ public func foldChatItems(
     }
     let latestTurn = (Array(byTurn.keys) + Array(facts.keys)).max()
     let latestInputSeq = visible.compactMap { item -> Int64? in
-        if case .user(let user) = item { return user.seq }
-        return nil
+        switch item {
+        case .user(let user): return user.seq
+        case .questionReply(let reply): return reply.seq
+        default: return nil
+        }
     }.max()
-    let lastInputIndex = visible.lastIndex { if case .user = $0 { return true }; return false } ?? -1
+    let lastInputIndex = visible.lastIndex {
+        switch $0 {
+        case .user, .questionReply: return true
+        default: return false
+        }
+    } ?? -1
     func deferCollapse(_ turn: Int?) -> Bool {
         guard let turn, policy.collapseTiming == .nextInput else { return false }
         let fact = facts[turn]
@@ -535,8 +546,10 @@ public func foldChatItems(
         let first = ownedPositions.min()
         let last = ownedPositions.max()
         let interleaved = first != nil && last != nil && (first!...last!).contains { idx in
-            if case .user = visible[idx] { return true }
-            return false
+            switch visible[idx] {
+            case .user, .questionReply: return true
+            default: return false
+            }
         }
         var controlled = Set<String>()
         for row in rowsByTurn[fact.turn] ?? [] {
@@ -596,10 +609,10 @@ public func foldChatItems(
                     result.append(.process(control))
                 }
             }
-        } else if case .user(let user) = row, let userSeq = user.seq {
+        } else if let inputSeq = chatRowInputSeq(row) {
             let preceding = controlOrder.filter { turn in
                 if controls[turn] == nil { return false }
-                if let end = facts[turn]?.endSeq { return end < userSeq }
+                if let end = facts[turn]?.endSeq { return end < inputSeq }
                 return false
             }
             for closedTurn in preceding {
@@ -688,6 +701,14 @@ public func inspectorPickKey(_ row: ChatRow) -> String {
     return row.key
 }
 
+private func chatRowInputSeq(_ row: ChatRow) -> Int64? {
+    switch row {
+    case .user(let user): return user.seq
+    case .questionReply(let reply): return reply.seq
+    default: return nil
+    }
+}
+
 private func emitPlain(_ out: inout [ChatRow], _ item: Item) {
     switch item {
     case .user(let v): out.append(.user(v))
@@ -701,6 +722,7 @@ private func emitPlain(_ out: inout [ChatRow], _ item: Item) {
     case .changes(let v): out.append(.changes(v))
     case .compacted(let v): out.append(.compacted(v))
     case .command(let v): out.append(.command(v))
+    case .questionReply(let v): out.append(.questionReply(v))
     case .context(let v) where v.waking:
         out.append(.turnTrigger(v))
     case .context(let v) where contextHasToolChanges(v):

@@ -36,11 +36,7 @@ struct UserQuestionCard: View {
 
     private var writable: Bool { enabled && !busy }
 
-    private var isPlan: Bool {
-        question.questions.count == 1 && item.intentKind == "plan-review"
-            && !item.multiSelect && item.options.count <= 2
-            && item.options.contains { $0.label == item.approveLabel }
-    }
+    private var isPlan: Bool { planReviewOf(question.questions) != nil }
 
     private var card: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -100,7 +96,7 @@ struct UserQuestionCard: View {
                     .foregroundStyle(T.onPrimary)
                     .background(T.primaryButton, in: RoundedRectangle(cornerRadius: 12))
                     .disabled(!writable)
-                    Button(L.t("继续讨论", "Keep discussing"), action: onDismiss)
+                    Button(questionPlanDiscuss(english: L.en), action: onDismiss)
                         .frame(maxWidth: .infinity, minHeight: 48)
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 1))
                         .disabled(busy)
@@ -224,6 +220,130 @@ struct UserQuestionCard: View {
             if !success {
                 busy = false
                 err = questionSubmitFailed(english: L.en)
+            }
+        }
+    }
+}
+
+/// Desktop `QuestionReplyView`: right-aligned late answer to a continued question.
+struct QuestionReplyRow: View {
+    let item: Item.QuestionReply
+    @State private var open = false
+    @State private var copied = false
+
+    private var summary: String {
+        questionReplySummary(questions: item.questions, answers: item.answers, english: L.en)
+    }
+
+    private var copyText: String {
+        replyClipboardText(
+            text: item.text,
+            questions: item.questions,
+            answers: item.answers,
+            english: L.en
+        )
+    }
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 6) {
+            VStack(alignment: .leading, spacing: 0) {
+                Button {
+                    open.toggle()
+                } label: {
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 3) {
+                            Image(systemName: open ? "chevron.down" : "chevron.right")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(T.text3)
+                            Text(questionReplyLabel(english: L.en))
+                                .font(.system(size: 13))
+                                .foregroundStyle(T.text3)
+                        }
+                        if !open {
+                            Text(summary)
+                                .font(LocalFonts.text())
+                                .foregroundStyle(T.ink)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(questionReplyLabel(english: L.en)) · \(open ? questionReplyClose(english: L.en) : questionReplyOpen(english: L.en))")
+
+                if open {
+                    if item.questions.isEmpty {
+                        Text(item.text)
+                            .font(LocalFonts.text())
+                            .foregroundStyle(T.ink)
+                            .padding(.top, 8)
+                    } else {
+                        VStack(alignment: .leading, spacing: 12) {
+                            ForEach(item.questions) { question in
+                                replyQuestion(question)
+                            }
+                        }
+                        .padding(.top, 8)
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(T.bubble, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            HStack(spacing: 8) {
+                if let at = item.at {
+                    Text(formatMessageClock(at, english: L.en))
+                        .font(.system(size: 13))
+                        .foregroundStyle(T.text3)
+                }
+                Button {
+                    guard !copied else { return }
+                    UIPasteboard.general.string = copyText
+                    copied = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) { copied = false }
+                } label: {
+                    Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                        .font(.system(size: 13))
+                        .foregroundStyle(T.text3)
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(copied ? L.t("已复制", "Copied") : L.copy())
+            }
+        }
+        .padding(.leading, 48)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 4)
+        .frame(maxWidth: .infinity, alignment: .trailing)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(questionReplyLabel(english: L.en))
+    }
+
+    private func replyQuestion(_ question: QuestionReplyQuestion) -> some View {
+        let values = replyAnswerValues(answers: item.answers, id: question.id)
+        return VStack(alignment: .leading, spacing: 4) {
+            if let header = question.header, !header.isEmpty, header != question.question {
+                Text(header).font(.system(size: 11)).foregroundStyle(T.text3)
+            }
+            Text(question.question).font(LocalFonts.text()).foregroundStyle(T.ink)
+            if let detail = question.detail, !detail.isEmpty {
+                Text(detail).font(.system(size: 11)).foregroundStyle(T.text3)
+            }
+            if !question.options.isEmpty {
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(Array(question.options.enumerated()), id: \.offset) { _, option in
+                        Text(option.description.map { "\(option.label) — \($0)" } ?? option.label)
+                            .font(.system(size: 11))
+                            .foregroundStyle(T.text3)
+                    }
+                }
+            }
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(questionReplyAnswerLabel(english: L.en))
+                    .font(.system(size: 12))
+                    .foregroundStyle(T.text3)
+                Text(values.isEmpty ? questionReplySkipped(english: L.en) : values.joined(separator: ", "))
+                    .font(LocalFonts.text())
+                    .foregroundStyle(T.ink)
             }
         }
     }
