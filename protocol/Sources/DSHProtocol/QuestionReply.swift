@@ -89,9 +89,12 @@ public func replyPairsOf(_ text: String) -> (questions: [QuestionReplyQuestion],
     }
     var answers: [QuestionReplyAnswer] = []
     for answer in value["answers"].arr() ?? [] {
-        guard let id = answer["id"].str() else { continue }
-        let selected = (answer["selected"].arr() ?? []).compactMap { $0.str() }
-        answers.append(QuestionReplyAnswer(id: id, selected: selected, custom: answer["custom"].str()))
+        guard let id = answer["id"].str(), let selected = answer["selected"].arr() else { continue }
+        answers.append(QuestionReplyAnswer(
+            id: id,
+            selected: selected.compactMap { $0.str() },
+            custom: answer["custom"].str()
+        ))
     }
     return (questions, answers)
 }

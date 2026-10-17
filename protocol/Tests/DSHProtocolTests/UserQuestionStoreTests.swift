@@ -317,6 +317,7 @@ final class UserQuestionDraftTests: XCTestCase {
             "Skip?\nSkipped"
         )
         XCTAssertEqual(replyPairsOf("not-json").questions.count, 0)
+        XCTAssertTrue(replyPairsOf(#"{"questions":[{"id":"one","question":"Q"}],"answers":[{"id":"one"}]}"#).answers.isEmpty)
     }
 
     func testQuestionReplyRequiresAppendAnsweredSource() throws {
