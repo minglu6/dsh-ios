@@ -625,8 +625,11 @@ struct SessionDrawer: View {
             model.showDrawer = false
         } label: {
             HStack(spacing: CGFloat(sidebarSettingsTriggerGapPoints)) {
-                Image(systemName: D.gear)
-                    .font(.system(size: CGFloat(sidebarSettingsTriggerIconSizePoints)))
+                OfficialGlyph(
+                    kind: .settingsOutline,
+                    size: CGFloat(sidebarSettingsTriggerIconSizePoints),
+                    color: T.ink
+                )
                 Text(L.settings())
                     .font(.system(size: CGFloat(sidebarSettingsTriggerFontSizePoints)))
                     .lineLimit(1)

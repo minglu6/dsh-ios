@@ -67,6 +67,14 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) \(screen) missing official folder glyph"
                 )
             }
+            if screen == "drawer" {
+                XCTAssertFalse(app.images["gearshape"].exists, "\(appearance) drawer still exposes SF gearshape")
+                XCTAssertFalse(app.images["gearshape.fill"].exists, "\(appearance) drawer still exposes SF gearshape.fill")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.settingsOutline"].waitForExistence(timeout: 8),
+                    "\(appearance) drawer missing official settings glyph"
+                )
+            }
             if screen == "models" {
                 XCTAssertTrue(app.descendants(matching: .any)["modelChipEffort"].waitForExistence(timeout: 8), "\(appearance) model chip missing effort")
                 XCTAssertTrue(app.descendants(matching: .any)["modelPickerEffort"].waitForExistence(timeout: 8), "\(appearance) model menu missing effort row")

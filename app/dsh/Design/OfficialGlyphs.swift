@@ -25,18 +25,20 @@ struct OfficialGlyph: View {
         case downloadOutline
         case shareOutline
         case terminalPrompt
+        case settingsOutline
 
         var accessibilityIdentifier: String {
             switch self {
             case .folderClose: return "official.folderClose"
             case .folderOpen: return "official.folderOpen"
+            case .settingsOutline: return "official.settingsOutline"
             default: return "official.glyph"
             }
         }
 
         var hidesAccessibility: Bool {
             switch self {
-            case .folderClose, .folderOpen: return false
+            case .folderClose, .folderOpen, .settingsOutline: return false
             default: return true
             }
         }
@@ -134,6 +136,15 @@ struct OfficialGlyph: View {
                 ctx.scaleBy(x: 16 / 36, y: 16 / 36)
                 ctx.stroke(Path(SVGPath.cgPath(Self.terminalPrompt)), with: .color(color), style: term)
                 ctx.stroke(Path(SVGPath.cgPath(Self.terminalCursor)), with: .color(color), style: term)
+            case .settingsOutline:
+                let medium = StrokeStyle(
+                    lineWidth: CGFloat(sidebarSettingsTriggerIconStrokeWidth),
+                    lineCap: .butt,
+                    lineJoin: .miter,
+                    miterLimit: 10
+                )
+                ctx.stroke(Path(SVGPath.cgPath(sidebarSettingsOutlineHubPath)), with: .color(color), style: medium)
+                ctx.stroke(Path(SVGPath.cgPath(sidebarSettingsOutlineRingPath)), with: .color(color), style: medium)
             }
         }
         .frame(width: size, height: size)

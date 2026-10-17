@@ -211,6 +211,9 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertTrue(phoneConnectionLivesInDrawerFooter)
         XCTAssertFalse(sidebarFooterActionAboveSettings)
         XCTAssertTrue(sidebarFooterActionSharesSettingsRow)
+        XCTAssertTrue(sidebarSettingsTriggerUsesOfficialGlyph)
+        XCTAssertEqual(sidebarSettingsTriggerSymbol(), "official.settingsOutline")
+        XCTAssertFalse(isForbiddenSystemSettingsSymbol("official.settingsOutline"))
     }
 
     func testGeneralSettingsCopyMatchesDesktopLocale() {
