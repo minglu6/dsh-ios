@@ -41,8 +41,6 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertTrue(app.descendants(matching: .any)["sessionRowActions"].waitForExistence(timeout: 15))
             }
             if screen == "start" {
-                let open = app.buttons["openStartPanel"]
-                if open.waitForExistence(timeout: 8) { open.tap() }
                 XCTAssertTrue(app.descendants(matching: .any)["startPanel"].waitForExistence(timeout: 15))
             }
             let shot = XCUIScreen.main.screenshot()
