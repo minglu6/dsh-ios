@@ -50,6 +50,7 @@ struct GeneralSettingsView: View {
     @ObservedObject private var shared: HostSettings
     @State private var sheet: String?
     @State private var riskPermission: String?
+    @State private var fontsExpanded = false
 
     init(model: AppModel) {
         self.model = model
@@ -104,7 +105,40 @@ struct GeneralSettingsView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)
                         Divider().padding(.leading, 16)
-                        fontRow
+                        SettingsFontSizeRow(
+                            role: .text,
+                            value: model.fontSize,
+                            expanded: fontsExpanded,
+                            onToggle: { fontsExpanded.toggle() },
+                            onChange: { model.setFontSize($0) }
+                        )
+                        if fontsExpanded {
+                            SettingsFontFamilyRow(
+                                role: .text,
+                                value: model.textFontFamily,
+                                onChange: { model.setTextFontFamily($0) }
+                            )
+                            SettingsFontFamilyRow(
+                                role: .code,
+                                value: model.codeFontFamily,
+                                onChange: { model.setCodeFontFamily($0) }
+                            )
+                            SettingsFontSizeRow(
+                                role: .code,
+                                value: model.codeFontSize,
+                                onChange: { model.setCodeFontSize($0) }
+                            )
+                            SettingsFontFamilyRow(
+                                role: .terminal,
+                                value: model.terminalFontFamily,
+                                onChange: { model.setTerminalFontFamily($0) }
+                            )
+                            SettingsFontSizeRow(
+                                role: .terminal,
+                                value: model.terminalFontSize,
+                                onChange: { model.setTerminalFontSize($0) }
+                            )
+                        }
                         preferenceRow(
                             L.workDetails(),
                             workDetailsDescription(english: L.en),
@@ -233,38 +267,6 @@ struct GeneralSettingsView: View {
             }
         }
         .onAppear { if model.ops.contains("permissions.catalog") { model.reloadPermissionCatalog() } }
-    }
-
-    @ViewBuilder
-    private var fontRow: some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading) {
-                Text(L.fontSize()).foregroundStyle(T.ink)
-                Text(L.t("仅影响会话内容的字号", "Only affects conversation content")).font(.caption).foregroundStyle(T.text3)
-            }
-            Spacer()
-            Menu {
-                ForEach(Array(ConversationFontSize.range), id: \.self) { size in
-                    Button(conversationFontSizeLabel(size)) { model.setFontSize(size) }
-                }
-            } label: {
-                HStack(spacing: 4) {
-                    Text(conversationFontSizeLabel(model.fontSize)).foregroundStyle(T.text2)
-                    Text("⌄")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(T.text3)
-                        .accessibilityHidden(true)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(T.fill, in: Capsule())
-            }
-            .accessibilityLabel(L.fontSize())
-            .accessibilityValue(conversationFontSizeLabel(model.fontSize))
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        Divider().padding(.leading, 16)
     }
 
     private func appearanceCard(_ value: Appearance, _ title: String, _ system: String) -> some View {
@@ -475,5 +477,139 @@ func picker<Selection: Hashable, Content: View>(
         .padding(.vertical, 8)
         .opacity(enabled ? 1 : 0.5)
         if divider { Divider().padding(.leading, 16) }
+    }
+}
+
+/// Desktop `ui-theme` `FontSizeRow`: title + description + stepper pill + `px`.
+/// Touch always shows the arrows (desktop reveals them on hover). Phone-local, always enabled.
+struct SettingsFontSizeRow: View {
+    let role: ThemeFontRole
+    let value: Int
+    var expanded: Bool? = nil
+    var onToggle: (() -> Void)? = nil
+    let onChange: (Int) -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .center, spacing: 8) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(themeFontSizeTitle(role, english: L.en)).foregroundStyle(T.ink)
+                    Text(themeFontSizeDescription(role, english: L.en))
+                        .font(.caption)
+                        .foregroundStyle(T.text3)
+                }
+                Spacer(minLength: 8)
+                HStack(spacing: 0) {
+                    Text("\(value)")
+                        .font(.subheadline)
+                        .foregroundStyle(T.ink)
+                        .frame(maxWidth: .infinity)
+                    VStack(spacing: 0) {
+                        stepButton(increase: true)
+                        stepButton(increase: false)
+                    }
+                    .frame(width: 32)
+                }
+                .frame(width: 72, height: 36)
+                .background(T.fill2, in: RoundedRectangle(cornerRadius: 8))
+                Text(themeFontSizeUnit)
+                    .font(.subheadline)
+                    .foregroundStyle(T.text2)
+                if let onToggle {
+                    Button(action: onToggle) {
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(T.text2)
+                            .rotationEffect(.degrees(expanded == true ? 180 : 0))
+                    }
+                    .buttonStyle(.plain)
+                    .frame(width: 40, height: 40)
+                    .accessibilityLabel(themeFontSettingsMoreLabel(english: L.en))
+                    .accessibilityIdentifier("fontSettingsToggle")
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityValue(expanded == true ? L.t("已展开", "Expanded") : L.t("已折叠", "Collapsed"))
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            Divider().padding(.leading, 16)
+        }
+    }
+
+    private func stepButton(increase: Bool) -> some View {
+        let enabled = increase ? themeFontSizeCanIncrease(role, value: value) : themeFontSizeCanDecrease(role, value: value)
+        let label = themeFontSizeStepLabel(role, increase: increase, english: L.en)
+        return Button {
+            onChange(themeFontSizeStepped(role, value: value, delta: increase ? 1 : -1))
+        } label: {
+            Image(systemName: "chevron.down")
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(enabled ? T.ink : T.caption)
+                .rotationEffect(.degrees(increase ? 180 : 0))
+                .frame(width: 17, height: 12)
+                .background(T.surface.opacity(0.75), in: RoundedRectangle(cornerRadius: 4))
+                .frame(width: 32, height: 28)
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .accessibilityLabel(label)
+    }
+}
+
+/// Desktop `ui-theme` `FontFamilyRow`: commit on blur / Enter, max 200, placeholder 「默认」.
+struct SettingsFontFamilyRow: View {
+    let role: ThemeFontRole
+    let value: String
+    let onChange: (String) -> Void
+
+    @State private var draft = ""
+    @State private var dirty = false
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .center, spacing: 16) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(themeFontFamilyTitle(role, english: L.en)).foregroundStyle(T.ink)
+                    Text(themeFontFamilyDescription(role, english: L.en))
+                        .font(.caption)
+                        .foregroundStyle(T.text3)
+                }
+                TextField(themeFontFamilyPlaceholder(english: L.en), text: $draft)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .focused($focused)
+                    .onChange(of: draft) { next in
+                        let clipped = themeFontFamilyDraft(next)
+                        if clipped != next { draft = clipped }
+                        if focused { dirty = true }
+                    }
+                    .onSubmit { commit() }
+                    .onChange(of: focused) { on in
+                        if !on { commit() }
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 10)
+                    .background(T.surface, in: RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(T.borderStrong, lineWidth: 0.5))
+                    .accessibilityLabel(themeFontFamilyTitle(role, english: L.en))
+                    .accessibilityIdentifier(themeFontFamilyFieldTag(role))
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 16)
+            Divider().padding(.leading, 16)
+        }
+        .onAppear { draft = value }
+        .onChange(of: value) { next in
+            if !dirty { draft = next }
+        }
+    }
+
+    private func commit() {
+        guard dirty else { return }
+        let normalized = normalizeFontFamily(draft)
+        draft = normalized
+        dirty = false
+        if normalized != value { onChange(normalized) }
     }
 }

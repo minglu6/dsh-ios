@@ -782,7 +782,7 @@ private struct CompactionRow: View {
                 .padding(.trailing, CGFloat(reasoningRowGapPoints))
                 .accessibilityHidden(true)
             Text(title)
-                .font(.system(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
+                .font(LocalFonts.text(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
                 .foregroundStyle(T.text3)
                 .fixedSize(horizontal: true, vertical: false)
             Circle()
@@ -794,7 +794,7 @@ private struct CompactionRow: View {
                 .padding(.horizontal, CGFloat(reasoningPreviewSeparatorSpacingPoints))
                 .accessibilityHidden(true)
             Text(summary)
-                .font(.system(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
+                .font(LocalFonts.text(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
                 .foregroundStyle(T.text3)
                 .lineLimit(1)
             Spacer(minLength: 0)
@@ -873,7 +873,7 @@ private struct CommandRow: View {
                 .padding(.trailing, CGFloat(reasoningRowGapPoints))
                 .accessibilityHidden(true)
             Text(title)
-                .font(.system(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
+                .font(LocalFonts.text(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
                 .fontWeight(.regular)
                 .foregroundStyle(T.text3)
                 .fixedSize(horizontal: true, vertical: false)
@@ -887,7 +887,7 @@ private struct CommandRow: View {
                 .accessibilityHidden(true)
             TextShimmer(active: running) {
                 Text(summary)
-                    .font(.system(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
+                    .font(LocalFonts.text(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
                     .foregroundStyle(color)
                     .lineLimit(1)
             }
@@ -937,7 +937,7 @@ private struct ContextToolChangeRow: View {
                         Text(item.text)
                     }
                 }
-                .font(.system(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
+                .font(LocalFonts.text(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
                 .foregroundStyle(T.text3)
                 .padding(.leading, CGFloat(reasoningBodyLeadingPoints))
                 .padding(.vertical, CGFloat(reasoningBodyVerticalPaddingPoints))
@@ -959,7 +959,7 @@ private struct ContextToolChangeRow: View {
                 .padding(.trailing, CGFloat(reasoningRowGapPoints))
                 .accessibilityHidden(true)
             Text(title)
-                .font(.system(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
+                .font(LocalFonts.text(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
                 .foregroundStyle(T.text3)
                 .lineLimit(1)
             if let summary {
@@ -972,7 +972,7 @@ private struct ContextToolChangeRow: View {
                     .padding(.horizontal, CGFloat(reasoningPreviewSeparatorSpacingPoints))
                     .accessibilityHidden(true)
                 Text(summary)
-                    .font(.system(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
+                    .font(LocalFonts.text(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
                     .foregroundStyle(T.text3)
                     .lineLimit(1)
             }
@@ -1065,7 +1065,7 @@ private struct ProcessGroupView: View {
                 if proc.turnSummary {
                     HStack(spacing: 4) {
                         Text(proc.title)
-                            .font(.system(size: CGFloat(AppPrefs.fontSize)))
+                            .font(LocalFonts.text())
                             .foregroundStyle(T.text3)
                             .lineLimit(1)
                         if proc.canCollapse {
@@ -1085,7 +1085,7 @@ private struct ProcessGroupView: View {
                         processLeading(kind: proc.activityKind, open: open)
                         TextShimmer(active: !proc.closed) {
                             Text(processGroupHeaderTitle(label: proc.title, detail: proc.detail))
-                                .font(.system(size: CGFloat(AppPrefs.fontSize)))
+                                .font(LocalFonts.text())
                                 .foregroundStyle(T.text3)
                                 .lineLimit(1)
                         }
@@ -1173,7 +1173,7 @@ private struct ReasoningRow: View {
                     TextShimmer(active: reasoning.live) {
                         HStack(spacing: 0) {
                             Text(reasoningTitle(english: L.en))
-                                .font(.system(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize)), weight: .regular))
+                                .font(LocalFonts.text(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
                                 .foregroundStyle(T.text3)
                             if showPreview {
                                 Circle()
@@ -1184,7 +1184,7 @@ private struct ReasoningRow: View {
                                     )
                                     .padding(.horizontal, CGFloat(reasoningPreviewSeparatorSpacingPoints))
                                 Text(preview)
-                                    .font(.system(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
+                                    .font(LocalFonts.text(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
                                     .foregroundStyle(T.text3)
                                     .lineLimit(1)
                                     .mask(
@@ -1258,13 +1258,13 @@ private struct ToolCard: View {
                 TextShimmer(active: tool.status == .running || tool.status == .preparing) {
                     HStack(spacing: CGFloat(reasoningPreviewSeparatorSpacingPoints)) {
                         Text(summary.title)
-                            .font(.system(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
+                            .font(LocalFonts.text(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
                             .foregroundStyle(tint)
                             .lineLimit(1)
                         if let line = summary.summary {
                             Circle().fill(T.caption).frame(width: 2, height: 2)
                             Text(line)
-                                .font(.system(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
+                                .font(LocalFonts.text(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
                                 .foregroundStyle(tint)
                                 .lineLimit(1)
                         }
@@ -1273,7 +1273,7 @@ private struct ToolCard: View {
                 Spacer(minLength: 0)
                 if let reopenLabel {
                     Text(reopenLabel)
-                        .font(.system(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
+                        .font(LocalFonts.text(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
                         .foregroundStyle(T.accent)
                         .lineLimit(1)
                 }
@@ -1325,6 +1325,7 @@ struct MessageRow: View {
                     HStack {
                         Spacer(minLength: 48)
                         Text(user.text)
+                            .font(LocalFonts.text())
                             .foregroundStyle(T.ink.opacity(user.pending ? 0.6 : 1))
                             .padding(12)
                             .background(T.bubble, in: RoundedRectangle(cornerRadius: 16, style: .continuous))

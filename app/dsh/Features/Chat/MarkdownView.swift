@@ -22,6 +22,9 @@ struct MarkdownView: View {
                 MdBlockView(block: block, wrapCode: wrapCode, bodyColor: bodyColor, variant: variant)
             }
         }
+        .font(variant == .compact
+            ? LocalFonts.text(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize)))
+            : LocalFonts.text())
         .environment(\.openURL, OpenURLAction { url in
             if url.scheme == "dshfile",
                let path = URLComponents(url: url, resolvingAgainstBaseURL: false)?
@@ -58,7 +61,7 @@ private struct MdBlockView: View {
         case .paragraph(let spans):
             if variant == .compact {
                 wraps(spans)
-                    .font(.system(size: compactSize))
+                    .font(LocalFonts.text(size: compactSize))
                     .lineSpacing(compactLineSpacing)
             } else {
                 wraps(spans)
@@ -66,10 +69,10 @@ private struct MdBlockView: View {
         case .heading(let level, let spans):
             if variant == .compact {
                 wraps(spans)
-                    .font(.system(size: compactSize, weight: .semibold))
+                    .font(LocalFonts.text(size: compactSize).weight(.semibold))
                     .lineSpacing(compactLineSpacing)
             } else {
-                wraps(spans).font(level <= 1 ? .system(size: CGFloat(AppPrefs.fontSize), weight: .semibold) : .headline)
+                wraps(spans).font(level <= 1 ? LocalFonts.text().weight(.semibold) : .headline)
             }
         case .bulletList(let items, _):
             VStack(alignment: .leading, spacing: 4) {

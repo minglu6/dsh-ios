@@ -47,6 +47,7 @@ struct TerminalView: View {
                     terminal: model.terminal,
                     revision: model.terminalRevision,
                     fontSize: model.terminalFontSize,
+                    fontFamily: model.terminalFontFamily,
                     enabled: enabled && !selecting,
                     selection: selectionGrid,
                     selectionAnchor: selectionAnchor,
@@ -72,22 +73,12 @@ struct TerminalView: View {
                 .accessibilityLabel(L.terminalOutputHint())
                 .onSizeChange { size in
                     viewport = size
-                    guard enabled, size.width > 0, size.height > 0 else { return }
-                    let face = TerminalTypeface.resolved(ofSize: CGFloat(model.terminalFontSize))
-                    let cols = TerminalCellLayout.columns(
-                        viewportWidth: Double(size.width),
-                        cellWidth: Double(face.cellWidth)
-                    )
-                    let rows = TerminalCellLayout.rows(
-                        viewportHeight: Double(size.height),
-                        cellHeight: Double(face.cellHeight)
-                    )
-                    if cols != model.terminal.cols || rows != model.terminal.rows {
-                        model.resizeTerminal(cols: cols, rows: rows)
-                    }
+                    resizeToViewport()
                 }
             }
         }
+        .onChange(of: model.terminalFontSize) { _ in resizeToViewport() }
+        .onChange(of: model.terminalFontFamily) { _ in resizeToViewport() }
         .onChange(of: enabled) { value in
             if !value {
                 inputFocused = false
@@ -146,6 +137,23 @@ struct TerminalView: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 2)
         .background(T.surface)
+    }
+
+    private func resizeToViewport() {
+        let size = viewport
+        guard enabled, size.width > 0, size.height > 0 else { return }
+        let face = TerminalTypeface.resolved(ofSize: CGFloat(model.terminalFontSize))
+        let cols = TerminalCellLayout.columns(
+            viewportWidth: Double(size.width),
+            cellWidth: Double(face.cellWidth)
+        )
+        let rows = TerminalCellLayout.rows(
+            viewportHeight: Double(size.height),
+            cellHeight: Double(face.cellHeight)
+        )
+        if cols != model.terminal.cols || rows != model.terminal.rows {
+            model.resizeTerminal(cols: cols, rows: rows)
+        }
     }
 
     private func send(_ value: String) {
@@ -209,6 +217,7 @@ private struct TerminalCanvas: View {
     let terminal: AnsiTerminal
     let revision: Int64
     let fontSize: Int
+    let fontFamily: String
     let enabled: Bool
     let selection: TerminalGrid?
     let selectionAnchor: Int
@@ -219,6 +228,7 @@ private struct TerminalCanvas: View {
     var body: some View {
         Canvas { context, size in
             _ = revision
+            _ = fontFamily
             let face = TerminalTypeface.resolved(ofSize: CGFloat(fontSize))
             let cellW = face.cellWidth
             let cellH = face.cellHeight

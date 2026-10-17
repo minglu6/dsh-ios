@@ -92,9 +92,9 @@ public func conversationHeaderTitle(
 }
 
 public enum ConversationFontSize {
-    public static let min = 10
-    public static let max = 22
-    public static var range: ClosedRange<Int> { min...max }
+    public static var min: Int { themeFontSizeSpec(.text).min }
+    public static var max: Int { themeFontSizeSpec(.text).max }
+    public static var range: ClosedRange<Int> { themeFontSizeSpec(.text).range }
 }
 
 public func conversationFontSizeLabel(_ size: Int) -> String {
