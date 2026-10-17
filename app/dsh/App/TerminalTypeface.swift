@@ -42,7 +42,7 @@ enum TerminalTypeface {
 
     static func resolved(ofSize size: CGFloat) -> Resolved {
         let family = AppPrefs.terminalFontFamily
-        memo.value(for: Double(size), family: family, prepare: registerBundledFontNow, create: {
+        return memo.value(for: Double(size), family: family, prepare: registerBundledFontNow, create: {
             makeResolved(ofSize: size, family: family)
         })
     }
