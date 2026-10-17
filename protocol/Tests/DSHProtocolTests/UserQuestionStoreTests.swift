@@ -102,12 +102,12 @@ final class UserQuestionStoreTests: XCTestCase {
     }
 
     func testSessionsRemainIsolatedAndReconnectAllowsLowerHostWatermark() throws {
-        try baseline(seq: 50, active: question("first"))
-        try baseline(seq: 80, active: question("second"), session: "s2")
+        try baseline(seq: 50, active: question(id: "first"))
+        try baseline(seq: 80, active: question(id: "second"), session: "s2")
         try projection(seq: 51, active: "")
         XCTAssertEqual(store.questions().single().sessionId, "s2")
         store.clear()
-        try baseline(seq: 2, active: question("restored", state: "continued"))
+        try baseline(seq: 2, active: question(id: "restored", state: "continued"))
         XCTAssertEqual(store.questions().single().callId, "restored")
         store.close(questionId: "restored", sessionId: "s2")
         XCTAssertEqual(store.questions().single().callId, "restored")
