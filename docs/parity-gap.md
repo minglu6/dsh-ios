@@ -1,6 +1,6 @@
 # iOS ↔ Android / desktop parity gap
 
-Phone is a controller. Layout may change for a narrow portrait screen. Features, copy, icons, colors, states, and interactions follow the official desktop UI (`@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`) as already ported by [dsh-android](https://github.com/minglu6/dsh-android) `main` at **`c5f8cdd`**.
+Phone is a controller. Layout may change for a narrow portrait screen. Features, copy, icons, colors, states, and interactions follow the official desktop UI (`@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`) as already ported by [dsh-android](https://github.com/minglu6/dsh-android) `main` at **`56dcaa9`**.
 
 **Do not invent** settings groups, credential pages, extra security, or placeholder shells. Hide only what desktop itself hides (local OS editor, keyboard shortcuts).
 
@@ -62,7 +62,10 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R33 | audit-only：Android `c5f8cdd` 无新 commit；`next` 当时 `0.2.1-rc.1` 无 API 增量 | done (NO_PR) |
 | R34 | 落地页首条发送立刻 pending echo（Android `FirstPrompt` / 桌面 `echo`） | done (#48) |
 | R35 | 助手消息行动作行补 branch（桌面 `MessageIconActions.onBranch` / Android `messageBranch`） | done (#49) |
-| R36 | fork 子会话 `increaseTitle`（桌面 `increasedForkTitle`） | this PR |
+| R36 | fork 子会话 `increaseTitle`（桌面 `increasedForkTitle`） | done (#50) |
+| R37 | audit-only：Android 仍 `c5f8cdd`；Host 仍 alpha.5 | done (NO_PR) |
+| R38 | audit-only：#50 后抽查；Android 仍 `c5f8cdd` | done (NO_PR) |
+| R39 | 用户选择卡片 + `userQuestions`/`inbox` 投影恢复（Android `56dcaa9` / 桌面 `QuestionComposer`） | this PR |
 
 ---
 
@@ -117,7 +120,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Header ⋯ overflow | Android `MoreSheet` (not desktop) | **removed** — desktop conversation header has no ⋯; export/feedback on `/` and `+`; rename/fork on the drawer row menu | **hide** | **P2** (#16) |
 | Session image bubbles | `session.attachment` + ImageBubble | same cache + retry + original preview | **missing** → **present** | **G** |
 | Attachments | `attachments.upload` | image picker + file importer + receipts；landing 无会话也可草稿非图文件，创建后上传 | **missing** → **present** | **E** / **R19** |
-| User questions | `UserQuestionCard` `userQuestions.answer` | composer 接管卡片；工具行标题 `ask.rowTitle`「提问」；运行中「等待回答」、pending「已继续工作，仍可回答」；可回答时点行「回答」重开（桌面 `AskQuestionRow`，无 composer Ask chip，无 review 面板） | **missing** → **present** | **E** / **R19** / **R20** |
+| User questions | `UserQuestionCard` `userQuestions.answer` + `UserQuestionStore` | composer 接管卡片；推荐首项默认草稿；多选保留选项+自定义、单选互斥；跳过 `{selected:[]}`；草稿按 request 保存在 AppModel；follow snapshot/resume/`userQuestions`+`inbox` 投影恢复待回答；工具行 `ask.rowTitle`「提问」；可回答时点行「回答」重开。无 `ask.review`、无 countdown / Take time | **partial** → **present** | **E** / **R19** / **R20** / **R39** |
 | Approvals | official `ApprovalCard` takes composer | official card; `accepted` callback clears busy, success drops the row | **partial** → **present** | **E** |
 | TodoPanel | dock card above composer | `TodoPanel` expand in place | **missing** → **present** | **E** |
 | Goal bar | `goals.get` / `goal.activation` CAS | `GoalBar` + `GoalSheet` pause/resume/clear/edit | **missing** → **present** | **E** |
@@ -831,4 +834,26 @@ Android `4052adb` / `50257c1` / `825b235`：落地页首条发送立刻画出 pe
 - 审批通知开关：Android 本机偏好，桌面 Settings 无此行。
 - 会话行 pin：桌面行内 pin 标；iOS 置顶分区（窄屏布局）。菜单已有置顶。
 - 桌面 `data-actions-reveal: hover`：触屏无 hover，助手行动作常显。
+
+## Round 39 对照清单（桌面 `@deepseek-ai/dsh-client-ui-user-questions@0.2.1-alpha.5`；Android `56dcaa9`）
+
+Android `c5f8cdd...56dcaa9` 一笔：`feat(android): 补齐用户选择卡片与桥接状态同步`。桌面 Host 仍加载 `alpha`=`0.2.1-alpha.5`（不 bump `next`）。冲突以桌面 `QuestionComposer` / `UserQuestionStore` 投影语义为准。
+
+| 模块 | iOS | 对照的源码 | 对齐点 |
+| --- | --- | --- | --- |
+| 推荐选项 | `parseRecommendedLabel` + 首项默认草稿 | `ui-user-questions` `parseRecommendedLabel` / `recommendedFirstOption` | 只认选项末尾 `(recommended\|推荐)` / 全角括号；提交仍用 wire label；未提交 |
+| 单选 / 多选 / 自定义 | `questionAnswers` | `QuestionComposer` `choose` / `draftCustom` / `submitDrafts` | 多选保留 selected+custom；单选自定义清空 selected；单选点选项立刻下一题 |
+| 跳过 | `QuestionDraft.skipped` | `skipQuestion` → `{ selected: [] }` | 跳过只清当前题；最后一题跳过即提交；提交前检查全部 completed |
+| 草稿恢复 | AppModel `questionDrafts` / `questionPageIndex` | desktop Session `createQuestionDraftStore`；Android `rememberSaveable` | 收起/切会话/重连同 request 保留页码与草稿。不跨设备同步 |
+| 投影恢复 | `UserQuestionStore` | Android `UserQuestionStore`；桌面 `useProjection("userQuestions")` `view.active` + inbox `user-question-reply` | snapshot/resume/`userQuestions`/`inbox` 合并 live offer；continued 不被 foreground close 清掉；queued reply 隐藏；submitted 竞态；跨会话隔离；重连清 watermark |
+| 卡片 chrome | `UserQuestionCard` 头/滚动体/脚 | desktop capped card；Android sticky header/footer | 长问题滚动不挡收起/提交。continued 用 `wait.continued` |
+| 提交失败再投 | `question.state == continued` 解开 busy | desktop `error.resubmit` | waterfall 未确认但投影已 continued 时重开同一草稿 |
+
+本轮核对后**不改**（平台 / hide / 禁止发明）
+
+- `AskQuestionRow` `ask.review` 只读回看：phone 不发明 review 面板。
+- 桌面 countdown / `wait.takeTime` / focus 暂停：Host 插件限时等待；Android `56dcaa9` 卡片也未画倒计时。
+- `chat.turnNavigation.*` / `chat.toBottom` FAB / hover chevron：仍 skip。
+- Account / shortcuts / open config / Settings 下挂连接 / CompatibilityBanner / 审批通知：仍 **hide**。
+- 插件 `user-question-hook` / `parity-ops` 在 Host（dsh-android）；iOS 只消费 pocket 帧。
 

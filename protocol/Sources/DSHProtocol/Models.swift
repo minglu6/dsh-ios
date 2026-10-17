@@ -305,6 +305,11 @@ public struct MessageFeedback: Sendable, Equatable {
 public struct UserQuestionOption: Sendable, Equatable {
     public var label: String
     public var description: String?
+
+    public init(label: String, description: String? = nil) {
+        self.label = label
+        self.description = description
+    }
 }
 
 public struct UserQuestionItem: Sendable, Equatable, Identifiable {
@@ -316,6 +321,26 @@ public struct UserQuestionItem: Sendable, Equatable, Identifiable {
     public var multiSelect: Bool
     public var intentKind: String?
     public var approveLabel: String?
+
+    public init(
+        id: String,
+        question: String,
+        detail: String? = nil,
+        header: String? = nil,
+        options: [UserQuestionOption] = [],
+        multiSelect: Bool = false,
+        intentKind: String? = nil,
+        approveLabel: String? = nil
+    ) {
+        self.id = id
+        self.question = question
+        self.detail = detail
+        self.header = header
+        self.options = options
+        self.multiSelect = multiSelect
+        self.intentKind = intentKind
+        self.approveLabel = approveLabel
+    }
 
     public static func parse(_ element: JSONValue) -> UserQuestionItem? {
         guard let id = element["id"].str(), let question = element["question"].str() else { return nil }
@@ -344,6 +369,20 @@ public struct UserQuestion: Sendable, Equatable, Identifiable {
     public var state: String?
 
     public var id: String { questionId }
+
+    public init(
+        questionId: String,
+        sessionId: String? = nil,
+        callId: String? = nil,
+        questions: [UserQuestionItem],
+        state: String? = nil
+    ) {
+        self.questionId = questionId
+        self.sessionId = sessionId
+        self.callId = callId
+        self.questions = questions
+        self.state = state
+    }
 
     public static func parse(_ element: JSONValue) -> UserQuestion? {
         let questionId = element["questionId"].str() ?? element["callId"].str()

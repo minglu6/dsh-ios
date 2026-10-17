@@ -385,7 +385,7 @@ enum L {
     static func typeYourAnswer() -> String { en ? "Type your answer" : "输入你的答案" }
     static func skip() -> String { en ? "Skip" : "跳过" }
     static func nextQuestion() -> String { en ? "Next" : "下一题" }
-    static func completeQuestionFirst() -> String { en ? "Please complete this question first." : "请先完成这道问题。" }
+    static func completeQuestionFirst() -> String { questionIncompleteError(english: en) }
     static func sectionAdd() -> String { en ? "Add" : "添加" }
     static func sectionCommands() -> String { en ? "Commands" : "指令" }
     static func sectionSkills() -> String { en ? "Skills" : "技能" }
