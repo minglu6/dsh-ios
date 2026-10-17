@@ -9,12 +9,20 @@ struct FileTypeIcon: View {
 
     var body: some View {
         let kind = fileTypeKind(path: path, type: type)
-        let symbol = kind == "folder"
-            ? fileTreeFolderSymbol(expanded: expanded ?? false)
-            : fileTypeSymbol(kind)
-        Image(systemName: symbol)
-            .foregroundStyle(openable ? Color(hex: 0xFF000000 | fileTypeAccent(kind)) : T.text3)
-            .frame(width: 20)
-            .accessibilityHidden(true)
+        let color = openable ? Color(hex: 0xFF000000 | fileTypeAccent(kind)) : T.text3
+        Group {
+            if kind == "folder" {
+                OfficialGlyph(
+                    kind: (expanded ?? false) ? .folderOpen : .folderClose,
+                    size: 16,
+                    color: color
+                )
+            } else {
+                Image(systemName: fileTypeSymbol(kind))
+                    .foregroundStyle(color)
+                    .accessibilityHidden(true)
+            }
+        }
+        .frame(width: 20)
     }
 }

@@ -2415,7 +2415,24 @@ final class AppModel: ObservableObject {
 
     private func applyCatalog(_ catalog: ModelCatalog) {
         self.catalog = catalog
-        guard modelChoice == nil else { return }
+        if let current = modelChoice {
+            let resolved = composerResolvedModel(
+                provider: current.provider,
+                model: current.model,
+                name: current.name,
+                effort: current.effort,
+                catalog: catalog
+            )
+            if let resolved, catalog.find(provider: resolved.provider, model: resolved.model)?.hasReasoning == true {
+                modelChoice = ModelChoice(
+                    provider: resolved.provider,
+                    model: resolved.model,
+                    name: resolved.name,
+                    effort: resolved.effort
+                )
+            }
+            return
+        }
         guard let resolved = composerResolvedModel(
             provider: nil,
             model: nil,

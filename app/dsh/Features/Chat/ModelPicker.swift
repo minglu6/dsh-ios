@@ -38,6 +38,7 @@ struct ModelChipMenu: View {
                         .foregroundStyle(T.caption)
                         .lineLimit(1)
                         .fixedSize()
+                        .accessibilityIdentifier("modelChipEffort")
                 }
                 if pending != nil {
                     ProgressView().controlSize(.mini)
@@ -54,6 +55,7 @@ struct ModelChipMenu: View {
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
+        .accessibilityIdentifier("modelChip")
         .popover(isPresented: $open, attachmentAnchor: .rect(.bounds), arrowEdge: composerPickerPopoverOpensAbove ? .bottom : .top) {
             ModelPicker(
                 catalog: catalog,
@@ -162,6 +164,7 @@ struct ModelPicker: View {
                     cell(modelPickerRootEffortLabel(english: L.en), modelEffortLabel(catalog: catalog, provider: resolvedCurrent?.provider, model: resolvedCurrent?.model, effort: resolvedCurrent?.effort) ?? "") {
                         pane = .effort
                     }
+                    .accessibilityIdentifier("modelPickerEffort")
                 }
             }
             if pane == .models {

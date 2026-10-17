@@ -192,7 +192,15 @@ public struct ModelCatalog: Sendable, Equatable {
     public var defaultEffort: String?
 
     public func find(provider: String?, model: String?) -> ModelInfo? {
-        groups.flatMap(\.models).first { $0.provider == provider && $0.id == model }
+        let all = groups.flatMap(\.models)
+        if let provider, let model, let exact = all.first(where: { $0.provider == provider && $0.id == model }) {
+            return exact
+        }
+        guard let model else { return nil }
+        let byId = all.filter { $0.id == model }
+        if byId.count == 1 { return byId[0] }
+        if let provider { return byId.first { $0.provider == provider } }
+        return nil
     }
 
     public static func parse(_ element: JSONValue) -> ModelCatalog {

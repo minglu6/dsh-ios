@@ -932,6 +932,10 @@ Android `c5f8cdd...56dcaa9` 一笔：`feat(android): 补齐用户选择卡片与
 
 桌面 `HeroShell.module.css`：`.root` 把标题块 / 工作区行 / InputBar 卡当成一列居中（`align-items: center; justify-content: center; height: 100%`），`.stack` gap 12，headline 26/32/500，`hero.preview` 与标题同一行。iOS 原先用两个 `Spacer` 夹标题、Composer 钉底，中间空洞、上下挤。现 `emptyChat` 按同一 stack 重排；不新增元素、不用系统 tint。
 
+### 工作区文件夹 / 模型 effort
+
+抽屉工作区行、landing「project」chip、目录选择、文件树目录行都走 `OfficialGlyph.folderClose/Open`，禁止 SF `folder` / `folder.fill`。模型菜单只在 catalog 模型 `reasoning` 有 levels 时画「推理等级」；Gemini 无 reasoning 不画。fixture 默认 DeepSeek V4 Pro + `high`。
+
 ### CI 截图
 
 `.github/workflows/ci.yml` job `screenshots`：macos-15 启动可用 iPhone 模拟器（优先 iPhone 17e），`xcodebuild test` 把 `TEST_RUNNER_DSH_SCREENSHOT_DIR` 传进 `dshUITests`（`-UITestFixture` 假主机：两工作区、已完成「你好」、带推理强度的模型），浅色/深色各一套，artifact `ios-simulator-screenshots`。Mac Studio 实机对照由 parent 另跑。

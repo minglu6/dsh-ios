@@ -113,6 +113,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$DSH_SCREENSHOT_DIR"
+          export DSH_SCREENSHOT_DIR
+          export TEST_RUNNER_DSH_SCREENSHOT_DIR="$DSH_SCREENSHOT_DIR"
           xcodebuild \
             -project app/dsh.xcodeproj \
             -scheme dsh \
@@ -124,7 +126,6 @@ jobs:
             -resultBundlePath derived-ui/dsh-screenshots.xcresult \
             CODE_SIGN_IDENTITY=- \
             DEVELOPMENT_TEAM= \
-            TEST_RUNNER_DSH_SCREENSHOT_DIR="$DSH_SCREENSHOT_DIR" \
             test
           find "$DSH_SCREENSHOT_DIR" -maxdepth 1 -name '*.png' | sort
           test "$(find "$DSH_SCREENSHOT_DIR" -maxdepth 1 -name '*.png' | wc -l)" -ge 20

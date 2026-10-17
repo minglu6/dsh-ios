@@ -1790,8 +1790,8 @@ struct ComposerView: View {
             HStack(spacing: 6) {
                 ForEach(Array(references.enumerated()), id: \.offset) { _, ref in
                     HStack(spacing: 4) {
-                        Image(systemName: ref.kind == .session ? "bubble.left" : (ref.kind == .directory ? "folder" : "doc"))
-                            .font(.caption2)
+                        mentionLeading(ref.kind)
+                            .frame(width: 12, height: 12)
                         Text(ref.label).font(.caption)
                     }
                     .padding(.horizontal, 8)
@@ -1816,7 +1816,7 @@ struct ComposerView: View {
                             insert(token)
                         } label: {
                             HStack {
-                                Image(systemName: directory ? "folder" : "doc").foregroundStyle(T.text3)
+                                mentionFileLeading(directory: directory)
                                 Text(mentionFileRowLabel(file.path, directory: directory)).foregroundStyle(T.ink)
                                 Spacer()
                                 Text(file.path).font(.caption).foregroundStyle(T.text3).lineLimit(1)
@@ -1844,6 +1844,27 @@ struct ComposerView: View {
             .background(T.settingsCard)
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 0.5))
             .padding(.horizontal, 14)
+        }
+    }
+
+    @ViewBuilder
+    private func mentionLeading(_ kind: ComposerReferenceKind) -> some View {
+        switch kind {
+        case .directory:
+            OfficialGlyph(kind: .folderClose, size: 12, color: T.ink)
+        case .session:
+            Image(systemName: "bubble.left").font(.caption2)
+        case .file:
+            Image(systemName: "doc").font(.caption2)
+        }
+    }
+
+    @ViewBuilder
+    private func mentionFileLeading(directory: Bool) -> some View {
+        if directory {
+            OfficialGlyph(kind: .folderClose, size: 14, color: T.text3)
+        } else {
+            Image(systemName: "doc").foregroundStyle(T.text3)
         }
     }
 

@@ -171,7 +171,7 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertEqual(fileTypeKind(path: "notes.md", type: "file"), "markdown")
         XCTAssertEqual(fileTypeKind(path: "docker.sock", type: "other"), "warning")
         XCTAssertEqual(fileTypeKind(path: "pipe", type: "fifo"), "warning")
-        XCTAssertEqual(fileTypeSymbol("folder"), "folder.fill")
+        XCTAssertEqual(fileTypeSymbol("folder"), "official.folderOpen")
         XCTAssertEqual(fileTypeSymbol("markdown"), "doc.richtext")
         XCTAssertEqual(fileTypeSymbol("warning"), "exclamationmark.triangle")
         XCTAssertEqual(fileTypeSymbol("other"), "doc")

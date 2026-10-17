@@ -294,9 +294,11 @@ private struct DirectoryColumn: View {
                     let isSelected = entry.path == selected
                     Button { onPick(entry) } label: {
                         HStack(spacing: 6) {
-                            Image(systemName: isSelected ? "folder.fill" : "folder")
-                                .font(.system(size: 14))
-                                .foregroundStyle(!enabled ? T.caption : isSelected ? T.accent : T.text3)
+                            OfficialGlyph(
+                                kind: isSelected ? .folderOpen : .folderClose,
+                                size: 14,
+                                color: !enabled ? T.caption : T.ink
+                            )
                             Text(entry.name).font(.system(size: 13)).foregroundStyle(enabled ? T.ink : T.caption).lineLimit(1)
                             Spacer()
                             Image(systemName: "chevron.right").font(.system(size: 10)).foregroundStyle(T.text3)

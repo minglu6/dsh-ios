@@ -21,6 +21,21 @@ struct OfficialGlyph: View {
         case downloadOutline
         case shareOutline
         case terminalPrompt
+
+        var accessibilityIdentifier: String {
+            switch self {
+            case .folderClose: return "official.folderClose"
+            case .folderOpen: return "official.folderOpen"
+            default: return "official.glyph"
+            }
+        }
+
+        var hidesAccessibility: Bool {
+            switch self {
+            case .folderClose, .folderOpen: return false
+            default: return true
+            }
+        }
     }
 
     let kind: Kind
@@ -93,7 +108,8 @@ struct OfficialGlyph: View {
             }
         }
         .frame(width: size, height: size)
-        .accessibilityHidden(true)
+        .accessibilityIdentifier(kind.accessibilityIdentifier)
+        .accessibilityHidden(kind.hidesAccessibility)
     }
 
     private func drawPermission(_ ctx: inout GraphicsContext, value: String, color: Color, stroke: StrokeStyle) {

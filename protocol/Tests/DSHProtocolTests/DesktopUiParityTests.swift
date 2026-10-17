@@ -478,8 +478,12 @@ final class DesktopUiParityTests: XCTestCase {
             ),
             "输入目标，智能体将持续执行"
         )
-        XCTAssertEqual(fileTreeFolderSymbol(expanded: false), "folder")
-        XCTAssertEqual(fileTreeFolderSymbol(expanded: true), "folder.fill")
+        XCTAssertTrue(fileTreeFolderUsesOfficialGlyph())
+        XCTAssertEqual(fileTreeFolderSymbol(expanded: false), "official.folderClose")
+        XCTAssertEqual(fileTreeFolderSymbol(expanded: true), "official.folderOpen")
+        XCTAssertTrue(isForbiddenSystemFolderSymbol("folder.fill"))
+        XCTAssertTrue(isForbiddenSystemFolderSymbol("folder"))
+        XCTAssertFalse(isForbiddenSystemFolderSymbol("official.folderClose"))
         XCTAssertFalse(autoRefreshLabel(english: false).contains("Host"))
         XCTAssertFalse(claimedComposerHint(text: "/goal", hasGoal: false, english: false)!.contains("Host"))
     }

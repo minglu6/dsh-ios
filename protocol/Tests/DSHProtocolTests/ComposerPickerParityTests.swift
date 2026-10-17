@@ -284,6 +284,9 @@ final class ComposerPickerParityTests: XCTestCase {
         XCTAssertEqual(parsed.defaultEffort, "high")
         XCTAssertEqual(modelEffortLabel(catalog: parsed, provider: nil, model: nil, effort: nil), "High")
         XCTAssertEqual(composerModelDisplayName(choiceName: nil, catalog: parsed), "DeepSeek V4 Pro")
+        XCTAssertEqual(parsed.find(provider: "deepseek-official", model: "deepseek-v4-pro")?.hasReasoning, true)
+        XCTAssertEqual(parsed.find(provider: "other-host", model: "deepseek-v4-pro")?.name, "DeepSeek V4 Pro")
+        XCTAssertNil(modelEffortLabel(catalog: parsed, provider: "google", model: "gemini-3-flash", effort: nil))
     }
 
     func testReasoningRowMatchesDesktopDisclosure() {

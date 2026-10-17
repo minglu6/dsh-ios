@@ -43,6 +43,20 @@ final class ScreenshotTests: XCTestCase {
             if screen == "start" {
                 XCTAssertTrue(app.descendants(matching: .any)["startPanel"].waitForExistence(timeout: 15))
             }
+            if screen == "landing" || screen == "drawer" {
+                XCTAssertFalse(app.images["folder.fill"].exists, "\(appearance) \(screen) still exposes SF folder.fill")
+                XCTAssertFalse(app.images["folder"].exists, "\(appearance) \(screen) still exposes SF folder")
+                let officialOpen = app.descendants(matching: .any)["official.folderOpen"]
+                let officialClose = app.descendants(matching: .any)["official.folderClose"]
+                XCTAssertTrue(
+                    officialOpen.waitForExistence(timeout: 8) || officialClose.waitForExistence(timeout: 2),
+                    "\(appearance) \(screen) missing official folder glyph"
+                )
+            }
+            if screen == "models" {
+                XCTAssertTrue(app.descendants(matching: .any)["modelChipEffort"].waitForExistence(timeout: 8), "\(appearance) model chip missing effort")
+                XCTAssertTrue(app.descendants(matching: .any)["modelPickerEffort"].waitForExistence(timeout: 8), "\(appearance) model menu missing effort row")
+            }
             let shot = XCUIScreen.main.screenshot()
             let url = root.appendingPathComponent("\(appearance.lowercased())-\(screen).png")
             try shot.pngRepresentation.write(to: url)
@@ -55,8 +69,8 @@ final class ScreenshotTests: XCTestCase {
     }
 
     private func screenshotRoot() throws -> URL {
-        // xcodebuild only forwards TEST_RUNNER_* into the UITest process,
-        // stripping the prefix. CI must set TEST_RUNNER_DSH_SCREENSHOT_DIR.
+        // CI exports DSH_SCREENSHOT_DIR / TEST_RUNNER_DSH_SCREENSHOT_DIR in the
+        // shell before xcodebuild. Do not pass TEST_RUNNER_* as a build setting.
         guard let raw = ProcessInfo.processInfo.environment["DSH_SCREENSHOT_DIR"], !raw.isEmpty else {
             throw ScreenshotExportError.missingDirectory
         }
