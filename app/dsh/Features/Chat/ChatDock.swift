@@ -121,7 +121,7 @@ struct UserQuestionCard: View {
                                : questionSubmitAnswersLabel(english: L.en)) {
                             continueOrSubmit()
                         }
-                        .disabled(!writable || !draft.answered)
+                        .disabled(!writable || !draft.completed)
                     }
                 }
             }
@@ -203,7 +203,7 @@ struct UserQuestionCard: View {
             submit()
             return
         }
-        if !draft.answered {
+        if !draft.completed {
             err = questionUnansweredError(english: L.en)
             return
         }
