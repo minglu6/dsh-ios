@@ -1014,6 +1014,62 @@ public func messageStopped(english: Bool) -> String {
     english ? "Stopped" : "已停止"
 }
 
+// MARK: - First landing prompt (desktop pending echo; Android `FirstPrompt`)
+
+/// First send from a phone landing that has no Host session yet.
+/// Desktop already has a blank session, so the same identity is a local echo
+/// (`Item.User.pending` / `TranscriptReducer.echo`) until `user/message` confirms.
+public struct FirstPrompt: Equatable, Sendable {
+    public var requestId: String
+    public var text: String
+    public var images: Int
+    public var files: Int
+    public var error: String?
+
+    public init(
+        requestId: String,
+        text: String,
+        images: Int = 0,
+        files: Int = 0,
+        error: String? = nil
+    ) {
+        self.requestId = requestId
+        self.text = text
+        self.images = images
+        self.files = files
+        self.error = error
+    }
+}
+
+/// Same key as `TranscriptReducer.addEcho` so the row identity survives
+/// landing → `initializeChat` seed.
+public func firstPromptPendingItem(_ prompt: FirstPrompt) -> Item {
+    .user(Item.User(
+        key: "local-\(prompt.requestId)",
+        text: prompt.text,
+        images: prompt.images,
+        pending: true,
+        requestId: prompt.requestId
+    ))
+}
+
+/// Prefer the live transcript (seeded echo) once the session exists.
+public func firstPromptVisibleItems(chatItems: [Item], prompt: FirstPrompt?) -> [Item] {
+    if !chatItems.isEmpty { return chatItems }
+    guard let prompt else { return [] }
+    return [firstPromptPendingItem(prompt)]
+}
+
+/// Desktop `conversation` `queue.sending`. Shown while create/prompt is in flight
+/// because the queue dock does not exist until the session exists.
+public func firstPromptSendingLabel(english: Bool) -> String {
+    english ? "Sending…" : "发送中…"
+}
+
+public func firstPromptBlocksComposerActions(_ prompt: FirstPrompt?) -> Bool {
+    prompt != nil
+}
+
 public func noticeChatTitle(_ notice: Item.Notice, english: Bool) -> String {
     switch notice.kind {
     case .maxTokens: return maxTokensTitle(english: english)

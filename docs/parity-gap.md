@@ -58,7 +58,9 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R28 | #43 后源码审计；npm `next` `0.2.1-rc.1` 无 locale/component API 增量 | done (#44) |
 | R30 | 外观/字体只写本机 AppPrefs，不再读写 Host `ui-theme`（对齐 Android #63 外观 + 控制器字体） | done (#45) |
 | R31 | 通用设置 `FontSettingsGroup`：步进器 +「更多字体设置」展开代码/终端字号与字体族 | done (#46) |
-| R32 | 语言跟 Host `locale.preference`：`L.en` 写回 AppPrefs；离线不可改 | this PR |
+| R32 | 语言跟 Host `locale.preference`：`L.en` 写回 AppPrefs；离线不可改 | done (#47) |
+| R33 | audit-only：Android `c5f8cdd` 无新 commit；`next` 当时 `0.2.1-rc.1` 无 API 增量 | done (NO_PR) |
+| R34 | 落地页首条发送立刻 pending echo（Android `FirstPrompt` / 桌面 `echo`） | this PR |
 
 ---
 
@@ -752,4 +754,24 @@ Host 加载 dist-tag `alpha` 仍是 `0.2.1-alpha.5`。`next`=`0.2.1-rc.1`，loca
 - Android Settings「移动端」分组下的「连接」/ 审批通知 / CompatibilityBanner：不搬。桌面 `ui-settings` 没有 controller 连接节；`installHostUi` phone 窗口不注册 Host QR「手机连接」。iOS 入口只在抽屉脚。
 - Android 字体仍 Host-backed。冲突以控制器为准：外观/字体只写 `AppPrefs`。
 - npm `next` `0.2.1-rc.1`：无新 API，Host 仍加载 `alpha.5`。
+
+## Round 34 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*` alpha=`0.2.1-alpha.5` / next=`0.2.1-rc.2`；Android `c5f8cdd`）
+
+按 Android 提交逐条核对交互微细节。用户点名的绿点 / 会话行 spinner / 抽屉脚连接入口：**源码已对齐**，本轮不改。`next` 已从 Round 33 的 `0.2.1-rc.1` 升到 `0.2.1-rc.2`；pack 对比仍只有 `package.json` 与 `ui-sidebar` `localBuildVersion` 字符串，无 locale/组件增量。
+
+Android `4052adb` / `50257c1` / `825b235`：落地页首条发送立刻画出 pending 用户气泡，同一 `requestId` 贯穿 create → follow → `prompt`。桌面 blank session 的 `TranscriptReducer.echo` 是同一交互。iOS 修前 `FirstPrompt` 只是空字段，`createSessionAndSend` 先清 composer 再等会话。
+
+| 模块 | iOS | 对照的源码 | 对齐点 |
+| --- | --- | --- | --- |
+| 首条 pending echo | `FirstPrompt` + `firstPromptPendingItem` / `firstPromptVisibleItems` | Android `Pocket.newSession` / `ChatRoot.visibleChat`；桌面 `TranscriptReducer.echo` `Item.User.pending` | 点发送立刻切到对话、气泡 `local-{requestId}`、opacity 0.6；`initializeChat` 用同一 id seed，不重复行 |
+| 发送中 | `firstPromptSendingLabel` | 桌面 `queue.sending`「发送中…」；Android `firstPromptStatus` | 会话尚未存在时没有 QueueDock，用同一句官方文案。失败自动把原文写回 composer（不发明「重新编辑」按钮） |
+| 发送锁 | `firstPromptBlocksComposerActions` | Android `firstPrompt == null` 才允许 send/plus/perm/model/Start | 输入框仍可编辑下一条草稿；发送与斜杠/Start 锁住 |
+
+本轮核对后**不改**（平台 / hide / 禁止发明）
+
+- `chat.turnNavigation.*` / `chat.toBottom` FAB / `ask.review` / hover chevron：仍 skip。
+- Account / shortcuts / open config / CompatibilityBanner / Settings 嵌套「云端设备」：仍 **hide**。入口只在抽屉脚。
+- Android `prepareSidebarSession`（打开文件/终端/@ 时先建空白会话）：桌面 landing 已有 blank session；iOS landing 用无会话 hero 替代（R19）。本轮只补首条 echo，不发明空白会话。
+- 消息行 branch：桌面 `MessageIconActions` 是 share，不是 branch。Desktop 赢。
+- 审批通知开关：Android 本机偏好，桌面 Settings 无此行。
 
