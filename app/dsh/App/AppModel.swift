@@ -60,7 +60,7 @@ struct ModelChoice: Equatable {
 }
 
 enum DrawerPanel: String, Identifiable {
-    case plugins, schedule, files, terminal, trajectory, jobs, settings, browser
+    case plugins, schedule, files, terminal, trajectory, jobs, settings, browser, inspector
     var id: String { rawValue }
 }
 
@@ -193,6 +193,7 @@ final class AppModel: ObservableObject {
     @Published var lastArchivedId: String?
     @Published var toastUndoArchiveId: String?
     @Published var archiveConfirm: ArchiveConfirmRequest?
+    var uiTestFixture = false
 
     let terminal = AnsiTerminal()
     let hostSettings = HostSettings()
@@ -257,6 +258,10 @@ final class AppModel: ObservableObject {
 
     private init() {
         TrajL.en = AppPrefs.language == .en
+        if UITestLaunch.isEnabled {
+            installUITestFixture()
+            return
+        }
         if let id = activeId { connect(profileId: id) }
         lan.onHosts = { [weak self] hosts in
             Task { @MainActor in self?.applyDiscovery(hosts) }
@@ -276,6 +281,7 @@ final class AppModel: ObservableObject {
     func pop() { if !routeStack.isEmpty { routeStack.removeLast() } }
 
     func connect(profileId: String) {
+        if uiTestFixture { return }
         resumeTask?.cancel()
         resumeTask = nil
         connectTask?.cancel()
@@ -311,6 +317,8 @@ final class AppModel: ObservableObject {
         searchHostHasMore = false
         catalog = nil
         catalogError = nil
+        modelChoice = nil
+        draftModel = nil
         modelPending = nil
         routes[profileId] = nil
         connectTask = Task { await runConnection(profileId) }
@@ -1233,7 +1241,7 @@ final class AppModel: ObservableObject {
             guard let client else { return }
             catalogLoading = true
             do {
-                catalog = try await client.modelCatalog()
+                applyCatalog(try await client.modelCatalog())
                 catalogError = nil
             } catch {
                 catalogError = error.localizedDescription
@@ -1394,6 +1402,7 @@ final class AppModel: ObservableObject {
     }
 
     func onBecameActive() {
+        if uiTestFixture { return }
         refreshPairedStatus()
         resumeTask?.cancel()
         resumeTask = Task { await resumeForegroundSession() }
@@ -1401,6 +1410,7 @@ final class AppModel: ObservableObject {
     }
 
     func refreshSessionsWhenVisible() {
+        if uiTestFixture { return }
         Task { await refreshSessionRoster() }
     }
 
@@ -1889,6 +1899,7 @@ final class AppModel: ObservableObject {
     func setAppearance(_ value: Appearance) {
         appearance = value
         AppPrefs.appearance = value
+        ThemeStateHolder.shared.applyAppearance(value)
     }
 
     func setFontSize(_ value: Int) {
@@ -2156,7 +2167,7 @@ final class AppModel: ObservableObject {
             }
         }
         if let catalog = try? await client.modelCatalog() {
-            self.catalog = catalog
+            applyCatalog(catalog)
         }
         if ops.contains("workspace.state"), let state = try? await client.call("workspace.state") {
             applyWorkspaceState(state)
@@ -2402,6 +2413,41 @@ final class AppModel: ObservableObject {
             }
             emit(error.localizedDescription)
         }
+    }
+
+    private func applyCatalog(_ catalog: ModelCatalog) {
+        self.catalog = catalog
+        if let current = modelChoice {
+            let resolved = composerResolvedModel(
+                provider: current.provider,
+                model: current.model,
+                name: current.name,
+                effort: current.effort,
+                catalog: catalog
+            )
+            if let resolved, catalog.find(provider: resolved.provider, model: resolved.model)?.hasReasoning == true {
+                modelChoice = ModelChoice(
+                    provider: resolved.provider,
+                    model: resolved.model,
+                    name: resolved.name,
+                    effort: resolved.effort
+                )
+            }
+            return
+        }
+        guard let resolved = composerResolvedModel(
+            provider: nil,
+            model: nil,
+            name: nil,
+            effort: nil,
+            catalog: catalog
+        ) else { return }
+        modelChoice = ModelChoice(
+            provider: resolved.provider,
+            model: resolved.model,
+            name: resolved.name,
+            effort: resolved.effort
+        )
     }
 
     private func modelChoice(from value: JSONValue) -> ModelChoice? {

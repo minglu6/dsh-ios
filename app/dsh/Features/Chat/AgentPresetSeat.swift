@@ -26,8 +26,11 @@ struct LandingWorkspaceChip: View {
             }
         } label: {
             HStack(spacing: 4) {
-                Image(systemName: model.landingWorkspaceLabel == nil ? "folder" : "folder.fill")
-                    .font(.system(size: CGFloat(workspaceChipIconSizePoints)))
+                OfficialGlyph(
+                    kind: model.landingWorkspaceLabel == nil ? .folderClose : .folderOpen,
+                    size: CGFloat(workspaceChipIconSizePoints),
+                    color: T.ink
+                )
                 Text(model.landingWorkspaceLabel ?? landingChooseWorkspace(english: L.en))
                     .font(.system(size: CGFloat(workspaceChipFontSizePoints), weight: .medium))
                     .lineLimit(1)
@@ -68,9 +71,11 @@ struct LandingWorkspaceChip: View {
                         open = false
                     } label: {
                         HStack(spacing: 8) {
-                            Image(systemName: "folder")
-                                .font(.system(size: CGFloat(workspaceChipIconSizePoints)))
-                                .foregroundStyle(T.ink)
+                            OfficialGlyph(
+                                kind: .folderClose,
+                                size: CGFloat(workspaceChipIconSizePoints),
+                                color: T.ink
+                            )
                             Text(title)
                                 .font(.system(size: 13))
                                 .foregroundStyle(T.ink)

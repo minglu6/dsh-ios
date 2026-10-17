@@ -251,8 +251,10 @@ struct PermissionChipMenu: View {
                         color: current == "danger-full-access" ? T.warnText : T.text2
                     )
                 }
-                Text(currentLabel)
-                    .lineLimit(1)
+                if permissionChipTriggerShowsLabel {
+                    Text(currentLabel)
+                        .lineLimit(1)
+                }
                 Image(systemName: "chevron.down")
                     .font(.system(size: 11))
                     .foregroundStyle(T.caption)
@@ -261,8 +263,8 @@ struct PermissionChipMenu: View {
             }
             .font(.system(size: 13, weight: .medium))
             .foregroundStyle(current == "danger-full-access" ? T.warnText : T.text2)
-            .padding(.leading, 8)
-            .padding(.trailing, 4)
+            .padding(.leading, permissionChipTriggerShowsLabel ? 8 : 2)
+            .padding(.trailing, 2)
             .frame(minHeight: CGFloat(composerChipHeightPoints))
         }
         .buttonStyle(.plain)

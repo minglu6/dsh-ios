@@ -53,6 +53,14 @@ struct ChatView: View {
                     model.push(.panel(.terminal))
                     showStart = false
                 },
+                onBrowser: {
+                    model.push(.panel(.browser))
+                    showStart = false
+                },
+                onInspector: {
+                    showStart = false
+                    showInspector = true
+                },
                 onDismiss: { showStart = false }
             )
         }
@@ -163,6 +171,15 @@ struct ChatView: View {
             openProcesses = [:]
             model.setViewedSession(desiredViewedSession)
         }
+        .onAppear {
+            switch UITestLaunch.screen {
+            case "start": showStart = true
+            case "inspector": showInspector = true
+            case "models": showModels = true
+            case "permission": showPermission = true
+            default: break
+            }
+        }
     }
 
     private var headerTitle: String {
@@ -196,6 +213,7 @@ struct ChatView: View {
             Button { model.showDrawer = true } label: {
                 Image(systemName: D.panelLeft).foregroundStyle(T.ink)
             }
+            .accessibilityIdentifier("openDrawer")
             if conversationHeaderShowsCrumbs(headerCrumbs) {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 4) {
@@ -233,11 +251,19 @@ struct ChatView: View {
                     .lineLimit(1)
             }
             Spacer()
+            if model.ops.contains("session.export") {
+                Button { model.exportSession() } label: {
+                    OfficialGlyph(kind: .shareOutline, size: 16, color: T.ink)
+                }
+                .accessibilityLabel(L.share())
+                .accessibilityIdentifier("sessionShare")
+            }
             Button { showStart = true } label: {
                 Image(systemName: D.panelRight).foregroundStyle(T.ink)
             }
             .disabled(firstPromptBlocksComposerActions(model.firstPrompt))
             .accessibilityLabel(L.startPanel())
+            .accessibilityIdentifier("openStartPanel")
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -1096,9 +1122,6 @@ private struct ProcessGroupView: View {
                         Spacer(minLength: 0)
                     }
                     .frame(minHeight: 33)
-                    .overlay(alignment: .bottom) {
-                        Divider()
-                    }
                 } else {
                     HStack(spacing: CGFloat(reasoningRowGapPoints)) {
                         processLeading(kind: proc.activityKind, open: open)
@@ -1363,7 +1386,8 @@ struct MessageRow: View {
                 MessageActions(
                     text: user.text,
                     timeMs: user.at,
-                    clock: .start
+                    clock: .end,
+                    trailing: true
                 )
             }
         case .text(let text):
@@ -1477,6 +1501,7 @@ private struct MessageActions: View {
     var branch: MessageBranchChrome? = nil
     var onBranch: (() -> Void)? = nil
     var usageAction: (() -> TurnUsageAction)? = nil
+    var trailing = false
     @State private var copied = false
     @State private var sharing = false
 
@@ -1539,7 +1564,7 @@ private struct MessageActions: View {
             }
         }
         .frame(height: 48)
-        .frame(maxWidth: .infinity, alignment: clock == .start ? .trailing : .leading)
+        .frame(maxWidth: .infinity, alignment: (trailing || clock == .start) ? .trailing : .leading)
         .padding(.top, 4)
         .sheet(isPresented: $sharing) {
             ShareSheet(items: [text])
@@ -1699,7 +1724,6 @@ struct ComposerView: View {
                         .accessibilityLabel(L.planModeOn())
                         .accessibilityHint(planChipTitle(english: L.en))
                     }
-                    Spacer(minLength: 0)
                     ModelChipMenu(
                         catalog: model.catalog,
                         current: model.modelChoice,
@@ -1767,8 +1791,8 @@ struct ComposerView: View {
             HStack(spacing: 6) {
                 ForEach(Array(references.enumerated()), id: \.offset) { _, ref in
                     HStack(spacing: 4) {
-                        Image(systemName: ref.kind == .session ? "bubble.left" : (ref.kind == .directory ? "folder" : "doc"))
-                            .font(.caption2)
+                        mentionLeading(ref.kind)
+                            .frame(width: 12, height: 12)
                         Text(ref.label).font(.caption)
                     }
                     .padding(.horizontal, 8)
@@ -1793,7 +1817,7 @@ struct ComposerView: View {
                             insert(token)
                         } label: {
                             HStack {
-                                Image(systemName: directory ? "folder" : "doc").foregroundStyle(T.text3)
+                                mentionFileLeading(directory: directory)
                                 Text(mentionFileRowLabel(file.path, directory: directory)).foregroundStyle(T.ink)
                                 Spacer()
                                 Text(file.path).font(.caption).foregroundStyle(T.text3).lineLimit(1)
@@ -1821,6 +1845,27 @@ struct ComposerView: View {
             .background(T.settingsCard)
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 0.5))
             .padding(.horizontal, 14)
+        }
+    }
+
+    @ViewBuilder
+    private func mentionLeading(_ kind: ComposerReferenceKind) -> some View {
+        switch kind {
+        case .directory:
+            OfficialGlyph(kind: .folderClose, size: 12, color: T.ink)
+        case .session:
+            Image(systemName: "bubble.left").font(.caption2)
+        case .file:
+            Image(systemName: "doc").font(.caption2)
+        }
+    }
+
+    @ViewBuilder
+    private func mentionFileLeading(directory: Bool) -> some View {
+        if directory {
+            OfficialGlyph(kind: .folderClose, size: 14, color: T.text3)
+        } else {
+            Image(systemName: "doc").foregroundStyle(T.text3)
         }
     }
 

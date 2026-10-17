@@ -63,3 +63,75 @@ jobs:
           notes="Rolling unsigned IPA @ ${GITHUB_SHA::7}. Sign with 轻松签 (or any sideload signer) before install. Phone talks to dsh-plugin-pocket over LAN/Tailscale WebSocket — install the Host plugin from https://github.com/minglu6/dsh-android."
           gh release edit dsh-ios-latest --notes "$notes"
           gh release upload dsh-ios-latest dsh-ios.ipa --clobber
+
+  screenshots:
+    needs: [protocol]
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+      - name: Boot iPhone simulator
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          DEVICE=$(python3 - <<'PY'
+          import json, subprocess, sys
+          data = json.loads(subprocess.check_output(["xcrun", "simctl", "list", "devices", "available", "-j"]))
+          prefer = None
+          first = None
+          for runtime, devices in data.get("devices", {}).items():
+              runtime_l = runtime.lower()
+              if "ios" not in runtime_l and "iphoneos" not in runtime_l:
+                  continue
+              for device in devices:
+                  name = device.get("name", "")
+                  udid = device.get("udid")
+                  if not name.startswith("iPhone") or not udid:
+                      continue
+                  if first is None:
+                      first = {"udid": udid, "state": device.get("state")}
+                  if name == "iPhone 17e":
+                      prefer = {"udid": udid, "state": device.get("state")}
+          chosen = prefer or first
+          if not chosen:
+              sys.exit("no available iPhone simulator")
+          udid = chosen["udid"]
+          state = chosen["state"]
+          if state == "Shutdown":
+              subprocess.check_call(["xcrun", "simctl", "boot", udid])
+          elif state not in ("Booted", "Booting"):
+              sys.exit(f"simulator {udid} is {state}")
+          print(udid)
+          PY
+          )
+          echo "DEVICE=$DEVICE" >> "$GITHUB_ENV"
+          xcrun simctl bootstatus "$DEVICE" -b
+      - name: XCUITest screenshots
+        env:
+          DSH_SCREENSHOT_DIR: ${{ github.workspace }}/screenshots
+        run: |
+          set -euo pipefail
+          mkdir -p "$DSH_SCREENSHOT_DIR"
+          export DSH_SCREENSHOT_DIR
+          export TEST_RUNNER_DSH_SCREENSHOT_DIR="$DSH_SCREENSHOT_DIR"
+          xcodebuild \
+            -project app/dsh.xcodeproj \
+            -scheme dsh \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination "platform=iOS Simulator,id=${DEVICE}" \
+            -derivedDataPath derived-ui \
+            -only-testing:dshUITests/ScreenshotTests \
+            -resultBundlePath derived-ui/dsh-screenshots.xcresult \
+            CODE_SIGN_IDENTITY=- \
+            DEVELOPMENT_TEAM= \
+            test
+          find "$DSH_SCREENSHOT_DIR" -maxdepth 1 -name '*.png' | sort
+          test "$(find "$DSH_SCREENSHOT_DIR" -maxdepth 1 -name '*.png' | wc -l)" -ge 20
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-simulator-screenshots
+          path: screenshots
+          if-no-files-found: warn

@@ -118,6 +118,7 @@ struct RootView: View {
             ConnectionsView(model: model)
         } else {
             emptyChat
+                .accessibilityIdentifier("landingHero")
         }
     }
 
@@ -135,81 +136,74 @@ struct RootView: View {
                 Button { model.showDrawer = true } label: {
                     Image(systemName: D.panelLeft).foregroundStyle(T.ink)
                 }
+                .accessibilityIdentifier("openDrawer")
                 BrandWordmark(height: 20)
                 Spacer()
             }
             .padding(14)
             .background(T.surface)
-            GeometryReader { geo in
-                ZStack(alignment: .bottom) {
-                    VStack(spacing: 12) {
-                        Spacer()
-                        Text(L.landingHeadline())
-                            .font(.system(size: 28, weight: .semibold))
-                            .foregroundStyle(T.ink)
-                            .multilineTextAlignment(.center)
-                            .accessibilityAddTraits(.isHeader)
-                        Text(L.landingPreview())
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(T.text3)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .overlay(Capsule().stroke(T.border, lineWidth: 1))
-                            .accessibilityLabel(L.landingPreview())
-                        Spacer()
+            GeometryReader { _ in
+                VStack(spacing: 0) {
+                    ZStack(alignment: .bottom) {
+                        landingHeadlineRow
+                        if landingCommandMenuVisible {
+                            GeometryReader { top in
+                                CommandMenuOverlay(
+                                    model: model,
+                                    host: commandHost,
+                                    query: slashMenuQuery(model.composerText),
+                                    leading: slashMenuIsLeading(model.composerText),
+                                    consumeSlash: landingSlashTrigger != nil,
+                                    availableHeight: max(0, top.size.height - 4),
+                                    onDismiss: { slashMenu.dismiss(trigger: landingSlashTrigger) },
+                                    onFile: { showFileImporter = true },
+                                    onGoal: { model.insertComposer("/goal ") },
+                                    onPlan: { model.executeCommand("/plan") },
+                                    onFeedback: { model.createAndOpenSession() },
+                                    onCompact: { model.executeCommand("/compact") },
+                                    onPerm: { if model.isOnline { showPermission = true } },
+                                    onModel: { if model.isOnline { showModels = true } },
+                                    onExport: { model.createAndOpenSession() },
+                                    onSelectPermission: { applyLandingPermission($0) }
+                                )
+                                .padding(.horizontal, 14)
+                                .frame(width: top.size.width, height: top.size.height, alignment: .bottom)
+                            }
+                        }
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    if landingCommandMenuVisible {
-                        CommandMenuOverlay(
+                    .frame(maxHeight: .infinity)
+                    .padding(.bottom, CGFloat(landingHeroStackGapPoints))
+                    VStack(spacing: CGFloat(landingHeroStackGapPoints)) {
+                        landingWorkspaceRow
+                        ComposerView(
                             model: model,
-                            host: commandHost,
-                            query: slashMenuQuery(model.composerText),
-                            leading: slashMenuIsLeading(model.composerText),
-                            consumeSlash: landingSlashTrigger != nil,
-                            availableHeight: max(0, geo.size.height - 8),
-                            onDismiss: { slashMenu.dismiss(trigger: landingSlashTrigger) },
-                            onFile: { showFileImporter = true },
-                            onGoal: { model.insertComposer("/goal ") },
-                            onPlan: { model.executeCommand("/plan") },
-                            onFeedback: { model.createAndOpenSession() },
-                            onCompact: { model.executeCommand("/compact") },
-                            onPerm: { if model.isOnline { showPermission = true } },
-                            onModel: { if model.isOnline { showModels = true } },
-                            onExport: { model.createAndOpenSession() },
-                            onSelectPermission: { applyLandingPermission($0) }
+                            interceptKeys: landingCommandMenuVisible && riskPermission == nil,
+                            resignKeyboard: riskPermission != nil,
+                            focusToken: composerFocus,
+                            heroPlaceholder: true,
+                            onPlus: {
+                                slashMenu.togglePlus(trigger: landingSlashTrigger)
+                                if slashMenu.isVisible(trigger: landingSlashTrigger) {
+                                    composerFocus += 1
+                                }
+                            },
+                            onSelectPermission: { applyLandingPermission($0) },
+                            modelMenuOpen: $showModels,
+                            onSend: {
+                                if landingCommandMenuVisible {
+                                    commandHost.requestEnter()
+                                    return
+                                }
+                                model.sendCurrent()
+                            },
+                            onCommandReturn: { commandHost.requestEnter() },
+                            onCommandMove: { commandHost.requestMove($0) },
+                            onCommandEscape: { slashMenu.dismiss(trigger: landingSlashTrigger) }
                         )
-                        .padding(.horizontal, 14)
-                        .padding(.bottom, 4)
-                        .frame(height: max(0, geo.size.height - 8), alignment: .bottom)
                     }
+                    Color.clear.frame(maxHeight: .infinity)
                 }
             }
-            landingWorkspaceRow
-            ComposerView(
-                model: model,
-                interceptKeys: landingCommandMenuVisible && riskPermission == nil,
-                resignKeyboard: riskPermission != nil,
-                focusToken: composerFocus,
-                heroPlaceholder: true,
-                onPlus: {
-                    slashMenu.togglePlus(trigger: landingSlashTrigger)
-                    if slashMenu.isVisible(trigger: landingSlashTrigger) {
-                        composerFocus += 1
-                    }
-                },
-                onSelectPermission: { applyLandingPermission($0) },
-                modelMenuOpen: $showModels,
-                onSend: {
-                    if landingCommandMenuVisible {
-                        commandHost.requestEnter()
-                        return
-                    }
-                    model.sendCurrent()
-                },
-                onCommandReturn: { commandHost.requestEnter() },
-                onCommandMove: { commandHost.requestMove($0) },
-                onCommandEscape: { slashMenu.dismiss(trigger: landingSlashTrigger) }
-            )
         }
         .background(T.bg)
         .onChange(of: model.composerText) { _ in
@@ -271,6 +265,33 @@ struct RootView: View {
         }
     }
 
+    /// Desktop `HeroShell` `.headline`: title + preview pill on one row.
+    /// Tokens: 26/32/500 primary; badge 12/18 code, business-tertiary fill,
+    /// bluish label — not system tint.
+    private var landingHeadlineRow: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Text(L.landingHeadline())
+                .font(.system(size: CGFloat(landingHeroHeadlineSizePoints), weight: .medium))
+                .foregroundStyle(T.ink)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier("landingHeadline")
+            Text(L.landingPreview())
+                .font(LocalFonts.code(size: CGFloat(landingHeroPreviewFontSizePoints)))
+                .foregroundStyle(T.bluish)
+                .padding(.top, 1)
+                .padding(.horizontal, 7)
+                .background(T.tint, in: Capsule())
+                .overlay(Capsule().stroke(T.hoverBg, lineWidth: 1))
+                .offset(x: -3, y: 2)
+                .accessibilityLabel(L.landingPreview())
+                .accessibilityIdentifier("landingPreview")
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 14)
+    }
+
     private var landingWorkspaceRow: some View {
         HStack(spacing: 10) {
             LandingWorkspaceChip(model: model, showDirectoryPicker: $showWorkspacePicker)
@@ -278,7 +299,6 @@ struct RootView: View {
             Spacer()
         }
         .padding(.horizontal, 14)
-        .padding(.bottom, 4)
     }
 
     private var drawerScrim: some View {

@@ -57,17 +57,21 @@ enum L {
     static func archived() -> String { en ? "Archived" : "已归档" }
     static func restoreArchivedBody() -> String { archivedNotOpenable(english: en) }
     static func archivedToast(stopped: Bool = false) -> String { archiveSuccessToast(stopped: stopped, english: en) }
-    static func orderByLabel() -> String { en ? "Order by" : "排序方式" }
-    static func orderByManual() -> String { en ? "Manual" : "手动排序" }
-    static func orderByUpdated() -> String { en ? "Last updated" : "最近更新" }
+    static func orderByLabel() -> String { ViewOptionsMenuPolicy.title(.orderBy, english: en) }
+    static func orderByManual() -> String { ViewOptionsMenuPolicy.label(.orderManual, english: en) }
+    static func orderByUpdated() -> String { ViewOptionsMenuPolicy.label(.orderUpdated, english: en) }
     static func filterByLabel() -> String { en ? "Filter sessions" : "筛选会话" }
-    static func hideArchived() -> String { en ? "Hide archived" : "隐藏已归档" }
-    static func showArchived() -> String { en ? "All conversations (show archived)" : "全部对话（显示已归档）" }
-    static func onlyArchived() -> String { en ? "Archived only" : "仅显示已归档" }
+    static func hideArchived() -> String { ViewOptionsMenuPolicy.label(.filterHide, english: en) }
+    static func showArchived() -> String { ViewOptionsMenuPolicy.label(.filterShow, english: en) }
+    static func onlyArchived() -> String { ViewOptionsMenuPolicy.label(.filterOnly, english: en) }
     static func downloadSessionLog() -> String { downloadSessionLogLabel(english: en) }
     static func share() -> String { en ? "Share" : "分享" }
     static func pairingCode() -> String { pairingCodeFieldLabel(english: en) }
     static func sessionInspector() -> String { en ? "Session diagnostics" : "会话数据诊断" }
+    static func browser() -> String { en ? "Browser" : "浏览器" }
+    static func browserHint() -> String { en ? "Browse web pages" : "浏览网页" }
+    static func groupByLabel() -> String { ViewOptionsMenuPolicy.title(.groupBy, english: en) }
+    static func scheduleNewShort() -> String { SchedulePagePolicy.headerNewLabel(english: en) }
     static func sessionFeedback() -> String { en ? "Feedback" : "反馈" }
     static func sessionFeedbackHint() -> String { messageFeedbackHint(english: en) }
     static func imageLoading() -> String { messageImageLoading(english: en) }
@@ -329,11 +333,10 @@ enum L {
             : "将把“\(title)”从工作区列表中移除。文件夹与会话记录会保留，其会话将显示在“未分组”下。"
     }
     static func defaultWorkspace() -> String { en ? "Default workspace" : "默认工作区" }
-    static func viewOptions() -> String { en ? "View options" : "视图选项" }
-    static func groupByLabel() -> String { en ? "Group by" : "分组方式" }
-    static func groupByWorkspace() -> String { en ? "Workspace" : "按工作区" }
-    static func groupByWorkspaceTree() -> String { en ? "Workspace Tree" : "按工作区树" }
-    static func groupByFlat() -> String { en ? "In one list" : "单列表" }
+    static func viewOptions() -> String { ViewOptionsMenuPolicy.title(.filter, english: en) }
+    static func groupByWorkspace() -> String { ViewOptionsMenuPolicy.label(.groupWorkspace, english: en) }
+    static func groupByWorkspaceTree() -> String { ViewOptionsMenuPolicy.label(.groupWorkspaceTree, english: en) }
+    static func groupByFlat() -> String { ViewOptionsMenuPolicy.label(.groupFlat, english: en) }
     static func pinned() -> String { en ? "Pinned" : "已置顶" }
     static func expand() -> String { en ? "Expand" : "展开" }
     static func collapse() -> String { en ? "Collapse" : "收起" }

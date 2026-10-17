@@ -25,13 +25,20 @@ struct ModelChipMenu: View {
                 .font(.system(size: 13, weight: .regular))
                 .foregroundStyle(T.text2)
                 .lineLimit(1)
+                .truncationMode(.tail)
+                .layoutPriority(1)
                 if let effort = modelEffortLabel(
                     catalog: catalog,
                     provider: current?.provider,
                     model: current?.model,
                     effort: current?.effort
                 ) {
-                    Text(effort).font(.system(size: 13)).foregroundStyle(T.caption).lineLimit(1)
+                    Text(effort)
+                        .font(.system(size: 13))
+                        .foregroundStyle(T.caption)
+                        .lineLimit(1)
+                        .fixedSize()
+                        .accessibilityIdentifier("modelChipEffort")
                 }
                 if pending != nil {
                     ProgressView().controlSize(.mini)
@@ -42,11 +49,13 @@ struct ModelChipMenu: View {
                         .rotationEffect(.degrees(open ? 180 : 0))
                 }
             }
+            .frame(maxWidth: composerModelNameUsesRemainingWidth ? .infinity : nil, alignment: .trailing)
             .frame(minHeight: CGFloat(composerChipHeightPoints))
             .opacity(enabled ? 1 : 0.45)
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
+        .accessibilityIdentifier("modelChip")
         .popover(isPresented: $open, attachmentAnchor: .rect(.bounds), arrowEdge: composerPickerPopoverOpensAbove ? .bottom : .top) {
             ModelPicker(
                 catalog: catalog,
@@ -113,10 +122,26 @@ struct ModelPicker: View {
     }
 
     private var busy: ModelChoice? { submitting ?? pending }
-    private var selectedModel: ModelInfo? {
-        current.flatMap { catalog?.find(provider: $0.provider, model: $0.model) }
+    private var resolvedCurrent: ModelChoice? {
+        if let current { return current }
+        guard let resolved = composerResolvedModel(
+            provider: nil,
+            model: nil,
+            name: nil,
+            effort: nil,
+            catalog: catalog
+        ) else { return nil }
+        return ModelChoice(
+            provider: resolved.provider,
+            model: resolved.model,
+            name: resolved.name,
+            effort: resolved.effort
+        )
     }
-    private var effectiveEffort: String? { current?.effort ?? selectedModel?.defaultEffort }
+    private var selectedModel: ModelInfo? {
+        resolvedCurrent.flatMap { catalog?.find(provider: $0.provider, model: $0.model) }
+    }
+    private var effectiveEffort: String? { resolvedCurrent?.effort ?? selectedModel?.defaultEffort }
     private var count: Int { catalog?.groups.reduce(0) { $0 + $1.models.count } ?? 0 }
     private var showSearch: Bool { count > 4 }
     private var groups: [ModelGroup] {
@@ -132,13 +157,14 @@ struct ModelPicker: View {
                 Text(selectionError).font(.system(size: 11)).foregroundStyle(T.err).padding(8)
             }
             if pane == .root {
-                cell(modelPickerRootModelLabel(english: L.en), loading && catalog == nil ? L.loading() : (composerModelDisplayName(choiceName: current?.name ?? selectedModel?.name, catalog: catalog) ?? current?.model ?? composerModelFallback(english: L.en))) {
+                cell(modelPickerRootModelLabel(english: L.en), loading && catalog == nil ? L.loading() : (composerModelDisplayName(choiceName: resolvedCurrent?.name ?? selectedModel?.name, catalog: catalog) ?? resolvedCurrent?.model ?? composerModelFallback(english: L.en))) {
                     pane = .models
                 }
                 if showEffort {
-                    cell(modelPickerRootEffortLabel(english: L.en), modelEffortLabel(catalog: catalog, provider: current?.provider, model: current?.model, effort: current?.effort) ?? "") {
+                    cell(modelPickerRootEffortLabel(english: L.en), modelEffortLabel(catalog: catalog, provider: resolvedCurrent?.provider, model: resolvedCurrent?.model, effort: resolvedCurrent?.effort) ?? "") {
                         pane = .effort
                     }
+                    .accessibilityIdentifier("modelPickerEffort")
                 }
             }
             if pane == .models {
@@ -178,7 +204,7 @@ struct ModelPicker: View {
                                 .padding(.horizontal, 7)
                                 .padding(.vertical, 6)
                             ForEach(group.models) { model in
-                                let selected = current?.provider == group.id && current?.model == model.id
+                                let selected = resolvedCurrent?.provider == group.id && resolvedCurrent?.model == model.id
                                 option(model.name, selected: selected, pending: busy?.provider == group.id && busy?.model == model.id) {
                                     pick(ModelChoice(provider: group.id, model: model.id, name: model.name, effort: nil), unchanged: selected)
                                 }
@@ -193,7 +219,7 @@ struct ModelPicker: View {
                         .font(.system(size: 12))
                         .foregroundStyle(T.text3)
                         .padding(8)
-                } else if let current, let selectedModel {
+                } else if let current = resolvedCurrent, let selectedModel {
                     if selectedModel.defaultEffort == nil {
                         option(modelPickerEffortProviderDefault(english: L.en), selected: effectiveEffort == nil, pending: busy != nil && busy?.effort == nil) {
                             pick(ModelChoice(provider: current.provider, model: current.model, name: current.name, effort: nil), unchanged: effectiveEffort == nil)
