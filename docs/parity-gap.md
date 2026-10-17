@@ -72,7 +72,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R43 | audit-only：#53 后源码对照 desktop alpha.5；`next` rc.2 无 locale/API 增量；Android #67 仅 Host plugin | done (NO_PR) |
 | R44 | audit-only：#53 CI 截图视觉对照；mandated 项对齐 | done (NO_PR) |
 | R45 | 视图选项 iPhone compact popover + 每行官方 leading 图标 | done (#54) |
-| R46 | 空会话 HeroShell 整列居中 gap 12（#54 CI `*-landing.png` 标题与工作区之间仍是夹心空隙） | this PR |
+| R46 | 空会话 HeroShell 整列居中 gap 12（#54 CI `*-landing.png` 标题与工作区之间仍是夹心空隙） | done (#55) |
+| R47 | 抽屉脚设置齿轮改用官方 `IconSettingsOutlineMedium` | this PR |
 
 ---
 
@@ -1004,4 +1005,32 @@ Android `c5f8cdd...56dcaa9` 一笔：`feat(android): 补齐用户选择卡片与
 - Account / shortcuts / open config / CompatibilityBanner / 审批通知 / FishLogo：仍 **hide** / 不发明。
 - Settings 齿轮仍 SF `gearshape`：记 leftover，路径在 `ui-primitives` `IconSettingsOutlineArtwork`，本轮不改。
 - Android Settings「移动端 → 连接」不搬。
+
+## Round 47 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*` alpha=`0.2.1-alpha.5` / next=`0.2.1-rc.2`；Android `ce7d345`）
+
+直播核对（2026-10-17）：iOS `main` tip `98be0ef`（#55 squash）。CI run 39070985009：`protocol` / `screenshots` / `ios` 全绿。`npm view`：`alpha` 仍 `0.2.1-alpha.5`，`next` 仍 `0.2.1-rc.2`。pack 对比 ui-primitives / settings-general / chat / conversation / workspace / sidebar / jobs / commands / permission-presets / model-selection / user-questions / plugin-manager / agent-preset / plan / tool / deliverables / settings-plugins / sidebar-files / sidebar-documentpreview / trajectory / schedule：locale / `.tsx` / CSS / 组件 API **无增量**（仅 `package.json` 版本与依赖 tag；`ui-sidebar` `localBuildVersion` `0.2.1-alpha.5-aeba8e9` → `0.2.1-rc.2-332895e`；`ui-settings-general` `CurrentVersionRow` 版本字符串）。Android `main` `ce7d345`；`compare/ce7d345...main` `ahead_by: 0`。#67 仅 Host plugin `terminal.follow`→`retain`+`attach`，无新 iOS UI 可搬。
+
+#55 CI 截图怀疑式重审（`ios-simulator-screenshots`）：
+
+| 项 | 判定 | 证据 |
+| --- | --- | --- |
+| 视图选项 compact popover + 官方 leading | **PASS** | `light/dark-viewOptions.png`：sliders 锚定气泡，不是整屏 sheet。9 行 OfficialGlyph；选中勾在右侧 |
+| 抽屉脚设置 + 连接同一行靠右 | **PASS** | `light/dark-drawer.png`：设置左、8pt 绿点右。`sidebarFooterActionSharesSettingsRow` |
+| OfficialGlyph 文件夹 | **PASS** | landing / drawer 工作区行走 `folderClose/Open`；CI 断言无 SF `folder` |
+| 有 reasoning 才画推理行；权限 chip 仅图标 | **PASS** | `light-models.png` 有「推理等级」；landing / chat composer 权限座只有盾标。窄屏例外已拍板 |
+| 空会话 HeroShell 居中 gap 12 | **PASS** | `light/dark-landing.png`：标题 / 工作区 / composer 同一列，剩余视口在 stack 外侧，不再夹在标题与 InputBar 之间 |
+| 未读绿点 / 运行 spinner 仅会话行 | **PASS**（fixture 空闲，源码仍实现） | header 无 spinner；`sidebarSessionLeading` + `SidebarSessionLeadingView` |
+| Settings 齿轮 | **GAP → 本轮** | `light/dark-drawer.png` 仍 SF `gearshape`。桌面 `ui-settings-general` `TriggerContent` / `SettingsRoot` 用 `IconSettingsOutlineMedium`（16，`ICON_MEDIUM_STROKE` 1.3）；路径来自 `ui-primitives` `IconSettingsOutlineArtwork` |
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| 抽屉脚设置齿轮 | `OfficialGlyph.settingsOutline` + `sidebarSettingsOutlineHubPath` / `RingPath` | `ui-primitives` `IconSettingsOutlineArtwork` / `IconSettingsOutlineMedium`；`ui-settings-general` `TriggerContent` `size: wide ? 16 : 18`（宽栏 16） | 删掉 SF `gearshape`；16×16 viewBox；Medium 线宽 1.3；SVG 默认 butt + miterLimit 10。CI drawer 断言 `official.settingsOutline`、禁止 `gearshape` |
+
+本轮核对后**不改**（平台 / hide / 禁止发明）
+
+- `chat.turnNavigation.*` / `chat.toBottom` / `ask.review` / hover chevron：仍 skip。
+- Account / shortcuts / open config / CompatibilityBanner / 审批通知 / FishLogo：仍 **hide** / 不发明。
+- Android Settings「移动端 → 连接」不搬。
+- permission / schedule / terminal / inspector CI 截图的系统蓝「取消」/ `transport:` 失败：fixture 无真 Host，不是 composer chip 缺口。
+- 轨迹未知 cell 仍映射 SF `gearshape`（`TrajectoryView` fallback）：不是 Settings 触发器，本轮不扩。
 

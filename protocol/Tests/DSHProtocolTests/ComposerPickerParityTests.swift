@@ -20,6 +20,18 @@ final class ComposerPickerParityTests: XCTestCase {
         XCTAssertEqual(sidebarSettingsTriggerFontSizePoints, 14)
         XCTAssertEqual(sidebarFooterActionButtonPoints, 28)
         XCTAssertEqual(sidebarFooterActionIconSizePoints, 16)
+        XCTAssertTrue(sidebarSettingsTriggerUsesOfficialGlyph)
+        XCTAssertEqual(sidebarSettingsTriggerSymbol(), "official.settingsOutline")
+        XCTAssertEqual(sidebarSettingsTriggerIconStrokeWidth, 1.3)
+        XCTAssertTrue(isForbiddenSystemSettingsSymbol("gearshape"))
+        XCTAssertTrue(isForbiddenSystemSettingsSymbol("gearshape.fill"))
+        XCTAssertFalse(isForbiddenSystemSettingsSymbol("official.settingsOutline"))
+        XCTAssertEqual(
+            sidebarSettingsOutlineHubPath,
+            "M8 9.75012C8.9665 9.75012 9.75 8.96662 9.75 8.00012C9.75 7.03362 8.9665 6.25012 8 6.25012C7.0335 6.25012 6.25 7.03362 6.25 8.00012C6.25 8.96662 7.0335 9.75012 8 9.75012Z"
+        )
+        XCTAssertTrue(sidebarSettingsOutlineRingPath.hasPrefix("M13.0107 7.79377"))
+        XCTAssertTrue(sidebarSettingsOutlineRingPath.hasSuffix("L13.0107 7.79377Z"))
     }
 
     func testLandingWorkspaceChipMatchesDesktopHeroChip() {

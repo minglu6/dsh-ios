@@ -28,7 +28,6 @@ enum D {
     static let browse = "doc.text.magnifyingglass"
     static let close = "xmark"
     static let plus = "plus"
-    static let gear = "gearshape"
 }
 
 /// Desktop `IconPluginPinwheelOutlineRegular` / Android `dsh_plugin_pinwheel` (16×16 strokes).
