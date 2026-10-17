@@ -357,6 +357,17 @@ final class AppModel: ObservableObject {
         try await pair(name: name, host: link.host, port: link.port, code: link.code)
     }
 
+    /// Rename a local desktop profile label on the phone.
+    /// Does not call Host `PATCH /pocket/devices`.
+    func renameProfile(_ id: String, name: String) throws {
+        let trimmed = try clipProfileName(name)
+        guard let index = profiles.firstIndex(where: { $0.id == id }) else {
+            throw PocketError(code: "not-found", message: "profile not found: \(id)")
+        }
+        profiles[index].name = trimmed
+        ProfileStore.save(profiles)
+    }
+
     func removeProfile(_ id: String) {
         if activeId == id {
             resumeTask?.cancel()

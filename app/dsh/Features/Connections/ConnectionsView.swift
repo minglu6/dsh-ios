@@ -1,60 +1,80 @@
 import SwiftUI
 import DSHProtocol
 
+/// Phone controller connections list. Twin of Android `ConnectionsScreen` /
+/// `ConnDeviceRow` — not desktop Settings → 手机连接 (host QR).
 struct ConnectionsView: View {
     @ObservedObject var model: AppModel
-    @State private var showPair = false
+    @State private var presented: Presented?
     @State private var showScan = false
     @State private var address = ""
     @State private var code = ""
     @State private var name = ""
     @State private var pairing = false
+    @State private var renaming = false
+    @State private var renameDraft = ""
+
+    private enum Presented: Equatable {
+        case pair
+        case manage(String)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             header
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    actions
-                    if !model.nearby.isEmpty {
-                        section(L.nearbyDevices()) {
-                            ForEach(model.nearby) { host in
-                                Button {
-                                    address = "\(host.host):\(host.port)"
-                                    showPair = true
-                                } label: {
-                                    ConnRow(title: host.deviceName, subtitle: "\(host.host):\(host.port)")
-                                }
+                VStack(alignment: .leading, spacing: 0) {
+                    if !sortedProfiles.isEmpty {
+                        section(L.pairedDevices()) {
+                            ForEach(Array(sortedProfiles.enumerated()), id: \.element.id) { index, profile in
+                                pairedRow(profile, divider: index < sortedProfiles.count - 1)
                             }
                         }
                     }
-                    section(L.pairedDevices()) {
-                        if model.profiles.isEmpty {
-                            Text(L.notConnected())
-                                .font(.subheadline)
-                                .foregroundStyle(T.text3)
-                                .padding(.horizontal, 18)
-                                .padding(.vertical, 12)
-                        }
-                        ForEach(model.profiles) { profile in
-                            profileRow(profile)
+                    if !model.nearby.isEmpty {
+                        section(L.nearbyDevices()) {
+                            ForEach(Array(model.nearby.enumerated()), id: \.element.id) { index, host in
+                                nearbyRow(host, divider: index < model.nearby.count - 1)
+                            }
                         }
                     }
+                    card {
+                        ConnActionRow(
+                            title: L.scanQr(),
+                            system: "qrcode.viewfinder",
+                            divider: true
+                        ) { showScan = true }
+                        ConnActionRow(
+                            title: L.enterAddress(),
+                            system: "link",
+                            divider: false
+                        ) { openAddressSheet() }
+                    }
+                    Spacer().frame(height: 24)
                 }
-                .padding(.vertical, 12)
+                .padding(.top, 4)
             }
             .background(T.bg)
         }
         .background(T.bg.ignoresSafeArea())
-        .sheet(isPresented: $showPair) { pairSheet }
+        .accessibilityIdentifier("connectionsScreen")
+        .sheet(isPresented: sheetPresented) {
+            switch presented {
+            case .pair:
+                pairSheet
+            case .manage(let id):
+                manageSheet(managedProfile(id))
+                    .presentationDetents([.medium])
+            case nil:
+                EmptyView()
+            }
+        }
         .fullScreenCover(isPresented: $showScan) {
             QRScannerView(
                 onCode: { value in
                     showScan = false
                     if let link = PairingUriPolicy.parse(value) {
-                        address = "\(link.host):\(link.port)"
-                        code = link.code
-                        showPair = true
+                        openAddressSheet(host: link.host, port: link.port, code: link.code)
                     } else {
                         model.errorMessage = L.pairFailed()
                     }
@@ -71,81 +91,208 @@ struct ConnectionsView: View {
         }
         .onAppear {
             if let pending = model.pendingPair {
-                address = "\(pending.host):\(pending.port)"
-                code = pending.code
+                openAddressSheet(host: pending.host, port: pending.port, code: pending.code)
                 model.pendingPair = nil
-                showPair = true
             }
         }
+    }
+
+    private var sortedProfiles: [Profile] {
+        model.profiles.sorted {
+            if $0.lastUsedAt != $1.lastUsedAt { return $0.lastUsedAt > $1.lastUsedAt }
+            return $0.name.localizedStandardCompare($1.name) == .orderedAscending
+        }
+    }
+
+    private func managedProfile(_ id: String) -> Profile {
+        guard let profile = model.profiles.first(where: { $0.id == id }) else {
+            fatalError("manage sheet for missing profile \(id)")
+        }
+        return profile
+    }
+
+    private var sheetPresented: Binding<Bool> {
+        Binding(
+            get: { presented != nil },
+            set: { open in
+                if !open {
+                    presented = nil
+                    renaming = false
+                }
+            }
+        )
     }
 
     private var header: some View {
         HStack {
             Button(action: model.pop) { Image(systemName: "chevron.left").foregroundStyle(T.ink) }
-            Text(L.phoneConnection()).font(.headline).foregroundStyle(T.ink)
+            Text(L.connections()).font(.headline).foregroundStyle(T.ink)
             Spacer()
             Menu {
+                // Android overflow also offers NEARBY_WIFI_DEVICES; iOS Local Network
+                // is system-prompted by NWBrowser — no equivalent request API.
                 Button(L.diagnosticsCopy()) { Task { _ = await model.copyDiagnostics() } }
             } label: {
                 Image(systemName: D.ellipsis).foregroundStyle(T.ink).padding(8)
             }
+            .accessibilityLabel(L.moreActions())
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(T.surface)
     }
 
-    private var actions: some View {
-        HStack(spacing: 10) {
-            actionChip(L.scanQr(), system: "qrcode.viewfinder") { showScan = true }
-            actionChip(L.enterAddress(), system: "keyboard") { showPair = true }
-        }
-        .padding(.horizontal, 16)
-    }
-
-    private func actionChip(_ title: String, system: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Label(title, systemImage: system)
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(T.onPrimary)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(T.primaryButton, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-        }
-    }
-
     private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(title).font(.caption).foregroundStyle(T.text3).padding(.horizontal, 22).padding(.bottom, 6)
-            VStack(spacing: 0) { content() }
-                .background(T.settingsCard, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.settingsCardStroke, lineWidth: 0.5))
-                .padding(.horizontal, 16)
+            Text(title)
+                .font(.system(size: 14))
+                .foregroundStyle(T.ink)
+                .padding(.horizontal, 22)
+                .padding(.top, 16)
+                .padding(.bottom, 4)
+            card { content() }
         }
     }
 
-    private func profileRow(_ profile: Profile) -> some View {
+    private func pairedRow(_ profile: Profile, divider: Bool) -> some View {
+        let current = profile.id == model.activeId
         let dot = model.status[profile.id]
-        return Button {
-            model.connect(profileId: profile.id)
-            model.pop()
-        } label: {
-            ConnRow(
-                title: profile.name,
-                subtitle: profile.needsRepair ? L.repairNeeded() : "\(profile.host):\(profile.port) · \(profile.kind)",
-                trailing: statusLabel(dot, current: profile.id == model.activeId)
-            )
-        }
-        .contextMenu {
-            Button(L.switchDevice()) { model.connect(profileId: profile.id) }
-            Button(L.delete(), role: .destructive) { model.removeProfile(profile.id) }
-        }
+        let routeLabel = profile.needsRepair ? "" : (model.routes[profile.id]?.label ?? profile.kind)
+        return ConnDeviceRow(
+            name: profile.name,
+            statusLine: connectionsStatusLine(
+                status: profile.needsRepair ? L.repairNeeded() : dotText(dot),
+                routeLabel: routeLabel,
+                current: current ? L.currentDevice() : nil
+            ),
+            detail: profile.needsRepair ? nil : profile.subtitle,
+            warn: profile.needsRepair,
+            divider: divider,
+            onClick: { presented = .manage(profile.id) },
+            onSwitch: current ? nil : {
+                model.connect(profileId: profile.id)
+                model.pop()
+            },
+            leading: { StatusDot(color: dotColor(dot)) }
+        )
     }
 
-    private func statusLabel(_ dot: Dot?, current: Bool) -> some View {
-        HStack(spacing: 6) {
-            Circle().fill(dotColor(dot)).frame(width: 8, height: 8)
-            Text(current ? L.currentDevice() : dotText(dot)).font(.caption).foregroundStyle(T.text3)
+    private func nearbyRow(_ host: DiscoveredHost, divider: Bool) -> some View {
+        ConnDeviceRow(
+            name: host.deviceName,
+            statusLine: L.lan(),
+            detail: "\(host.host):\(host.port)",
+            warn: false,
+            divider: divider,
+            onClick: {
+                openAddressSheet(host: host.host, port: host.port, name: host.deviceName)
+            },
+            leading: {
+                Image(systemName: "desktopcomputer")
+                    .font(.system(size: 18))
+                    .foregroundStyle(T.accent)
+                    .frame(width: 18, height: 18)
+            }
+        )
+    }
+
+    private func manageSheet(_ profile: Profile) -> some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 0) {
+                if renaming {
+                    Text(L.rename()).font(.headline).foregroundStyle(T.ink)
+                    TextField(L.rename(), text: $renameDraft)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .padding(12)
+                        .background(T.input, in: RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 0.5))
+                        .padding(.top, 12)
+                    HStack(spacing: 10) {
+                        Button(L.cancel()) { renaming = false }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .foregroundStyle(T.ink)
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 1))
+                        Button(L.save()) {
+                            do {
+                                try model.renameProfile(profile.id, name: renameDraft)
+                                renaming = false
+                            } catch {
+                                model.errorMessage = error.localizedDescription
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .foregroundStyle(T.onPrimary)
+                        .background(T.primaryButton, in: RoundedRectangle(cornerRadius: 12))
+                        .disabled(renameDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                    .padding(.top, 16)
+                    Spacer()
+                } else {
+                    HStack(spacing: 10) {
+                        StatusDot(color: dotColor(model.status[profile.id]))
+                        Text(profile.name).font(.headline).foregroundStyle(T.ink)
+                    }
+                    Text(
+                        connectionsStatusLine(
+                            status: profile.needsRepair ? L.repairNeeded() : dotText(model.status[profile.id]),
+                            routeLabel: profile.needsRepair ? "" : (model.routes[profile.id]?.label ?? profile.kind),
+                            current: profile.id == model.activeId ? L.currentDevice() : nil
+                        )
+                    )
+                    .font(.system(size: 12))
+                    .foregroundStyle(T.text3)
+                    .padding(.top, 4)
+                    if !profile.needsRepair {
+                        Text(profile.subtitle)
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundStyle(T.caption)
+                            .padding(.top, 2)
+                    }
+                    VStack(spacing: 0) {
+                        manageAction(L.repairPair(), system: "arrow.clockwise") {
+                            openAddressSheet(
+                                host: profile.needsRepair ? nil : profile.host,
+                                port: profile.needsRepair ? nil : profile.port,
+                                name: profile.name
+                            )
+                        }
+                        manageAction(L.rename(), system: D.edit) {
+                            renameDraft = profile.name
+                            renaming = true
+                        }
+                        manageAction(L.delete(), system: "trash", destructive: true) {
+                            presented = nil
+                            model.removeProfile(profile.id)
+                        }
+                    }
+                    .padding(.top, 16)
+                    Spacer()
+                }
+            }
+            .padding(22)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(T.bg)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(L.cancel()) { presented = nil }
+                }
+            }
+        }
+        .onAppear { renaming = false }
+    }
+
+    private func manageAction(_ title: String, system: String, destructive: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: system).foregroundStyle(destructive ? T.err : T.ink)
+                Text(title).foregroundStyle(destructive ? T.err : T.ink)
+                Spacer()
+            }
+            .padding(.vertical, 14)
         }
     }
 
@@ -165,6 +312,17 @@ struct ConnectionsView: View {
         case .unauthorized: return L.repairNeeded()
         default: return L.offline()
         }
+    }
+
+    private func openAddressSheet(host: String? = nil, port: Int? = nil, code: String = "", name: String = "") {
+        if let host, let port {
+            address = "\(host):\(port)"
+        } else {
+            address = ""
+        }
+        self.code = code
+        self.name = name
+        presented = .pair
     }
 
     private var pairSheet: some View {
@@ -196,7 +354,7 @@ struct ConnectionsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(L.cancel()) { showPair = false }
+                    Button(L.cancel()) { presented = nil }
                 }
             }
         }
@@ -226,7 +384,7 @@ struct ConnectionsView: View {
             } else {
                 throw PocketError(code: "pair", message: L.pairFailed())
             }
-            showPair = false
+            presented = nil
             model.pop()
         } catch let error as PocketError where error.code == "timeout" {
             model.errorMessage = L.pairTimeout()
@@ -236,39 +394,124 @@ struct ConnectionsView: View {
     }
 }
 
-private struct ConnRow<Trailing: View>: View {
-    var title: String
-    var subtitle: String
-    var trailing: Trailing
+/// Desktop deviceRow twin: status dot + name + status line (`在线 · Tailscale · 当前`) + host:port.
+private struct ConnDeviceRow<Leading: View>: View {
+    var name: String
+    var statusLine: String
+    var detail: String?
+    var warn: Bool
+    var divider: Bool
+    var onClick: () -> Void
+    var onSwitch: (() -> Void)?
+    var leading: Leading
 
-    init(title: String, subtitle: String, @ViewBuilder trailing: () -> Trailing) {
-        self.title = title
-        self.subtitle = subtitle
-        self.trailing = trailing()
-    }
-
-    init(title: String, subtitle: String) where Trailing == EmptyView {
-        self.title = title
-        self.subtitle = subtitle
-        self.trailing = EmptyView()
-    }
-
-    init(title: String, subtitle: String, trailing: Trailing) {
-        self.title = title
-        self.subtitle = subtitle
-        self.trailing = trailing
+    init(
+        name: String,
+        statusLine: String,
+        detail: String?,
+        warn: Bool,
+        divider: Bool,
+        onClick: @escaping () -> Void,
+        onSwitch: (() -> Void)? = nil,
+        @ViewBuilder leading: () -> Leading
+    ) {
+        self.name = name
+        self.statusLine = statusLine
+        self.detail = detail
+        self.warn = warn
+        self.divider = divider
+        self.onClick = onClick
+        self.onSwitch = onSwitch
+        self.leading = leading()
     }
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).foregroundStyle(T.ink)
-                Text(subtitle).font(.caption).foregroundStyle(T.text3)
+        VStack(spacing: 0) {
+            HStack(alignment: .center, spacing: 12) {
+                leading
+                Button(action: onClick) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(name)
+                            .font(.system(size: 16))
+                            .foregroundStyle(warn ? T.warnText : T.ink)
+                            .lineLimit(1)
+                        Text(statusLine)
+                            .font(.system(size: 12))
+                            .foregroundStyle(T.text3)
+                            .lineLimit(1)
+                        if let detail {
+                            Text(detail)
+                                .font(.system(size: 12, design: .monospaced))
+                                .foregroundStyle(T.caption)
+                                .lineLimit(1)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+                if let onSwitch {
+                    Button(L.switchDevice(), action: onSwitch)
+                        .font(.subheadline)
+                        .foregroundStyle(T.ink)
+                        .disabled(warn)
+                        .opacity(warn ? 0.4 : 1)
+                }
+                Button(action: onClick) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14))
+                        .foregroundStyle(T.caption)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(L.moreActions())
             }
-            Spacer()
-            trailing
+            .padding(.horizontal, 16)
+            .padding(.vertical, 15)
+            if divider {
+                Divider().padding(.horizontal, 16)
+            }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
     }
 }
+
+/// Desktop settingsRow action: icon + title + chevron.
+private struct ConnActionRow: View {
+    var title: String
+    var system: String
+    var divider: Bool
+    var onClick: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Button(action: onClick) {
+                HStack(spacing: 12) {
+                    Image(systemName: system)
+                        .font(.system(size: 18))
+                        .foregroundStyle(T.ink)
+                        .frame(width: 18, height: 18)
+                    Text(title)
+                        .font(.system(size: 16))
+                        .foregroundStyle(T.ink)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14))
+                        .foregroundStyle(T.caption)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 15)
+            }
+            .buttonStyle(.plain)
+            if divider {
+                Divider().padding(.horizontal, 16)
+            }
+        }
+    }
+}
+
+private struct StatusDot: View {
+    var color: Color
+
+    var body: some View {
+        Circle().fill(color).frame(width: 8, height: 8)
+    }
+}
+

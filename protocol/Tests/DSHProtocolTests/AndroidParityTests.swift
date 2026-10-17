@@ -512,6 +512,21 @@ final class AndroidParityTests: XCTestCase {
         }
         XCTFail("timed out")
     }
+
+    func testConnectionsStatusLineMatchesAndroidDeviceMeta() {
+        XCTAssertEqual(
+            connectionsStatusLine(status: "在线", routeLabel: "Tailscale", current: "当前"),
+            "在线 · Tailscale · 当前"
+        )
+        XCTAssertEqual(
+            connectionsStatusLine(status: "Offline", routeLabel: "LAN", current: nil),
+            "Offline · LAN"
+        )
+        XCTAssertEqual(
+            connectionsStatusLine(status: "请重新配对", routeLabel: "", current: "当前"),
+            "请重新配对 · 当前"
+        )
+    }
 }
 
 private final class FakeTransport: FrameTransport, @unchecked Sendable {
