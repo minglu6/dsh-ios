@@ -703,22 +703,81 @@ public func compactionRowSummary(item: Item.Compacted, english: Bool) -> String 
     compactionRowSummary(
         shadowedItemCount: item.shadowedItemCount,
         shadowedTokenCount: item.shadowedTokenCount,
-        fallbackSummary: nil,
+        fallbackSummary: item.commandOutcomeText,
         hasSummary: item.summary != nil,
         english: english
     )
 }
 
 /// Desktop `compactionDefinition.buildViewNode` is null until the checkpoint
-/// lands. In-flight `compaction/start` without summary/counts stays hidden.
-/// Settled markers (end, summary, or counts) still render if the checkpoint
-/// event is outside the window.
+/// lands. Manual `/compact` (`sourceCommandId`) is owned by `commandDefinition`;
+/// CompactionItem only appears via `CompactionCommandCard` after the checkpoint.
+/// Automatic in-flight `compaction/start` without summary/counts stays hidden.
+/// Settled automatic markers (end, summary, or counts) still render if the
+/// checkpoint event is outside the window.
 public func compactionItemIsVisible(_ item: Item.Compacted) -> Bool {
+    if item.sourceCommandId != nil { return item.hasCheckpoint }
     if item.hasCheckpoint { return true }
     if item.status != .running { return true }
     if item.summary != nil { return true }
     if item.shadowedItemCount != nil && item.shadowedTokenCount != nil { return true }
     return false
+}
+
+/// Desktop `isVisibleChatNode` hides `/permission`. `CompactionCommandCard`
+/// replaces the generic card with CompactionItem once a checkpoint exists.
+public func commandItemIsVisible(_ item: Item.Command, compactCheckpointCommandIds: Set<String>) -> Bool {
+    if item.name == "permission" { return false }
+    if item.name == "compact", compactCheckpointCommandIds.contains(item.commandId) {
+        return false
+    }
+    return true
+}
+
+/// Desktop `GenericCommandCard` title: `node.name ?? command.title`.
+public func commandRowTitle(_ item: Item.Command, english: Bool) -> String {
+    item.name ?? (english ? "Command" : "指令")
+}
+
+/// Desktop `GenericCommandCard` / `CompactionCommandCard` summary line.
+public func commandRowSummary(_ item: Item.Command, english: Bool) -> String {
+    if item.outcomeKind == nil {
+        if item.name == "compact" {
+            return english ? "Compacting context…" : "正在压缩…"
+        }
+        return english ? "Running…" : "执行中…"
+    }
+    if let text = item.outcomeText { return text }
+    return item.outcomeKind == .error
+        ? (english ? "Command failed" : "指令失败")
+        : (english ? "Completed" : "已完成")
+}
+
+public func commandRowIsRunning(_ item: Item.Command) -> Bool {
+    item.outcomeKind == nil
+}
+
+public func commandRowIsError(_ item: Item.Command) -> Bool {
+    item.outcomeKind == .error
+}
+
+/// Desktop expands only when `outcome.text` contains a newline.
+public func commandRowIsExpandable(_ item: Item.Command) -> Bool {
+    item.outcomeText?.contains("\n") == true
+}
+
+/// Desktop visually-hidden `row.running` / `row.failed`.
+public func commandRowStateLabel(_ item: Item.Command, english: Bool) -> String? {
+    if commandRowIsRunning(item) { return english ? "Running" : "运行中" }
+    if commandRowIsError(item) { return english ? "Failed" : "失败" }
+    return nil
+}
+
+public func compactCheckpointCommandIds(in items: [Item]) -> Set<String> {
+    Set(items.compactMap { item -> String? in
+        guard case .compacted(let compacted) = item, compacted.hasCheckpoint else { return nil }
+        return compacted.sourceCommandId
+    })
 }
 
 public func compactionRowIsExpandable(_ item: Item.Compacted) -> Bool {

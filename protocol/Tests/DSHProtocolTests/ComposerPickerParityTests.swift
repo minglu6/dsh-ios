@@ -968,4 +968,214 @@ final class ComposerPickerParityTests: XCTestCase {
             return true
         })
     }
+
+    func testCommandCardCopyMatchesDesktopChatLocale() {
+        let running = Item.Command(key: "c1", commandId: "id1", name: "export")
+        XCTAssertEqual(commandRowTitle(running, english: false), "export")
+        XCTAssertEqual(commandRowSummary(running, english: false), "执行中…")
+        XCTAssertEqual(commandRowSummary(running, english: true), "Running…")
+        XCTAssertTrue(commandRowIsRunning(running))
+        XCTAssertFalse(commandRowIsExpandable(running))
+        XCTAssertEqual(commandRowStateLabel(running, english: false), "运行中")
+
+        let compactRunning = Item.Command(key: "c2", commandId: "id2", name: "compact")
+        XCTAssertEqual(commandRowSummary(compactRunning, english: false), "正在压缩…")
+        XCTAssertEqual(commandRowSummary(compactRunning, english: true), "Compacting context…")
+
+        let nameless = Item.Command(key: "c3", commandId: "id3")
+        XCTAssertEqual(commandRowTitle(nameless, english: false), "指令")
+        XCTAssertEqual(commandRowTitle(nameless, english: true), "Command")
+
+        let failed = Item.Command(
+            key: "c4", commandId: "id4", name: "export", outcomeKind: .error
+        )
+        XCTAssertEqual(commandRowSummary(failed, english: false), "指令失败")
+        XCTAssertEqual(commandRowStateLabel(failed, english: true), "Failed")
+        XCTAssertTrue(commandRowIsError(failed))
+
+        let done = Item.Command(
+            key: "c5", commandId: "id5", name: "export", outcomeKind: .success
+        )
+        XCTAssertEqual(commandRowSummary(done, english: false), "已完成")
+        XCTAssertEqual(commandRowSummary(done, english: true), "Completed")
+
+        let multiline = Item.Command(
+            key: "c6",
+            commandId: "id6",
+            name: "export",
+            outcomeKind: .success,
+            outcomeText: "line1\nline2"
+        )
+        XCTAssertTrue(commandRowIsExpandable(multiline))
+        XCTAssertEqual(commandRowSummary(multiline, english: false), "line1\nline2")
+    }
+
+    func testPermissionCommandAndCompactCheckpointFoldLikeDesktop() {
+        let permission = Item.Command(key: "p", commandId: "perm-1", name: "permission")
+        let compactRun = Item.Command(key: "cr", commandId: "cmd-c", name: "compact")
+        let compactDone = Item.Command(
+            key: "cd", commandId: "cmd-c", name: "compact", outcomeKind: .success
+        )
+        let checkpoint = Item.Compacted(
+            key: "cmp",
+            compactionId: "c1",
+            status: .ok,
+            sourceCommandId: "cmd-c",
+            hasCheckpoint: true
+        )
+        let exportRun = Item.Command(key: "ex", commandId: "exp-1", name: "export")
+
+        XCTAssertFalse(commandItemIsVisible(permission, compactCheckpointCommandIds: []))
+        XCTAssertTrue(commandItemIsVisible(compactRun, compactCheckpointCommandIds: []))
+        XCTAssertFalse(commandItemIsVisible(compactDone, compactCheckpointCommandIds: ["cmd-c"]))
+        XCTAssertTrue(compactionItemIsVisible(checkpoint))
+
+        let runningRows = foldChatItems(
+            [.command(compactRun), .command(permission), .command(exportRun)],
+            policy: presentationPolicyFor(.detailed),
+            sessionRunning: false
+        )
+        XCTAssertEqual(runningRows.compactMap { row -> String? in
+            if case .command(let item) = row { return item.commandId }
+            return nil
+        }, ["cmd-c", "exp-1"])
+
+        let landedRows = foldChatItems(
+            [.command(compactDone), .compacted(checkpoint)],
+            policy: presentationPolicyFor(.detailed),
+            sessionRunning: false
+        )
+        XCTAssertFalse(landedRows.contains { if case .command = $0 { return true }; return false })
+        XCTAssertTrue(landedRows.contains { if case .compacted = $0 { return true }; return false })
+    }
+
+    func testManualCompactEndWithoutCheckpointStaysOnCommandCard() {
+        let failedCompact = Item.Compacted(
+            key: "cmp",
+            compactionId: "c1",
+            status: .error,
+            sourceCommandId: "cmd-c"
+        )
+        let command = Item.Command(
+            key: "cd",
+            commandId: "cmd-c",
+            name: "compact",
+            outcomeKind: .error,
+            outcomeText: "no compactable history"
+        )
+        XCTAssertFalse(compactionItemIsVisible(failedCompact))
+        let rows = foldChatItems(
+            [.command(command), .compacted(failedCompact)],
+            policy: presentationPolicyFor(.detailed),
+            sessionRunning: false
+        )
+        guard case .command(let row) = try? XCTUnwrap(rows.first) else {
+            return XCTFail("expected GenericCommandCard for failed compact")
+        }
+        XCTAssertEqual(commandRowSummary(row, english: false), "no compactable history")
+        XCTAssertFalse(rows.contains { if case .compacted = $0 { return true }; return false })
+    }
+
+    func testTranscriptReducerFoldsCommandRunAndDone() throws {
+        let reducer = TranscriptReducer()
+        XCTAssertTrue(reducer.apply(try JSONValue.parse(#"{"type":"snapshot","cursor":0,"records":[],"projections":{}}"#)))
+        XCTAssertTrue(reducer.apply(try JSONValue.parse("""
+        {"type":"event","event":{"type":"command/run","seq":1,"time":10,"data":{
+          "commandId":"cmd-export","name":"export","args":" session"
+        }}}
+        """)))
+        let running = reducer.items().compactMap { item -> Item.Command? in
+            if case .command(let value) = item { return value }
+            return nil
+        }
+        XCTAssertEqual(running.count, 1)
+        XCTAssertEqual(running[0].name, "export")
+        XCTAssertEqual(running[0].args, " session")
+        XCTAssertNil(running[0].outcomeKind)
+        XCTAssertEqual(
+            commandRowSummary(try XCTUnwrap(running.first), english: false),
+            "执行中…"
+        )
+
+        XCTAssertTrue(reducer.apply(try JSONValue.parse("""
+        {"type":"event","event":{"type":"command/done","seq":2,"time":11,"data":{
+          "commandId":"cmd-export","kind":"success","text":"exported\\n2 files"
+        }}}
+        """)))
+        let done = try XCTUnwrap(reducer.items().compactMap { item -> Item.Command? in
+            if case .command(let value) = item { return value }
+            return nil
+        }.first)
+        XCTAssertEqual(done.outcomeKind, .success)
+        XCTAssertEqual(done.outcomeText, "exported\n2 files")
+        XCTAssertEqual(done.seq, 1)
+        XCTAssertTrue(commandRowIsExpandable(done))
+
+        let rows = foldChatItems(reducer.items(), policy: presentationPolicyFor(.detailed), sessionRunning: false)
+        guard case .command(let row) = try XCTUnwrap(rows.first) else {
+            return XCTFail("expected CommandNode row")
+        }
+        XCTAssertEqual(commandRowTitle(row, english: false), "export")
+    }
+
+    func testTranscriptReducerWindowCutDoneAndManualCompact() throws {
+        let reducer = TranscriptReducer()
+        XCTAssertTrue(reducer.apply(try JSONValue.parse(#"{"type":"snapshot","cursor":0,"records":[],"projections":{}}"#)))
+        XCTAssertTrue(reducer.apply(try JSONValue.parse("""
+        {"type":"event","event":{"type":"command/done","seq":4,"time":20,"data":{
+          "commandId":"only-done","kind":"error"
+        }}}
+        """)))
+        let cut = try XCTUnwrap(reducer.items().compactMap { item -> Item.Command? in
+            if case .command(let value) = item { return value }
+            return nil
+        }.first)
+        XCTAssertNil(cut.name)
+        XCTAssertEqual(cut.seq, 4)
+        XCTAssertEqual(commandRowTitle(cut, english: true), "Command")
+        XCTAssertEqual(commandRowSummary(cut, english: true), "Command failed")
+
+        XCTAssertTrue(reducer.apply(try JSONValue.parse("""
+        {"type":"event","event":{"type":"command/run","seq":5,"time":21,"data":{
+          "commandId":"cmd-compact","name":"compact"
+        }}}
+        """)))
+        XCTAssertTrue(reducer.apply(try JSONValue.parse("""
+        {"type":"event","event":{"type":"compaction/start","seq":6,"time":22,"data":{
+          "compactionId":"c9","sourceCommandId":"cmd-compact"
+        }}}
+        """)))
+        var rows = foldChatItems(reducer.items(), policy: presentationPolicyFor(.detailed), sessionRunning: false)
+        XCTAssertTrue(rows.contains { if case .command(let item) = $0 { return item.commandId == "cmd-compact" }; return false })
+        XCTAssertFalse(rows.contains { if case .compacted = $0 { return true }; return false })
+        XCTAssertEqual(
+            rows.compactMap { row -> String? in
+                if case .command(let item) = row, item.commandId == "cmd-compact" {
+                    return commandRowSummary(item, english: false)
+                }
+                return nil
+            }.first,
+            "正在压缩…"
+        )
+
+        XCTAssertTrue(reducer.apply(try JSONValue.parse("""
+        {"type":"event","event":{"type":"user/message","seq":7,"time":23,"surfaceOp":"replace","data":{
+          "source":{"kind":"compact-checkpoint","compactionId":"c9","sourceCommandId":"cmd-compact"},
+          "content":[{"type":"text","text":"<envelope>"}]
+        }}}
+        """)))
+        XCTAssertTrue(reducer.apply(try JSONValue.parse("""
+        {"type":"event","event":{"type":"command/done","seq":8,"time":24,"data":{
+          "commandId":"cmd-compact","kind":"success","text":"kept the goal"
+        }}}
+        """)))
+        rows = foldChatItems(reducer.items(), policy: presentationPolicyFor(.detailed), sessionRunning: false)
+        XCTAssertFalse(rows.contains { if case .command(let item) = $0 { return item.commandId == "cmd-compact" }; return false })
+        guard case .compacted(let marker) = rows.first(where: { if case .compacted = $0 { return true }; return false }) else {
+            return XCTFail("expected CompactionItem after checkpoint")
+        }
+        XCTAssertEqual(marker.commandOutcomeText, "kept the goal")
+        XCTAssertEqual(compactionRowTitle(sourceCommandId: marker.sourceCommandId, english: false), "compact")
+        XCTAssertEqual(compactionRowSummary(item: marker, english: false), "kept the goal")
+    }
 }

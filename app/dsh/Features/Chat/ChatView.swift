@@ -691,6 +691,8 @@ struct ChatRowView: View {
             TurnTriggerRow(item: item)
         case .compacted(let item):
             CompactionRow(item: item)
+        case .command(let item):
+            CommandRow(item: item)
         case .context(let item):
             ContextToolChangeRow(item: item)
         case .changes(let item):
@@ -809,6 +811,96 @@ private struct CompactionRow: View {
             chrome
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("\(title) \(summary)")
+        }
+    }
+}
+
+/// Desktop `ui-chat` `GenericCommandCard` / `CompactionCommandCard` running chrome.
+/// Compact success with a checkpoint is `CompactionItem`, not this row.
+private struct CommandRow: View {
+    let item: Item.Command
+    @State private var expanded = false
+
+    var body: some View {
+        let expandable = commandRowIsExpandable(item)
+        let open = expandable && expanded
+        let title = commandRowTitle(item, english: L.en)
+        let summary = commandRowSummary(item, english: L.en)
+        let running = commandRowIsRunning(item)
+        let error = commandRowIsError(item)
+        let summaryColor = error ? T.err : T.text3
+        VStack(alignment: .leading, spacing: 0) {
+            header(title: title, summary: summary, expandable: expandable, running: running, color: summaryColor)
+            if open, let text = item.outcomeText {
+                Text(text)
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundStyle(error ? T.err : T.ink)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, maxHeight: 260, alignment: .topLeading)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(T.codeBlock, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(T.border, lineWidth: 0.5)
+                    )
+                    .padding(.leading, 4)
+                    .padding(.vertical, 4)
+            }
+        }
+        .padding(.vertical, 2)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(commandRowStateLabel(item, english: L.en).map { "\($0) \(title)" } ?? title)
+        .accessibilityValue(summary)
+    }
+
+    @ViewBuilder
+    private func header(
+        title: String,
+        summary: String,
+        expandable: Bool,
+        running: Bool,
+        color: Color
+    ) -> some View {
+        let chrome = HStack(spacing: 0) {
+            Image(systemName: "curlybraces")
+                .font(.system(size: CGFloat(reasoningIconSizePoints)))
+                .foregroundStyle(T.text3)
+                .frame(
+                    width: CGFloat(reasoningLeadingBoxPoints),
+                    height: CGFloat(reasoningLeadingBoxPoints)
+                )
+                .padding(.trailing, CGFloat(reasoningRowGapPoints))
+                .accessibilityHidden(true)
+            Text(title)
+                .font(.system(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
+                .fontWeight(.regular)
+                .foregroundStyle(T.text3)
+                .fixedSize(horizontal: true, vertical: false)
+            Circle()
+                .fill(T.caption)
+                .frame(
+                    width: CGFloat(reasoningPreviewSeparatorSizePoints),
+                    height: CGFloat(reasoningPreviewSeparatorSizePoints)
+                )
+                .padding(.horizontal, CGFloat(reasoningPreviewSeparatorSpacingPoints))
+                .accessibilityHidden(true)
+            TextShimmer(active: running) {
+                Text(summary)
+                    .font(.system(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
+                    .foregroundStyle(color)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(minHeight: 24)
+        .contentShape(Rectangle())
+
+        if expandable {
+            Button { expanded.toggle() } label: { chrome }
+                .buttonStyle(.plain)
+        } else {
+            chrome
         }
     }
 }
@@ -1287,7 +1379,7 @@ struct MessageRow: View {
                     .disabled(!model.canShowFiles)
                 }
             }
-        case .context, .system, .compacted, .retry, .turnFailure, .changes:
+        case .context, .system, .compacted, .retry, .turnFailure, .changes, .command:
             EmptyView()
         }
     }

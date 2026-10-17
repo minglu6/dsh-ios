@@ -684,7 +684,7 @@ public func buildTrajectory(_ items: [Item], steps: [StepRecord] = []) -> [TrajT
         switch item {
         case .deliverable, .changes:
             break
-        case .retry, .turnFailure:
+        case .retry, .turnFailure, .command:
             break
         case .system(let sys):
             addPrefixOrRow(TrajRow(

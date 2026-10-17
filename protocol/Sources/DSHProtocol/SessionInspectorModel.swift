@@ -450,6 +450,7 @@ public func inspectorGroupRows(_ st: InspectorChatState, policy: PresentationPol
         case .turnTrigger(let item): members = [.context(item)]
         case .compacted(let item): members = [.compacted(item)]
         case .context(let item): members = [.context(item)]
+        case .command(let item): members = [.command(item)]
         }
         covered.formUnion(members.map(\.key))
         let position = members.first.flatMap { positions[$0.key] } ?? controlAnchors[row.key] ?? lastPosition
@@ -625,6 +626,19 @@ private func inspectorItemRow(_ item: Item) -> InspectorRow {
             "shadowedTokenCount": v.shadowedTokenCount.map { .number(Double($0)) },
             "sourceCommandId": v.sourceCommandId.map { .string($0) },
             "hasCheckpoint": .bool(v.hasCheckpoint),
+            "commandOutcomeText": v.commandOutcomeText.map { .string($0) },
+        ])
+    case .command(let v):
+        type = "Item.Command"
+        fields = jsonObject([
+            "commandId": .string(v.commandId),
+            "name": v.name.map { .string($0) },
+            "args": v.args.map { .string($0) },
+            "seq": v.seq.map { .number(Double($0)) },
+            "at": v.at.map { .number(Double($0)) },
+            "outcomeKind": v.outcomeKind.map { .string($0.rawValue) },
+            "outcomeText": v.outcomeText.map { .string($0) },
+            "sourceEventSeq": v.sourceEventSeq.map { .number(Double($0)) },
         ])
     case .deliverable(let v):
         type = "Item.Deliverable"
@@ -775,6 +789,7 @@ extension Item {
         case .text(let v): return v.seq
         case .reasoning(let v): return v.seq
         case .changes(let v): return v.seq
+        case .command(let v): return v.seq
         case .retry(let v): return v.attempts.first?.seq
         default: return nil
         }
