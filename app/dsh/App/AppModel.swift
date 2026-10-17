@@ -819,8 +819,13 @@ final class AppModel: ObservableObject {
         Task {
             guard let client else { return }
             do {
+                let sourceTitle = sessions.first { $0.sessionId == sessionId }?.title
                 let result = try await client.forkSession(sessionId: sessionId, atSeq: atSeq)
-                if let id = result["sessionId"].str() { openSession(id) }
+                guard let id = result["sessionId"].str() else { return }
+                if let childTitle = forkChildTitle(sourcePersistedTitle: sourceTitle) {
+                    try await client.renameSession(sessionId: id, title: childTitle)
+                }
+                openSession(id)
             } catch { emit(error.localizedDescription) }
         }
     }

@@ -48,6 +48,58 @@ public func messageBranchLabel(unavailable: Bool, english: Bool) -> String {
     return english ? "Branch into a new conversation" : "在新对话中分支"
 }
 
+/// Desktop `ISessions.fork({ increaseTitle: true })` (`dsh-client-runtime`
+/// `increasedForkTitle`). Both the session-row menu and `TurnTailNodeView`
+/// `forkAt` pass this flag. The Host fork request still has only `sessionId`
+/// and optional `atSeq`; the client renames the **child** from the source
+/// session's persisted list title. Missing title skips rename.
+public func forkChildTitle(sourcePersistedTitle: String?) -> String? {
+    guard let sourcePersistedTitle else { return nil }
+    return increasedForkTitle(sourcePersistedTitle)
+}
+
+/// Increment a trailing fork number while preserving half-width or full-width
+/// parentheses; an unnumbered title starts with ` (1)`.
+/// Desktop: `/^(.*?)\((\d+)\)$/u` then `/^(.*?)（(\d+)）$/u`, else `` `${title} (1)` ``.
+public func increasedForkTitle(_ title: String) -> String {
+    if let next = incrementTrailingParentheticalCount(title, open: "(", close: ")") {
+        return next
+    }
+    if let next = incrementTrailingParentheticalCount(title, open: "（", close: "）") {
+        return next
+    }
+    return "\(title) (1)"
+}
+
+private func incrementTrailingParentheticalCount(_ title: String, open: Character, close: Character) -> String? {
+    guard title.last == close else { return nil }
+    let body = title.dropLast()
+    guard let openIndex = body.lastIndex(of: open) else { return nil }
+    let digits = body[body.index(after: openIndex)...]
+    guard !digits.isEmpty, digits.allSatisfy({ $0 >= "0" && $0 <= "9" }) else { return nil }
+    let prefix = String(body[..<openIndex])
+    return "\(prefix)\(open)\(incrementDecimalDigits(String(digits)))\(close)"
+}
+
+/// Desktop `BigInt(digits) + 1n` stringified — leading zeros do not survive.
+private func incrementDecimalDigits(_ digits: String) -> String {
+    let significant = digits.drop(while: { $0 == "0" })
+    var chars = Array(significant.isEmpty ? "0" : String(significant))
+    var index = chars.count - 1
+    var carry = 1
+    while index >= 0 && carry > 0 {
+        guard let current = chars[index].wholeNumberValue, current <= 9 else {
+            fatalError("increasedForkTitle: non-decimal digit")
+        }
+        let sum = current + carry
+        chars[index] = Character(String(sum % 10))
+        carry = sum / 10
+        index -= 1
+    }
+    if carry > 0 { return "1" + String(chars) }
+    return String(chars)
+}
+
 /// Desktop right-hand Start / Guide body: workspace files + new terminal only.
 public enum StartPanelEntry: String, Equatable, Hashable, Sendable {
     case workspaceFiles

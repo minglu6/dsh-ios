@@ -35,6 +35,24 @@ final class DesktopUiParityTests: XCTestCase {
         )
     }
 
+    func testIncreasedForkTitleMatchesDesktopRuntime() {
+        XCTAssertNil(forkChildTitle(sourcePersistedTitle: nil))
+        XCTAssertEqual(forkChildTitle(sourcePersistedTitle: ""), " (1)")
+        XCTAssertEqual(increasedForkTitle("设计稿"), "设计稿 (1)")
+        XCTAssertEqual(increasedForkTitle("设计稿 (1)"), "设计稿 (2)")
+        XCTAssertEqual(increasedForkTitle("设计稿 (9)"), "设计稿 (10)")
+        XCTAssertEqual(increasedForkTitle("设计稿（1）"), "设计稿（2）")
+        XCTAssertEqual(increasedForkTitle("设计稿（9）"), "设计稿（10）")
+        XCTAssertEqual(increasedForkTitle("Foo(1)"), "Foo(2)")
+        XCTAssertEqual(increasedForkTitle("(1)"), "(2)")
+        XCTAssertEqual(increasedForkTitle("任务（1）备份"), "任务（1）备份 (1)")
+        XCTAssertEqual(increasedForkTitle("Foo (1) extra"), "Foo (1) extra (1)")
+        XCTAssertEqual(increasedForkTitle("009"), "009 (1)")
+        XCTAssertEqual(increasedForkTitle("(009)"), "(10)")
+        XCTAssertEqual(increasedForkTitle("（009）"), "（10）")
+        XCTAssertEqual(increasedForkTitle("a(1)(2)"), "a(1)(3)")
+    }
+
     func testStartPanelMirrorsDesktopTwoColoredEntries() {
         XCTAssertEqual(
             StartPanelPolicy.entries(files: true, terminal: true),

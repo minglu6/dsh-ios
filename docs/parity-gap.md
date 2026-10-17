@@ -61,7 +61,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R32 | 语言跟 Host `locale.preference`：`L.en` 写回 AppPrefs；离线不可改 | done (#47) |
 | R33 | audit-only：Android `c5f8cdd` 无新 commit；`next` 当时 `0.2.1-rc.1` 无 API 增量 | done (NO_PR) |
 | R34 | 落地页首条发送立刻 pending echo（Android `FirstPrompt` / 桌面 `echo`） | done (#48) |
-| R35 | 助手消息行动作行补 branch（桌面 `MessageIconActions.onBranch` / Android `messageBranch`） | this PR |
+| R35 | 助手消息行动作行补 branch（桌面 `MessageIconActions.onBranch` / Android `messageBranch`） | done (#49) |
+| R36 | fork 子会话 `increaseTitle`（桌面 `increasedForkTitle`） | this PR |
 
 ---
 
@@ -798,4 +799,36 @@ Android `4052adb` / `50257c1` / `825b235`：落地页首条发送立刻画出 pe
 - Android `CompatibilityBanner`：不发明连接页横幅。
 - Android `prepareSidebarSession`：桌面 landing 已有 blank session；iOS landing 用无会话 hero 替代（R19）。不发明空白会话。
 - 审批通知开关：Android 本机偏好，桌面 Settings 无此行。
+
+## Round 36 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*` alpha=`0.2.1-alpha.5` / next=`0.2.1-rc.2`；Android `c5f8cdd`）
+
+直播核对（2026-10-17）：`alpha` 仍 `0.2.1-alpha.5`。`next` 仍 `0.2.1-rc.2`。21+ 包 pack 对比 locale / 组件相对 alpha.5 **无增量**（仅 `package.json`；`ui-sidebar` `localBuildVersion` `0.2.1-alpha.5-…` → `0.2.1-rc.2-332895e`）。Android `main` tip 仍 `c5f8cdd`，`compare/c5f8cdd...main` `ahead_by: 0`。
+
+#49 后怀疑式重审 MessageIconActions / TurnTail / FirstPrompt / composer / 会话行 / Connections：
+
+| 项 | 判定 | 证据 |
+| --- | --- | --- |
+| MessageIconActions 顺序 | **PASS** | 桌面 `ui-chat` `MessageIconActions`：copy → extraActions（赞/踩/分享）→ branch → usage+clock。iOS `MessageActions` 同序。用户行只 copy+start clock，无 `onBranch`（`UserMessageNodeView`） |
+| TurnTail branch 接线 | **PASS** | `sessions.fork` 才画；`forkAt(data.seq)` = `turn/end` seq = iOS `endSeq`。无 `endSeq` 灰显 `message.branchUnavailable` |
+| FirstPrompt echo | **PASS** | #48：pending `local-{requestId}`、`queue.sending`、send/plus/perm/model/Start 锁 |
+| Composer / 会话行 / Connections | **PASS** | 无新「桌面有、iOS 缺」的可搬语义。连接入口仍在抽屉脚 |
+| fork 子会话标题 | **GAP** | 桌面 `ISessions.fork({ increaseTitle: true })`（`dsh-client-runtime` `increasedForkTitle` / `SessionRuntime.fork`；`TurnTailNodeView` `forkAt` 与 `ui-workspace` `forkSession` 都传）。Host 请求只有 `sessionId`/`atSeq`。源列表有持久化 title 时把**子会话**改成 `Title (1)` / 递增 `(N)` 或 `（N）`。iOS 修前只 `sessions.fork` 后打开。Android `Pocket.forkSessionFrom` 同样没有，桌面赢 |
+
+| 模块 | iOS | 对照的源码 | 对齐点 |
+| --- | --- | --- | --- |
+| fork 子会话标题 | `forkChildTitle` + `forkSession` 先 rename 再打开 | `dsh-client-runtime` `increasedForkTitle` / `SessionRuntime.fork`；`ui-chat` `forkAt` `increaseTitle: true` | 无持久化 title 跳过改名；`(N)` / `（N）` 递增保留括号样式；其它追加 ` (1)`；改名失败不打开（子会话已在列表） |
+
+本轮核对后**不改**（平台 / hide / 禁止发明）
+
+- `chat.turnNavigation.*`：桌面长 transcript 右侧跳轮；phone 无窄屏切片，不发明。
+- `chat.toBottom` FAB：phone 仍自动贴底。
+- `AskQuestionRow` `ask.review`：phone 不发明 review 面板。
+- 桌面 `DisclosureRow` hover 才把图标换成 chevron：触屏无 hover。
+- Account / shortcuts / open config / open-in-desktop-editor / 快捷键设置页：仍 **hide**。
+- Settings 下挂连接：必须留在抽屉脚。桌面 `ui-settings` 没有 controller 连接节。
+- Android `CompatibilityBanner`：不发明连接页横幅。
+- Android `prepareSidebarSession`：不发明空白会话。
+- 审批通知开关：Android 本机偏好，桌面 Settings 无此行。
+- 会话行 pin：桌面行内 pin 标；iOS 置顶分区（窄屏布局）。菜单已有置顶。
+- 桌面 `data-actions-reveal: hover`：触屏无 hover，助手行动作常显。
 
