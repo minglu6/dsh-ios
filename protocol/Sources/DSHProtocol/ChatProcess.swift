@@ -430,7 +430,8 @@ public func foldChatItems(
 ) -> [ChatRow] {
     let facts = Dictionary(uniqueKeysWithValues: turnRecords.map { ($0.turn, $0) })
     let compactCheckpointIds = compactCheckpointCommandIds(in: items)
-    let visible = items.filter { !isHidden($0, compactCheckpointCommandIds: compactCheckpointIds) }
+    let labeled = applyingUserReferenceLabels(items)
+    let visible = labeled.filter { !isHidden($0, compactCheckpointCommandIds: compactCheckpointIds) }
     let positions = Dictionary(uniqueKeysWithValues: visible.enumerated().map { ($0.element.key, $0.offset) })
     var byTurn: [Int: [Item]] = [:]
     for item in visible {

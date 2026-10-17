@@ -1330,6 +1330,16 @@ struct MessageRow: View {
                             .background(T.bubble, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
                 }
+                if let summary = referenceSummaryText(labels: user.referenceLabels, english: L.en) {
+                    HStack {
+                        Spacer(minLength: 48)
+                        Text(summary)
+                            .font(.system(size: 13))
+                            .foregroundStyle(T.text3)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    .padding(.top, 8)
+                }
                 MessageActions(
                     text: user.text,
                     timeMs: user.at,

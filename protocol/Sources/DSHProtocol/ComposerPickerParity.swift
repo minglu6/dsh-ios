@@ -895,6 +895,65 @@ public func contextInjectionTitle(english: Bool) -> String {
     english ? "Context injection" : "上下文注入"
 }
 
+/// Desktop `dsh-llm` `SessionReferenceSource` / ui-chat `sessionRecallLabels`.
+/// Ordinary recall Context stays hidden (`isVisibleChatNode`); labels land on the user bubble.
+public func sessionRecallLabels(source: JSONValue) -> [String] {
+    guard source["kind"].str() == "session-reference" else { return [] }
+    var seen: [String] = []
+    for entry in source["references"].arr() ?? [] {
+        guard let label = entry["label"].str()?.trimmingCharacters(in: .whitespacesAndNewlines), !label.isEmpty else {
+            continue
+        }
+        if !seen.contains(label) { seen.append(label) }
+    }
+    return seen
+}
+
+/// Desktop `ReferenceLabelProjector`: recall context at `seq` labels the user at `seq - 1`.
+public func applyingUserReferenceLabels(_ items: [Item]) -> [Item] {
+    var labelsByUserSeq: [Int64: [String]] = [:]
+    for item in items {
+        guard case .context(let ctx) = item, let seq = ctx.seq else { continue }
+        let labels = ctx.recallLabels
+        if labels.isEmpty { continue }
+        labelsByUserSeq[seq - 1] = labels
+    }
+    return items.map { item in
+        guard case .user(var user) = item, let seq = user.seq, let labels = labelsByUserSeq[seq], !labels.isEmpty else {
+            return item
+        }
+        user.referenceLabels = labels
+        return .user(user)
+    }
+}
+
+/// Desktop `message.referenceSummary` + `message.referenceSeparator`.
+public func referenceSummaryText(labels: [String], english: Bool) -> String? {
+    guard !labels.isEmpty else { return nil }
+    let joined = labels.joined(separator: english ? ", " : "、")
+    return english ? "Referenced session · \(joined)" : "引用会话 · \(joined)"
+}
+
+/// Desktop `ui-chat` `fileOpen.title`. English apostrophe is U+2019.
+public func fileOpenTitle(english: Bool) -> String {
+    english ? "Couldn\u{2019}t open file" : "无法打开文件"
+}
+
+/// Desktop `ui-chat` `fileOpen.unknown`.
+public func fileOpenUnknown(english: Bool) -> String {
+    english ? "Couldn\u{2019}t open this file" : "无法打开此文件"
+}
+
+/// Desktop `sidebarPdf` `failed`.
+public func pdfFailedMessage(_ message: String, english: Bool) -> String {
+    english ? "Cannot display PDF: \(message)" : "无法显示 PDF：\(message)"
+}
+
+/// PDFKit `PDFDocument` is nil with no engine `Error`; interpolate `fileOpen.title`.
+public func pdfDocumentOpenFailed(english: Bool) -> String {
+    pdfFailedMessage(fileOpenTitle(english: english), english: english)
+}
+
 public func contextRowTitle(item: Item.Context, english: Bool) -> String {
     if contextToolChangeIsExclusive(item) {
         return contextToolChangeTitle(item: item, english: english)

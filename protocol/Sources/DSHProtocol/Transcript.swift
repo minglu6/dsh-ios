@@ -217,6 +217,8 @@ public enum Item: Sendable, Equatable, Identifiable {
         public var requestId: String?
         public var messageId: String?
         public var messageSourceJson: String?
+        /// Desktop `ReferenceLabelProjector`: labels from the following `session-reference` context.
+        public var referenceLabels: [String]
 
         public init(
             key: String,
@@ -228,7 +230,8 @@ public enum Item: Sendable, Equatable, Identifiable {
             imageRefs: [ImageRef] = [],
             requestId: String? = nil,
             messageId: String? = nil,
-            messageSourceJson: String? = nil
+            messageSourceJson: String? = nil,
+            referenceLabels: [String] = []
         ) {
             self.key = key
             self.text = text
@@ -240,6 +243,7 @@ public enum Item: Sendable, Equatable, Identifiable {
             self.requestId = requestId
             self.messageId = messageId
             self.messageSourceJson = messageSourceJson
+            self.referenceLabels = referenceLabels
         }
     }
 
@@ -374,10 +378,14 @@ public enum Item: Sendable, Equatable, Identifiable {
         public var messageId: String?
         /// Desktop `waking`: claimed from `inbox-next-turn`, or idle steer.
         public var waking: Bool
+        /// Event seq; desktop `followingRecall` associates `seq - 1` with the preceding user.
+        public var seq: Int64?
         /// Desktop `ContentBlock` `tool-addition` names (`isVisibleChatNode`).
         public var toolAdditions: [String]
         /// Desktop `ContentBlock` `tool-removal` names.
         public var toolRemovals: [String]
+        /// Desktop `sessionRecallLabels` from `source.kind === "session-reference"`.
+        public var recallLabels: [String]
 
         public init(
             key: String,
@@ -387,8 +395,10 @@ public enum Item: Sendable, Equatable, Identifiable {
             messageSourceJson: String? = nil,
             messageId: String? = nil,
             waking: Bool = false,
+            seq: Int64? = nil,
             toolAdditions: [String] = [],
-            toolRemovals: [String] = []
+            toolRemovals: [String] = [],
+            recallLabels: [String] = []
         ) {
             self.key = key
             self.text = text
@@ -397,8 +407,10 @@ public enum Item: Sendable, Equatable, Identifiable {
             self.messageSourceJson = messageSourceJson
             self.messageId = messageId
             self.waking = waking
+            self.seq = seq
             self.toolAdditions = toolAdditions
             self.toolRemovals = toolRemovals
+            self.recallLabels = recallLabels
         }
     }
 
@@ -1333,10 +1345,10 @@ public final class TranscriptReducer {
             if isTyped(msg) {
                 upsertUser(msg, key: "u\(seq)", pending: false, at: e["time"].long(), seq: seq)
             } else {
-                upsertContext(msg, key: "x\(seq)", at: e["time"].long())
+                upsertContext(msg, key: "x\(seq)", at: e["time"].long(), seq: seq)
             }
         case "developer/message":
-            upsertContext(data["message"].isNull ? data : data["message"], key: "d\(seq)", at: e["time"].long())
+            upsertContext(data["message"].isNull ? data : data["message"], key: "d\(seq)", at: e["time"].long(), seq: seq)
         case "assistant/message":
             steps += 1
             let matching = matchingAttempt(e)
@@ -1680,10 +1692,12 @@ public final class TranscriptReducer {
         )))
     }
 
-    private func upsertContext(_ msg: JSONValue, key: String, at: Int64?) {
+    private func upsertContext(_ msg: JSONValue, key: String, at: Int64?, seq: Int64?) {
         let parsed = contextContentBlocks(msg["content"].arr() ?? [])
+        let recallLabels = sessionRecallLabels(source: msg["source"])
         if parsed.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && parsed.added.isEmpty && parsed.removed.isEmpty {
+            && parsed.added.isEmpty && parsed.removed.isEmpty
+            && recallLabels.isEmpty {
             return
         }
         let messageId = msg["id"].str()?.nilIfBlank
@@ -1702,8 +1716,10 @@ public final class TranscriptReducer {
                 step: wakingTriggerStep(openStep: openStep, openTurn: openTurn),
                 turnStartSeq: openTurn.flatMap { turnFacts[$0]?.startSeq }
             ),
+            seq: seq,
             toolAdditions: parsed.added,
-            toolRemovals: parsed.removed
+            toolRemovals: parsed.removed,
+            recallLabels: recallLabels
         )))
     }
 

@@ -1178,4 +1178,149 @@ final class ComposerPickerParityTests: XCTestCase {
         XCTAssertEqual(compactionRowTitle(sourceCommandId: marker.sourceCommandId, english: false), "compact")
         XCTAssertEqual(compactionRowSummary(item: marker, english: false), "kept the goal")
     }
+
+    func testFileOpenAndPdfFailedMatchDesktopLocales() {
+        XCTAssertEqual(fileOpenTitle(english: false), "无法打开文件")
+        XCTAssertEqual(fileOpenTitle(english: true), "Couldn\u{2019}t open file")
+        XCTAssertEqual(fileOpenUnknown(english: false), "无法打开此文件")
+        XCTAssertEqual(fileOpenUnknown(english: true), "Couldn\u{2019}t open this file")
+        XCTAssertTrue(fileOpenTitle(english: true).contains("\u{2019}"))
+        XCTAssertFalse(fileOpenTitle(english: true).contains("Could not open"))
+        XCTAssertEqual(pdfFailedMessage("broken", english: true), "Cannot display PDF: broken")
+        XCTAssertEqual(pdfFailedMessage("无法打开文件", english: false), "无法显示 PDF：无法打开文件")
+        XCTAssertEqual(
+            pdfDocumentOpenFailed(english: true),
+            "Cannot display PDF: Couldn\u{2019}t open file"
+        )
+        XCTAssertEqual(pdfDocumentOpenFailed(english: false), "无法显示 PDF：无法打开文件")
+    }
+
+    func testSessionRecallLabelsProjectOntoUserAndStayHiddenAsContextRow() throws {
+        XCTAssertEqual(
+            sessionRecallLabels(source: try JSONValue.parse(#"""
+            {"kind":"session-reference","form":"recall","references":[
+              {"label":"Design notes","retainedMessages":3,"omittedMessages":1,"truncated":false},
+              {"label":"Design notes","retainedMessages":1,"omittedMessages":0,"truncated":false},
+              {"label":"Bug triage","retainedMessages":2,"omittedMessages":0,"truncated":true}
+            ]}
+            """#)),
+            ["Design notes", "Bug triage"]
+        )
+        XCTAssertEqual(
+            sessionRecallLabels(source: try JSONValue.parse(#"{"kind":"agent-instructions","changes":[]}"#)),
+            []
+        )
+        XCTAssertEqual(
+            referenceSummaryText(labels: ["Design notes", "Bug triage"], english: false),
+            "引用会话 · Design notes、Bug triage"
+        )
+        XCTAssertEqual(
+            referenceSummaryText(labels: ["Design notes", "Bug triage"], english: true),
+            "Referenced session · Design notes, Bug triage"
+        )
+        XCTAssertNil(referenceSummaryText(labels: [], english: true))
+
+        let user = Item.User(key: "u4", text: "look at that session", seq: 4)
+        let recall = Item.Context(
+            key: "x5",
+            text: "recalled turns",
+            sourceKind: "session-reference",
+            seq: 5,
+            recallLabels: ["Design notes", "Bug triage"]
+        )
+        let instructions = Item.Context(
+            key: "x6",
+            text: "<system-reminder>",
+            sourceKind: "agent-instructions"
+        )
+        XCTAssertFalse(contextItemIsVisible(recall))
+        XCTAssertFalse(contextItemIsVisible(instructions))
+        let labeled = applyingUserReferenceLabels([.user(user), .context(recall), .context(instructions)])
+        guard case .user(let projected) = labeled[0] else {
+            return XCTFail("expected labeled user")
+        }
+        XCTAssertEqual(projected.referenceLabels, ["Design notes", "Bug triage"])
+        let rows = foldChatItems(labeled, policy: presentationPolicyFor(.detailed), sessionRunning: false)
+        XCTAssertEqual(rows.count, 1)
+        guard case .user(let row) = rows[0] else {
+            return XCTFail("expected user row only")
+        }
+        XCTAssertEqual(row.referenceLabels, ["Design notes", "Bug triage"])
+        XCTAssertEqual(referenceSummaryText(labels: row.referenceLabels, english: false), "引用会话 · Design notes、Bug triage")
+        XCTAssertFalse(rows.contains { if case .context = $0 { return true }; return false })
+    }
+
+    func testTranscriptReducerKeepsSessionReferenceForUserLabels() throws {
+        let reducer = TranscriptReducer()
+        XCTAssertTrue(reducer.apply(try JSONValue.parse(#"{"type":"snapshot","cursor":0,"records":[],"projections":{}}"#)))
+        XCTAssertTrue(reducer.apply(try JSONValue.parse("""
+        {"type":"event","event":{"type":"user/message","seq":10,"time":30,"data":{"message":{
+          "id":"u-ref",
+          "content":[{"type":"text","text":"use that chat"}],
+          "source":{"kind":"user"}
+        }}}}
+        """)))
+        XCTAssertTrue(reducer.apply(try JSONValue.parse("""
+        {"type":"event","event":{"type":"user/message","seq":11,"time":31,"data":{"message":{
+          "id":"recall-1",
+          "content":[{"type":"text","text":"prior turns"}],
+          "source":{"kind":"session-reference","form":"recall","references":[
+            {"sessionId":"s-a","label":"Alpha","retainedMessages":2,"omittedMessages":0,"truncated":false}
+          ]}
+        }}}}
+        """)))
+        XCTAssertTrue(reducer.apply(try JSONValue.parse("""
+        {"type":"event","event":{"type":"user/message","seq":12,"time":32,"data":{"message":{
+          "id":"instr-1",
+          "content":[{"type":"text","text":"<system-reminder>loaded AGENTS.md"}],
+          "source":{"kind":"agent-instructions","form":"instructions","changes":[
+            {"action":"set","path":"AGENTS.md"}
+          ]}
+        }}}}
+        """)))
+        let contexts = reducer.items().compactMap { item -> Item.Context? in
+            if case .context(let value) = item { return value }
+            return nil
+        }
+        XCTAssertEqual(contexts.map(\.sourceKind), ["session-reference", "agent-instructions"])
+        XCTAssertEqual(contexts[0].recallLabels, ["Alpha"])
+        XCTAssertEqual(contexts[0].seq, 11)
+        let rows = foldChatItems(reducer.items(), policy: presentationPolicyFor(.detailed), sessionRunning: false)
+        XCTAssertEqual(rows.count, 1)
+        guard case .user(let user) = rows[0] else {
+            return XCTFail("ordinary recall/instructions Context stays hidden")
+        }
+        XCTAssertEqual(user.referenceLabels, ["Alpha"])
+        XCTAssertEqual(referenceSummaryText(labels: user.referenceLabels, english: true), "Referenced session · Alpha")
+
+        XCTAssertTrue(reducer.apply(try JSONValue.parse("""
+        {"type":"event","event":{"type":"user/message","seq":20,"time":40,"data":{"message":{
+          "id":"u-empty-recall",
+          "content":[{"type":"text","text":"second mention"}],
+          "source":{"kind":"user"}
+        }}}}
+        """)))
+        XCTAssertTrue(reducer.apply(try JSONValue.parse("""
+        {"type":"event","event":{"type":"user/message","seq":21,"time":41,"data":{"message":{
+          "id":"recall-empty",
+          "content":[],
+          "source":{"kind":"session-reference","form":"recall","references":[
+            {"sessionId":"s-b","label":"Gamma","retainedMessages":1,"omittedMessages":0,"truncated":false}
+          ]}
+        }}}}
+        """)))
+        let emptyRecall = reducer.items().compactMap { item -> Item.Context? in
+            if case .context(let value) = item, value.seq == 21 { return value }
+            return nil
+        }
+        XCTAssertEqual(emptyRecall.count, 1)
+        XCTAssertEqual(emptyRecall[0].recallLabels, ["Gamma"])
+        XCTAssertTrue(emptyRecall[0].text.isEmpty)
+        let second = foldChatItems(reducer.items(), policy: presentationPolicyFor(.detailed), sessionRunning: false)
+        XCTAssertEqual(second.count, 2)
+        guard case .user(let later) = second[1] else {
+            return XCTFail("expected second user")
+        }
+        XCTAssertEqual(later.referenceLabels, ["Gamma"])
+    }
 }
