@@ -1490,6 +1490,7 @@ final class AppModel: ObservableObject {
 
     func setLanguage(_ value: AppLanguage) {
         language = value
+        AppPrefs.language = value
         TrajL.en = value == .en
         hostSettings.write(.language, value: .string(value == .en ? "en" : "zh"))
     }
@@ -1499,11 +1500,14 @@ final class AppModel: ObservableObject {
             busySend = parsed
         }
         collapseTiming = collapseTimingFromHost(hostSettings.value(.collapse)?.str())
-        if let hosted = hostSettings.value(.language)?.str() {
-            language = hosted.hasPrefix("zh") ? .zh : .en
-        } else if !hostSettings.ready {
-            language = Locale.current.language.languageCode?.identifier.hasPrefix("zh") == true ? .zh : .en
+        if let zh = controllerLanguageIsZh(
+            hostedPreference: hostSettings.value(.language)?.str(),
+            hostReady: hostSettings.ready,
+            systemIsZh: Locale.current.language.languageCode?.identifier.hasPrefix("zh") == true
+        ) {
+            language = zh ? .zh : .en
         }
+        AppPrefs.language = language
         TrajL.en = language == .en
     }
 

@@ -519,6 +519,15 @@ final class DesktopUiParityTests: XCTestCase {
             phoneLocalThemeFields,
             Set(["preference", "fontSize", "codeFontSize", "terminalFontSize", "textFontFamily", "codeFontFamily", "terminalFontFamily"])
         )
+        XCTAssertTrue(controllerLanguageFollowsHost)
+        XCTAssertTrue(languagePickerRequiresHostWritable)
+        XCTAssertEqual(hostLanguageNamespace, "locale")
+        XCTAssertEqual(hostLanguageField, "preference")
+        XCTAssertEqual(controllerLanguageIsZh(hostedPreference: "zh-CN", hostReady: true, systemIsZh: false), true)
+        XCTAssertEqual(controllerLanguageIsZh(hostedPreference: "en", hostReady: true, systemIsZh: true), false)
+        XCTAssertEqual(controllerLanguageIsZh(hostedPreference: nil, hostReady: false, systemIsZh: true), true)
+        XCTAssertEqual(controllerLanguageIsZh(hostedPreference: nil, hostReady: false, systemIsZh: false), false)
+        XCTAssertNil(controllerLanguageIsZh(hostedPreference: nil, hostReady: true, systemIsZh: false))
     }
 
     /// Round 5 real device: `workspace/changes` seq 29, turn 1 closed, codeWork on,
