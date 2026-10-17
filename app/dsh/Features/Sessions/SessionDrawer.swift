@@ -541,6 +541,7 @@ struct SessionDrawer: View {
                 }
                 .disabled(!model.isOnline)
                 .accessibilityLabel(model.pinnedIds.contains(session.sessionId) ? L.unpinSession() : L.pinSession())
+                .accessibilityIdentifier("sessionRowPin")
             }
             if visibleOps.contains("workspace.archiveSession") {
                 Button {
@@ -552,6 +553,7 @@ struct SessionDrawer: View {
                 }
                 .disabled(!model.isOnline)
                 .accessibilityLabel(archived ? L.unarchiveSession() : L.archiveSession())
+                .accessibilityIdentifier("sessionRowArchive")
             }
             Menu {
                 if visibleOps.contains("sessions.rename") {
@@ -574,7 +576,9 @@ struct SessionDrawer: View {
                     .frame(width: 28, height: 28)
             }
             .accessibilityLabel(L.moreActions())
+            .accessibilityIdentifier("sessionRowMore")
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("sessionRowActions")
     }
 
