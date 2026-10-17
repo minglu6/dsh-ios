@@ -73,7 +73,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R44 | audit-only：#53 CI 截图视觉对照；mandated 项对齐 | done (NO_PR) |
 | R45 | 视图选项 iPhone compact popover + 每行官方 leading 图标 | done (#54) |
 | R46 | 空会话 HeroShell 整列居中 gap 12（#54 CI `*-landing.png` 标题与工作区之间仍是夹心空隙） | done (#55) |
-| R47 | 抽屉脚设置齿轮改用官方 `IconSettingsOutlineMedium` | this PR |
+| R47 | 抽屉脚设置齿轮改用官方 `IconSettingsOutlineMedium` | done (#56) |
+| R48 | 抽屉新会话改用官方 `IconNewChatOutlineRegular` | this PR |
 
 ---
 
@@ -1033,4 +1034,33 @@ Android `c5f8cdd...56dcaa9` 一笔：`feat(android): 补齐用户选择卡片与
 - Android Settings「移动端 → 连接」不搬。
 - permission / schedule / terminal / inspector CI 截图的系统蓝「取消」/ `transport:` 失败：fixture 无真 Host，不是 composer chip 缺口。
 - 轨迹未知 cell 仍映射 SF `gearshape`（`TrajectoryView` fallback）：不是 Settings 触发器，本轮不扩。
+
+## Round 48 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*` alpha=`0.2.1-alpha.5` / next=`0.2.1-rc.2`；Android `ce7d345`）
+
+直播核对（2026-10-17）：iOS `main` tip `1272c1a`（#56 squash）。CI run 39074757275：`protocol` / `screenshots` / `ios` 全绿。`npm view`：`alpha` 仍 `0.2.1-alpha.5`，`next` 仍 `0.2.1-rc.2`。pack 对比 primitives / workspace / sidebar / chat / conversation / settings-general / model-selection：locale / `.tsx` / CSS / 组件 API **无增量**（仅 `package.json` 版本与依赖 tag；`ui-sidebar` `localBuildVersion` `0.2.1-alpha.5-aeba8e9` → `0.2.1-rc.2-332895e`；`ui-settings-general` `CurrentVersionRow` 版本字符串）。Android `main` `ce7d345`；`compare/ce7d345...main` `ahead_by: 0`。#67 仅 Host plugin `terminal.follow`→`retain`+`attach`，无新 iOS UI 可搬。
+
+#56 CI 截图怀疑式重审（`ios-simulator-screenshots`）：
+
+| 项 | 判定 | 证据 |
+| --- | --- | --- |
+| 抽屉脚设置齿轮 OfficialGlyph.settingsOutline | **PASS** | `light/dark-drawer.png`：6 齿描边齿轮，不是 SF `gearshape`。CI 断言 `official.settingsOutline`、禁止 `gearshape` |
+| 空会话 HeroShell 居中 gap 12 | **PASS** | `light/dark-landing.png`：标题 / 工作区 / composer 同一列，剩余视口在 stack 外侧 |
+| 视图选项 compact popover + 官方 leading | **PASS** | `light/dark-viewOptions.png`：sliders 锚定气泡。9 行 OfficialGlyph |
+| 有 reasoning 才画推理行；权限 chip 仅图标 | **PASS** | `light-models.png` 有「推理等级」；landing / chat composer 权限座只有盾标 |
+| 抽屉脚设置 + 连接同一行靠右 | **PASS** | `light/dark-drawer.png`：设置左、8pt 绿点右 |
+| 未读绿点 / 运行 spinner 仅会话行 | **PASS**（fixture 空闲，源码仍实现） | header 无 spinner；`sidebarSessionLeading` + `SidebarSessionLeadingView` |
+| 抽屉新会话图标 | **GAP → 本轮** | `light/dark-drawer.png` 顶栏与工作区行仍是 SF `square.and.pencil`。桌面 `ui-sidebar` header / 窄栏 `SidebarRoot` 与 `ui-workspace` 工作区行用 `IconNewChatOutlineRegular`（`NewChatOutlineArtwork` 气泡 + 加号，16×16，`ICON_REGULAR_STROKE` 1） |
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| 抽屉新会话 | `OfficialGlyph.newChat` + `sidebarNewChatBubblePath` / plus 路径 | `ui-primitives` `NewChatOutlineArtwork` / `IconNewChatOutlineRegular`；`ui-sidebar` header Regular 16；`ui-workspace` 工作区行 Regular | 删掉 SF `square.and.pencil`；16×16 viewBox；Regular 线宽 1；SVG 默认 butt + miterLimit 10。CI drawer 断言 `official.newChat`、禁止 `square.and.pencil` |
+
+本轮核对后**不改**（平台 / hide / 禁止发明）
+
+- `chat.turnNavigation.*` / `chat.toBottom` / `ask.review` / hover chevron：仍 skip。
+- Account / shortcuts / open config / CompatibilityBanner / 审批通知 / FishLogo：仍 **hide** / 不发明。
+- Android Settings「移动端 → 连接」不搬。
+- 轨迹未知 cell 仍映射 SF `gearshape`（`TrajectoryView` fallback）：不是 Settings 触发器。
+- permission / schedule / terminal / inspector CI 截图的系统蓝「取消」/ `transport:` 失败：fixture 无真 Host。
+- 抽屉搜索仍 SF `magnifyingglass`：桌面有 `IconSearchOutlineRegular`，本轮只修截图打脸的新会话铅笔。
 
