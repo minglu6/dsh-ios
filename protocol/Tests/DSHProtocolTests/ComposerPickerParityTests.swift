@@ -32,6 +32,15 @@ final class ComposerPickerParityTests: XCTestCase {
         )
         XCTAssertTrue(sidebarSettingsOutlineRingPath.hasPrefix("M13.0107 7.79377"))
         XCTAssertTrue(sidebarSettingsOutlineRingPath.hasSuffix("L13.0107 7.79377Z"))
+        XCTAssertTrue(sidebarNewChatUsesOfficialGlyph)
+        XCTAssertEqual(sidebarNewChatSymbol(), "official.newChat")
+        XCTAssertEqual(sidebarNewChatIconSizePoints, 16)
+        XCTAssertEqual(sidebarNewChatIconStrokeWidth, 1)
+        XCTAssertTrue(isForbiddenSystemNewChatSymbol("square.and.pencil"))
+        XCTAssertFalse(isForbiddenSystemNewChatSymbol("official.newChat"))
+        XCTAssertTrue(sidebarNewChatBubblePath.hasPrefix("M2.37091 11.2501"))
+        XCTAssertEqual(sidebarNewChatPlusVerticalPath, "M8 5V11")
+        XCTAssertEqual(sidebarNewChatPlusHorizontalPath, "M5 8H11")
     }
 
     func testLandingWorkspaceChipMatchesDesktopHeroChip() {

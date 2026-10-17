@@ -211,8 +211,10 @@ struct WorkspaceGroupHeader: View {
                     Button {
                         model.createAndOpenSession(workspaceId: workspace.workspaceId)
                     } label: {
-                        Image(systemName: "square.and.pencil").font(.system(size: 16)).foregroundStyle(
-                            model.isOnline && model.ops.contains("sessions.create") ? T.text2 : T.caption
+                        OfficialGlyph(
+                            kind: .newChat,
+                            size: CGFloat(sidebarNewChatIconSizePoints),
+                            color: model.isOnline && model.ops.contains("sessions.create") ? T.text2 : T.caption
                         )
                         .frame(width: 48, height: 48)
                     }

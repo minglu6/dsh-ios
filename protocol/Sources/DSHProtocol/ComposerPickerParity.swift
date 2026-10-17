@@ -51,6 +51,28 @@ public func isForbiddenSystemSettingsSymbol(_ name: String) -> Bool {
     name == "gearshape" || name == "gearshape.fill"
 }
 
+/// Desktop `ui-sidebar` header / `SidebarRoot` (narrow) and `ui-workspace`
+/// workspace-row new-session use `IconNewChatOutlineRegular`, never SF
+/// `square.and.pencil`. Artwork is `ui-primitives` `NewChatOutlineArtwork`
+/// on a 16×16 view box; Regular stroke is `ICON_REGULAR_STROKE` 1.
+public let sidebarNewChatUsesOfficialGlyph = true
+public let sidebarNewChatIconSizePoints: Double = 16
+public let sidebarNewChatIconStrokeWidth: Double = 1
+
+public func sidebarNewChatSymbol() -> String { "official.newChat" }
+
+public func isForbiddenSystemNewChatSymbol(_ name: String) -> Bool {
+    name == "square.and.pencil"
+}
+
+/// Desktop `NewChatOutlineArtwork` bubble (`d` of the first `<path>`).
+public let sidebarNewChatBubblePath =
+    "M2.37091 11.2501C1.58745 9.89288 1.32067 8.29835 1.61969 6.76006C1.91872 5.22177 2.76342 3.8433 3.99826 2.87846C5.2331 1.91362 6.77494 1.42737 8.33988 1.50925C9.90482 1.59113 11.3875 2.23562 12.5149 3.32406C13.6425 4.41269 14.3387 5.87206 14.4754 7.4334C14.612 8.99474 14.18 10.5529 13.2587 11.8209C12.3375 13.0888 10.9891 13.9813 9.46194 14.3337C8.18691 14.628 6.85895 14.5294 5.64989 14.0605C5.1712 13.8748 4.76962 13.4932 4.26534 13.3967C3.67413 13.2835 2.95257 13.5598 2.03794 14.3337"
+
+/// Desktop `NewChatOutlineArtwork` plus stem / bar.
+public let sidebarNewChatPlusVerticalPath = "M8 5V11"
+public let sidebarNewChatPlusHorizontalPath = "M5 8H11"
+
 /// Desktop `IconSettingsOutlineArtwork` hub circle (`d` of the first `<path>`).
 public let sidebarSettingsOutlineHubPath =
     "M8 9.75012C8.9665 9.75012 9.75 8.96662 9.75 8.00012C9.75 7.03362 8.9665 6.25012 8 6.25012C7.0335 6.25012 6.25 7.03362 6.25 8.00012C6.25 8.96662 7.0335 9.75012 8 9.75012Z"

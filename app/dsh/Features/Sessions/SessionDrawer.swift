@@ -33,8 +33,13 @@ struct SessionDrawer: View {
                 }
                 Spacer(minLength: 8)
                 Button { model.createAndOpenSession() } label: {
-                    Image(systemName: D.newChat).foregroundStyle(T.ink)
+                    OfficialGlyph(
+                        kind: .newChat,
+                        size: CGFloat(sidebarNewChatIconSizePoints),
+                        color: T.ink
+                    )
                 }
+                .accessibilityLabel(L.newSession())
             }
             .padding(.horizontal, 16)
             .padding(.top, 14)

@@ -26,19 +26,21 @@ struct OfficialGlyph: View {
         case shareOutline
         case terminalPrompt
         case settingsOutline
+        case newChat
 
         var accessibilityIdentifier: String {
             switch self {
             case .folderClose: return "official.folderClose"
             case .folderOpen: return "official.folderOpen"
             case .settingsOutline: return "official.settingsOutline"
+            case .newChat: return "official.newChat"
             default: return "official.glyph"
             }
         }
 
         var hidesAccessibility: Bool {
             switch self {
-            case .folderClose, .folderOpen, .settingsOutline: return false
+            case .folderClose, .folderOpen, .settingsOutline, .newChat: return false
             default: return true
             }
         }
@@ -145,6 +147,16 @@ struct OfficialGlyph: View {
                 )
                 ctx.stroke(Path(SVGPath.cgPath(sidebarSettingsOutlineHubPath)), with: .color(color), style: medium)
                 ctx.stroke(Path(SVGPath.cgPath(sidebarSettingsOutlineRingPath)), with: .color(color), style: medium)
+            case .newChat:
+                let regular = StrokeStyle(
+                    lineWidth: CGFloat(sidebarNewChatIconStrokeWidth),
+                    lineCap: .butt,
+                    lineJoin: .miter,
+                    miterLimit: 10
+                )
+                ctx.stroke(Path(SVGPath.cgPath(sidebarNewChatBubblePath)), with: .color(color), style: regular)
+                ctx.stroke(Path(SVGPath.cgPath(sidebarNewChatPlusVerticalPath)), with: .color(color), style: regular)
+                ctx.stroke(Path(SVGPath.cgPath(sidebarNewChatPlusHorizontalPath)), with: .color(color), style: regular)
             }
         }
         .frame(width: size, height: size)
