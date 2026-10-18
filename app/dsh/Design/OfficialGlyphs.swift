@@ -43,6 +43,14 @@ struct OfficialGlyph: View {
         case information
         case compacted
         case settingsOutlineRegular
+        case chevronDown
+        case chevronUp
+        case checkOutline
+        case likeOutline
+        case likeFill
+        case dislikeOutline
+        case dislikeFill
+        case stopRect
 
         var accessibilityIdentifier: String {
             switch self {
@@ -75,6 +83,14 @@ struct OfficialGlyph: View {
             case .information: return "official.information"
             case .compacted: return "official.compacted"
             case .settingsOutlineRegular: return "official.settingsOutlineRegular"
+            case .chevronDown: return menuChevronDownSymbol()
+            case .chevronUp: return menuChevronUpSymbol()
+            case .checkOutline: return menuCheckSymbol()
+            case .likeOutline: return messageLikeSymbol()
+            case .likeFill: return messageLikeFillSymbol()
+            case .dislikeOutline: return messageDislikeSymbol()
+            case .dislikeFill: return messageDislikeFillSymbol()
+            case .stopRect: return composerStopSymbol()
             default: return "official.glyph"
             }
         }
@@ -84,7 +100,9 @@ struct OfficialGlyph: View {
             case .folderClose, .folderOpen, .settingsOutline, .newChat, .searchOutline, .projectAdd, .trajectoryClock,
                  .slidersTwo, .workspaceTree, .flatList, .clockOutline, .chevronsUpDown, .archiveOff, .archiveCheck, .queue,
                  .gaugeOutline, .databaseOutline, .infoOutline, .refreshOutline, .jobsChevron, .fishLogo,
-                 .userOutline, .sparkle, .toolWrench, .information, .compacted, .settingsOutlineRegular:
+                 .userOutline, .sparkle, .toolWrench, .information, .compacted, .settingsOutlineRegular,
+                 .chevronDown, .chevronUp, .checkOutline, .likeOutline, .likeFill, .dislikeOutline, .dislikeFill,
+                 .stopRect:
                 return false
             // plusOutline / send are decorative; ComposerView hosts own
             // official.plusOutline and official.send.
@@ -366,6 +384,33 @@ struct OfficialGlyph: View {
                 )
                 ctx.stroke(Path(SVGPath.cgPath(sidebarSettingsOutlineHubPath)), with: .color(color), style: regular)
                 ctx.stroke(Path(SVGPath.cgPath(sidebarSettingsOutlineRingPath)), with: .color(color), style: regular)
+            case .chevronDown:
+                ctx.stroke(Path(SVGPath.cgPath(jobsActionTriggerChevronPath)), with: .color(color), style: stroke)
+            case .chevronUp:
+                ctx.stroke(Path(SVGPath.cgPath(menuChevronUpPath)), with: .color(color), style: stroke)
+            case .checkOutline:
+                ctx.stroke(Path(SVGPath.cgPath(menuCheckOutlinePath)), with: .color(color), style: stroke)
+            case .likeOutline:
+                ctx.stroke(Path(SVGPath.cgPath(messageLikePath)), with: .color(color), style: stroke)
+            case .likeFill:
+                ctx.fill(Path(SVGPath.cgPath(messageLikePath)), with: .color(color))
+                ctx.stroke(Path(SVGPath.cgPath(messageLikePath)), with: .color(color), style: stroke)
+            case .dislikeOutline:
+                ctx.stroke(Path(SVGPath.cgPath(messageDislikePath)), with: .color(color), style: stroke)
+            case .dislikeFill:
+                ctx.fill(Path(SVGPath.cgPath(messageDislikePath)), with: .color(color))
+                ctx.stroke(Path(SVGPath.cgPath(messageDislikePath)), with: .color(color), style: stroke)
+            case .stopRect:
+                let rect = CGRect(
+                    x: CGFloat(composerStopRectX),
+                    y: CGFloat(composerStopRectY),
+                    width: CGFloat(composerStopRectWidth),
+                    height: CGFloat(composerStopRectHeight)
+                )
+                ctx.fill(
+                    Path(roundedRect: rect, cornerRadius: CGFloat(composerStopRectRadius)),
+                    with: .color(color)
+                )
             }
         }
         .frame(width: canvasWidth, height: canvasHeight)

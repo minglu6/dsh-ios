@@ -141,9 +141,7 @@ struct ChangesSummaryCard: View {
                                 Text(expanded ? L.t("收起", "Collapse") : L.t("全部 \(summary.files.count) 个文件", "All \(summary.files.count) files"))
                                     .font(.system(size: 14))
                                     .foregroundStyle(T.text3)
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(T.text3)
+                                OfficialGlyph(kind: .chevronDown, size: 12, color: T.text3)
                                     .rotationEffect(.degrees(expanded ? 180 : 0))
                                 Spacer()
                             }
@@ -226,7 +224,7 @@ private struct ChangesReviewSheet: View {
                     } label: {
                         HStack {
                             Text(file.display).lineLimit(2).foregroundStyle(T.ink)
-                            Image(systemName: "chevron.down").font(.caption).foregroundStyle(T.text2)
+                            OfficialGlyph(kind: .chevronDown, size: 12, color: T.text2)
                             Spacer()
                         }
                     }

@@ -229,9 +229,15 @@ public func isForbiddenTrajectoryToolbarClockSymbol(_ name: String) -> Bool {
 /// `IconSparkleRegular`) plus the file-local ToolWrench / Information /
 /// Compacted SVGs. Never SF `person` / `sparkle` / `wrench` / `gearshape`.
 /// Unknown kinds have no desktop fallback — draw nothing.
+///
+/// InformationIcon is the exception: desktop paints it at 14×14
+/// (`width: 14` / `height: 14`, viewBox 16) inside the 19 chip.
+/// Chip radius is `--dsw-radius-xs` (4px).
 public let trajectoryKindIconSizePoints: Double = 13
+public let trajectoryInformationIconSizePoints: Double = 14
 public let trajectoryKindTagSizePoints: Double = 19
-public let trajectoryKindTagRadiusPoints: Double = 4
+public let dswRadiusXsPoints: Double = 4
+public let trajectoryKindTagRadiusPoints: Double = dswRadiusXsPoints
 public let trajectoryKindIconStrokeWidth: Double = 1
 public let trajectoryToolWrenchStrokeWidth: Double = 1.5
 public let trajectoryInformationStrokeWidth: Double = 1.4
@@ -282,6 +288,80 @@ public func isForbiddenTrajectoryKindSymbol(_ name: String) -> Bool {
         || name == "gearshape.fill"
         || name == "doc.text"
         || name == "arrow.down.right.and.arrow.up.left"
+}
+
+public func trajectoryKindIconSizePoints(for kind: String) -> Double {
+    kind == TrajL.kindContext ? trajectoryInformationIconSizePoints : trajectoryKindIconSizePoints
+}
+
+/// CSS `color-mix(in srgb, a p%, b)` on 0xRRGGBB channels. Alpha is ignored.
+public func srgbMix(_ a: UInt32, _ b: UInt32, amountA: Double) -> UInt32 {
+    func channel(_ value: UInt32, shift: UInt32) -> Double {
+        Double((value >> shift) & 0xFF)
+    }
+    func mix(_ lhs: Double, _ rhs: Double) -> UInt32 {
+        UInt32((lhs * amountA + rhs * (1 - amountA)).rounded())
+    }
+    let r = mix(channel(a, shift: 16), channel(b, shift: 16))
+    let g = mix(channel(a, shift: 8), channel(b, shift: 8))
+    let blue = mix(channel(a, shift: 0), channel(b, shift: 0))
+    return (r << 16) | (g << 8) | blue
+}
+
+public func srgbHex(_ rgb: UInt32) -> UInt32 {
+    0xFF000000 | (rgb & 0x00FFFFFF)
+}
+
+/// Desktop `--dsw-alias-brand-primary-new-colorprimary-new-color`.
+/// Light is `#4176e6`; dark is `--dsw-static-deepseek-450` (`#5686fe`).
+public let dswBrandPrimaryNewMixLight: UInt32 = 0x004176E6
+public let dswBrandPrimaryNewMixDark: UInt32 = 0x005686FE
+/// `--dsw-alias-state-error-secondary` → `--dsw-static-red-400`.
+public let dswStateErrorSecondary: UInt32 = 0x00F25A5A
+/// `--dsw-alias-state-success-primary` → `--dsw-static-green-500`.
+public let dswStateSuccessPrimary: UInt32 = 0x0022C55E
+/// `--dsw-alias-state-success-tertiary`.
+public let dswStateSuccessTertiaryLight: UInt32 = 0x00E6FAED
+public let dswStateSuccessTertiaryDark: UInt32 = 0x00233C2C
+public let dswLabelSecondaryLight: UInt32 = 0x0061666B
+public let dswLabelSecondaryDark: UInt32 = 0x00CFD3D6
+public let dswBgLayer1Light: UInt32 = 0x00FFFFFF
+public let dswBgLayer1Dark: UInt32 = 0x00232324
+
+/// Desktop `.assistantVioletBright` color:
+/// `color-mix(in srgb, brand-primary-new 60%, error-secondary)`.
+public func trajectoryAssistantForegroundHex(dark: Bool) -> UInt32 {
+    srgbHex(srgbMix(
+        dark ? dswBrandPrimaryNewMixDark : dswBrandPrimaryNewMixLight,
+        dswStateErrorSecondary,
+        amountA: 0.60
+    ))
+}
+
+/// Desktop `.assistantVioletBright` background:
+/// `color-mix(in srgb, color-mix(brand 55%, error-secondary) 15%, bg-layer-1)`.
+public func trajectoryAssistantBackgroundHex(dark: Bool) -> UInt32 {
+    let inner = srgbMix(
+        dark ? dswBrandPrimaryNewMixDark : dswBrandPrimaryNewMixLight,
+        dswStateErrorSecondary,
+        amountA: 0.55
+    )
+    return srgbHex(srgbMix(inner, dark ? dswBgLayer1Dark : dswBgLayer1Light, amountA: 0.15))
+}
+
+/// Desktop `.contextGreen` color:
+/// `color-mix(in srgb, success-primary 68%, label-secondary)`.
+public func trajectoryContextForegroundHex(dark: Bool) -> UInt32 {
+    srgbHex(srgbMix(
+        dswStateSuccessPrimary,
+        dark ? dswLabelSecondaryDark : dswLabelSecondaryLight,
+        amountA: 0.68
+    ))
+}
+
+/// Desktop `.contextGreen` background: `--dsw-alias-state-success-tertiary`.
+public func trajectoryContextBackgroundHex(dark: Bool) -> UInt32 {
+    srgbHex(dark ? dswStateSuccessTertiaryDark : dswStateSuccessTertiaryLight)
 }
 
 /// Desktop `code-program.ts` PTC entry point name.

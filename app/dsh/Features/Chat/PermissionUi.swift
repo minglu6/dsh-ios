@@ -2,121 +2,6 @@ import SwiftUI
 import UIKit
 import DSHProtocol
 
-struct PermissionPickerSheet: View {
-    let current: String
-    let catalog: PermissionCatalog?
-    let loading: Bool
-    let error: String?
-    var enabled: Bool = true
-    var forDefaults: Bool = false
-    var busy: Bool = false
-    var onRefresh: () -> Void
-    var onDismiss: () -> Void
-    var onPick: (String) -> Void
-
-    @State private var picked = false
-
-    private var options: [PermissionOption] {
-        if loading || error != nil { return [] }
-        return forDefaults ? catalog?.defaultOptions ?? [] : catalog?.options ?? []
-    }
-
-    private var interactive: Bool { enabled && !busy && !loading && error == nil && !picked }
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 8) {
-                    if forDefaults {
-                        Text(permissionDefaultDescription(english: L.en))
-                            .font(.footnote)
-                            .foregroundStyle(T.text3)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 6)
-                    }
-                    if loading {
-                        HStack(spacing: 12) {
-                            ProgressView()
-                            Text(L.t("加载权限模式…", "Loading permission modes…"))
-                                .foregroundStyle(T.text3)
-                        }
-                        .padding(22)
-                    } else if let error {
-                        Text(error).foregroundStyle(T.err).padding(22)
-                    } else if catalog == nil {
-                        Text(L.t("此远程主机的权限目录不可用", "This remote host's permission catalog is unavailable"))
-                            .foregroundStyle(T.text3)
-                            .padding(22)
-                    } else if options.isEmpty {
-                        Text(L.t("没有可用的权限模式", "No permission modes available"))
-                            .foregroundStyle(T.text3)
-                            .padding(22)
-                    }
-                    ForEach(options, id: \.value) { option in
-                        Button {
-                            if !picked {
-                                picked = true
-                                if current == option.value { onDismiss() } else { onPick(option.value) }
-                            }
-                        } label: {
-                            HStack(alignment: .top, spacing: 12) {
-                                if permissionHasGlyph(option.value) {
-                                    OfficialGlyph(
-                                        kind: .permission(option.value),
-                                        size: CGFloat(permissionMenuIconSizePoints),
-                                        color: option.value == "danger-full-access" ? T.warnText : T.text2
-                                    )
-                                }
-                                VStack(alignment: .leading, spacing: 4) {
-                                    HStack {
-                                        Text(permissionLabel(value: option.value, option: option, english: L.en))
-                                            .foregroundStyle(T.ink)
-                                        if let badge = permissionExpBadge(option.value) {
-                                            Text(badge)
-                                                .font(.system(size: CGFloat(permissionExpBadgeFontSizePoints), weight: .medium))
-                                                .tracking(CGFloat(permissionExpBadgeLetterSpacing))
-                                                .foregroundStyle(T.text3)
-                                        }
-                                    }
-                                    Text(option.value == "auto"
-                                         ? permissionAutoDescription(english: L.en)
-                                         : (option.description ?? ""))
-                                        .font(.footnote)
-                                        .foregroundStyle(T.text3)
-                                }
-                                Spacer()
-                                if current == option.value {
-                                    Image(systemName: "checkmark").foregroundStyle(T.ink)
-                                }
-                            }
-                            .padding(14)
-                            .background(current == option.value ? T.fill2 : Color.clear, in: RoundedRectangle(cornerRadius: 12))
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(!interactive)
-                    }
-                    if !loading && (catalog == nil || error != nil) {
-                        Button(L.t("重新加载", "Reload"), action: onRefresh)
-                            .disabled(!enabled || busy)
-                            .padding(.horizontal, 16)
-                    }
-                }
-                .padding(.vertical, 8)
-            }
-            .navigationTitle(forDefaults ? L.t("默认权限", "Default permission") : L.t("访问模式", "Access mode"))
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(action: onDismiss) {
-                        Text(L.cancel()).foregroundStyle(T.ink)
-                    }
-                }
-            }
-            .tint(T.ink)
-        }
-        .onChange(of: catalog?.options.map(\.value) ?? []) { _ in picked = false }
-    }
-}
-
 struct PermissionRiskSheet: View {
     let preset: String
     var enabled: Bool = true
@@ -262,9 +147,7 @@ struct PermissionChipMenu: View {
                     Text(currentLabel)
                         .lineLimit(1)
                 }
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 11))
-                    .foregroundStyle(T.caption)
+                OfficialGlyph(kind: .chevronDown, size: 12, color: T.caption)
                     .rotationEffect(.degrees(open ? 180 : 0))
                     .accessibilityHidden(true)
             }
@@ -308,9 +191,7 @@ struct PermissionChipMenu: View {
                             }
                             Spacer(minLength: 8)
                             if option.value == current {
-                                Image(systemName: "checkmark")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(T.ink)
+                                OfficialGlyph(kind: .checkOutline, size: 14, color: T.ink)
                             }
                         }
                         .padding(.horizontal, 8)
@@ -335,6 +216,90 @@ struct PermissionChipMenu: View {
                     : CGFloat(permissionMenuHeightPoints(optionCount: options.count)),
                 alignment: .top
             )
+            .modifier(PopoverCompactAdaptation())
+        }
+    }
+}
+
+/// Desktop `ui-permission-presets` `PermissionRow` inline Select (36× radius-md).
+/// Never a grabber sheet titled 权限 / 默认权限.
+struct SettingsPermissionSelect: View {
+    let current: String
+    let catalog: PermissionCatalog?
+    var loading: Bool = false
+    var enabled: Bool = true
+    var onSelect: (String) -> Void
+    @Binding var open: Bool
+
+    private var options: [PermissionOption] { catalog?.defaultOptions ?? [] }
+    private var currentLabel: String {
+        permissionLabel(value: current, option: catalog?.find(current), english: L.en)
+    }
+
+    var body: some View {
+        Button { if enabled { open.toggle() } } label: {
+            HStack(spacing: CGFloat(settingsPermissionSelectorGapPoints)) {
+                Text(currentLabel)
+                    .font(.system(size: 14))
+                    .foregroundStyle(T.ink)
+                    .lineLimit(1)
+                OfficialGlyph(kind: .chevronDown, size: 14, color: T.text2)
+                    .rotationEffect(.degrees(open ? 180 : 0))
+            }
+            .padding(.horizontal, CGFloat(settingsPermissionSelectorPaddingHorizontalPoints))
+            .frame(height: CGFloat(settingsPermissionSelectorHeightPoints))
+            .background(
+                T.fill2,
+                in: RoundedRectangle(cornerRadius: CGFloat(settingsPermissionSelectorRadiusPoints))
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .accessibilityLabel(currentLabel)
+        .accessibilityIdentifier(settingsPermissionSelectSymbol())
+        .popover(isPresented: $open, attachmentAnchor: .rect(.bounds), arrowEdge: .top) {
+            VStack(alignment: .leading, spacing: 0) {
+                if loading {
+                    ProgressView().frame(maxWidth: .infinity).padding(8)
+                }
+                ForEach(options, id: \.value) { option in
+                    Button {
+                        open = false
+                        if option.value != current { onSelect(option.value) }
+                    } label: {
+                        HStack(spacing: 6) {
+                            if permissionHasGlyph(option.value) {
+                                OfficialGlyph(
+                                    kind: .permission(option.value),
+                                    size: CGFloat(permissionMenuIconSizePoints),
+                                    color: T.ink
+                                )
+                            }
+                            Text(permissionLabel(value: option.value, option: option, english: L.en))
+                                .font(.system(size: 13))
+                                .foregroundStyle(T.ink)
+                                .lineLimit(1)
+                            Spacer(minLength: 8)
+                            if option.value == current {
+                                OfficialGlyph(kind: .checkOutline, size: 14, color: T.ink)
+                            }
+                        }
+                        .padding(.horizontal, 8)
+                        .frame(minHeight: CGFloat(permissionMenuRowMinHeightPoints))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(CGFloat(permissionMenuPaddingPoints))
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("settingsPermissionMenu")
+            .frame(
+                minWidth: CGFloat(permissionMenuMinWidthPoints),
+                maxWidth: CGFloat(permissionMenuMaxWidthPoints)
+            )
+            .fixedSize(horizontal: false, vertical: true)
             .modifier(PopoverCompactAdaptation())
         }
     }

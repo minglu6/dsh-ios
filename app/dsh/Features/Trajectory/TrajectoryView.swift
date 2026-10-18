@@ -327,7 +327,7 @@ private struct KindBadge: View {
             if let glyph {
                 OfficialGlyph(
                     kind: glyph,
-                    size: CGFloat(trajectoryKindIconSizePoints),
+                    size: CGFloat(trajectoryKindIconSizePoints(for: kind)),
                     color: fg
                 )
             }
@@ -357,8 +357,8 @@ private struct KindBadge: View {
     private var fg: Color {
         switch kind {
         case TrajL.kindUser: return T.accent
-        case TrajL.kindContext: return T.ok
-        case TrajL.kindAssistant: return T.accent
+        case TrajL.kindContext: return T.trajectoryContext
+        case TrajL.kindAssistant: return T.trajectoryAssistant
         case TrajL.kindTool: return T.warnText
         case TrajL.kindSubtool: return T.warnText.opacity(0.62)
         default: return T.text2
@@ -368,8 +368,8 @@ private struct KindBadge: View {
     private var bg: Color {
         switch kind {
         case TrajL.kindUser: return T.tint
-        case TrajL.kindContext: return T.ok.opacity(0.12)
-        case TrajL.kindAssistant: return T.tint
+        case TrajL.kindContext: return T.trajectoryContextBg
+        case TrajL.kindAssistant: return T.trajectoryAssistantBg
         case TrajL.kindTool: return T.warnTint
         case TrajL.kindSubtool: return T.warnTint.opacity(0.58)
         default: return T.fill2

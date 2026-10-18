@@ -43,9 +43,7 @@ struct ModelChipMenu: View {
                 if pending != nil {
                     ProgressView().controlSize(.mini)
                 } else {
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 11))
-                        .foregroundStyle(T.caption)
+                    OfficialGlyph(kind: .chevronDown, size: 12, color: T.caption)
                         .rotationEffect(.degrees(open ? 180 : 0))
                 }
             }
@@ -260,7 +258,8 @@ struct ModelPicker: View {
                 Text(label).foregroundStyle(T.ink)
                 Spacer()
                 Text(value).foregroundStyle(T.text3).lineLimit(1)
-                Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(T.caption)
+                OfficialGlyph(kind: .chevronDown, size: 12, color: T.caption)
+                    .rotationEffect(.degrees(-90))
             }
             .font(.system(size: 13))
             .padding(.horizontal, 8)
@@ -278,7 +277,7 @@ struct ModelPicker: View {
                     .lineLimit(1)
                 Spacer()
                 if pending { ProgressView().controlSize(.mini) }
-                else if selected { Image(systemName: "checkmark").foregroundStyle(T.ink) }
+                else if selected { OfficialGlyph(kind: .checkOutline, size: 14, color: T.ink) }
             }
             .padding(.horizontal, 7)
             .padding(.vertical, 5)
