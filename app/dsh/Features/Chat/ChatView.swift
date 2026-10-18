@@ -1696,8 +1696,12 @@ struct ComposerView: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(firstPromptBlocksComposerActions(model.firstPrompt))
-                    .accessibilityIdentifier(composerAddSymbol())
+                    // Landing GeometryReader otherwise surfaces Canvas as a
+                    // duplicate official.plusOutline with exists == false.
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityAddTraits(.isButton)
                     .accessibilityLabel(composerCommandsAria(english: L.en))
+                    .accessibilityIdentifier(composerAddSymbol())
                     if !permissionChipRequiresCatalog || model.permissionCatalog != nil {
                         if let perm = model.sessionPermission ?? model.draftPermission ?? (heroPlaceholder ? model.defaultPermission : nil), !perm.isEmpty {
                             PermissionChipMenu(

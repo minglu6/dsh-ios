@@ -92,8 +92,7 @@ final class ScreenshotTests: XCTestCase {
             if screen == "landing" || screen == "chat" {
                 XCTAssertFalse(app.images["plus"].exists, "\(appearance) \(screen) still exposes SF plus")
                 XCTAssertTrue(
-                    app.buttons["official.plusOutline"].waitForExistence(timeout: 8)
-                        || app.descendants(matching: .any)["official.plusOutline"].waitForExistence(timeout: 2),
+                    app.descendants(matching: .any)["official.plusOutline"].waitForExistence(timeout: 8),
                     "\(appearance) \(screen) missing official composer plus glyph"
                 )
             }

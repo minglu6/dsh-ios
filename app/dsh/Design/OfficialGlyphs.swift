@@ -46,7 +46,8 @@ struct OfficialGlyph: View {
 
         var hidesAccessibility: Bool {
             switch self {
-            case .folderClose, .folderOpen, .settingsOutline, .newChat, .searchOutline, .projectAdd, .plusOutline: return false
+            case .folderClose, .folderOpen, .settingsOutline, .newChat, .searchOutline, .projectAdd: return false
+            // plusOutline is decorative; ComposerView's add Button owns official.plusOutline.
             default: return true
             }
         }
@@ -194,8 +195,7 @@ struct OfficialGlyph: View {
             }
         }
         .frame(width: size, height: size)
-        .accessibilityIdentifier(kind.accessibilityIdentifier)
-        .accessibilityHidden(kind.hidesAccessibility)
+        .modifier(OfficialGlyphAccess(kind: kind))
     }
 
     private func drawPermission(_ ctx: inout GraphicsContext, value: String, color: Color, stroke: StrokeStyle) {
@@ -276,4 +276,16 @@ struct OfficialGlyph: View {
     private static let shareBody = "M14.1256 7.58723C14.3483 7.81942 14.3482 8.18589 14.1254 8.41799L8.6646 14.1077C8.53985 14.2377 8.32031 14.1494 8.32031 13.9692L8.32035 10.2039C8.32035 10.1943 8.31534 10.1864 8.30592 10.1849C8.08306 10.148 5.30067 9.7729 1.50993 13.2904C1.49711 13.3023 1.47561 13.2943 1.4757 13.2768C1.49273 9.87168 3.42001 5.07166 8.29999 5.05835C8.31103 5.05832 8.32035 5.04937 8.32035 5.03832L8.32031 2.03109C8.32031 1.85088 8.53993 1.76259 8.66466 1.89266L14.1256 7.58723Z"
     private static let terminalPrompt = "M10 11L16.606 17.606C16.6841 17.6841 16.6841 17.8107 16.606 17.8888L10 24.4948"
     private static let terminalCursor = "M20.1211 24.4946H26.8685"
+}
+
+private struct OfficialGlyphAccess: ViewModifier {
+    let kind: OfficialGlyph.Kind
+
+    func body(content: Content) -> some View {
+        if kind.hidesAccessibility {
+            content.accessibilityHidden(true)
+        } else {
+            content.accessibilityIdentifier(kind.accessibilityIdentifier)
+        }
+    }
 }
