@@ -166,7 +166,7 @@ struct ChatView: View {
         .onChange(of: scenePhase) { _ in model.setViewedSession(desiredViewedSession) }
         .onChange(of: model.showDrawer) { _ in model.setViewedSession(desiredViewedSession) }
         .onChange(of: model.chat?.sessionId) { _ in
-            tab = 0
+            tab = UITestLaunch.screen == "trajectory" ? 1 : 0
             openTurns = [:]
             openProcesses = [:]
             model.setViewedSession(desiredViewedSession)
@@ -177,6 +177,7 @@ struct ChatView: View {
             case "inspector": showInspector = true
             case "models": showModels = true
             case "permission": showPermission = true
+            case "trajectory": tab = 1
             default: break
             }
         }
@@ -299,6 +300,7 @@ struct ChatView: View {
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(tab == index ? [.isSelected] : [])
+        .accessibilityIdentifier(index == 0 ? "chatTab.chat" : "chatTab.trajectory")
     }
 
     private var sessionQuestion: UserQuestion? {

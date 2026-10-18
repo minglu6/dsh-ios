@@ -176,6 +176,18 @@ public enum TrajL {
     public static let emptyTrajectory = "暂无轨迹"
 }
 
+/// Desktop `ui-trajectory` `TrajectoryToolbar` search uses
+/// `IconSearchOutlineRegular` size 11, never SF `magnifyingglass`.
+/// Artwork is the same `ui-primitives` `IconSearchOutlineArtwork` as
+/// sidebar search: 16×16 view box, Regular stroke `ICON_REGULAR_STROKE` 1.
+/// Toolbar 11 is the live desktop size, not a phone squeeze of the
+/// sidebar idle-14 button.
+public let trajectoryToolbarSearchUsesOfficialGlyph = true
+public let trajectoryToolbarSearchIconSizePoints: Double = 11
+public let trajectoryToolbarSearchIconStrokeWidth: Double = 1
+
+public func trajectoryToolbarSearchSymbol() -> String { sidebarSearchSymbol() }
+
 /// Desktop `code-program.ts` PTC entry point name.
 public let ptcToolName = "run_code"
 

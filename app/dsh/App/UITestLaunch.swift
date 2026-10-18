@@ -140,7 +140,7 @@ extension AppModel {
             firstPrompt = nil
         case "drawer", "viewOptions", "sessionActions":
             showDrawer = true
-        case "chat", "models", "permission":
+        case "chat", "models", "permission", "trajectory":
             break
         case "settings", "general":
             showDrawer = false
