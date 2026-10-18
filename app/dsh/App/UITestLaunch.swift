@@ -53,6 +53,7 @@ extension AppModel {
             "workspace.pinSession", "workspace.archiveSession", "workspace.unarchiveSession",
             "sessions.rename", "sessions.fork", "sessions.create",
             "session.export", "models.catalog", "permissions.catalog",
+            "workspace.create",
         ]
 
         let now = Int64(Date().timeIntervalSince1970 * 1000)

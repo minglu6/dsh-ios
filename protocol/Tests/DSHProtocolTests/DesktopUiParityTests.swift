@@ -222,6 +222,10 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertEqual(sidebarSearchSymbol(), "official.searchOutline")
         XCTAssertFalse(isForbiddenSystemSearchSymbol("official.searchOutline"))
         XCTAssertTrue(isForbiddenSystemSearchSymbol("magnifyingglass"))
+        XCTAssertTrue(sidebarProjectAddUsesOfficialGlyph)
+        XCTAssertEqual(sidebarProjectAddSymbol(), "official.projectAdd")
+        XCTAssertFalse(isForbiddenSystemProjectAddSymbol("official.projectAdd"))
+        XCTAssertTrue(isForbiddenSystemProjectAddSymbol("plus"))
     }
 
     func testGeneralSettingsCopyMatchesDesktopLocale() {

@@ -84,6 +84,10 @@ final class ScreenshotTests: XCTestCase {
                     app.descendants(matching: .any)["official.searchOutline"].waitForExistence(timeout: 8),
                     "\(appearance) drawer missing official search glyph"
                 )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.projectAdd"].waitForExistence(timeout: 8),
+                    "\(appearance) drawer missing official project-add glyph"
+                )
             }
             if screen == "models" {
                 XCTAssertTrue(app.descendants(matching: .any)["modelChipEffort"].waitForExistence(timeout: 8), "\(appearance) model chip missing effort")

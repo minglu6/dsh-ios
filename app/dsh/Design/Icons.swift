@@ -10,7 +10,6 @@ enum D {
     static let shield = "shield"
     static let search = "magnifyingglass"
     static let sliders = "slider.horizontal.3"
-    static let projectAdd = "plus"
     static let newChat = "square.and.pencil"
     static let download = "square.and.arrow.down"
     static let share = "square.and.arrow.up"

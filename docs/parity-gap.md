@@ -75,7 +75,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R46 | 空会话 HeroShell 整列居中 gap 12（#54 CI `*-landing.png` 标题与工作区之间仍是夹心空隙） | done (#55) |
 | R47 | 抽屉脚设置齿轮改用官方 `IconSettingsOutlineMedium` | done (#56) |
 | R48 | 抽屉新会话改用官方 `IconNewChatOutlineRegular` | done (#57) |
-| R49 | 抽屉搜索改用官方 `IconSearchOutlineRegular` | this PR |
+| R49 | 抽屉搜索改用官方 `IconSearchOutlineRegular` | done (#58) |
+| R50 | 抽屉工作区「添加」改用官方 `IconProjectAddOutlineRegular` | this PR |
 
 ---
 
@@ -1094,4 +1095,37 @@ Android `c5f8cdd...56dcaa9` 一笔：`feat(android): 补齐用户选择卡片与
 - 轨迹未知 cell 仍映射 SF `gearshape`（`TrajectoryView` fallback）：不是 Settings 触发器。
 - permission / schedule / terminal / inspector CI 截图的系统蓝「取消」/ `transport:` 失败：fixture 无真 Host。
 - 插件库存 / 轨迹工具栏搜索、工作区「添加」SF `plus`：桌面另有 `IconSearchOutlineRegular` / `IconProjectAddOutlineRegular`，本轮只修截图打脸的抽屉搜索。
+
+## Round 50 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*` alpha=`0.2.1-alpha.5` / next=`0.2.1-rc.2`；Android `ce7d345`）
+
+直播核对（2026-10-18）：iOS `main` tip `5a8638d`（#58 squash）。CI run 39082414773：`protocol` / `screenshots` / `ios` 全绿。`npm view`：`alpha` 仍 `0.2.1-alpha.5`，`next` 仍 `0.2.1-rc.2`。pack 对比 primitives / workspace / sidebar / plugin-manager / trajectory：locale / `.tsx` / CSS / 组件 API **无增量**（仅 `package.json` 版本；`ui-sidebar` `localBuildVersion` `0.2.1-alpha.5-aeba8e9` → `0.2.1-rc.2-332895e`）。Android `main` `ce7d345`；`compare/ce7d345...main` `ahead_by: 0`。#67 仅 Host plugin `terminal.follow`→`retain`+`attach`，无新 iOS UI 可搬。
+
+#58 CI 截图怀疑式重审（`ios-simulator-screenshots`）：
+
+| 项 | 判定 | 证据 |
+| --- | --- | --- |
+| 抽屉搜索 OfficialGlyph.searchOutline | **PASS** | `light/dark-drawer.png`：圆环+斜柄，不是 SF `magnifyingglass`。CI 断言 `official.searchOutline`、禁止 `magnifyingglass` |
+| 抽屉新会话 OfficialGlyph.newChat | **PASS** | `light/dark-drawer.png`：气泡+加号。CI 断言 `official.newChat`、禁止 `square.and.pencil` |
+| 抽屉脚设置齿轮 OfficialGlyph.settingsOutline | **PASS** | `light/dark-drawer.png`：6 齿描边齿轮。CI 断言 `official.settingsOutline`、禁止 `gearshape` |
+| 空会话 HeroShell 居中 gap 12 | **PASS** | `light/dark-landing.png`：标题 / 工作区 / composer 同一列 |
+| 视图选项 compact popover + 官方 leading | **PASS** | `light/dark-viewOptions.png`：sliders 锚定气泡。9 行 OfficialGlyph |
+| 有 reasoning 才画推理行；权限 chip 仅图标 | **PASS** | `light-models.png` 有「推理等级」；landing / chat composer 权限座只有盾标 |
+| 抽屉脚设置 + 连接同一行靠右 | **PASS** | `light/dark-drawer.png`：设置左、8pt 绿点右 |
+| 未读绿点 / 运行 spinner 仅会话行 | **PASS**（fixture 空闲，源码仍实现） | header 无 spinner；`sidebarSessionLeading` + `SidebarSessionLeadingView` |
+| 抽屉工作区「添加」 | **GAP → 本轮** | fixture 原先无 `workspace.create`，`light/dark-drawer.png` 看不到该钮。源码 `SessionDrawer` 仍 SF `plus`。桌面 `ui-workspace` `WorkspaceBrowser` headerActions 用 `IconProjectAddOutlineRegular`（`IconProjectAddOutlineArtwork` 填充文件夹 + 描边加号，16×16，`ICON_REGULAR_STROKE` 1；宽栏 16）。Android `dsh_project_add.xml` 同路径 |
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| 抽屉工作区添加 | `OfficialGlyph.projectAdd` + `sidebarProjectAddFolderPath` / plus 路径 | `ui-primitives` `IconProjectAddOutlineArtwork` / `IconProjectAddOutlineRegular`；`ui-workspace` `WorkspaceBrowser` header Regular 16；`.iconButton` 28×28 | 删掉 SF `plus`；16×16 viewBox；文件夹 fill、加号 Regular 线宽 1；SVG 默认 butt + miterLimit 10。fixture 打开 `workspace.create`。CI drawer 断言 `official.projectAdd` |
+
+本轮核对后**不改**（平台 / hide / 禁止发明）
+
+- `chat.turnNavigation.*` / `chat.toBottom` / `ask.review` / hover chevron：仍 skip。
+- Account / shortcuts / open config / CompatibilityBanner / 审批通知 / FishLogo：仍 **hide** / 不发明。
+- Android Settings「移动端 → 连接」不搬。
+- 轨迹未知 cell 仍映射 SF `gearshape`（`TrajectoryView` fallback）：桌面 `KIND_ICON` 无 unknown；`system` 才是 `IconSettingsOutlineRegular`，不是 Settings 触发器，不发明 fallback。
+- permission / schedule / terminal / inspector CI 截图的系统蓝「取消」/ `transport:` 失败：fixture 无真 Host。
+- 插件库存搜索仍 SF `magnifyingglass`：桌面 `ui-plugin-manager` 无该搜索槽，不发明。
+- 轨迹工具栏搜索仍 SF `magnifyingglass`：桌面 `IconSearchOutlineRegular` size 11，但 CI 无轨迹屏；本轮只修源码+fixture 打脸的工作区添加。
+- composer `+` 仍 SF `plus`：桌面 `IconPlusOutlineRegular`，视觉近似，本轮不扩。
 

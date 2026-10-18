@@ -96,6 +96,31 @@ public let sidebarSearchCirclePath =
 /// Desktop `IconSearchOutlineArtwork` handle (`d` of the second `<path>`).
 public let sidebarSearchHandlePath = "M10.2991 10.3933L14.7783 14.8725"
 
+/// Desktop `ui-workspace` `WorkspaceBrowser` header add uses
+/// `IconProjectAddOutlineRegular`, never SF `plus`. Artwork is
+/// `ui-primitives` `IconProjectAddOutlineArtwork` on a 16×16 view box:
+/// filled folder + Regular-stroke plus (`ICON_REGULAR_STROKE` 1). Wide
+/// header is 16; the narrow 18 is a rail squeeze. Phone maps to the wide
+/// column. Trigger is desktop `.iconButton` 28×28.
+public let sidebarProjectAddUsesOfficialGlyph = true
+public let sidebarProjectAddIconSizePoints: Double = 16
+public let sidebarProjectAddIconStrokeWidth: Double = 1
+public let sidebarProjectAddButtonPoints: Double = 28
+
+public func sidebarProjectAddSymbol() -> String { "official.projectAdd" }
+
+public func isForbiddenSystemProjectAddSymbol(_ name: String) -> Bool {
+    name == "plus"
+}
+
+/// Desktop `IconProjectAddOutlineArtwork` folder (`d` of the first `<path>`, fill).
+public let sidebarProjectAddFolderPath =
+    "M5.54492 2.06738C5.91034 2.06754 6.26318 2.20149 6.53711 2.44336L7.94043 3.68164V4.7998C7.71462 4.74105 7.50367 4.63139 7.32617 4.47461L5.87598 3.19238C5.78477 3.11185 5.66658 3.06754 5.54492 3.06738H2.94922C2.67322 3.06738 2.44946 3.29145 2.44922 3.56738V12.4326C2.44927 12.7087 2.67311 12.9326 2.94922 12.9326H12.9326C13.2086 12.9325 13.4326 12.7086 13.4326 12.4326V8.53613H14.4326V12.4326C14.4326 13.2609 13.7609 13.9325 12.9326 13.9326H2.94922C2.12083 13.9326 1.44927 13.261 1.44922 12.4326V3.56738C1.44946 2.73916 2.12094 2.06738 2.94922 2.06738H5.54492Z"
+
+/// Desktop `IconProjectAddOutlineArtwork` plus bar / stem.
+public let sidebarProjectAddPlusHorizontalPath = "M9.75977 4.50208H14.5509"
+public let sidebarProjectAddPlusVerticalPath = "M12.1492 6.89758L12.1492 2.10642"
+
 /// Desktop `IconSettingsOutlineArtwork` hub circle (`d` of the first `<path>`).
 public let sidebarSettingsOutlineHubPath =
     "M8 9.75012C8.9665 9.75012 9.75 8.96662 9.75 8.00012C9.75 7.03362 8.9665 6.25012 8 6.25012C7.0335 6.25012 6.25 7.03362 6.25 8.00012C6.25 8.96662 7.0335 9.75012 8 9.75012Z"
