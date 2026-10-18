@@ -80,7 +80,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R51 | composer `+` 改用官方 `IconPlusOutlineMedium` | done (#60) |
 | R52 | composer 发送改用官方 InputBar 16×16 SVG | done (#61) |
 | R53 | 轨迹工具栏搜索改用官方 `IconSearchOutlineRegular` size 11 | done (#62) |
-| R54 | 轨迹时长 chip 改用桌面 TrajectoryToolbar 内联 clock SVG | this PR |
+| R54 | 轨迹时长 chip 改用桌面 TrajectoryToolbar 内联 clock SVG | done (#63) |
+| R55 | Jobs 头栏 chip 改用桌面 JobListAction `IconChevronDownOutlineRegular` | this PR |
 
 ---
 
@@ -1263,4 +1264,41 @@ Android `c5f8cdd...56dcaa9` 一笔：`feat(android): 补齐用户选择卡片与
 - 插件库存搜索仍 SF：桌面 `ui-plugin-manager` 无该搜索槽。
 - InputBar `.primary` 停止态圆角方块：同一按钮的另一态，fixture 不跑。
 - 轨迹 ledger `KIND_ICON` 已知 kind（user/sparkle/wrench/…）仍是 SF：本轮只修工具栏时长 clock；不扩一批 cell 图标。
+
+## Round 55 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*` alpha=`0.2.1-alpha.5` / next=`0.2.1-rc.2`；Android `ce7d345`）
+
+直播核对（2026-10-18）：iOS `main` tip `10960ec`（#63 squash）。CI run 39104020345：`protocol` / `ios` / `screenshots` 全绿。`npm view`：`alpha` 仍 `0.2.1-alpha.5`，`next` 仍 `0.2.1-rc.2`。primitives `lib/index.js` sha256 `333ea89e7518ec1f1d33111bb9c65d382454bcc3638ebac7116253c92fe5d566`；trajectory `lib/client.js` sha256 `b11426f89d3b4302964b491d7826a29fe3de390be4bbfae325375f54fe6919ad`；jobs `lib/client.js` sha256 `ad8f57b1b5b9adcd09b197b97ced17e3da4b9dcd0615d25a07f1282beba89fc8`（alpha.5 与 rc.2 **相同**）。Android `main` `ce7d345`；`compare/ce7d345...main` `ahead_by: 0`。#67 仅 Host plugin，无新 iOS UI 可搬。
+
+#63 后源码 + 桌面 pack 怀疑式重审：
+
+| 项 | 判定 | 证据 |
+| --- | --- | --- |
+| 轨迹时长 chip OfficialGlyph.trajectoryClock | **PASS** | TrajectoryToolbar 内联 clock SVG；CI trajectory 断言 `official.trajectoryClock`、禁止 `clock` |
+| composer 发送 / 加号 / 抽屉 settings/newChat/search/projectAdd | **PASS** | #56–#61；CI landing/chat/drawer 断言 |
+| 轨迹工具栏搜索 OfficialGlyph.searchOutline size 11 | **PASS** | #62；CI trajectory 断言 |
+| Jobs 头栏 chip | **GAP → 本轮** | iOS `JobsAction` 仍 SF `clock`（Android `JobsAction.kt` 同样自造 `D.clock`）。桌面 `ui-jobs` `JobListAction` trigger 是 `StateDot?` + count + `IconChevronDownOutlineRegular` size 12，**没有 clock**。路径 `M4 6L7.29289…L12 6`，Regular stroke 1，打开旋转 180° |
+| 轨迹 ledger `KIND_ICON` 已知 kind | **skip（下一轮候选）** | 桌面 `KIND_ICON`：system=`IconSettingsOutlineRegular` 13 / user=`IconUserOutlineRegular` 13 / context=内联 InformationIcon / compacted=内联 CompactedIcon / message=`IconSparkleRegular` 13 / tool+subtool=内联 ToolWrenchIcon。iOS `KindBadge` 仍 SF。本轮只修 Jobs trigger |
+| 轨迹未知 cell SF `gearshape` | **skip** | 桌面 `KIND_ICON` 无 unknown；不发明 fallback |
+| InputBar `.primary` 停止态 | **skip** | 桌面同一 34 圆钮内联 `<rect x=3 y=3 w=10 h=10 rx=3>`；iOS 是 8×8 `RoundedRectangle`。fixture 会话不 `running`，`runningIdle` 不进截图 |
+| 插件库存搜索 SF | **skip** | 桌面 `ui-plugin-manager` 无 `IconSearch` / 搜索槽 |
+| `chat.turnNavigation.*` / `chat.toBottom` | **skip** | 桌面 `ui-conversation` locale / client 无这些 key（触屏无 hover 轮次条 / 回底 FAB） |
+| `ask.review` | **skip** | locale 有 key；桌面 Ask 行是 hover「查看回答」，触屏无 hover |
+| Account / shortcuts / CompatibilityBanner / 审批通知 / FishLogo | **hide** | 桌面本机 chrome；不发明 |
+| Android Settings「移动端 → 连接」 | **skip** | 桌面没有该入口 |
+| npm alpha / next | **PASS** | 无增量（主文件 sha256 一致） |
+| Android `ce7d345` | **PASS** | 无新 client UI |
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| Jobs 头栏 chip | `OfficialGlyph.jobsChevron` + `jobsActionTrigger*` | `ui-jobs` `JobListAction` trigger：`IconChevronDownOutlineRegular` size 12；`ui-primitives` `IconChevronDownOutlineArtwork` path `M4 6L7.29289 9.29289C7.68342 9.68342 8.31658 9.68342 8.70711 9.29289L12 6`；Regular `strokeWidth: 1`；打开 `.triggerOpen` `rotate(180deg)` | 删掉发明的 SF `clock`；顺序改为 count + chevron（对齐桌面，不是 Android 的 leading clock）；禁止该槽 `clock` / `chevron.down` / `IconClock*`。CI chat/trajectory 断言 `official.jobsChevron` |
+
+本轮核对后**不改**（平台 / hide / 禁止发明）
+
+- `chat.turnNavigation.*` / `chat.toBottom` / `ask.review` / hover chevron：仍 skip。
+- Account / shortcuts / open config / CompatibilityBanner / 审批通知 / FishLogo：仍 **hide** / 不发明。
+- Android Settings「移动端 → 连接」不搬。
+- 轨迹未知 cell 仍映射 SF `gearshape`：桌面 `KIND_ICON` 无 unknown，不发明 fallback。
+- 插件库存搜索仍 SF：桌面 `ui-plugin-manager` 无该搜索槽。
+- InputBar `.primary` 停止态圆角方块：fixture 不跑 `runningIdle`。
+- 轨迹 ledger `KIND_ICON` 已知 kind（user/sparkle/wrench/…）仍是 SF：本轮只修 Jobs trigger chevron。
 

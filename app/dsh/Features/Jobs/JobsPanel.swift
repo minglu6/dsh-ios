@@ -20,18 +20,23 @@ struct JobsAction: View {
                 )
                 .accessibilityHidden(true)
             if let chip = JobsActionLabel.chip(jobs: model.jobs, failed: model.jobsFailed) {
+                let tint = chip == .unavailable ? T.err : T.text2
                 Button(action: { open.toggle() }) {
                     HStack(spacing: 6) {
                         if case .live = chip {
                             Circle().fill(T.accent).frame(width: 6, height: 6)
                         }
-                        Image(systemName: "clock")
-                            .font(.system(size: 13))
                         Text(JobsActionLabel.text(chip, en: L.en))
                             .font(.system(size: 12))
                             .lineLimit(1)
+                        OfficialGlyph(
+                            kind: .jobsChevron,
+                            size: CGFloat(jobsActionTriggerIconSizePoints),
+                            color: tint
+                        )
+                        .rotationEffect(.degrees(open ? 180 : 0))
                     }
-                    .foregroundStyle(chip == .unavailable ? T.err : T.text2)
+                    .foregroundStyle(tint)
                 }
                 .buttonStyle(.plain)
                 .padding(.trailing, 4)

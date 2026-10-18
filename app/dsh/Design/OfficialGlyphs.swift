@@ -32,6 +32,7 @@ struct OfficialGlyph: View {
         case plusOutline
         case send
         case trajectoryClock
+        case jobsChevron
 
         var accessibilityIdentifier: String {
             switch self {
@@ -44,13 +45,14 @@ struct OfficialGlyph: View {
             case .plusOutline: return "official.plusOutline"
             case .send: return "official.send"
             case .trajectoryClock: return "official.trajectoryClock"
+            case .jobsChevron: return "official.jobsChevron"
             default: return "official.glyph"
             }
         }
 
         var hidesAccessibility: Bool {
             switch self {
-            case .folderClose, .folderOpen, .settingsOutline, .newChat, .searchOutline, .projectAdd, .trajectoryClock: return false
+            case .folderClose, .folderOpen, .settingsOutline, .newChat, .searchOutline, .projectAdd, .trajectoryClock, .jobsChevron: return false
             // plusOutline / send are decorative; ComposerView hosts own
             // official.plusOutline and official.send.
             default: return true
@@ -214,6 +216,14 @@ struct OfficialGlyph: View {
                 rim.addEllipse(in: CGRect(origin: origin, size: CGSize(width: radius * 2, height: radius * 2)))
                 ctx.stroke(rim, with: .color(color), style: toolbar)
                 ctx.stroke(Path(SVGPath.cgPath(trajectoryToolbarClockHandsPath)), with: .color(color), style: toolbar)
+            case .jobsChevron:
+                let regular = StrokeStyle(
+                    lineWidth: CGFloat(jobsActionTriggerIconStrokeWidth),
+                    lineCap: .butt,
+                    lineJoin: .miter,
+                    miterLimit: 10
+                )
+                ctx.stroke(Path(SVGPath.cgPath(jobsActionTriggerChevronPath)), with: .color(color), style: regular)
             }
         }
         .frame(width: size, height: size)
