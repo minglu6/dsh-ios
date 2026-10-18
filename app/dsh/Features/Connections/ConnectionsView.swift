@@ -527,33 +527,33 @@ private struct ConnActionRow: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Button(action: onClick) {
-                HStack(spacing: 12) {
-                    Group {
-                        if let official {
-                            OfficialGlyph(kind: official, size: 18, color: T.ink)
-                        } else if let system {
-                            Image(systemName: system)
-                                .font(.system(size: 18))
-                                .foregroundStyle(T.ink)
-                        } else {
-                            fatalError("ConnActionRow requires official or system icon")
-                        }
+            // Button + `.contain` lets XCUITest retarget a child glyph and
+            // never fire `action`. Hit-test the row like Android ConnActionRow.
+            HStack(spacing: 12) {
+                Group {
+                    if let official {
+                        OfficialGlyph(kind: official, size: 18, color: T.ink)
+                    } else if let system {
+                        Image(systemName: system)
+                            .font(.system(size: 18))
+                            .foregroundStyle(T.ink)
+                    } else {
+                        fatalError("ConnActionRow requires official or system icon")
                     }
-                    .frame(width: 18, height: 18)
-                    Text(title)
-                        .font(.system(size: 16))
-                        .foregroundStyle(T.ink)
-                    Spacer()
-                    OfficialGlyph(kind: .chevronRight, size: 14, color: T.caption)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 15)
+                .frame(width: 18, height: 18)
+                Text(title)
+                    .font(.system(size: 16))
+                    .foregroundStyle(T.ink)
+                Spacer()
+                OfficialGlyph(kind: .chevronRight, size: 14, color: T.caption)
             }
-            .buttonStyle(.plain)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 15)
+            .contentShape(Rectangle())
+            .onTapGesture(perform: onClick)
             .accessibilityElement(children: .contain)
             .accessibilityAddTraits(.isButton)
-            .accessibilityLabel(title)
             .accessibilityIdentifier(identifier)
             if divider {
                 Divider().padding(.horizontal, 16)
@@ -652,6 +652,8 @@ private struct PairLinkSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(L.cancel()) { onDismiss() }
+                        .foregroundStyle(T.ink)
+                        .tint(T.ink)
                 }
             }
         }
@@ -663,9 +665,7 @@ private struct PairLinkSheet: View {
     }
 
     private func continuePairing() {
-        guard let link = parsed else {
-            fatalError("pairing-link Continue enabled without a parsed dshpocket://pair link")
-        }
+        guard let link = parsed else { return }
         onResult(link)
     }
 }

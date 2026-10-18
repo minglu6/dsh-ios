@@ -111,6 +111,7 @@ final class ChatToolIconsTests: XCTestCase {
         XCTAssertFalse(inspectorPickUsesOfficialGlyph)
         XCTAssertFalse(inspectorTypeFilterUsesOfficialGlyph)
         XCTAssertTrue(inspectorPickSkipReason.contains("CodeBracketsArtwork"))
+        XCTAssertTrue(inspectorTypeFilterSkipReason.contains("no type-filter"))
         XCTAssertEqual(inspectorPickSkipSymbol, "viewfinder")
         XCTAssertEqual(inspectorTypeFilterSkipSymbol, "line.3.horizontal.decrease")
         XCTAssertEqual(inspectorPickSkipIdentifier(), "inspector.viewfinder")

@@ -114,14 +114,13 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) inspector missing official back chevron"
                 )
                 // Intentional skip: no viewfinder / type-filter artwork in primitives.
+                // SF images live inside Buttons, so they are not `app.images[...]`.
                 XCTAssertTrue(
-                    app.descendants(matching: .any)["inspector.viewfinder"].waitForExistence(timeout: 8)
-                        || app.images["viewfinder"].exists,
+                    app.descendants(matching: .any)["inspector.viewfinder"].waitForExistence(timeout: 8),
                     "\(appearance) inspector pick skip lost; do not invent a viewfinder SVG"
                 )
                 XCTAssertTrue(
-                    app.descendants(matching: .any)["inspector.typeFilter"].exists
-                        || app.images["line.3.horizontal.decrease"].exists,
+                    app.descendants(matching: .any)["inspector.typeFilter"].exists,
                     "\(appearance) inspector type-filter skip lost; do not invent a filter SVG"
                 )
             }
@@ -744,16 +743,17 @@ final class ScreenshotTests: XCTestCase {
     /// Android `PairLinkSheet`: paste/type `dshpocket://pair`, then Continue
     /// prefills pair confirmation and does not connect.
     private func assertPairingLinkSheet(_ app: XCUIApplication, appearance: String) throws {
-        tapAccessibilityIdentifier(app, "connectionsAction.pairingLink")
+        let pairingTitle = app.staticTexts["配对链接"].firstMatch
+        XCTAssertTrue(pairingTitle.waitForExistence(timeout: 4), "\(appearance) 配对链接 row title missing")
+        pairingTitle.tap()
         let hint = app.staticTexts["在电脑「设置 → 手机连接」复制配对链接，然后粘贴到这里。"]
         XCTAssertTrue(
-            hint.waitForExistence(timeout: 8)
-                || app.descendants(matching: .any)["connectionsPairLinkSheet"].waitForExistence(timeout: 2),
+            hint.waitForExistence(timeout: 8),
             "\(appearance) pairing-link sheet missing"
         )
         XCTAssertTrue(
-            hint.waitForExistence(timeout: 4),
-            "\(appearance) pairing-link hint missing"
+            app.descendants(matching: .any)["connectionsPairLinkSheet"].waitForExistence(timeout: 4),
+            "\(appearance) connectionsPairLinkSheet identifier missing"
         )
         let paste = app.descendants(matching: .any)["connectionsPastePairingLink"]
         let next = app.descendants(matching: .any)["connectionsReviewPairingLink"]
@@ -790,18 +790,6 @@ final class ScreenshotTests: XCTestCase {
             app.descendants(matching: .any)["connectionsScreen"].firstMatch.waitForExistence(timeout: 2),
             "\(appearance) pairing-link flow left 远程主机"
         )
-    }
-
-    /// `.contain` on a Button splits children; XCUITest `tap()` on the
-    /// container often retargets a glyph/text child and never fires `onClick`.
-    /// Hit-test the visual center instead.
-    private func tapAccessibilityIdentifier(_ app: XCUIApplication, _ id: String) {
-        let button = app.buttons[id]
-        let row = button.waitForExistence(timeout: 4)
-            ? button
-            : app.descendants(matching: .any)[id].firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 4), "\(id) missing before tap")
-        row.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
     }
 
     private func replaceText(_ element: XCUIElement, with value: String) {

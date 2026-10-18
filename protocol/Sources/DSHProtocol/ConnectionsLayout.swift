@@ -86,6 +86,8 @@ public func isForbiddenConnectionsEnterAddressSymbol(_ name: String) -> Bool {
 /// Google Material Icons Outlined Keyboard, 24×24 view box — Android 33b97b2.
 public let connectionsKeyboardFramePath =
     "M20 5H4C2.9 5 2.01 5.9 2.01 7L2 17C2 18.1 2.9 19 4 19H20C21.1 19 22 18.1 22 17V7C22 5.9 21.1 5 20 5ZM20 17H4V7H20V17Z"
+/// Material Outlined Keyboard space bar (centered, x 8–16).
+public let connectionsKeyboardSpacePath = "M8 14H16V16H8V14Z"
 public let connectionsKeyboardKeyPaths = [
     "M5 8H7V10H5V8Z",
     "M5 11H7V13H5V11Z",
@@ -97,7 +99,7 @@ public let connectionsKeyboardKeyPaths = [
     "M14 11H16V13H14V11Z",
     "M17 8H19V10H17V8Z",
     "M17 11H19V13H17V11Z",
-    "M6 14H14V16H6V14Z",
+    connectionsKeyboardSpacePath,
 ]
 public let connectionsKeyboardViewBox: Double = 24
 
