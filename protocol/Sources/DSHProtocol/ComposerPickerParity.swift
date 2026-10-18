@@ -472,6 +472,13 @@ public let workspaceChipIconSizePoints: Double = 16
 public let workspaceChipChevronSizePoints: Double = 12
 public let workspaceChipUsesGhostTrigger = true
 public let workspaceChipUsesSystemMenu = false
+/// Desktop WorkspaceChip / WorkspacePicker: `IconChevronDownOutline` /
+/// `IconCheckOutline` / `IconPlusOutline`. Never SF chevron/check/plus.
+public let workspaceChipUsesOfficialChevron = true
+public let workspaceChipUsesOfficialCheck = true
+public let workspaceChipUsesOfficialPlus = true
+public let agentPresetSeatUsesOfficialChevron = true
+public let agentPresetSeatUsesOfficialCheck = true
 
 /// Desktop `WorkspacePicker` opens the directory flow immediately when add is the only entry.
 public func workspaceChipOpensDirectoryFlowDirectly(workspaceCount: Int, canCreate: Bool) -> Bool {
