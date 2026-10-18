@@ -163,6 +163,7 @@ struct StartPanel: View {
             }
         }
         .background(T.bg.ignoresSafeArea())
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("startPanel")
     }
 

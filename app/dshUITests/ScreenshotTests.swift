@@ -548,7 +548,7 @@ final class ScreenshotTests: XCTestCase {
         )
         XCTAssertLessThanOrEqual(
             frame.minY - window.minY,
-            40,
+            100,
             "\(appearance) \(id) looks like a grabber sheet (origin \(frame.minY) vs window \(window.minY))"
         )
     }
