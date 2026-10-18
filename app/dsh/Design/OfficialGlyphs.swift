@@ -659,17 +659,10 @@ struct OfficialGlyph: View {
             case .sendOutline:
                 ctx.fill(Path(SVGPath.cgPath(queueSteerSendFillPath)), with: .color(color))
                 ctx.stroke(Path(SVGPath.cgPath(queueSteerSendStemPath)), with: .color(color), style: Self.regularStroke)
-            case .dataOutline, .dataOutlineRegular:
-                let dataStroke = StrokeStyle(
-                    lineWidth: kind == .dataOutline
-                        ? CGFloat(appearanceCubeIconStrokeWidth)
-                        : CGFloat(commandMenuIconStrokeWidth),
-                    lineCap: .butt,
-                    lineJoin: .miter,
-                    miterLimit: 10
-                )
-                ctx.fill(Path(SVGPath.cgPath(settingsDataOutlineFillPath)), with: .color(color))
-                ctx.stroke(Path(SVGPath.cgPath(settingsDataOutlineGearPath)), with: .color(color), style: dataStroke)
+            case .dataOutline:
+                drawDataOutline(&ctx, color: color, strokeWidth: CGFloat(appearanceCubeIconStrokeWidth))
+            case .dataOutlineRegular:
+                drawDataOutline(&ctx, color: color, strokeWidth: CGFloat(commandMenuIconStrokeWidth))
             case .paperclipOutline:
                 ctx.stroke(Path(SVGPath.cgPath(iconPaperclipOutlinePath)), with: .color(color), style: Self.regularStroke)
             case .paperPlaneOutline:
@@ -711,6 +704,19 @@ struct OfficialGlyph: View {
     private func drawPanelLeft(_ ctx: inout GraphicsContext, color: Color, stroke: StrokeStyle) {
         ctx.stroke(Path(SVGPath.cgPath(headerPanelFramePath)), with: .color(color), style: stroke)
         ctx.stroke(Path(SVGPath.cgPath(headerPanelDividerPath)), with: .color(color), style: stroke)
+    }
+
+    /// Settings-shell Medium uses `ICON_MEDIUM_STROKE` 1.3; `/model` Regular uses 1.
+    /// Split cases instead of `kind ==` — `Kind` has associated values.
+    private func drawDataOutline(_ ctx: inout GraphicsContext, color: Color, strokeWidth: CGFloat) {
+        let dataStroke = StrokeStyle(
+            lineWidth: strokeWidth,
+            lineCap: .butt,
+            lineJoin: .miter,
+            miterLimit: 10
+        )
+        ctx.fill(Path(SVGPath.cgPath(settingsDataOutlineFillPath)), with: .color(color))
+        ctx.stroke(Path(SVGPath.cgPath(settingsDataOutlineGearPath)), with: .color(color), style: dataStroke)
     }
 
     private func drawPermission(_ ctx: inout GraphicsContext, value: String, color: Color, stroke: StrokeStyle) {
