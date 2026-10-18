@@ -313,9 +313,9 @@ public func srgbHex(_ rgb: UInt32) -> UInt32 {
 }
 
 /// Desktop `--dsw-alias-brand-primary-new-colorprimary-new-color`.
-/// Light is `#4176e6`; dark is `--dsw-static-deepseek-400` (`#7aaaff`).
+/// Light is `#4176e6`; dark is `--dsw-static-deepseek-450` (`#5686fe`).
 public let dswBrandPrimaryNewMixLight: UInt32 = 0x004176E6
-public let dswBrandPrimaryNewMixDark: UInt32 = 0x007AAAFF
+public let dswBrandPrimaryNewMixDark: UInt32 = 0x005686FE
 /// `--dsw-alias-state-error-secondary` → `--dsw-static-red-400`.
 public let dswStateErrorSecondary: UInt32 = 0x00F25A5A
 /// `--dsw-alias-state-success-primary` → `--dsw-static-green-500`.

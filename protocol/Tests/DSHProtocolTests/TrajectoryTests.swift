@@ -111,7 +111,8 @@ final class TrajectoryToolbarParityTests: XCTestCase {
         XCTAssertEqual(dswRadiusXsPoints, 4)
         XCTAssertEqual(trajectoryAssistantForegroundHex(dark: false), srgbHex(srgbMix(dswBrandPrimaryNewMixLight, dswStateErrorSecondary, amountA: 0.60)))
         XCTAssertEqual(trajectoryAssistantForegroundHex(dark: true), srgbHex(srgbMix(dswBrandPrimaryNewMixDark, dswStateErrorSecondary, amountA: 0.60)))
-        XCTAssertEqual(dswBrandPrimaryNewMixDark, 0x007AAAFF)
+        XCTAssertEqual(dswBrandPrimaryNewMixDark, 0x005686FE)
+        XCTAssertNotEqual(dswBrandPrimaryNewMixDark, 0x007AAAFF)
         XCTAssertEqual(trajectoryContextBackgroundHex(dark: false), srgbHex(dswStateSuccessTertiaryLight))
         XCTAssertEqual(trajectoryContextBackgroundHex(dark: true), srgbHex(dswStateSuccessTertiaryDark))
         XCTAssertEqual(
