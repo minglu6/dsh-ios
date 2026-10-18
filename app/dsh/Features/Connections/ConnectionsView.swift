@@ -35,20 +35,20 @@ struct ConnectionsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     if !sortedProfiles.isEmpty {
-                        section(L.pairedDevices()) {
+                        section(L.pairedDevices(), cardIdentifier: connectionsPairedCardIdentifier()) {
                             ForEach(Array(sortedProfiles.enumerated()), id: \.element.id) { index, profile in
                                 pairedRow(profile, divider: index < sortedProfiles.count - 1)
                             }
                         }
                     }
                     if !model.nearby.isEmpty {
-                        section(L.nearbyDevices()) {
+                        section(L.nearbyDevices(), cardIdentifier: connectionsNearbyCardIdentifier()) {
                             ForEach(Array(model.nearby.enumerated()), id: \.element.id) { index, host in
                                 nearbyRow(host, divider: index < model.nearby.count - 1)
                             }
                         }
                     }
-                    card {
+                    connCard(identifier: connectionsActionsCardIdentifier()) {
                         // Skip: ui-primitives 0.2.1-alpha.5 has no QR artwork
                         // (`connectionsScanUsesOfficialGlyph`). Do not invent one.
                         ConnActionRow(
@@ -167,7 +167,11 @@ struct ConnectionsView: View {
         .background(T.surface)
     }
 
-    private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+    private func section<Content: View>(
+        _ title: String,
+        cardIdentifier: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(title)
                 .font(.system(size: 14))
@@ -175,8 +179,23 @@ struct ConnectionsView: View {
                 .padding(.horizontal, 22)
                 .padding(.top, 16)
                 .padding(.bottom, 4)
-            card { content() }
+            connCard(identifier: cardIdentifier) { content() }
         }
+    }
+
+    /// Android `Card`: desktop settings-card fill/stroke, then 6pt outer
+    /// vertical margin so stacked cards do not touch.
+    private func connCard<Content: View>(
+        identifier: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(spacing: 0) { content() }
+            .background(T.settingsCard, in: RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.settingsCardStroke, lineWidth: 0.5))
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier(identifier)
+            .padding(.horizontal, 16)
+            .padding(.vertical, CGFloat(connectionsCardVerticalPaddingPoints))
     }
 
     private func pairedRow(_ profile: Profile, divider: Bool) -> some View {
@@ -587,90 +606,110 @@ private struct PairLinkSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 0) {
+        // Not NavigationStack: that is system bar chrome (and can leak the
+        // accent tint). Android `PairLinkSheet` is ConnSheet + SheetTitle;
+        // phone still needs a dismiss control, styled as desktop Button.ghost.
+        VStack(alignment: .leading, spacing: 0) {
+            Button(L.cancel()) { onDismiss() }
+                .buttonStyle(.plain)
+                .font(.system(size: CGFloat(dswButtonFontSizePoints)))
+                .foregroundStyle(T.ink)
+                .padding(.horizontal, 22)
+                .padding(.vertical, 6)
+                .accessibilityIdentifier(connectionsPairLinkCancelIdentifier())
+            Text(L.pairingLink())
+                .font(.system(size: CGFloat(connectionsSheetTitleFontSizePoints), weight: .semibold))
+                .foregroundStyle(T.ink)
+                .padding(.horizontal, 22)
+                .padding(.vertical, 6)
+            Text(L.pairingLinkHint())
+                .font(.system(size: CGFloat(connectionsSheetHintFontSizePoints)))
+                .foregroundStyle(T.text3)
+                .padding(.horizontal, 22)
+                .padding(.vertical, 8)
+            VStack(alignment: .leading, spacing: 4) {
                 Text(L.pairingLink())
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(T.ink)
-                    .padding(.horizontal, 22)
-                    .padding(.vertical, 6)
-                Text(L.pairingLinkHint())
-                    .font(.system(size: 13))
+                    .font(.system(size: CGFloat(connectionsFieldLabelFontSizePoints)))
                     .foregroundStyle(T.text3)
+                    .padding(.leading, 4)
+                // `$text` (not a custom Binding that also writes `pasted`):
+                // XCUI typeText talks to the UITextField; an extra @State
+                // write in the setter can leave SwiftUI `text` on the old
+                // URL while the field shows a concatenation, so parse
+                // stays nil and invalid copy plus disabled 下一步 remain.
+                TextField(L.pairingLinkFieldHint(), text: $text)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .font(.system(size: CGFloat(connectionsFieldFontSizePoints), design: .monospaced))
+                    .padding(.horizontal, CGFloat(connectionsFieldHorizontalPaddingPoints))
+                    .padding(.vertical, CGFloat(connectionsFieldVerticalPaddingPoints))
+                    .background(
+                        T.input,
+                        in: RoundedRectangle(cornerRadius: CGFloat(connectionsFieldRadiusPoints))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: CGFloat(connectionsFieldRadiusPoints))
+                            .stroke(T.border, lineWidth: CGFloat(dswButtonOutlineWidthPoints))
+                    )
+                    .accessibilityLabel(L.pairingLink())
+                    .accessibilityIdentifier(connectionsPairingLinkFieldIdentifier())
+                    .onChange(of: text) { _ in
+                        if suppressPasteReset {
+                            suppressPasteReset = false
+                            return
+                        }
+                        pasted = false
+                    }
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 4)
+            if showInvalid {
+                Text(L.invalidPairingLink())
+                    .font(.system(size: 12))
+                    .foregroundStyle(T.err)
                     .padding(.horizontal, 22)
                     .padding(.vertical, 8)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(L.pairingLink())
-                        .font(.caption)
-                        .foregroundStyle(T.text3)
-                    // `$text` (not a custom Binding that also writes `pasted`):
-                    // XCUI typeText talks to the UITextField; an extra @State
-                    // write in the setter can leave SwiftUI `text` on the old
-                    // URL while the field shows a concatenation, so parse
-                    // stays nil and invalid copy plus disabled 下一步 remain.
-                    TextField(L.pairingLinkFieldHint(), text: $text)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .font(.system(.body, design: .monospaced))
-                        .padding(12)
-                        .background(T.input, in: RoundedRectangle(cornerRadius: 12))
-                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 0.5))
-                        .accessibilityLabel(L.pairingLink())
-                        .accessibilityIdentifier(connectionsPairingLinkFieldIdentifier())
-                        .onChange(of: text) { _ in
-                            if suppressPasteReset {
-                                suppressPasteReset = false
-                                return
-                            }
-                            pasted = false
-                        }
-                }
-                .padding(.horizontal, 18)
-                .padding(.vertical, 4)
-                if showInvalid {
-                    Text(L.invalidPairingLink())
-                        .font(.system(size: 12))
-                        .foregroundStyle(T.err)
-                        .padding(.horizontal, 22)
-                        .padding(.vertical, 8)
-                        .accessibilityIdentifier(connectionsInvalidPairingLinkIdentifier())
-                }
-                HStack(spacing: 10) {
-                    Button(action: pasteLink) {
-                        Text(L.pastePairingLink())
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .foregroundStyle(T.ink)
-                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 1))
-                    }
-                    .accessibilityIdentifier(connectionsPastePairingLinkIdentifier())
-                    Button(action: continuePairing) {
-                        Text(L.reviewPairingLink())
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .foregroundStyle(T.onPrimary)
-                            .background(T.primaryButton, in: RoundedRectangle(cornerRadius: 12))
-                    }
-                    .disabled(parsed == nil)
-                    .opacity(parsed == nil ? 0.4 : 1)
-                    .accessibilityIdentifier(connectionsReviewPairingLinkIdentifier())
-                }
-                .padding(.horizontal, 22)
-                .padding(.vertical, 14)
-                Spacer()
+                    .accessibilityIdentifier(connectionsInvalidPairingLinkIdentifier())
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .background(T.bg)
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier(connectionsPairLinkSheetIdentifier())
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(L.cancel()) { onDismiss() }
+            HStack(spacing: 10) {
+                Button(action: pasteLink) {
+                    Text(L.pastePairingLink())
+                        .font(.system(size: CGFloat(dswButtonFontSizePoints)))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: CGFloat(connectionsPairLinkButtonHeightPoints))
                         .foregroundStyle(T.ink)
-                        .tint(T.ink)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: CGFloat(dswButtonRadiusMdPoints))
+                                .stroke(T.border, lineWidth: CGFloat(dswButtonOutlineWidthPoints))
+                        )
                 }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier(connectionsPastePairingLinkIdentifier())
+                Button(action: continuePairing) {
+                    Text(L.reviewPairingLink())
+                        .font(.system(size: CGFloat(dswButtonFontSizePoints)))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: CGFloat(connectionsPairLinkButtonHeightPoints))
+                        .foregroundStyle(T.onPrimary)
+                        .background(
+                            T.primaryButton,
+                            in: RoundedRectangle(cornerRadius: CGFloat(dswButtonRadiusMdPoints))
+                        )
+                }
+                .buttonStyle(.plain)
+                .disabled(parsed == nil)
+                .opacity(parsed == nil ? dswButtonDisabledOpacity : 1)
+                .accessibilityIdentifier(connectionsReviewPairingLinkIdentifier())
             }
+            .padding(.horizontal, 22)
+            .padding(.vertical, 14)
+            Spacer()
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(T.bg)
+        .tint(T.ink)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(connectionsPairLinkSheetIdentifier())
     }
 
     private func pasteLink() {

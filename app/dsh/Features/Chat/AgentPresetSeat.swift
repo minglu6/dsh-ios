@@ -34,10 +34,12 @@ struct LandingWorkspaceChip: View {
                 Text(model.landingWorkspaceLabel ?? landingChooseWorkspace(english: L.en))
                     .font(.system(size: CGFloat(workspaceChipFontSizePoints), weight: .medium))
                     .lineLimit(1)
-                Image(systemName: "chevron.down")
-                    .font(.system(size: CGFloat(workspaceChipChevronSizePoints)))
-                    .foregroundStyle(T.caption)
-                    .rotationEffect(.degrees(open ? 180 : 0))
+                OfficialGlyph(
+                    kind: .chevronDown,
+                    size: CGFloat(workspaceChipChevronSizePoints),
+                    color: T.caption
+                )
+                .rotationEffect(.degrees(open ? 180 : 0))
             }
             .foregroundStyle(T.ink)
             .padding(.horizontal, 8)
@@ -82,9 +84,7 @@ struct LandingWorkspaceChip: View {
                                 .lineLimit(1)
                             Spacer(minLength: 8)
                             if selectedId == workspace.workspaceId {
-                                Image(systemName: "checkmark")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(T.ink)
+                                OfficialGlyph(kind: .checkOutline, size: 12, color: T.ink)
                             }
                         }
                         .padding(.horizontal, 8)
@@ -100,9 +100,11 @@ struct LandingWorkspaceChip: View {
                         showDirectoryPicker = true
                     } label: {
                         HStack(spacing: 8) {
-                            Image(systemName: D.plus)
-                                .font(.system(size: CGFloat(workspaceChipIconSizePoints)))
-                                .foregroundStyle(T.ink)
+                            OfficialGlyph(
+                                kind: .plusOutline,
+                                size: CGFloat(workspaceChipIconSizePoints),
+                                color: T.ink
+                            )
                             Text(addWorkspaceMenuLabel(english: L.en))
                                 .font(.system(size: 13))
                                 .foregroundStyle(T.ink)
@@ -157,9 +159,7 @@ struct AgentPresetSeat: View {
                     Text(currentLabel)
                         .font(.system(size: CGFloat(agentPresetSeatFontSizePoints), weight: .medium))
                         .lineLimit(1)
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 11))
-                        .foregroundStyle(T.caption)
+                    OfficialGlyph(kind: .chevronDown, size: 11, color: T.caption)
                         .rotationEffect(.degrees(open ? 180 : 0))
                 }
                 .foregroundStyle(T.ink)
@@ -197,9 +197,7 @@ struct AgentPresetSeat: View {
                                 }
                                 Spacer(minLength: 8)
                                 if currentId == id {
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 12, weight: .semibold))
-                                        .foregroundStyle(T.ink)
+                                    OfficialGlyph(kind: .checkOutline, size: 12, color: T.ink)
                                 }
                             }
                             .padding(.horizontal, 8)

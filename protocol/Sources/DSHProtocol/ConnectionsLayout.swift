@@ -18,6 +18,37 @@ public let connectionsPageUsesDrawerPresentation = false
 public let connectionsPageMinWidthRatio: Double = 0.98
 public let connectionsPageMinHeightRatio: Double = 0.90
 
+/// Android `Card` / `SettingsCard` (`Screens.kt` / `SettingsPages.kt`):
+/// `padding(horizontal = 18.dp, vertical = 6.dp)` around desktop settings-card
+/// fill + stroke. The 6pt is **outer** margin, so two stacked cards sit
+/// 12pt apart. Desktop `ui-theme` `base.css` only publishes the material
+/// aliases + `--dsw-radius-lg`; the gap token is the phone card chrome.
+public let connectionsCardVerticalPaddingPoints: Double = 6
+public let connectionsCardStackGapPoints: Double = connectionsCardVerticalPaddingPoints * 2
+
+/// Desktop `ui-primitives` `Button.module.css`: 14/22, `--dsw-radius-md` 12,
+/// `.button:disabled { opacity: 0.4 }`, outline `0.5px` stroke.
+/// Android `PrimaryColors` `disabledContainerColor = Caption` is **not**
+/// desktop — desktop wins.
+public let dswButtonFontSizePoints: Double = 14
+public let dswButtonLineHeightPoints: Double = 22
+public let dswButtonRadiusMdPoints: Double = 12
+public let dswButtonDisabledOpacity: Double = 0.4
+public let dswButtonOutlineWidthPoints: Double = 0.5
+public let dswButtonMdHeightPoints: Double = 36
+
+/// Android `PairLinkSheet` / `ConnField` (9aa43c4 / 33b97b2): phone touch
+/// height 48, field 14pt / pad 14×12 / radius-md 12. Sheet title 18
+/// semibold; hint 13 tertiary.
+public let connectionsPairLinkButtonHeightPoints: Double = 48
+public let connectionsFieldFontSizePoints: Double = 14
+public let connectionsFieldLabelFontSizePoints: Double = 12
+public let connectionsFieldRadiusPoints: Double = dswButtonRadiusMdPoints
+public let connectionsFieldHorizontalPaddingPoints: Double = 14
+public let connectionsFieldVerticalPaddingPoints: Double = 12
+public let connectionsSheetTitleFontSizePoints: Double = 18
+public let connectionsSheetHintFontSizePoints: Double = 13
+
 /// Controller page title. Desktop Settings `pocket` is Host-side
 /// 「手机连接」QR — that copy stays off the phone.
 public func connectionsPageTitle(english: Bool) -> String {
@@ -71,7 +102,11 @@ public func connectionsActionRowIdentifier(_ action: ConnectionsAction) -> Strin
     "connectionsAction.\(action.rawValue)"
 }
 
+public func connectionsPairedCardIdentifier() -> String { "connectionsPairedCard" }
+public func connectionsNearbyCardIdentifier() -> String { "connectionsNearbyCard" }
+public func connectionsActionsCardIdentifier() -> String { "connectionsActionsCard" }
 public func connectionsPairLinkSheetIdentifier() -> String { "connectionsPairLinkSheet" }
+public func connectionsPairLinkCancelIdentifier() -> String { "connectionsPairLinkCancel" }
 public func connectionsPairingLinkFieldIdentifier() -> String { "connectionsPairingLinkField" }
 public func connectionsPastePairingLinkIdentifier() -> String { "connectionsPastePairingLink" }
 public func connectionsReviewPairingLinkIdentifier() -> String { "connectionsReviewPairingLink" }

@@ -89,7 +89,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R60 | Start/Browser/Inspector 去 grabber sheet；Start 去装饰地球；设置权限 inline select；轨迹 assistant/context token；停止 rect rx=3；chat/slash 官方 chevron/check；截图补 feedback | done (#69) |
 | R61 | 顶栏侧栏 / 消息复制·分支 / 返回 chevron / 浏览器工具栏 / 设置外观改官方 SVG | done (#70) |
 | R62 | Composer / 模型选择器对齐桌面 Flash `1017` 绿色徽标 | done (#71) |
-| R63 | 会话工具/Jobs/轨迹官方 SVG；远程主机配对链接粘贴；抽屉当前工作区文件夹色 + 官方 fill | this PR |
+| R63 | 会话工具/Jobs/轨迹官方 SVG；远程主机配对链接粘贴；抽屉当前工作区文件夹色 + 官方 fill | done (#72) |
+| R64 | 远程主机卡片间距；配对链接 sheet primitives；landing 工作区 chip 官方 chevron/check/plus | this PR |
 
 ---
 
@@ -116,7 +117,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Markdown | `ui-chat` primitives | `Markdown.kt` | `protocol/Markdown.swift` + `Features/Chat/MarkdownView.swift` |
 | Official icons | desktop `D.*` | Android vector set | `Design/Icons.swift` SF Symbol map |
 | Connection keep-alive | — | `ConnectionService` FGS | `ConnectionKeeper` `beginBackgroundTask` + ping + `BGAppRefreshTask` `dev.dsh.pocket.ios.refresh` + path monitor + local notify |
-| Controller connections | Host pocket `settings.section` `pocket` is QR on the **computer**; Android `ConnectionsScreen` | `Screens.kt` `ConnectionsScreen` / `ConnDeviceRow` + PairLinkSheet（`9aa43c4` / `33b97b2`） | `Features/Connections/ConnectionsView.swift` + `ConnectionsLayout.swift`：全屏「远程主机」；动作卡 扫码 → 配对链接（`IconLinkOutlineRegular`）→ 输入地址（Material Keyboard）；配对链接粘贴后进既有配对确认，不立刻连接。入口在抽屉脚，Settings 无连接分组 |
+| Controller connections | Host pocket `settings.section` `pocket` is QR on the **computer**; Android `ConnectionsScreen` | `Screens.kt` `ConnectionsScreen` / `ConnDeviceRow` + PairLinkSheet（`9aa43c4` / `33b97b2`） | `Features/Connections/ConnectionsView.swift` + `ConnectionsLayout.swift`：全屏「远程主机」；已配对卡与动作卡间距 12pt（`Card` 竖向 6）；动作卡 扫码 → 配对链接（`IconLinkOutlineRegular`）→ 输入地址（Material Keyboard）；配对链接 sheet 用桌面 Button/Input token + Android 48 高，粘贴后进既有配对确认，不立刻连接。入口在抽屉脚，Settings 无连接分组 |
 
 ---
 
@@ -1581,3 +1582,55 @@ Android `MainActivity` 窄屏是 `ModalNavigationDrawer`（按钮 / 手势滑出
 - 工作区 hover-chevron 互换（触控无 hover）。
 - 插件列表搜索框。
 - `turnNavigation` / `toBottom` FAB / `ask.review` / Account/shortcuts / CompatibilityBanner / 审批通知 / stop-state **行为**。
+
+## Round 64 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`；Android `33b97b2` / `9aa43c4`）
+
+基线 `main` `24948e1`（#72 Round 63）。桌面是源。禁止自创颜色/图标/间距；无系统蓝；无 ActionSheet；文案「远程主机」。
+
+### 必须核实（已对齐，本轮不改）
+
+| 项 | 判定 |
+| --- | --- |
+| landing「探索未至之境」+ whale | **PASS** |
+| Composer 贴底 | **PASS** |
+| 抽屉设置 vs 绿点+主机名独立热区 ≥16pt | **PASS** |
+| 远程主机整页 | **PASS** |
+| 开抽屉 / 滚动 / 进设置 / 进远程主机收键盘 | **PASS** |
+| 权限 chip 只图标 + #68 菜单 | **PASS** |
+| #69 Start/Browser/Inspector 全屏；#70 官方 SVG；#71 Flash 1017；#72 配对链接流程与当前工作区文件夹色 | **PASS** |
+| `/` 菜单全量不显示数量；聊天顶栏无分享；用户消息下无常驻复制 | **PASS** |
+
+### 本轮修
+
+| 项 | 桌面 / Android | iOS | 处理 |
+| --- | --- | --- | --- |
+| 远程主机「已配对设备」卡 vs 扫码/配对链接/输入地址卡贴在一起 | Android `Card` `padding(vertical = 6.dp)`（`Screens.kt`）；两卡间距 12。桌面 `base.css` 只给 settings-card fill/stroke + `--dsw-radius-lg` | `VStack(spacing: 0)` + 全局 `card()` 无竖向 margin | `connCard` 外加 `connectionsCardVerticalPaddingPoints = 6`。CI `connectionsPairedCard`/`connectionsActionsCard` 间距 ≥11 |
+| 配对链接 sheet 字号 / 圆角 / 禁用态 / 取消 | 桌面 `Button.module.css` 14/22、radius-md 12、`:disabled { opacity: 0.4 }`、outline 0.5px；`Input`/`ConnField` 14pt、pad 14×12。Android `PairLinkSheet` 标题 18 semibold、hint 13、按钮高 48。Android `PrimaryColors` Caption 禁用底 **不是** 桌面 | NavigationStack 系统栏；输入 `.body` 17；描边 1pt；按钮靠 padding 估高 | 去掉 NavigationStack；左上「取消」走 ghost 14/`T.ink`；输入 14 / pad 14×12；按钮高 48、字 14、圆角 12、描边 0.5、禁用 opacity 0.4 |
+| landing 工作区 chip / AgentPresetSeat | 桌面 WorkspaceChip / WorkspacePicker：`IconChevronDownOutline` / `IconCheckOutline` / `IconPlusOutline` | SF `chevron.down` / `checkmark` / `plus` | 改官方 SVG。CI landing 禁 SF chevron/check，断言 `official.chevronDown` |
+
+### 逐屏核对（light+dark）
+
+| 屏 | 判定 | 说明 |
+| --- | --- | --- |
+| landing | **本轮修** | 工作区 chip 官方 chevron；标题/鲸/Composer 贴底不回归 |
+| chat | **PASS** | #72 PROCESS_ICONS / 复制·分支；无分享、无用户常驻复制 |
+| drawer | **PASS** | 设置 vs 绿点+主机名；当前工作区 `businessPrimary` 文件夹 |
+| jobs | **PASS** | #72 官方 chevronDown / stopFill |
+| trajectory / trajectoryDetail | **PASS** | #68/#72 KIND_ICON + 详情官方 SVG |
+| inspector | **skip** | viewfinder / 类型过滤无 primitives artwork |
+| browser | **PASS** | #70 官方工具栏 |
+| terminal | **skip** | 中间 ProgressView（不发明 loading SVG） |
+| settings | **PASS** | #70 外观立方；权限 inline select。设置壳 `cpu`/`slider` 不在 CI `settings`（进的是通用页） |
+| plugins / builtinPlugins | **skip / PASS** | 列表搜索框有意保留 SF；内置刷新已官方 |
+| models / permission / slash | **PASS** | 官方 chevron/check；斜杠无数量 |
+| schedule / sessionActions / viewOptions / start / composerStop | **PASS** | 既有官方 SVG / 全屏 Start |
+| connections / pairingLink | **本轮修** | 卡片 12pt 间距；配对 sheet primitives |
+
+本轮核对后**不改**（平台 / hide / 禁止发明）
+
+- `turnNavigation` / `toBottom` FAB / `ask.review` / hover chevron / Account/shortcuts / CompatibilityBanner / 审批通知 / stop-state **行为**。
+- 插件列表搜索框（桌面 `ui-plugin-manager` 无该槽）。
+- 扫码 QR / Inspector viewfinder / 终端 ProgressView（primitives 无 artwork）。
+- Android `PrimaryColors` 禁用底 `Caption`：桌面 Button 是整钮 `opacity: 0.4`。
+- 连接卡圆角保持 iOS `card()` radius-md 12（与设置卡同一套）；不单独改成 Android `R16`。
+- 附近设备 `desktopcomputer`、管理 sheet `arrow.clockwise`/`trash`、Todo/Goal dock SF、设置壳 `cpu`：本轮未进 CI 主路径或缺一一对应 primitives，不发明。

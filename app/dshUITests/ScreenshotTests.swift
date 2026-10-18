@@ -135,6 +135,12 @@ final class ScreenshotTests: XCTestCase {
                     officialOpen.waitForExistence(timeout: 8) || officialClose.waitForExistence(timeout: 2),
                     "\(appearance) landing missing official workspace-chip folder glyph"
                 )
+                XCTAssertFalse(app.images["chevron.down"].exists, "\(appearance) landing still exposes SF chevron.down")
+                XCTAssertFalse(app.images["checkmark"].exists, "\(appearance) landing still exposes SF checkmark")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.chevronDown"].waitForExistence(timeout: 8),
+                    "\(appearance) landing missing official workspace-chip chevron"
+                )
             }
             if screen == "drawer" {
                 XCTAssertTrue(
@@ -465,6 +471,16 @@ final class ScreenshotTests: XCTestCase {
                     app.images["qrcode.viewfinder"].exists,
                     "\(appearance) connections scan skip lost; do not invent a QR SVG"
                 )
+                let pairedCard = app.descendants(matching: .any)["connectionsPairedCard"].firstMatch
+                let actionsCard = app.descendants(matching: .any)["connectionsActionsCard"].firstMatch
+                XCTAssertTrue(pairedCard.waitForExistence(timeout: 4), "\(appearance) connections missing 已配对设备 card")
+                XCTAssertTrue(actionsCard.exists, "\(appearance) connections missing action card")
+                let cardGap = actionsCard.frame.minY - pairedCard.frame.maxY
+                XCTAssertGreaterThanOrEqual(
+                    cardGap,
+                    11,
+                    "\(appearance) connections cards almost touch (gap \(cardGap); Android Card vertical 6+6)"
+                )
             }
             if screen == "trajectory" {
                 XCTAssertTrue(
@@ -775,11 +791,28 @@ final class ScreenshotTests: XCTestCase {
             app.descendants(matching: .any)["connectionsPairLinkSheet"].waitForExistence(timeout: 4),
             "\(appearance) connectionsPairLinkSheet identifier missing"
         )
+        XCTAssertTrue(
+            app.descendants(matching: .any)["connectionsPairLinkCancel"].waitForExistence(timeout: 4)
+                || app.buttons["取消"].waitForExistence(timeout: 2),
+            "\(appearance) pairing-link sheet missing 取消"
+        )
         try saveNamedScreenshot(appearance, "pairingLink")
         let paste = app.descendants(matching: .any)["connectionsPastePairingLink"]
         let next = app.descendants(matching: .any)["connectionsReviewPairingLink"]
         XCTAssertTrue(paste.waitForExistence(timeout: 4), "\(appearance) 粘贴链接 missing")
         XCTAssertTrue(next.waitForExistence(timeout: 4), "\(appearance) 下一步 missing")
+        XCTAssertEqual(
+            paste.firstMatch.frame.height,
+            48,
+            accuracy: 2,
+            "\(appearance) 粘贴链接 height \(paste.firstMatch.frame.height) is not Android PairLinkSheet 48"
+        )
+        XCTAssertEqual(
+            next.firstMatch.frame.height,
+            48,
+            accuracy: 2,
+            "\(appearance) 下一步 height \(next.firstMatch.frame.height) is not Android PairLinkSheet 48"
+        )
         XCTAssertFalse(next.firstMatch.isEnabled, "\(appearance) 下一步 enabled on empty pairing link")
         let field = app.descendants(matching: .any)["connectionsPairingLinkField"].firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 4), "\(appearance) pairing-link field missing")
