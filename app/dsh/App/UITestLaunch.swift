@@ -271,11 +271,6 @@ extension AppModel {
         }
     }
 
-    /// Desktop `JobListAction` only paints the header trigger when the
-    /// session can see at least one job. Seed a live bash row so chat /
-    /// trajectory screenshots lock the official chevron (not SF `clock`).
-    /// Do not advertise `jobs.list`: that starts `retainJobsWatch`, which
-    /// clears the snapshot and then has no Host client to refill it.
     /// Desktop TodoPanel / GoalBar / QueueDock. Kept off the `chat` fixture so
     /// `*-chat.png` stays stable; `chatDock` is the dedicated screenshot path.
     fileprivate func seedUITestChatDocks() {
@@ -300,6 +295,11 @@ extension AppModel {
         goalActivation = "armed"
     }
 
+    /// Desktop `JobListAction` only paints the header trigger when the
+    /// session can see at least one job. Seed a live bash row so chat /
+    /// trajectory screenshots lock the official chevron (not SF `clock`).
+    /// Do not advertise `jobs.list`: that starts `retainJobsWatch`, which
+    /// clears the snapshot and then has no Host client to refill it.
     fileprivate func seedUITestJobs() {
         jobs = [
             JobRow(

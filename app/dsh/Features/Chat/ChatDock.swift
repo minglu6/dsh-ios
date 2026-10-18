@@ -737,19 +737,22 @@ struct PromptQueue: View {
     }
 
     private func icon(_ official: OfficialGlyph.Kind, enabled: Bool, label: String? = nil, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        ZStack {
             OfficialGlyph(
                 kind: official,
                 size: CGFloat(queueActionIconSizePoints),
                 color: T.text3.opacity(enabled ? 1 : 0.45)
             )
-            .frame(width: 32, height: 32)
+            .allowsHitTesting(false)
+            Button(action: action) {
+                Color.clear.frame(width: 32, height: 32)
+            }
+            .buttonStyle(.plain)
+            .disabled(!enabled)
+            .accessibilityLabel(label ?? "")
+            .accessibilityHidden(label == nil)
         }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .contain)
-        .disabled(!enabled)
-        .accessibilityLabel(label ?? "")
-        .accessibilityHidden(label == nil)
+        .frame(width: 32, height: 32)
     }
 
     @ViewBuilder

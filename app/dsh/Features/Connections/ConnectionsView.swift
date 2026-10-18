@@ -727,9 +727,8 @@ private struct PairLinkSheet: View {
                             .stroke(T.border, lineWidth: CGFloat(dswButtonOutlineWidthPoints))
                     )
                     .overlay {
-                        Color.clear
-                            .accessibilityElement()
-                            .accessibilityIdentifier(connectionsPairingLinkFieldBoundsIdentifier())
+                        PairingFieldBoundsHost()
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .allowsHitTesting(false)
                     }
                     .accessibilityLabel(L.pairingLink())
@@ -833,6 +832,24 @@ private extension View {
         } else {
             self
         }
+    }
+}
+
+/// XCUI geometry leaf the same size as the visual field chrome. A SwiftUI
+/// `Color.clear` overlay is not in the snapshot; UIKit `isAccessibilityElement`
+/// is, same as `ComposerAddA11yHost`.
+private struct PairingFieldBoundsHost: UIViewRepresentable {
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.backgroundColor = .clear
+        view.isUserInteractionEnabled = false
+        view.isAccessibilityElement = true
+        view.accessibilityIdentifier = connectionsPairingLinkFieldBoundsIdentifier()
+        return view
+    }
+
+    func updateUIView(_ view: UIView, context: Context) {
+        view.accessibilityIdentifier = connectionsPairingLinkFieldBoundsIdentifier()
     }
 }
 
