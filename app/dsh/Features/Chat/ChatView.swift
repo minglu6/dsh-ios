@@ -1593,6 +1593,42 @@ private struct MessageActions: View {
     }
 }
 
+/// XCUITest host for InputBar `.add`. Landing's UITextView + former
+/// GeometryReader dropped the SwiftUI plus Button from the snapshot;
+/// a UIKit element on the composer card stays queryable.
+private struct ComposerAddA11yHost: UIViewRepresentable {
+    var identifier: String
+    var label: String
+    var onActivate: () -> Void
+
+    func makeUIView(context: Context) -> ComposerAddA11yView {
+        let view = ComposerAddA11yView()
+        view.backgroundColor = .clear
+        view.isUserInteractionEnabled = false
+        view.isAccessibilityElement = true
+        view.accessibilityTraits = .button
+        view.accessibilityIdentifier = identifier
+        view.accessibilityLabel = label
+        view.onActivate = onActivate
+        return view
+    }
+
+    func updateUIView(_ view: ComposerAddA11yView, context: Context) {
+        view.accessibilityIdentifier = identifier
+        view.accessibilityLabel = label
+        view.onActivate = onActivate
+    }
+}
+
+private final class ComposerAddA11yView: UIView {
+    var onActivate: () -> Void = {}
+
+    override func accessibilityActivate() -> Bool {
+        onActivate()
+        return true
+    }
+}
+
 struct ComposerView: View {
     @ObservedObject var model: AppModel
     var interceptKeys = false
@@ -1686,14 +1722,17 @@ struct ComposerView: View {
                     }
                 HStack(spacing: 8) {
                     Button(action: onPlus) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(T.ink)
-                            .frame(width: CGFloat(composerAddButtonPoints), height: CGFloat(composerAddButtonPoints))
+                        OfficialGlyph(
+                            kind: .plusOutline,
+                            size: CGFloat(composerAddIconSizePoints),
+                            color: T.ink
+                        )
+                        .frame(width: CGFloat(composerAddButtonPoints), height: CGFloat(composerAddButtonPoints))
+                        .background(T.selector, in: Circle())
                     }
-                    .background(T.selector, in: Circle())
+                    .buttonStyle(.plain)
                     .disabled(firstPromptBlocksComposerActions(model.firstPrompt))
-                    .accessibilityLabel(composerCommandsAria(english: L.en))
+                    .accessibilityHidden(true)
                     if !permissionChipRequiresCatalog || model.permissionCatalog != nil {
                         if let perm = model.sessionPermission ?? model.draftPermission ?? (heroPlaceholder ? model.defaultPermission : nil), !perm.isEmpty {
                             PermissionChipMenu(
@@ -1764,6 +1803,17 @@ struct ComposerView: View {
             .onAppear { model.reloadPermissionCatalog() }
         }
         .background(T.surface)
+        .overlay(alignment: .bottomLeading) {
+            ComposerAddA11yHost(
+                identifier: composerAddSymbol(),
+                label: composerCommandsAria(english: L.en),
+                onActivate: onPlus
+            )
+            .frame(width: CGFloat(composerAddButtonPoints), height: CGFloat(composerAddButtonPoints))
+            .padding(.leading, 14 + CGFloat(composerCardPaddingHorizontalPoints))
+            .padding(.bottom, 2 + CGFloat(composerCardPaddingBottomPoints))
+            .allowsHitTesting(false)
+        }
     }
 
     @ViewBuilder

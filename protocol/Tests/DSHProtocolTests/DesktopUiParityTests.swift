@@ -226,6 +226,14 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertEqual(sidebarProjectAddSymbol(), "official.projectAdd")
         XCTAssertFalse(isForbiddenSystemProjectAddSymbol("official.projectAdd"))
         XCTAssertTrue(isForbiddenSystemProjectAddSymbol("plus"))
+        XCTAssertTrue(composerAddUsesOfficialGlyph)
+        XCTAssertEqual(composerAddSymbol(), "official.plusOutline")
+        XCTAssertFalse(isForbiddenSystemComposerAddSymbol("official.plusOutline"))
+        XCTAssertTrue(isForbiddenSystemComposerAddSymbol("plus"))
+        XCTAssertEqual(composerAddIconSizePoints, 14)
+        XCTAssertEqual(composerAddIconStrokeWidth, 1.3)
+        XCTAssertEqual(composerAddPlusVerticalPath, "M8 2V14")
+        XCTAssertEqual(composerAddPlusHorizontalPath, "M2 8H14")
     }
 
     func testGeneralSettingsCopyMatchesDesktopLocale() {

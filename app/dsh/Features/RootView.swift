@@ -119,6 +119,7 @@ struct RootView: View {
             ConnectionsView(model: model)
         } else {
             emptyChat
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("landingHero")
         }
     }
@@ -143,26 +144,28 @@ struct RootView: View {
             }
             .padding(14)
             .background(T.surface)
-            GeometryReader { geo in
-                ZStack {
-                    VStack(spacing: 0) {
-                        Color.clear.frame(maxHeight: .infinity)
-                        VStack(spacing: CGFloat(landingHeroStackGapPoints)) {
-                            landingHeadlineRow
-                            landingWorkspaceRow
-                            landingComposer
-                        }
-                        Color.clear.frame(maxHeight: .infinity)
+            ZStack(alignment: .bottom) {
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    VStack(spacing: CGFloat(landingHeroStackGapPoints)) {
+                        landingHeadlineRow
+                        landingWorkspaceRow
+                        landingComposer
                     }
-                    if landingCommandMenuVisible {
+                    Spacer(minLength: 0)
+                }
+                if landingCommandMenuVisible {
+                    GeometryReader { geo in
                         landingCommandMenuLayer(
                             availableHeight: max(0, geo.size.height - landingComposerHeight - 8)
                         )
                         .padding(.bottom, landingComposerHeight + 4)
+                        .frame(width: geo.size.width, height: geo.size.height, alignment: .bottom)
                     }
                 }
-                .onPreferenceChange(LandingComposerHeightKey.self) { landingComposerHeight = $0 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .onPreferenceChange(LandingComposerHeightKey.self) { landingComposerHeight = $0 }
         }
         .background(T.bg)
         .onChange(of: model.composerText) { _ in

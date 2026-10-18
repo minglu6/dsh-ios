@@ -455,6 +455,24 @@ public let composerAddButtonUsesSelectorFill = true
 public let composerAddButtonSelectorLightHex: UInt32 = 0xFFF5F6F7
 public let composerAddButtonSelectorDarkHex: UInt32 = 0xFF353638
 
+/// Desktop `ui-conversation` InputBar `.add` uses `IconPlusOutlineMedium`,
+/// never SF `plus`. Artwork is `ui-primitives` `IconPlusOutlineArtwork` on a
+/// 16×16 view box; Medium stroke is `ICON_MEDIUM_STROKE` 1.3; size 14 inside
+/// the 28 filled circle. Round 50 notes said Regular — live pack is Medium.
+public let composerAddUsesOfficialGlyph = true
+public let composerAddIconSizePoints: Double = 14
+public let composerAddIconStrokeWidth: Double = 1.3
+
+public func composerAddSymbol() -> String { "official.plusOutline" }
+
+public func isForbiddenSystemComposerAddSymbol(_ name: String) -> Bool {
+    name == "plus"
+}
+
+/// Desktop `IconPlusOutlineArtwork` stem / bar (`d` of the two `<path>`s).
+public let composerAddPlusVerticalPath = "M8 2V14"
+public let composerAddPlusHorizontalPath = "M2 8H14"
+
 /// Desktop `conversation.input.left` has no occupant. Ask reopen lives on
 /// `ui-tool` `AskQuestionRow` (`ask.reopen`), not a composer chip.
 public let composerShowsAskChip = false
