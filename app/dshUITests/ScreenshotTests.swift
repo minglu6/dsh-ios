@@ -160,6 +160,16 @@ final class ScreenshotTests: XCTestCase {
                 )
             }
             if screen == "chat" {
+                // Fixture: one user bubble + one assistant reply. Only the
+                // assistant MessageIconActions row may carry copy.
+                let copyButtons = app.buttons.matching(
+                    NSPredicate(format: "label == '复制' OR label == 'Copy'")
+                ).count
+                XCTAssertLessThanOrEqual(
+                    copyButtons,
+                    1,
+                    "\(appearance) chat exposes \(copyButtons) copy buttons (user bubble copy is back)"
+                )
                 XCTAssertFalse(app.images["gauge.with.dots.needle.67percent"].exists, "\(appearance) chat still exposes SF gauge")
                 XCTAssertFalse(app.images["cylinder"].exists, "\(appearance) chat still exposes SF cylinder")
                 XCTAssertTrue(
