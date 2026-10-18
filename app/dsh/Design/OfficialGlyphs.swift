@@ -30,6 +30,7 @@ struct OfficialGlyph: View {
         case searchOutline
         case projectAdd
         case plusOutline
+        case send
 
         var accessibilityIdentifier: String {
             switch self {
@@ -40,6 +41,7 @@ struct OfficialGlyph: View {
             case .searchOutline: return "official.searchOutline"
             case .projectAdd: return "official.projectAdd"
             case .plusOutline: return "official.plusOutline"
+            case .send: return "official.send"
             default: return "official.glyph"
             }
         }
@@ -47,7 +49,8 @@ struct OfficialGlyph: View {
         var hidesAccessibility: Bool {
             switch self {
             case .folderClose, .folderOpen, .settingsOutline, .newChat, .searchOutline, .projectAdd: return false
-            // plusOutline is decorative; ComposerView's add Button owns official.plusOutline.
+            // plusOutline / send are decorative; ComposerView hosts own
+            // official.plusOutline and official.send.
             default: return true
             }
         }
@@ -192,6 +195,8 @@ struct OfficialGlyph: View {
                 )
                 ctx.stroke(Path(SVGPath.cgPath(composerAddPlusVerticalPath)), with: .color(color), style: medium)
                 ctx.stroke(Path(SVGPath.cgPath(composerAddPlusHorizontalPath)), with: .color(color), style: medium)
+            case .send:
+                ctx.fill(Path(SVGPath.cgPath(composerSendPath)), with: .color(color))
             }
         }
         .frame(width: size, height: size)

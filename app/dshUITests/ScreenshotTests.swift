@@ -95,6 +95,11 @@ final class ScreenshotTests: XCTestCase {
                     app.descendants(matching: .any)["official.plusOutline"].waitForExistence(timeout: 8),
                     "\(appearance) \(screen) missing official composer plus glyph"
                 )
+                XCTAssertFalse(app.images["arrow.up"].exists, "\(appearance) \(screen) still exposes SF arrow.up")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.send"].waitForExistence(timeout: 8),
+                    "\(appearance) \(screen) missing official composer send glyph"
+                )
             }
             if screen == "models" {
                 XCTAssertTrue(app.descendants(matching: .any)["modelChipEffort"].waitForExistence(timeout: 8), "\(appearance) model chip missing effort")
