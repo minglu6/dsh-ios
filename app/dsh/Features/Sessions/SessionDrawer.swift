@@ -46,8 +46,12 @@ struct SessionDrawer: View {
             .padding(.bottom, 8)
 
             HStack {
-                Image(systemName: D.search).foregroundStyle(T.text3)
-                    .accessibilityLabel(L.searchSessionsAria())
+                OfficialGlyph(
+                    kind: .searchOutline,
+                    size: CGFloat(sidebarSearchIconSizePoints),
+                    color: T.text3
+                )
+                .accessibilityLabel(L.searchSessionsAria())
                 TextField(L.searchSessions(), text: $query)
                     .textInputAutocapitalization(.never)
                     .accessibilityIdentifier("sessionSearch")
