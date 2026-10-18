@@ -6,6 +6,7 @@ final class ComposerPickerParityTests: XCTestCase {
         XCTAssertFalse(conversationHeaderShowsModelChip)
         XCTAssertFalse(conversationHeaderShowsAgentPreset)
         XCTAssertFalse(conversationHeaderShowsTimestamp)
+        XCTAssertFalse(conversationHeaderShowsShare)
         XCTAssertTrue(agentPresetSeatOnLandingOnly)
     }
 

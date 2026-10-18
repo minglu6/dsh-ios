@@ -12,6 +12,12 @@ public let conversationHeaderShowsModelChip = false
 /// Desktop hides `AgentPresetLabel` at width ≤ 540; the iPhone header never shows it.
 public let conversationHeaderShowsAgentPreset = false
 
+/// Desktop header has no share glyph. Export is `/export` plus
+/// `session-log-export` HeaderAction more-menu "Download session log"
+/// (`HeaderAction.d.ts` / `session-log-export` README). A top-bar
+/// `square.and.arrow.up` / `sessionShare` button is extra.
+public let conversationHeaderShowsShare = false
+
 /// Desktop `AgentPresetSeat` lives on the empty-session hero, not the conversation header.
 public let agentPresetSeatOnLandingOnly = true
 

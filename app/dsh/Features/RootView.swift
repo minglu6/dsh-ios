@@ -146,13 +146,12 @@ struct RootView: View {
             .background(T.surface)
             ZStack(alignment: .bottom) {
                 VStack(spacing: 0) {
-                    Spacer(minLength: 0)
+                    landingHeadlineRow
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     VStack(spacing: CGFloat(landingHeroStackGapPoints)) {
-                        landingHeadlineRow
                         landingWorkspaceRow
                         landingComposer
                     }
-                    Spacer(minLength: 0)
                 }
                 if landingCommandMenuVisible {
                     GeometryReader { geo in
@@ -227,10 +226,11 @@ struct RootView: View {
         }
     }
 
-    /// Desktop `HeroShell` `.root` + `.stack` + `.body`: headline, workspace
-    /// row, and InputBar are one column (`gap: 12`). Leftover viewport sits
-    /// outside that stack. Slash menu overlays the space above the composer
-    /// without inserting space between the three rows.
+    /// Phone landing (Android `Chat.kt`): Hero centers in leftover space;
+    /// workspace row sits `gap: 12` above InputBar; InputBar pins to the
+    /// safe-area bottom like the chat composer. Slash menu overlays the
+    /// leftover above the composer — Composer stays outside GeometryReader
+    /// so XCUITest can still see the plus/send UIKit hosts.
     private var landingComposer: some View {
         ComposerView(
             model: model,
@@ -257,6 +257,8 @@ struct RootView: View {
             onCommandMove: { commandHost.requestMove($0) },
             onCommandEscape: { slashMenu.dismiss(trigger: landingSlashTrigger) }
         )
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("landingComposer")
         .background(
             GeometryReader { proxy in
                 Color.clear.preference(key: LandingComposerHeightKey.self, value: proxy.size.height)

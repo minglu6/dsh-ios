@@ -252,13 +252,6 @@ struct ChatView: View {
                     .lineLimit(1)
             }
             Spacer()
-            if model.ops.contains("session.export") {
-                Button { model.exportSession() } label: {
-                    OfficialGlyph(kind: .shareOutline, size: 16, color: T.ink)
-                }
-                .accessibilityLabel(L.share())
-                .accessibilityIdentifier("sessionShare")
-            }
             Button { showStart = true } label: {
                 Image(systemName: D.panelRight).foregroundStyle(T.ink)
             }
@@ -1464,7 +1457,6 @@ struct MessageRow: View {
             text: text.text,
             timeMs: text.at,
             clock: .end,
-            shareEnabled: MessageActionPolicy.assistantRow.contains(.share),
             messageId: mid,
             rating: rating,
             onLike: canFeedback ? {
@@ -1490,12 +1482,11 @@ struct MessageRow: View {
 
 private enum MessageClock { case start, end }
 
-/// Desktop MessageIconActions: copy → like/dislike → share → branch → usage → clock.
+/// Desktop MessageIconActions: copy → extraActions (like/dislike) → branch → usage → clock.
 private struct MessageActions: View {
     let text: String
     let timeMs: Int64?
     let clock: MessageClock
-    var shareEnabled = false
     var messageId: String? = nil
     var rating: String? = nil
     var onLike: (() -> Void)? = nil
@@ -1505,7 +1496,6 @@ private struct MessageActions: View {
     var usageAction: (() -> TurnUsageAction)? = nil
     var trailing = false
     @State private var copied = false
-    @State private var sharing = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -1539,11 +1529,6 @@ private struct MessageActions: View {
                     action: onDislike
                 )
             }
-            if shareEnabled {
-                iconButton(system: D.share, label: L.share(), enabled: !text.isEmpty) {
-                    sharing = true
-                }
-            }
             if let branch {
                 iconButton(
                     system: D.branch,
@@ -1568,9 +1553,6 @@ private struct MessageActions: View {
         .frame(height: 48)
         .frame(maxWidth: .infinity, alignment: (trailing || clock == .start) ? .trailing : .leading)
         .padding(.top, 4)
-        .sheet(isPresented: $sharing) {
-            ShareSheet(items: [text])
-        }
     }
 
     private func iconButton(

@@ -1,20 +1,22 @@
 import Foundation
 
-/// Desktop `ui-chat` `MessageIconActions`: copy → extraActions (like / dislike / share)
-/// → branch → usage → clock. User rows omit `onBranch`. Session-row fork remains
+/// Desktop `ui-chat` `MessageIconActions`: copy → extraActions (like / dislike
+/// from `ui-message-feedback`) → branch → usage → clock. User rows omit
+/// `onBranch`. There is no share control — desktop extraActions is only the
+/// feedback pair; Android `MessageActions` matches. Session-row fork remains
 /// (`ui-workspace` `menu.fork`) for last-completed-turn branching without a seq.
 public enum MessageActionKind: String, Equatable, CaseIterable, Sendable {
     case copy
     case like
     case dislike
-    case share
     case branch
 }
 
 public enum MessageActionPolicy {
-    public static var assistantRow: [MessageActionKind] { [.copy, .like, .dislike, .share, .branch] }
+    public static var assistantRow: [MessageActionKind] { [.copy, .like, .dislike, .branch] }
     public static var userRow: [MessageActionKind] { [.copy] }
     public static var includesBranch: Bool { true }
+    public static var includesShare: Bool { false }
 }
 
 /// Desktop `TurnTailNodeView` branch control. `onBranch` is omitted when
@@ -877,11 +879,16 @@ public func landingPreviewBadge(english: Bool) -> String {
     english ? "Preview" : "预览版"
 }
 
-/// Desktop `HeroShell.module.css` `.root` / `.stack` / `.headline` (figma 75:8208).
-/// The title block, workspace row, and InputBar card are one centered column.
-/// Leftover viewport space sits *outside* that stack — never between the
-/// headline and the composer.
-public let landingHeroCentersStack = true
+/// Desktop `HeroShell.module.css` `.root` is `justify-content: center` for the
+/// headline stack. Phone landing follows Android `Chat.kt`: Hero centers in
+/// leftover space above the workspace row; InputBar pins to the safe-area
+/// bottom (same dock as the chat composer). User-required: composer must
+/// not float mid-screen with a blank below it.
+public let landingHeroCentersStack = false
+public let landingComposerPinsToSafeAreaBottom = true
+public let landingHeadlineCentersInLeftover = true
+/// Max gap from the composer card bottom to the safe-area bottom (pt).
+public let landingComposerBottomGapMaxPoints: Double = 40
 public let landingHeroPreviewSharesHeadlineLine = true
 public let landingHeroStackGapPoints: Double = 12
 public let landingHeroHeadlineSizePoints: Double = 26

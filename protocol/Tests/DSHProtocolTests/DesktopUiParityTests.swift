@@ -3,10 +3,10 @@ import XCTest
 
 final class DesktopUiParityTests: XCTestCase {
     func testMessageRowFollowsDesktopCopyFeedbackShareBranch() {
-        XCTAssertEqual(MessageActionPolicy.assistantRow, [.copy, .like, .dislike, .share, .branch])
+        XCTAssertEqual(MessageActionPolicy.assistantRow, [.copy, .like, .dislike, .branch])
         XCTAssertEqual(MessageActionPolicy.userRow, [.copy])
         XCTAssertTrue(MessageActionPolicy.includesBranch)
-        XCTAssertTrue(MessageActionPolicy.assistantRow.contains(.share))
+        XCTAssertFalse(MessageActionPolicy.includesShare)
         XCTAssertFalse(MessageActionPolicy.userRow.contains(.branch))
     }
 
@@ -207,6 +207,7 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertFalse(conversationHeaderShowsModelChip)
         XCTAssertFalse(conversationHeaderShowsAgentPreset)
         XCTAssertFalse(conversationHeaderShowsTimestamp)
+        XCTAssertFalse(conversationHeaderShowsShare)
         XCTAssertFalse(settingsIncludesPhoneConnection)
         XCTAssertTrue(phoneConnectionLivesInDrawerFooter)
         XCTAssertFalse(sidebarFooterActionAboveSettings)
@@ -320,7 +321,10 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertEqual(landingHeadline(english: true), "Into the Unknown")
         XCTAssertEqual(landingPreviewBadge(english: false), "预览版")
         XCTAssertEqual(landingPreviewBadge(english: true), "Preview")
-        XCTAssertTrue(landingHeroCentersStack)
+        XCTAssertFalse(landingHeroCentersStack)
+        XCTAssertTrue(landingComposerPinsToSafeAreaBottom)
+        XCTAssertTrue(landingHeadlineCentersInLeftover)
+        XCTAssertEqual(landingComposerBottomGapMaxPoints, 40)
         XCTAssertTrue(landingHeroPreviewSharesHeadlineLine)
         XCTAssertEqual(landingHeroStackGapPoints, 12)
         XCTAssertEqual(landingHeroHeadlineSizePoints, 26)
