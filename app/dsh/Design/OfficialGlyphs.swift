@@ -28,6 +28,7 @@ struct OfficialGlyph: View {
         case settingsOutline
         case newChat
         case searchOutline
+        case projectAdd
 
         var accessibilityIdentifier: String {
             switch self {
@@ -36,13 +37,14 @@ struct OfficialGlyph: View {
             case .settingsOutline: return "official.settingsOutline"
             case .newChat: return "official.newChat"
             case .searchOutline: return "official.searchOutline"
+            case .projectAdd: return "official.projectAdd"
             default: return "official.glyph"
             }
         }
 
         var hidesAccessibility: Bool {
             switch self {
-            case .folderClose, .folderOpen, .settingsOutline, .newChat, .searchOutline: return false
+            case .folderClose, .folderOpen, .settingsOutline, .newChat, .searchOutline, .projectAdd: return false
             default: return true
             }
         }
@@ -168,6 +170,16 @@ struct OfficialGlyph: View {
                 )
                 ctx.stroke(Path(SVGPath.cgPath(sidebarSearchCirclePath)), with: .color(color), style: regular)
                 ctx.stroke(Path(SVGPath.cgPath(sidebarSearchHandlePath)), with: .color(color), style: regular)
+            case .projectAdd:
+                let regular = StrokeStyle(
+                    lineWidth: CGFloat(sidebarProjectAddIconStrokeWidth),
+                    lineCap: .butt,
+                    lineJoin: .miter,
+                    miterLimit: 10
+                )
+                ctx.fill(Path(SVGPath.cgPath(sidebarProjectAddFolderPath)), with: .color(color))
+                ctx.stroke(Path(SVGPath.cgPath(sidebarProjectAddPlusHorizontalPath)), with: .color(color), style: regular)
+                ctx.stroke(Path(SVGPath.cgPath(sidebarProjectAddPlusVerticalPath)), with: .color(color), style: regular)
             }
         }
         .frame(width: size, height: size)

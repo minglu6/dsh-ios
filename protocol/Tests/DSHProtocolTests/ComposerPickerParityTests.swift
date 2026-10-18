@@ -50,6 +50,17 @@ final class ComposerPickerParityTests: XCTestCase {
         XCTAssertTrue(sidebarSearchCirclePath.hasPrefix("M6.58727 11.8586"))
         XCTAssertTrue(sidebarSearchCirclePath.hasSuffix("6.58727 11.8586Z"))
         XCTAssertEqual(sidebarSearchHandlePath, "M10.2991 10.3933L14.7783 14.8725")
+        XCTAssertTrue(sidebarProjectAddUsesOfficialGlyph)
+        XCTAssertEqual(sidebarProjectAddSymbol(), "official.projectAdd")
+        XCTAssertEqual(sidebarProjectAddIconSizePoints, 16)
+        XCTAssertEqual(sidebarProjectAddIconStrokeWidth, 1)
+        XCTAssertEqual(sidebarProjectAddButtonPoints, 28)
+        XCTAssertTrue(isForbiddenSystemProjectAddSymbol("plus"))
+        XCTAssertFalse(isForbiddenSystemProjectAddSymbol("official.projectAdd"))
+        XCTAssertTrue(sidebarProjectAddFolderPath.hasPrefix("M5.54492 2.06738"))
+        XCTAssertTrue(sidebarProjectAddFolderPath.hasSuffix("H5.54492Z"))
+        XCTAssertEqual(sidebarProjectAddPlusHorizontalPath, "M9.75977 4.50208H14.5509")
+        XCTAssertEqual(sidebarProjectAddPlusVerticalPath, "M12.1492 6.89758L12.1492 2.10642")
     }
 
     func testLandingWorkspaceChipMatchesDesktopHeroChip() {

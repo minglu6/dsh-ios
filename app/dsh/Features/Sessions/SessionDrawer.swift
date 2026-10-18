@@ -92,7 +92,15 @@ struct SessionDrawer: View {
                 }
                 if visibleOps.contains("workspace.create") {
                     Button { addWorkspace = true } label: {
-                        Image(systemName: D.projectAdd).foregroundStyle(T.text2)
+                        OfficialGlyph(
+                            kind: .projectAdd,
+                            size: CGFloat(sidebarProjectAddIconSizePoints),
+                            color: T.text2
+                        )
+                        .frame(
+                            width: CGFloat(sidebarProjectAddButtonPoints),
+                            height: CGFloat(sidebarProjectAddButtonPoints)
+                        )
                     }
                     .accessibilityLabel(L.addWorkspace())
                 }
