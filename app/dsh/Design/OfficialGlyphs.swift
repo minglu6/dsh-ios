@@ -81,6 +81,11 @@ struct OfficialGlyph: View {
         case queueOutline
         case sendOutline
         case dataOutline
+        case dataOutlineRegular
+        case paperclipOutline
+        case paperPlaneOutline
+        case compactOutline
+        case permissionFullAccess
 
         var accessibilityIdentifier: String {
             switch self {
@@ -153,7 +158,12 @@ struct OfficialGlyph: View {
             case .trashOutline: return connectionsManageTrashSymbol()
             case .queueOutline: return chatQueueDockSymbol()
             case .sendOutline: return queueSteerSendSymbol()
-            case .dataOutline: return settingsModelsSymbol()
+            case .dataOutline, .dataOutlineRegular: return settingsModelsSymbol()
+            case .paperclipOutline: return commandMenuIconSymbol("file")
+            case .paperPlaneOutline: return commandMenuIconSymbol("feedback")
+            case .compactOutline: return commandMenuIconSymbol("compact")
+            case .permissionFullAccess: return commandMenuIconSymbol("permission")
+            case .downloadOutline: return commandMenuIconSymbol("export")
             case .permission: return "official.glyph"
             default: return "official.glyph"
             }
@@ -170,7 +180,9 @@ struct OfficialGlyph: View {
                  .closeOutline, .linkOutline, .rightUp, .appearanceLight, .appearanceDark, .appearanceFollowSystem,
                  .think, .agentPreset, .globe, .browseOutline, .editOutline, .apiOutline, .codeOutline, .planOutline,
                  .questionOutline, .usersOutline, .checklistOutline, .goalOutline, .cordisPlugin, .stopFill,
-                 .computer, .trashOutline, .queueOutline, .sendOutline, .dataOutline:
+                 .computer, .trashOutline, .queueOutline, .sendOutline, .dataOutline, .dataOutlineRegular,
+                 .paperclipOutline, .paperPlaneOutline, .compactOutline, .permissionFullAccess,
+                 .downloadOutline:
                 return false
             // plusOutline / send are decorative; ComposerView hosts own
             // official.plusOutline and official.send.
@@ -648,14 +660,23 @@ struct OfficialGlyph: View {
                 ctx.fill(Path(SVGPath.cgPath(queueSteerSendFillPath)), with: .color(color))
                 ctx.stroke(Path(SVGPath.cgPath(queueSteerSendStemPath)), with: .color(color), style: Self.regularStroke)
             case .dataOutline:
-                let medium = StrokeStyle(
-                    lineWidth: CGFloat(appearanceCubeIconStrokeWidth),
-                    lineCap: .butt,
-                    lineJoin: .miter,
-                    miterLimit: 10
+                drawDataOutline(&ctx, color: color, strokeWidth: CGFloat(appearanceCubeIconStrokeWidth))
+            case .dataOutlineRegular:
+                drawDataOutline(&ctx, color: color, strokeWidth: CGFloat(commandMenuIconStrokeWidth))
+            case .paperclipOutline:
+                ctx.stroke(Path(SVGPath.cgPath(iconPaperclipOutlinePath)), with: .color(color), style: Self.regularStroke)
+            case .paperPlaneOutline:
+                ctx.stroke(Path(SVGPath.cgPath(iconPaperPlaneOutlineBodyPath)), with: .color(color), style: Self.regularStroke)
+                ctx.stroke(Path(SVGPath.cgPath(iconPaperPlaneOutlineFoldPath)), with: .color(color), style: Self.regularStroke)
+            case .compactOutline:
+                ctx.stroke(
+                    Path(SVGPath.cgPath(iconCompactOutlineRingPath)),
+                    with: .color(color.opacity(iconCompactOutlineRingOpacity)),
+                    style: Self.regularStroke
                 )
-                ctx.fill(Path(SVGPath.cgPath(settingsDataOutlineFillPath)), with: .color(color))
-                ctx.stroke(Path(SVGPath.cgPath(settingsDataOutlineGearPath)), with: .color(color), style: medium)
+                ctx.stroke(Path(SVGPath.cgPath(iconCompactOutlineArcPath)), with: .color(color), style: Self.regularStroke)
+            case .permissionFullAccess:
+                drawPermission(&ctx, value: "danger-full-access", color: color, stroke: stroke)
             }
         }
         .frame(width: canvasWidth, height: canvasHeight)
@@ -683,6 +704,19 @@ struct OfficialGlyph: View {
     private func drawPanelLeft(_ ctx: inout GraphicsContext, color: Color, stroke: StrokeStyle) {
         ctx.stroke(Path(SVGPath.cgPath(headerPanelFramePath)), with: .color(color), style: stroke)
         ctx.stroke(Path(SVGPath.cgPath(headerPanelDividerPath)), with: .color(color), style: stroke)
+    }
+
+    /// Settings-shell Medium uses `ICON_MEDIUM_STROKE` 1.3; `/model` Regular uses 1.
+    /// Split cases instead of `kind ==` — `Kind` has associated values.
+    private func drawDataOutline(_ ctx: inout GraphicsContext, color: Color, strokeWidth: CGFloat) {
+        let dataStroke = StrokeStyle(
+            lineWidth: strokeWidth,
+            lineCap: .butt,
+            lineJoin: .miter,
+            miterLimit: 10
+        )
+        ctx.fill(Path(SVGPath.cgPath(settingsDataOutlineFillPath)), with: .color(color))
+        ctx.stroke(Path(SVGPath.cgPath(settingsDataOutlineGearPath)), with: .color(color), style: dataStroke)
     }
 
     private func drawPermission(_ ctx: inout GraphicsContext, value: String, color: Color, stroke: StrokeStyle) {
@@ -796,6 +830,21 @@ struct OfficialGlyph: View {
         case .plugin: return .cordisPlugin
         case .agent: return .agentPreset
         case .branch: return .branchOutline
+        }
+    }
+
+    /// Desktop `ui-commands` `HOST_FACES` + `/file` paperclip + `/model` data.
+    static func commandMenu(_ kind: String?) -> Kind {
+        switch kind {
+        case "file": return .paperclipOutline
+        case "model": return .dataOutlineRegular
+        case "goal": return .goalOutline
+        case "plan": return .planOutline
+        case "feedback": return .paperPlaneOutline
+        case "compact": return .compactOutline
+        case "permission": return .permissionFullAccess
+        case "export": return .downloadOutline
+        default: return .codeOutline
         }
     }
 }
