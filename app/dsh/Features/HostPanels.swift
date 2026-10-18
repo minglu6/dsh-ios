@@ -57,10 +57,22 @@ struct HostPanelView: View {
             }
         }
         .background(T.bg.ignoresSafeArea())
-        // `.contain` keeps child ids (pluginInfoButton, official.*) addressable;
-        // a bare id on this VStack would overwrite every descendant's id.
+        // `.contain` keeps child ids (pluginInfoButton, official.*, navBack)
+        // addressable; a bare id on this VStack would overwrite every
+        // descendant's id. Start / Browser / Inspector use the XCUI ids the
+        // screenshot tests query — do not nest a second contain+id inside
+        // those panels or XCUI drops the inner identifier.
         .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("hostPanel.\(panel.rawValue)")
+        .accessibilityIdentifier(surfaceAccessibilityId)
+    }
+
+    private var surfaceAccessibilityId: String {
+        switch panel {
+        case .start: return "startPanel"
+        case .browser: return "browserPanel"
+        case .inspector: return "sessionInspector"
+        default: return "hostPanel.\(panel.rawValue)"
+        }
     }
 
     private var showsSharedHeader: Bool {
@@ -163,8 +175,6 @@ struct StartPanel: View {
             }
         }
         .background(T.bg.ignoresSafeArea())
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("startPanel")
     }
 
     private func guideEntry(

@@ -37,8 +37,6 @@ private struct BrowserPanelContent: View {
                 .id(tabs.selectedId)
         }
         .background(T.bg)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("browserPanel")
         .onChange(of: model.profiles) { profiles in
             tabs.updatePolicy(Self.policy(for: profiles))
         }

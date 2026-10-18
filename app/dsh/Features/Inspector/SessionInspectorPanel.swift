@@ -85,8 +85,6 @@ struct SessionInspectorPanel: View {
                     SessionInspectorContent(model: model, sessionId: sessionId, state: state, onDismiss: onDismiss)
                         .background(T.bg)
                 }
-                .accessibilityElement(children: .contain)
-                .accessibilityIdentifier("sessionInspector")
             }
         }
         .onDisappear {
