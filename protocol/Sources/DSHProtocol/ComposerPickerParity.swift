@@ -1246,3 +1246,9 @@ public func noticeChatTitle(_ notice: Item.Notice, english: Bool) -> String {
     case .generic: return notice.text
     }
 }
+
+/// Phone Connections is a full-screen route (Android `Screen.Connections`),
+/// never a sheet / half-modal over an open session drawer. Tapping the
+/// drawer footer host row closes the drawer and replaces the chat.
+public let connectionsPresentedAsFullScreenRoute = true
+public let connectionsRouteClosesSessionDrawer = true

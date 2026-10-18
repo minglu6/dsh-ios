@@ -22,10 +22,10 @@ struct RootView: View {
         ZStack {
             T.bg.ignoresSafeArea()
             content
-            if model.showDrawer {
+            if model.showDrawer && model.currentRoute.allowsSessionDrawer {
                 drawerScrim
             }
-            if model.showDrawer {
+            if model.showDrawer && model.currentRoute.allowsSessionDrawer {
                 HStack(spacing: 0) {
                     SessionDrawer(model: model)
                         .frame(width: min(320, UIScreen.main.bounds.width * 0.86))

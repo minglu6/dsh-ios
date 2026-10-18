@@ -1335,7 +1335,7 @@ Android `c5f8cdd...56dcaa9` 一笔：`feat(android): 补齐用户选择卡片与
 | 项 | 判定 | 证据 |
 | --- | --- | --- |
 | 用户气泡永久复制键 | **GAP → 本轮** | 桌面 `UserMessageNodeView` 无 copy；手机仅 start clock。iOS `MessageActions` 在用户气泡下常驻 `square.on.square`。`MessageActionPolicy.userRow = []` |
-| 抽屉脚远程主机名 + 热区串扰 | **GAP → 本轮** | 桌面 `SettingsRoot` `triggerRow`：Settings 左、`ConnectionIndicator`（dot + 主机名）右。iOS 右侧只剩绿点，且 Settings 曾 `maxWidth: .infinity` 把热区铺满整行。拆成两个独立 Button，中间不可点 `Spacer(minLength: 16)`，高度 ≥ 44pt，按下用 `T.hoverBg` |
+| 抽屉脚远程主机名 + 热区串扰 + 整页全屏连接 | **GAP → 本轮** | 桌面 `SettingsRoot` `triggerRow`：Settings 左、`ConnectionIndicator`（dot + 主机名）右。iOS 右侧只剩绿点，且 Settings 曾 `maxWidth: .infinity` 把热区铺满整行。拆成两个独立 Button，中间不可点 `Spacer(minLength: 16)`，高度 ≥ 44pt，按下用 `T.hoverBg`。点主机 → `push(.connections)` 关抽屉；`AppRoute.closesSessionDrawer` 保证连接页整页全屏（对齐 Android `Screen.Connections` + `drawer.close()`），禁止抽屉半屏遮挡 |
 | composer 诊断 SF 图标 /「缓存命中中」 | **GAP → 本轮** | 桌面 `IconGaugeOutlineRegular` / `IconDatabaseOutlineRegular` 14×16 viewBox。iOS 用 SF `gauge.with.dots.needle.67percent` / `cylinder`。文案走 `composerCacheHitPill`（「缓存命中」，禁止「命中中」） |
 | 视图选项图标 | **GAP → 本轮** | 9 行已是 OfficialGlyph，但 `IconSlidersTwoOutlineArtwork` 缺两个 stroked knobs（`r=1.45` at `(9.95,5)` / `(5.75,11)`），测试也未禁止 SF |
 | 插件 (i) tooltip | **GAP → 本轮** | 桌面 `Tooltip.module.css`：`--dsw-alias-tooltip-bg` + `--dsw-static-neutral-bluish-00`、`--dsw-radius-sm` 6、13/20、`.bubble` padding `3px 7px`、PluginManagerPage `maxWidth: 300` / `side: bottom` / gap 8 / `openOnClick`。iOS 用系统 `.popover`，窄屏裁切。改成 header 下方自绘气泡，点 (i) 开关，点外侧 / 滚动关闭 |

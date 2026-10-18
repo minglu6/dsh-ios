@@ -277,7 +277,15 @@ final class AppModel: ObservableObject {
         return .sessions
     }
 
-    func push(_ route: AppRoute) { routeStack.append(route) }
+    func push(_ route: AppRoute) {
+        routeStack.append(route)
+        // Phone (Android MainActivity): Connections / Settings / panels replace
+        // the chat screen and close the session drawer — never a half-sheet
+        // over an open drawer.
+        if route.closesSessionDrawer {
+            showDrawer = false
+        }
+    }
     func pop() { if !routeStack.isEmpty { routeStack.removeLast() } }
 
     func connect(profileId: String) {

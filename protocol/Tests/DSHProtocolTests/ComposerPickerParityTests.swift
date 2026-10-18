@@ -7,6 +7,8 @@ final class ComposerPickerParityTests: XCTestCase {
         XCTAssertFalse(conversationHeaderShowsAgentPreset)
         XCTAssertFalse(conversationHeaderShowsTimestamp)
         XCTAssertFalse(conversationHeaderShowsShare)
+        XCTAssertTrue(connectionsPresentedAsFullScreenRoute)
+        XCTAssertTrue(connectionsRouteClosesSessionDrawer)
         XCTAssertTrue(agentPresetSeatOnLandingOnly)
     }
 

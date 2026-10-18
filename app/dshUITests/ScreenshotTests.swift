@@ -294,9 +294,31 @@ final class ScreenshotTests: XCTestCase {
         let host = app.descendants(matching: .any)["drawerPeerDeviceRow"]
         XCTAssertTrue(host.waitForExistence(timeout: 8), "\(appearance) host hit missing after reopen")
         host.tap()
+        let connections = app.descendants(matching: .any)["connectionsScreen"]
         XCTAssertTrue(
-            app.descendants(matching: .any)["connectionsScreen"].waitForExistence(timeout: 8),
+            connections.waitForExistence(timeout: 8),
             "\(appearance) host hit did not open Connections"
+        )
+        // Full-screen route (Android Screen.Connections): must fill the window,
+        // not sit beside / under the session drawer as a half sheet.
+        let window = app.windows.firstMatch.frame
+        XCTAssertGreaterThanOrEqual(
+            connections.frame.width,
+            window.width * 0.9,
+            "\(appearance) connections is not full-screen (\(connections.frame) vs \(window))"
+        )
+        XCTAssertGreaterThanOrEqual(
+            connections.frame.height,
+            window.height * 0.7,
+            "\(appearance) connections height looks like a sheet (\(connections.frame))"
+        )
+        XCTAssertFalse(
+            app.descendants(matching: .any)["drawerSettingsRow"].exists,
+            "\(appearance) session drawer still open over Connections"
+        )
+        XCTAssertFalse(
+            app.descendants(matching: .any)["drawerPeerDeviceRow"].exists,
+            "\(appearance) session drawer host row still visible over Connections"
         )
     }
 
