@@ -1695,6 +1695,7 @@ struct ComposerView: View {
                     }
                     .background(T.selector, in: Circle())
                     .disabled(firstPromptBlocksComposerActions(model.firstPrompt))
+                    .accessibilityIdentifier(composerAddSymbol())
                     .accessibilityLabel(composerCommandsAria(english: L.en))
                     if !permissionChipRequiresCatalog || model.permissionCatalog != nil {
                         if let perm = model.sessionPermission ?? model.draftPermission ?? (heroPlaceholder ? model.defaultPermission : nil), !perm.isEmpty {
