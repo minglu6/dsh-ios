@@ -702,44 +702,46 @@ private struct PairLinkSheet: View {
                 .foregroundStyle(T.text3)
                 .padding(.horizontal, CGFloat(connectionsSheetContentPaddingPoints))
                 .padding(.vertical, 8)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(L.pairingLink())
-                    .font(.system(size: CGFloat(connectionsFieldLabelFontSizePoints)))
-                    .foregroundStyle(T.text3)
-                    .padding(.leading, 4)
-                // `$text` (not a custom Binding that also writes `pasted`):
-                // XCUI typeText talks to the UITextField; an extra @State
-                // write in the setter can leave SwiftUI `text` on the old
-                // URL while the field shows a concatenation, so parse
-                // stays nil and invalid copy plus disabled 下一步 remain.
-                TextField(L.pairingLinkFieldHint(), text: $text)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .font(.system(size: CGFloat(connectionsFieldFontSizePoints), design: .monospaced))
-                    .padding(.horizontal, CGFloat(connectionsFieldHorizontalPaddingPoints))
-                    .padding(.vertical, CGFloat(connectionsFieldVerticalPaddingPoints))
-                    .background(
-                        T.input,
-                        in: RoundedRectangle(cornerRadius: CGFloat(connectionsFieldRadiusPoints))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: CGFloat(connectionsFieldRadiusPoints))
-                            .stroke(T.border, lineWidth: CGFloat(dswButtonOutlineWidthPoints))
-                    )
-                    .overlay {
-                        PairingFieldBoundsHost()
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .allowsHitTesting(false)
-                    }
-                    .accessibilityLabel(L.pairingLink())
-                    .accessibilityIdentifier(connectionsPairingLinkFieldIdentifier())
-                    .onChange(of: text) { _ in
-                        if suppressPasteReset {
-                            suppressPasteReset = false
-                            return
+            ZStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L.pairingLink())
+                        .font(.system(size: CGFloat(connectionsFieldLabelFontSizePoints)))
+                        .foregroundStyle(T.text3)
+                        .padding(.leading, 4)
+                    // `$text` (not a custom Binding that also writes `pasted`):
+                    // XCUI typeText talks to the UITextField; an extra @State
+                    // write in the setter can leave SwiftUI `text` on the old
+                    // URL while the field shows a concatenation, so parse
+                    // stays nil and invalid copy plus disabled 下一步 remain.
+                    TextField(L.pairingLinkFieldHint(), text: $text)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .font(.system(size: CGFloat(connectionsFieldFontSizePoints), design: .monospaced))
+                        .padding(.horizontal, CGFloat(connectionsFieldHorizontalPaddingPoints))
+                        .padding(.vertical, CGFloat(connectionsFieldVerticalPaddingPoints))
+                        .background(
+                            T.input,
+                            in: RoundedRectangle(cornerRadius: CGFloat(connectionsFieldRadiusPoints))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: CGFloat(connectionsFieldRadiusPoints))
+                                .stroke(T.border, lineWidth: CGFloat(dswButtonOutlineWidthPoints))
+                        )
+                        .accessibilityLabel(L.pairingLink())
+                        .accessibilityIdentifier(connectionsPairingLinkFieldIdentifier())
+                        .onChange(of: text) { _ in
+                            if suppressPasteReset {
+                                suppressPasteReset = false
+                                return
+                            }
+                            pasted = false
                         }
-                        pasted = false
-                    }
+                }
+                // Sibling, not TextField overlay: TextField a11y combines overlays
+                // and drops the host. Same UIKit leaf as ComposerAddA11yHost.
+                PairingFieldBoundsHost()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .allowsHitTesting(false)
             }
             .padding(.horizontal, CGFloat(connectionsFieldOuterPaddingPoints))
             .padding(.vertical, 4)
@@ -835,9 +837,8 @@ private extension View {
     }
 }
 
-/// XCUI geometry leaf the same size as the visual field chrome. A SwiftUI
-/// `Color.clear` overlay is not in the snapshot; UIKit `isAccessibilityElement`
-/// is, same as `ComposerAddA11yHost`.
+/// XCUI geometry leaf the same size as the field column. Must be a ZStack
+/// sibling of the TextField, not an overlay: TextField a11y combines overlays.
 private struct PairingFieldBoundsHost: UIViewRepresentable {
     func makeUIView(context: Context) -> UIView {
         let view = UIView()
@@ -845,6 +846,8 @@ private struct PairingFieldBoundsHost: UIViewRepresentable {
         view.isUserInteractionEnabled = false
         view.isAccessibilityElement = true
         view.accessibilityIdentifier = connectionsPairingLinkFieldBoundsIdentifier()
+        view.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        view.setContentHuggingPriority(.defaultLow, for: .vertical)
         return view
     }
 
