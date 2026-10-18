@@ -87,15 +87,19 @@ extension AppModel {
         ]
         catalog = ModelCatalog.parse(.object([
             "default": .object([
-                "provider": .string("deepseek"),
+                "provider": .string("deepseek-official"),
                 "model": .string("deepseek-v4-pro"),
                 "reasoningEffort": .string("high"),
             ]),
             "groups": .array([
                 .object([
-                    "id": .string("deepseek"),
+                    "id": .string("deepseek-official"),
                     "name": .string("DeepSeek"),
                     "models": .array([
+                        .object([
+                            "id": .string("deepseek-flash"),
+                            "name": .string("DeepSeek-V4.1-Flash"),
+                        ]),
                         .object([
                             "id": .string("deepseek-v4-pro"),
                             "name": .string("DeepSeek V4 Pro"),
@@ -111,7 +115,7 @@ extension AppModel {
                 ]),
             ]),
         ]))
-        modelChoice = ModelChoice(provider: "deepseek", model: "deepseek-v4-pro", name: "DeepSeek V4 Pro", effort: "high")
+        modelChoice = ModelChoice(provider: "deepseek-official", model: "deepseek-v4-pro", name: "DeepSeek V4 Pro", effort: "high")
         draftModel = modelChoice
         do {
             permissionCatalog = try PermissionCatalog.parse(.object([

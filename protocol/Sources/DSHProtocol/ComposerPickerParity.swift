@@ -269,6 +269,43 @@ public let modelPickerRootShowsEffortOnlyWhenReasoning = true
 /// Composer model name takes leftover toolbar width; effort / chevron stay intrinsic.
 public let composerModelNameUsesRemainingWidth = true
 
+// MARK: - Flash 1017 release badge
+
+/// Display-only marker from `@deepseek-ai/dsh-client-ui-deepseek-model-label-1017`.
+/// Never appended to the model route, catalog id, or request payload.
+public let modelReleaseBadgeText = "1017"
+public let modelReleaseBadgeCatalogName = "DeepSeek-V4.1-Flash"
+public let modelReleaseBadgeModelId = "deepseek-flash"
+
+public func modelReleaseBadgeIdentifier() -> String { "modelReleaseBadge" }
+
+public func composerModelNameIdentifier() -> String { "composerModelName" }
+
+public func modelPickerRootModelIdentifier() -> String { "modelPickerModel" }
+
+/// Official Flash on the API-key or account route. Any other provider, id, or
+/// catalog name stays unmarked — including a third-party model that reuses the
+/// Flash id or a renamed official entry.
+public func modelReleaseBadge(provider: String?, model: String?, name: String?) -> String? {
+    if (provider == "deepseek-official" || provider == "deepseek-account")
+        && model == modelReleaseBadgeModelId
+        && name == modelReleaseBadgeCatalogName
+    {
+        return modelReleaseBadgeText
+    }
+    return nil
+}
+
+/// Desktop `ui-primitives` `Tag.module.css` success tone +
+/// `ui-deepseek-model-label-1017` `DeepSeekModelLabel.module.css` `.label` gap.
+public let modelReleaseBadgeFontSizePoints: Double = 11
+public let modelReleaseBadgeLineHeightPoints: Double = 17
+public let modelReleaseBadgeFontWeight: Double = 500
+public let modelReleaseBadgePaddingHorizontalPoints: Double = 8
+public let modelReleaseBadgePaddingVerticalPoints: Double = 1
+public let modelReleaseBadgeFillOpacity: Double = 0.1
+public let modelReleaseBadgeGapPoints: Double = 4
+
 // MARK: - Agent preset seat
 
 public let agentPresetSeatMinHeightPoints: Double = 28

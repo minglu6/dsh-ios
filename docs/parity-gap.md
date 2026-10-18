@@ -87,7 +87,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R58 | 打开抽屉 / 滚动时收键盘 | done (#67) |
 | R59 | 权限选择器去掉系统 sheet；轨迹 KIND_ICON 官方 SVG | done (#68) |
 | R60 | Start/Browser/Inspector 去 grabber sheet；Start 去装饰地球；设置权限 inline select；轨迹 assistant/context token；停止 rect rx=3；chat/slash 官方 chevron/check；截图补 feedback | done (#69) |
-| R61 | 顶栏侧栏 / 消息复制·分支 / 返回 chevron / 浏览器工具栏 / 设置外观改官方 SVG | this PR |
+| R61 | 顶栏侧栏 / 消息复制·分支 / 返回 chevron / 浏览器工具栏 / 设置外观改官方 SVG | done (#70) |
+| R62 | Composer / 模型选择器对齐桌面 Flash `1017` 绿色徽标 | this PR |
 
 ---
 
@@ -108,7 +109,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Plugins | `ui-plugin-manager`, `ui-settings-plugins` | `PluginsScreen.kt`, `PluginInventory.kt` | `Features/Plugins/` + `PluginPolicy.swift` |
 | Schedule | `ui-schedule` (sidebar, not settings) | `ScheduleScreen.kt`; drawer row | `Features/Schedule/ScheduleScreen.swift`; drawer only |
 | Permissions | `ui-permission` | `PermissionUi.kt` `permissions.catalog/get/set` + risk sheet | `PermissionUi.swift` + composer chip MenuSurface + Settings `PermissionRow` inline select + `danger-full-access`/`auto` confirm |
-| Model picker | composer model menu | `ModelPicker.kt` + effort pane | `ModelPicker.swift` two-level picker; switching models clears effort |
+| Model picker | composer model menu | `ModelPicker.kt` + effort pane + `ModelLabel.kt` Flash `1017` | `ModelPicker.swift` two-level picker; switching models clears effort; official Flash shows desktop `Tag` success `1017` |
 | Composer dock | `ui-chat` | UserQ / Approval / Todo / Goal / Queue / Composer / Stats | same stack in `ChatView` + `ChatDock.swift` |
 | Host UI | pocket `ui.open` | native plugin manager; no embedded WebView | same; desktop market has no `ui.open` banner |
 | Markdown | `ui-chat` primitives | `Markdown.kt` | `protocol/Markdown.swift` + `Features/Chat/MarkdownView.swift` |
@@ -1501,3 +1502,28 @@ Android `MainActivity` 窄屏是 `ModalNavigationDrawer`（按钮 / 手势滑出
 - 远程主机「扫码」行仍用 SF `qrcode.viewfinder`（桌面 primitives 无对应 QR artwork）。
 - Inspector `viewfinder` / 类型过滤器；会话工具行 SF；Jobs 展开 chevron。
 - 终端中间 ProgressView（品牌 tint，不发明 loading SVG 动画）。
+
+## Round 62 对照清单（桌面 `@deepseek-ai/dsh-client-ui-deepseek-model-label-1017`；Android `33b97b2`）
+
+基线 `main` `e2c3d9e`（#70 Round 61）。徽标几何跟桌面 `ui-primitives` `Tag` success，匹配条件跟 Android `ModelLabel.kt`。
+
+### 必须核实（已对齐，本轮不改）
+
+| 项 | 判定 |
+| --- | --- |
+| 抽屉底栏两枚独立按钮 + 远程主机整页 | **PASS** |
+| 开抽屉 / 滚动 / 进设置 / 进远程主机收键盘 | **PASS** |
+| landing 鲸鱼 logo +「探索未至之境」 | **PASS** |
+| #68 / #69 / #70 已合项 | **PASS** |
+
+### 本轮修
+
+| 项 | 桌面 / Android | iOS |
+| --- | --- | --- |
+| Flash `1017` 绿色胶囊 | `Tag` success：`--dsw-alias-state-success-primary` 10% 底 + 同色字，11/17 Medium，padding 1×8，radius 999，gap 4。仅 `(deepseek-official\|deepseek-account) + deepseek-flash + DeepSeek-V4.1-Flash` | `modelReleaseBadge` + `ModelLabel`；Composer chip、选择器根「模型」行、列表项。徽标不进 route。无障碍读 catalog 原名 |
+
+本轮核对后**不改**（平台 / hide / 禁止发明）
+
+- 插件列表搜索框（有意保留）。
+- `turnNavigation` / `toBottom` FAB / `ask.review` / hover chevron。
+- 抽屉底栏、远程主机全屏、键盘、鲸鱼 logo、「探索未至之境」、#68/#69/#70 已合项。

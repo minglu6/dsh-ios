@@ -341,6 +341,18 @@ final class ScreenshotTests: XCTestCase {
             if screen == "models" {
                 XCTAssertTrue(app.descendants(matching: .any)["modelChipEffort"].waitForExistence(timeout: 8), "\(appearance) model chip missing effort")
                 XCTAssertTrue(app.descendants(matching: .any)["modelPickerEffort"].waitForExistence(timeout: 8), "\(appearance) model menu missing effort row")
+                let modelRow = app.descendants(matching: .any)["modelPickerModel"]
+                XCTAssertTrue(modelRow.waitForExistence(timeout: 8), "\(appearance) model menu missing 模型 row")
+                modelRow.tap()
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["modelReleaseBadge"].waitForExistence(timeout: 8),
+                    "\(appearance) Flash list missing modelReleaseBadge"
+                )
+                XCTAssertTrue(
+                    app.staticTexts["DeepSeek-V4.1-Flash"].waitForExistence(timeout: 4)
+                        || app.buttons["DeepSeek-V4.1-Flash"].waitForExistence(timeout: 2),
+                    "\(appearance) Flash catalog name missing beside the badge"
+                )
             }
             if screen == "permission" {
                 XCTAssertTrue(
@@ -530,6 +542,9 @@ final class ScreenshotTests: XCTestCase {
             if screen == "drawer" {
                 try assertDrawerFooterHitsNavigate(app, appearance: appearance)
             }
+            if screen == "models" {
+                try assertModelReleaseBadgeTracksSelection(app, appearance: appearance)
+            }
             if screen == "start" || screen == "browser" || screen == "inspector" {
                 let back = app.buttons["navBack"]
                 XCTAssertTrue(back.waitForExistence(timeout: 4), "\(appearance) \(screen) back gone before tap")
@@ -641,6 +656,84 @@ final class ScreenshotTests: XCTestCase {
             100,
             "\(appearance) \(id) looks like a grabber sheet (origin \(frame.minY) vs window \(window.minY))"
         )
+    }
+
+    private func assertModelReleaseBadgeTracksSelection(_ app: XCUIApplication, appearance: String) throws {
+        let flash = "DeepSeek-V4.1-Flash"
+        let pro = "DeepSeek V4 Pro"
+        let badge = app.descendants(matching: .any)["modelReleaseBadge"]
+        XCTAssertTrue(
+            badge.waitForExistence(timeout: 8),
+            "\(appearance) Flash list missing modelReleaseBadge before switching"
+        )
+        let flashRow = app.buttons[flash].firstMatch
+        XCTAssertTrue(
+            flashRow.waitForExistence(timeout: 8) || app.staticTexts[flash].waitForExistence(timeout: 2),
+            "\(appearance) Flash option missing"
+        )
+        if flashRow.exists {
+            flashRow.tap()
+        } else {
+            app.staticTexts[flash].firstMatch.tap()
+        }
+
+        XCTAssertTrue(
+            badge.waitForExistence(timeout: 8),
+            "\(appearance) composer chip missing modelReleaseBadge after picking Flash"
+        )
+        let chip = app.buttons["modelChip"]
+        XCTAssertTrue(chip.waitForExistence(timeout: 8), "\(appearance) model chip missing after Flash pick")
+        XCTAssertTrue(
+            chip.label.contains(flash),
+            "\(appearance) model chip accessible name dropped catalog name (got \(chip.label))"
+        )
+        XCTAssertFalse(
+            chip.label.contains("1017"),
+            "\(appearance) model chip accessible name leaked the release badge (got \(chip.label))"
+        )
+
+        let input = app.textViews["composerInput"]
+        XCTAssertTrue(input.waitForExistence(timeout: 8), "\(appearance) composer input missing")
+        input.tap()
+        input.typeText("保留草稿")
+        let transcript = app.descendants(matching: .any)["chatTranscript"]
+        if transcript.waitForExistence(timeout: 2) {
+            transcript.tap()
+        }
+
+        chip.tap()
+        let modelRow = app.descendants(matching: .any)["modelPickerModel"]
+        XCTAssertTrue(modelRow.waitForExistence(timeout: 8), "\(appearance) 模型 row missing after reopen")
+        XCTAssertTrue(
+            badge.waitForExistence(timeout: 8),
+            "\(appearance) root 模型 row missing modelReleaseBadge while Flash is current"
+        )
+        modelRow.tap()
+        let proRow = app.buttons[pro].firstMatch
+        XCTAssertTrue(
+            proRow.waitForExistence(timeout: 8) || app.staticTexts[pro].waitForExistence(timeout: 2),
+            "\(appearance) Pro option missing"
+        )
+        if proRow.exists {
+            proRow.tap()
+        } else {
+            app.staticTexts[pro].firstMatch.tap()
+        }
+
+        XCTAssertFalse(
+            badge.waitForExistence(timeout: 3),
+            "\(appearance) modelReleaseBadge stayed after leaving Flash"
+        )
+        let draft = input.value as? String ?? input.label
+        XCTAssertTrue(
+            draft.contains("保留草稿"),
+            "\(appearance) composer draft changed while switching models (got \(draft))"
+        )
+        XCTAssertTrue(
+            chip.label.contains(pro),
+            "\(appearance) model chip accessible name is not Pro after switching (got \(chip.label))"
+        )
+        XCTAssertFalse(chip.label.contains("1017"), "\(appearance) Pro chip still exposes 1017")
     }
 
     private func assertOfficialMenuChrome(_ app: XCUIApplication, appearance: String, screen: String) {
