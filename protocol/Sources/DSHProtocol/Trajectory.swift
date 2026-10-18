@@ -188,6 +188,40 @@ public let trajectoryToolbarSearchIconStrokeWidth: Double = 1
 
 public func trajectoryToolbarSearchSymbol() -> String { sidebarSearchSymbol() }
 
+/// Desktop `ui-trajectory` `TrajectoryToolbar` duration toggle uses an
+/// inline 16×16 clock SVG (`<circle cx=8 cy=8 r=5.25>` +
+/// `M8 4.75V8l2.25 1.5`), never SF `clock` and never primitives
+/// `IconClockOutline*` (that artwork is `OfficialGlyph.clockOutline` /
+/// view-options 「最近更新」). Live CSS: `.toggleIcon` 12×12,
+/// `stroke-width: 1.25px` in CSS pixels, `round` cap/join,
+/// `currentColor` from the toggle (`--dsw-alias-label-tertiary` idle,
+/// `--dsw-alias-label-primary` pressed).
+public let trajectoryToolbarClockUsesOfficialGlyph = true
+public let trajectoryToolbarClockIconSizePoints: Double = 12
+public let trajectoryToolbarClockIconStrokeWidth: Double = 1.25
+public let trajectoryToolbarClockCircleCenterX: Double = 8
+public let trajectoryToolbarClockCircleCenterY: Double = 8
+public let trajectoryToolbarClockCircleRadius: Double = 5.25
+public let trajectoryToolbarClockHandsPath = "M8 4.75V8l2.25 1.5"
+
+public func trajectoryToolbarClockSymbol() -> String { "official.trajectoryClock" }
+
+/// Canvas strokes after the 16×16 view-box scale. Desktop CSS
+/// `stroke-width: 1.25px` is viewport pixels on the 12×12 svg, so the
+/// user-unit width is `1.25 * 16 / 12`.
+public let trajectoryToolbarClockIconUserStrokeWidth: Double =
+    trajectoryToolbarClockIconStrokeWidth * 16 / trajectoryToolbarClockIconSizePoints
+
+public func isForbiddenTrajectoryToolbarClockSymbol(_ name: String) -> Bool {
+    name == "clock"
+        || name == "clock.fill"
+        || name == "official.clockOutline"
+        || name == "IconClockOutline"
+        || name == "IconClockOutlineRegular"
+        || name == "IconClockOutlineMedium"
+        || name == "IconClockOutlineArtwork"
+}
+
 /// Desktop `code-program.ts` PTC entry point name.
 public let ptcToolName = "run_code"
 

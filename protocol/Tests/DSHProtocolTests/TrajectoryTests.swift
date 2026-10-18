@@ -78,6 +78,28 @@ final class TrajectoryToolbarParityTests: XCTestCase {
         XCTAssertTrue(sidebarSearchCirclePath.hasPrefix("M6.58727 11.8586"))
         XCTAssertEqual(sidebarSearchHandlePath, "M10.2991 10.3933L14.7783 14.8725")
     }
+
+    func testToolbarDurationUsesInlineClockSvgNotSystemOrIconClock() {
+        XCTAssertTrue(trajectoryToolbarClockUsesOfficialGlyph)
+        XCTAssertEqual(trajectoryToolbarClockSymbol(), "official.trajectoryClock")
+        XCTAssertEqual(trajectoryToolbarClockIconSizePoints, 12)
+        XCTAssertEqual(trajectoryToolbarClockIconStrokeWidth, 1.25)
+        XCTAssertEqual(trajectoryToolbarClockCircleCenterX, 8)
+        XCTAssertEqual(trajectoryToolbarClockCircleCenterY, 8)
+        XCTAssertEqual(trajectoryToolbarClockCircleRadius, 5.25)
+        XCTAssertEqual(trajectoryToolbarClockHandsPath, "M8 4.75V8l2.25 1.5")
+        XCTAssertEqual(trajectoryToolbarClockIconUserStrokeWidth, 1.25 * 16 / 12, accuracy: 1e-12)
+        XCTAssertNotEqual(trajectoryToolbarClockHandsPath, "M8 4.31V8.46L11 10.08")
+        XCTAssertNotEqual(trajectoryToolbarClockCircleRadius, 6)
+        XCTAssertTrue(isForbiddenTrajectoryToolbarClockSymbol("clock"))
+        XCTAssertTrue(isForbiddenTrajectoryToolbarClockSymbol("clock.fill"))
+        XCTAssertTrue(isForbiddenTrajectoryToolbarClockSymbol("official.clockOutline"))
+        XCTAssertTrue(isForbiddenTrajectoryToolbarClockSymbol("IconClockOutlineRegular"))
+        XCTAssertTrue(isForbiddenTrajectoryToolbarClockSymbol("IconClockOutlineMedium"))
+        XCTAssertTrue(isForbiddenTrajectoryToolbarClockSymbol("IconClockOutlineArtwork"))
+        XCTAssertTrue(isForbiddenTrajectoryToolbarClockSymbol("IconClockOutline"))
+        XCTAssertFalse(isForbiddenTrajectoryToolbarClockSymbol("official.trajectoryClock"))
+    }
 }
 
 final class TrajectoryBuilderTests: XCTestCase {

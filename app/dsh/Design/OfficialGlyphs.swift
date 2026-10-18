@@ -31,6 +31,7 @@ struct OfficialGlyph: View {
         case projectAdd
         case plusOutline
         case send
+        case trajectoryClock
 
         var accessibilityIdentifier: String {
             switch self {
@@ -42,13 +43,14 @@ struct OfficialGlyph: View {
             case .projectAdd: return "official.projectAdd"
             case .plusOutline: return "official.plusOutline"
             case .send: return "official.send"
+            case .trajectoryClock: return "official.trajectoryClock"
             default: return "official.glyph"
             }
         }
 
         var hidesAccessibility: Bool {
             switch self {
-            case .folderClose, .folderOpen, .settingsOutline, .newChat, .searchOutline, .projectAdd: return false
+            case .folderClose, .folderOpen, .settingsOutline, .newChat, .searchOutline, .projectAdd, .trajectoryClock: return false
             // plusOutline / send are decorative; ComposerView hosts own
             // official.plusOutline and official.send.
             default: return true
@@ -197,6 +199,21 @@ struct OfficialGlyph: View {
                 ctx.stroke(Path(SVGPath.cgPath(composerAddPlusHorizontalPath)), with: .color(color), style: medium)
             case .send:
                 ctx.fill(Path(SVGPath.cgPath(composerSendPath)), with: .color(color))
+            case .trajectoryClock:
+                let toolbar = StrokeStyle(
+                    lineWidth: CGFloat(trajectoryToolbarClockIconUserStrokeWidth),
+                    lineCap: .round,
+                    lineJoin: .round
+                )
+                var rim = Path()
+                let radius = CGFloat(trajectoryToolbarClockCircleRadius)
+                let origin = CGPoint(
+                    x: CGFloat(trajectoryToolbarClockCircleCenterX) - radius,
+                    y: CGFloat(trajectoryToolbarClockCircleCenterY) - radius
+                )
+                rim.addEllipse(in: CGRect(origin: origin, size: CGSize(width: radius * 2, height: radius * 2)))
+                ctx.stroke(rim, with: .color(color), style: toolbar)
+                ctx.stroke(Path(SVGPath.cgPath(trajectoryToolbarClockHandsPath)), with: .color(color), style: toolbar)
             }
         }
         .frame(width: size, height: size)

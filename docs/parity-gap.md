@@ -78,7 +78,9 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R49 | 抽屉搜索改用官方 `IconSearchOutlineRegular` | done (#58) |
 | R50 | 抽屉工作区「添加」改用官方 `IconProjectAddOutlineRegular` | done (#59) |
 | R51 | composer `+` 改用官方 `IconPlusOutlineMedium` | done (#60) |
-| R52 | composer 发送改用官方 InputBar 16×16 SVG | this PR |
+| R52 | composer 发送改用官方 InputBar 16×16 SVG | done (#61) |
+| R53 | 轨迹工具栏搜索改用官方 `IconSearchOutlineRegular` size 11 | done (#62) |
+| R54 | 轨迹时长 chip 改用桌面 TrajectoryToolbar 内联 clock SVG | this PR |
 
 ---
 
@@ -1227,4 +1229,38 @@ Android `c5f8cdd...56dcaa9` 一笔：`feat(android): 补齐用户选择卡片与
 - 插件库存搜索仍 SF：桌面 `ui-plugin-manager` 无该搜索槽。
 - 轨迹时长 chip 仍 SF `clock`：桌面是另一套内联 SVG，不是已有 OfficialGlyph；本轮不扩。
 - InputBar `.primary` 停止态圆角方块：同一按钮的另一态，fixture 不跑。
+
+## Round 54 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*` alpha=`0.2.1-alpha.5` / next=`0.2.1-rc.2`；Android `ce7d345`）
+
+直播核对（2026-10-18）：iOS `main` tip `07e84e9`（#62 squash）。CI run 39100569960：`protocol` / `screenshots` / `ios` 全绿。`npm view`：`alpha` 仍 `0.2.1-alpha.5`，`next` 仍 `0.2.1-rc.2`。primitives `lib/index.js` sha256 `333ea89e7518ec1f1d33111bb9c65d382454bcc3638ebac7116253c92fe5d566`；trajectory `lib/client.js` sha256 `b11426f89d3b4302964b491d7826a29fe3de390be4bbfae325375f54fe6919ad`（alpha.5 与 rc.2 **相同**）。Android `main` `ce7d345`；`compare/ce7d345...main` `ahead_by: 0`。#67 仅 Host plugin，无新 iOS UI 可搬。
+
+#62 后源码 + 桌面 pack 怀疑式重审：
+
+| 项 | 判定 | 证据 |
+| --- | --- | --- |
+| composer 发送 OfficialGlyph.send | **PASS** | InputBar 内联 filled 16×16；CI landing/chat 断言 `official.send`、禁止 `arrow.up` |
+| composer 加号 OfficialGlyph.plusOutline | **PASS** | Medium 14 / 1.3；CI 断言 `official.plusOutline`、禁止 `plus` |
+| 抽屉 settings/newChat/search/projectAdd OfficialGlyphs | **PASS** | #56–#59；CI drawer 断言 |
+| 轨迹工具栏搜索 OfficialGlyph.searchOutline size 11 | **PASS** | #62；CI trajectory 断言 `official.searchOutline`、禁止 `magnifyingglass` |
+| HeroShell center gap 12；view-options compact popover | **PASS** | #55 / #54 |
+| effort 仅 reasoning；permission chip 仅图标 | **PASS** | `modelEffortLabel` 无 reasoning 返回 nil；`permissionChipTriggerShowsLabel = false` |
+| 轨迹时长 chip | **GAP → 本轮** | `TrajectoryView` 仍 SF `clock`。桌面 `TrajectoryToolbar` 时长 toggle 是同一控件：内联 16×16 SVG `circle r=5.25` + `M8 4.75V8l2.25 1.5`，CSS 12×12 / `stroke-width: 1.25px` / round，**不是** primitives `IconClockOutline*`（那是 view-options `clockOutline`） |
+| 插件库存搜索 SF | **skip** | 桌面 `ui-plugin-manager` 无 `IconSearch` / 搜索槽 |
+| 轨迹未知 cell SF `gearshape` | **skip** | 桌面 `KIND_ICON` 无 unknown；不发明 fallback |
+| npm alpha / next | **PASS** | 无增量（主文件 sha256 一致） |
+| Android `ce7d345` | **PASS** | 无新 client UI |
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| 轨迹时长 chip | `OfficialGlyph.trajectoryClock` + `trajectoryToolbarClock*` | `ui-trajectory` TrajectoryToolbar duration toggle 内联 `<circle cx=8 cy=8 r=5.25>` + `<path d="M8 4.75V8l2.25 1.5">`；`.toggleIcon` 12×12 / stroke 1.25px / round；`currentColor` = tertiary idle / primary pressed | 删掉 SF `clock`；禁止 primitives `IconClock*`；颜色 `T.text3` / 按下 `T.ink`。CI trajectory 断言 `official.trajectoryClock`、禁止 `clock` |
+
+本轮核对后**不改**（平台 / hide / 禁止发明）
+
+- `chat.turnNavigation.*` / `chat.toBottom` / `ask.review` / hover chevron：仍 skip。
+- Account / shortcuts / open config / CompatibilityBanner / 审批通知 / FishLogo：仍 **hide** / 不发明。
+- Android Settings「移动端 → 连接」不搬。
+- 轨迹未知 cell 仍映射 SF `gearshape`：桌面 `KIND_ICON` 无 unknown，不发明 fallback。
+- 插件库存搜索仍 SF：桌面 `ui-plugin-manager` 无该搜索槽。
+- InputBar `.primary` 停止态圆角方块：同一按钮的另一态，fixture 不跑。
+- 轨迹 ledger `KIND_ICON` 已知 kind（user/sparkle/wrench/…）仍是 SF：本轮只修工具栏时长 clock；不扩一批 cell 图标。
 
