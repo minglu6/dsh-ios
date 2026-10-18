@@ -775,14 +775,26 @@ final class ScreenshotTests: XCTestCase {
                     app.descendants(matching: .any)["slashMenu"].waitForExistence(timeout: 15),
                     "\(appearance) slash menu missing"
                 )
-                let permission = app.staticTexts["权限"]
-                XCTAssertTrue(permission.waitForExistence(timeout: 8), "\(appearance) slash missing 权限")
-                permission.tap()
                 XCTAssertTrue(
-                    app.descendants(matching: .any)["official.checkOutline"].waitForExistence(timeout: 8),
-                    "\(appearance) slash permission missing official check"
+                    app.descendants(matching: .any)["official.paperclipOutline"].waitForExistence(timeout: 8),
+                    "\(appearance) slash missing official paperclip"
                 )
-                XCTAssertFalse(app.images["checkmark"].exists, "\(appearance) slash still uses SF checkmark")
+                XCTAssertTrue(app.descendants(matching: .any)["official.goalOutline"].exists, "\(appearance) slash missing official goal")
+                XCTAssertTrue(app.descendants(matching: .any)["official.planOutline"].exists, "\(appearance) slash missing official plan")
+                XCTAssertTrue(app.descendants(matching: .any)["official.paperPlaneOutline"].exists, "\(appearance) slash missing official paper plane")
+                XCTAssertTrue(app.descendants(matching: .any)["official.compactOutline"].exists, "\(appearance) slash missing official compact")
+                XCTAssertTrue(app.descendants(matching: .any)["official.permissionFullAccess"].exists, "\(appearance) slash missing official permission")
+                XCTAssertTrue(app.descendants(matching: .any)["official.dataOutline"].exists, "\(appearance) slash missing official data")
+                XCTAssertTrue(app.descendants(matching: .any)["official.downloadOutline"].exists, "\(appearance) slash missing official download")
+                XCTAssertFalse(app.images["paperclip"].exists, "\(appearance) slash still uses SF paperclip")
+                XCTAssertFalse(app.images["target"].exists, "\(appearance) slash still uses SF target")
+                XCTAssertFalse(app.images["doc.text"].exists, "\(appearance) slash still uses SF doc.text")
+                XCTAssertFalse(app.images["paperplane"].exists, "\(appearance) slash still uses SF paperplane")
+                XCTAssertFalse(app.images["circle.circle"].exists, "\(appearance) slash still uses SF circle.circle")
+                XCTAssertFalse(app.images["shield"].exists, "\(appearance) slash still uses SF shield")
+                XCTAssertFalse(app.images["cylinder.split.1x2"].exists, "\(appearance) slash still uses SF cylinder")
+                XCTAssertFalse(app.images["square.and.arrow.down"].exists, "\(appearance) slash still uses SF download")
+                XCTAssertTrue(app.staticTexts["权限"].waitForExistence(timeout: 8), "\(appearance) slash missing 权限")
                 assertOfficialMenuChrome(app, appearance: appearance, screen: screen)
             }
             if screen == "models" {
@@ -807,6 +819,16 @@ final class ScreenshotTests: XCTestCase {
             }
             if screen == "models" {
                 try assertModelReleaseBadgeTracksSelection(app, appearance: appearance)
+            }
+            if screen == "slash" {
+                let permission = app.staticTexts["权限"]
+                XCTAssertTrue(permission.waitForExistence(timeout: 8), "\(appearance) slash missing 权限 after shot")
+                permission.tap()
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.checkOutline"].waitForExistence(timeout: 8),
+                    "\(appearance) slash permission missing official check"
+                )
+                XCTAssertFalse(app.images["checkmark"].exists, "\(appearance) slash still uses SF checkmark")
             }
             if screen == "start" || screen == "browser" || screen == "inspector" {
                 let back = app.buttons["navBack"]

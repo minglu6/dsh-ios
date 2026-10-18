@@ -1195,7 +1195,60 @@ public func terminalTabTitle(_ title: String?) -> String {
     return trimmed.isEmpty ? "Terminal" : trimmed
 }
 
-/// Desktop slash-menu glyphs, mapped to SF Symbols on iOS.
+/// Desktop `ui-input-trigger` MenuView `.itemIcon` is 14×14; each slash
+/// row passes `size: 14` into the primitives Regular glyph
+/// (`ICON_REGULAR_STROKE` 1).
+public let commandMenuIconSizePoints: Double = 14
+public let commandMenuIconStrokeWidth: Double = 1
+
+/// Desktop `ui-commands` `HOST_FACES` + conversation `/file` + model-selection
+/// `/model`. Never SF paperclip / cylinder / target / shield.
+public func commandMenuIconSymbol(_ kind: String?) -> String {
+    switch kind {
+    case "file": return "official.paperclipOutline"
+    case "model": return settingsModelsSymbol()
+    case "goal": return "official.goalOutline"
+    case "plan": return "official.planOutline"
+    case "feedback": return "official.paperPlaneOutline"
+    case "compact": return "official.compactOutline"
+    case "permission": return "official.permissionFullAccess"
+    case "export": return "official.downloadOutline"
+    default: return "official.codeOutline"
+    }
+}
+
+public func commandMenuSkillSymbol() -> String { "official.sparkle" }
+
+public func isForbiddenCommandMenuSystemSymbol(_ name: String) -> Bool {
+    name == "paperclip"
+        || name == "cylinder.split.1x2"
+        || name == "target"
+        || name == "doc.text"
+        || name == "paperplane"
+        || name == "circle.circle"
+        || name == "shield"
+        || name == "square.and.arrow.down"
+        || name == "chevron.left.forwardslash.chevron.right"
+        || name == "sparkle"
+}
+
+/// Desktop `IconPaperclipOutlineArtwork` Regular. Single stroke, 16×16 view box.
+public let iconPaperclipOutlinePath =
+    "M12.75 4.5V9.5C12.75 10.7598 12.2496 11.968 11.3588 12.8588C10.468 13.7496 9.25978 14.25 8 14.25C6.74022 14.25 5.53204 13.7496 4.64124 12.8588C3.75045 11.968 3.25 10.7598 3.25 9.5V5C3.25 4.13805 3.59241 3.3114 4.2019 2.7019C4.8114 2.09241 5.63805 1.75 6.5 1.75C7.36195 1.75 8.1886 2.09241 8.7981 2.7019C9.40759 3.3114 9.75 4.13805 9.75 5V9.5C9.75 9.96413 9.56563 10.4092 9.23744 10.7374C8.90925 11.0656 8.46413 11.25 8 11.25C7.53587 11.25 7.09075 11.0656 6.76256 10.7374C6.43437 10.4092 6.25 9.96413 6.25 9.5V5.5"
+
+/// Desktop `IconPaperPlaneOutlineArtwork` Regular. Not `IconSendOutline`.
+public let iconPaperPlaneOutlineBodyPath =
+    "M4.74024 9.11029L1.82882 7.79865C1.75022 7.76323 1.75026 7.65161 1.82889 7.61626L12.9665 2.60943C13.0354 2.57846 13.1125 2.63213 13.1073 2.70749L12.3914 13.1388C12.3864 13.2117 12.3073 13.2548 12.2433 13.2194L6.12677 9.83657"
+public let iconPaperPlaneOutlineFoldPath =
+    "M8.44336 11.0825L6.2832 13.2843C6.22048 13.3482 6.11182 13.3038 6.11182 13.2143V9.86772C6.11182 9.84165 6.122 9.8166 6.1402 9.79793L12.972 2.78748"
+
+/// Desktop `IconCompactOutlineArtwork` Regular. Ring is `opacity: 0.35`.
+public let iconCompactOutlineRingPath =
+    "M8 14.5C11.5899 14.5 14.5 11.5899 14.5 8C14.5 4.41015 11.5899 1.5 8 1.5C4.41015 1.5 1.5 4.41015 1.5 8C1.5 11.5899 4.41015 14.5 8 14.5Z"
+public let iconCompactOutlineArcPath =
+    "M8 1.5C8.85359 1.5 9.69883 1.66813 10.4874 1.99478C11.2761 2.32144 11.9926 2.80022 12.5962 3.40381C13.1998 4.00739 13.6786 4.72394 14.0052 5.51256C14.3319 6.30117 14.5 7.14641 14.5 8"
+public let iconCompactOutlineRingOpacity: Double = 0.35
+
 public func autoRefreshLabel(english: Bool) -> String {
     english ? "Auto refresh" : "自动刷新"
 }
@@ -1259,16 +1312,3 @@ public func claimedComposerHint(text: String, catalog: [JSONValue] = [], hasGoal
     }
 }
 
-public func commandMenuIconSymbol(_ kind: String?) -> String {
-    switch kind {
-    case "file": return "paperclip"
-    case "model": return "cylinder.split.1x2"
-    case "goal": return "target"
-    case "plan": return "doc.text"
-    case "feedback": return "paperplane"
-    case "compact": return "circle.circle"
-    case "permission": return "shield"
-    case "export": return "square.and.arrow.down"
-    default: return "chevron.left.forwardslash.chevron.right"
-    }
-}

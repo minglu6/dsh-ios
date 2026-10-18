@@ -1073,7 +1073,7 @@ struct CommandMenuOverlay: View {
             index: index,
             enabled: enabled,
             active: active,
-            icon: commandMenuIconSymbol(kind),
+            official: OfficialGlyph.commandMenu(kind),
             title: label ?? name,
             alias: label.flatMap { $0.caseInsensitiveCompare(name) == .orderedSame ? nil : name },
             detail: commandMenuDescription(command, english: L.en)
@@ -1089,7 +1089,7 @@ struct CommandMenuOverlay: View {
             index: index,
             enabled: enabled,
             active: highlight == index,
-            icon: "sparkle",
+            official: .sparkle,
             title: skill.name,
             alias: nil,
             detail: {
@@ -1107,14 +1107,18 @@ struct CommandMenuOverlay: View {
         index: Int,
         enabled: Bool,
         active: Bool,
-        icon: String,
+        official: OfficialGlyph.Kind,
         title: String,
         alias: String?,
         detail: String?,
         action: @escaping () -> Void
     ) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Image(systemName: icon).foregroundStyle(enabled ? T.text2 : T.text3)
+            OfficialGlyph(
+                kind: official,
+                size: CGFloat(commandMenuIconSizePoints),
+                color: enabled ? T.text2 : T.text3
+            )
             VStack(alignment: .leading, spacing: 2) {
                 HStack {
                     Text(title).foregroundStyle(enabled ? T.ink : T.text3)

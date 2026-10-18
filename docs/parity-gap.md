@@ -93,7 +93,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R64 | 远程主机卡片间距；配对链接 sheet primitives；landing 工作区 chip 官方 chevron/check/plus | done (#73) |
 | R65 | 远程主机附近设备电脑图标 + 管理 sheet 官方 trash/refresh/edit；进 CI 截图路径 | done (#74) |
 | R66 | 配对链接输入框与按钮同一 22pt 边距；Todo/Goal/Queue dock 与设置壳模型行官方 SVG + CI `chatDock`/`settingsShell` | done (#75) |
-| R66-fix | PairLinkSheet bounds host 不参与布局；小标签与标题 22pt 对齐 | this PR |
+| R66-fix | PairLinkSheet bounds host 不参与布局；小标签与标题 22pt 对齐 | done (#76) |
+| R67 | `/` 菜单行官方 SVG（paperclip / paperPlane / compact / data Regular / permission FullAccess / download / goal / plan） | this PR |
 
 ---
 
@@ -1762,4 +1763,74 @@ Android `MainActivity` 窄屏是 `ModalNavigationDrawer`（按钮 / 手势滑出
 - 扫码 QR / Inspector viewfinder / 终端 ProgressView（primitives 无 artwork）。
 - 管理 sheet 删除确认（Android 立即删除；桌面 pocket 不是这张 sheet）。
 - `/` 菜单行 SF 图标（缺 paperclip 提取；下轮再搬）。
+- 工作区 hover-chevron 互换（触控无 hover）。
+
+## Round 67 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`；Android 仅参考）
+
+基线 `main` `c0eee71`（#76 Round 66 hotfix）。桌面是源。禁止自创颜色/图标/间距；无系统蓝；无 ActionSheet；文案「远程主机」。
+
+### 必须核实（已对齐，本轮不改）
+
+| 项 | 判定 |
+| --- | --- |
+| landing「探索未至之境」+ whale | **PASS** |
+| Composer 贴底 | **PASS** |
+| 抽屉设置 vs 绿点+主机名独立热区 ≥16pt | **PASS** |
+| 远程主机整页 | **PASS** |
+| 开抽屉 / 滚动 / 进设置 / 进远程主机收键盘 | **PASS** |
+| 权限 chip 只图标 + #68 菜单 | **PASS** |
+| #69 Start/Browser/Inspector 全屏；#70 官方 SVG；#71 Flash 1017；#72 配对链接流程与当前工作区文件夹色；#73 卡片间距与配对 sheet primitives；#74 附近电脑图标/管理 sheet 官方 SVG/取消 ≥44pt/分组标题行高 20；#75 配对 22pt inset + dock/设置壳官方 SVG；#76 PairLinkSheet 版式 | **PASS** |
+| `/` 菜单全量不显示数量；聊天顶栏无分享；用户消息下无常驻复制 | **PASS** |
+
+### 本轮修
+
+| 项 | 桌面 | iOS | 处理 |
+| --- | --- | --- | --- |
+| `/` 菜单行图标仍 SF | `ui-commands` `HOST_FACES`：`IconGoalOutlineRegular` / `IconPlanOutlineRegular` / `IconPaperPlaneOutlineRegular` / `IconCompactOutlineRegular` / `PermissionIconFullAccessRegular` / `IconDownloadOutlineRegular`。`ui-conversation` `/file` = `IconPaperclipOutlineRegular`。`ui-model-selection` `/model` = `IconDataOutlineRegular`。`ui-input-trigger` MenuView `.itemIcon` 14×14 `size: 14` | `commandMenuIconSymbol` 仍是 SF `paperclip` / `cylinder.split.1x2` / `target` / `doc.text` / `paperplane` / `circle.circle` / `shield` / `square.and.arrow.down` | 提取官方 path。行图标改 `OfficialGlyph` Regular 14。模型行 Regular（设置壳仍 Medium）。技能行 `official.sparkle`。CI `*-slash.png` 断言 8 个 official.*，禁对应 SF |
+
+### 有意 skip（桌面源码依据）
+
+| 项 | 判定 | 依据 |
+| --- | --- | --- |
+| 管理 sheet「删除」无确认 | **skip** | Android `ProfileManageSheet` 直接 `removeProfile`。桌面 `ui-settings@0.2.1-alpha.5` pocket 是电脑二维码/设备页，无这张手机管理 sheet，也无 delete confirm Modal。不发明对话框 |
+| #76 后 pairingLink inset | **PASS / 不改** | 标题 / hint / 字段列 / 按钮行都走 `connectionsSheetContentPaddingPoints = 22`。CI minX/maxX ±1pt、hint→字段 ≤24、按钮行 14±4、小标签 vs 标题 ±1pt 已锁 |
+| 计划 chip `D.plan` SF | **skip** | 桌面 modes 行 `IconPlanOutlineRegular`。CI `chat`/`landing` `planMode=false` |
+| 通用设置 Toggle / 语言 Picker | **skip** | 桌面 PreferenceRow 自定义开关 / MenuSurface。Phone `.labelsHidden()` Toggle 与 `Picker` `.tint(T.ink)`，不是系统蓝 ActionSheet |
+| Todo in_progress / 终端 / slash loading `ProgressView` | **skip** | primitives 无 loading artwork |
+| 扫码 QR / Inspector viewfinder / 类型过滤 | **skip** | primitives 无对应 artwork |
+| 插件列表搜索框 SF magnifyingglass | **skip** | 桌面 `ui-plugin-manager` 无该槽 |
+| `turnNavigation` / toBottom FAB / ask.review / hover chevron / Account/shortcuts / CompatibilityBanner / 审批通知 / stop-state | **skip** | 既定平台 / hide / 禁止发明 |
+| 提及气泡 / 文件 `bubble.left` `doc`、变更卡 `doc.on.doc`、文件树 FileTypeIcon、反馈 checkmark、风险三角、目录选择 chevron/pencil | **skip** | 非本轮 slash 行；桌面 mention/file-type 另有 ReferenceIcon / CodeFileIcon，未进本轮提取 |
+
+### 逐屏核对（light+dark）
+
+| 屏 | 判定 | 说明 |
+| --- | --- | --- |
+| landing | **PASS** | 标题/鲸/Composer 贴底；工作区 chip 官方 chevron |
+| chat | **PASS** | 无分享、无用户常驻复制。计划 chip 仍 skip |
+| chatDock | **PASS** | #75 Todo/Goal/Queue 官方 SVG |
+| drawer | **PASS** | 设置 vs 绿点+主机名；当前工作区 `businessPrimary` 文件夹 |
+| jobs | **PASS** | 官方 chevronDown / stopFill |
+| trajectory / trajectoryDetail | **PASS** | KIND_ICON + 详情官方 SVG |
+| inspector | **skip** | viewfinder / 类型过滤无 primitives artwork |
+| browser | **PASS** | #70 官方工具栏；线性 ProgressView 是 WK 加载，无 primitives 进度条 artwork |
+| terminal | **skip** | 中间 ProgressView（不发明 loading SVG） |
+| settings | **PASS** | 外观立方 + 权限 inline。Toggle/Picker 有意 skip |
+| settingsShell | **PASS** | 模型 `IconDataOutlineMedium` |
+| plugins / builtinPlugins | **skip / PASS** | 列表搜索框有意保留 SF；内置刷新已官方 |
+| models / permission | **PASS** | 官方 chevron/check |
+| slash | **本轮修** | 行图标官方 SVG；无数量；权限 popupSelect 官方 check |
+| schedule / sessionActions / viewOptions / start / composerStop | **PASS** | 既有官方 SVG / 全屏 Start |
+| connections / pairingLink / nearby / manage | **PASS** | #76 版式不回归。删除无确认（桌面无对应 Modal） |
+
+### npm dist-tag（只报告，不 bump 基线）
+
+`npm view`：`alpha` 仍 `0.2.1-alpha.5`，`next` 仍 `0.2.1-rc.2`，`latest` 仍旧线。`0.2.1-alpha.5` 之后没有新的 alpha。primitives `lib/index.js` 与 commands `lib/client.js` 的 sha256 在 alpha.5 与 rc.2 **相同**（locale / 组件 API **无增量**）。只报告，不升级。
+
+本轮核对后**不改**（平台 / hide / 禁止发明）
+
+- `turnNavigation` / `toBottom` FAB / `ask.review` / hover chevron / Account/shortcuts / CompatibilityBanner / 审批通知 / stop-state **行为**。
+- 插件列表搜索框（桌面 `ui-plugin-manager` 无该槽）。
+- 扫码 QR / Inspector viewfinder / 终端 ProgressView（primitives 无 artwork）。
+- 管理 sheet 删除确认（Android 立即删除；桌面 pocket 不是这张 sheet）。
 - 工作区 hover-chevron 互换（触控无 hover）。

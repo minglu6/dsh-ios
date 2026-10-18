@@ -266,6 +266,27 @@ extension AppModel {
             composerText = ""
         case "slash":
             composerText = "/"
+            // Desktop slash HOST_FACES + /file + /model + /feedback + /export.
+            // Keep these ops on this screen only so other fixtures stay still.
+            ops.formUnion(["attachments.upload", "sessionFeedback.record", "commands.execute"])
+            commandEntries = [
+                .object([
+                    "name": .string("goal"),
+                    "definitionId": .string("@deepseek-ai/dsh-command-goal"),
+                ]),
+                .object([
+                    "name": .string("plan"),
+                    "definitionId": .string("@deepseek-ai/dsh-plan-mode"),
+                ]),
+                .object([
+                    "name": .string("compact"),
+                    "definitionId": .string("@deepseek-ai/dsh-command-compact"),
+                ]),
+                .object([
+                    "name": .string("permission"),
+                    "definitionId": .string("@deepseek-ai/dsh-permission-presets"),
+                ]),
+            ]
         default:
             fatalError("UITestLaunch: unknown screen \(screen)")
         }
