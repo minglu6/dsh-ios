@@ -163,6 +163,9 @@ extension AppModel {
             seedUITestJobs()
         case "models", "permission":
             break
+        case "connections":
+            showDrawer = false
+            push(.connections)
         case "settings", "general":
             showDrawer = false
             push(.general)

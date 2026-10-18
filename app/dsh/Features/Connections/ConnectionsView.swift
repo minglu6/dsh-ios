@@ -56,6 +56,7 @@ struct ConnectionsView: View {
             }
             .background(T.bg)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(T.bg.ignoresSafeArea())
         .accessibilityIdentifier("connectionsScreen")
         .sheet(isPresented: sheetPresented) {
@@ -127,7 +128,10 @@ struct ConnectionsView: View {
         HStack {
             Button(action: model.pop) { Image(systemName: "chevron.left").foregroundStyle(T.ink) }
                 .accessibilityIdentifier("navBack")
-            Text(L.connections()).font(.headline).foregroundStyle(T.ink)
+            Text(L.connections())
+                .font(.headline)
+                .foregroundStyle(T.ink)
+                .accessibilityIdentifier("connectionsTitle")
             Spacer()
             Menu {
                 // Android overflow also offers NEARBY_WIFI_DEVICES; iOS Local Network

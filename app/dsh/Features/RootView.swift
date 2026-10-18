@@ -78,6 +78,12 @@ struct RootView: View {
                 EmptyView()
             case .connections, .pair:
                 ConnectionsView(model: model)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .zIndex(1)
+            case .diagnostics:
+                ConnectionsView(model: model)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .zIndex(1)
             case .settings:
                 SettingsView(model: model)
             case .general:
@@ -93,8 +99,6 @@ struct RootView: View {
                     model.showDrawer = false
                     model.createAndOpenSession(preset: "cordis")
                 })
-            case .diagnostics:
-                ConnectionsView(model: model)
             case .panel(let panel):
                 HostPanelView(model: model, panel: panel)
             }

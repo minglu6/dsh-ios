@@ -1343,7 +1343,8 @@ Android `c5f8cdd...56dcaa9` 一笔：`feat(android): 补齐用户选择卡片与
 | 模块 | iOS | 对照的桌面源码 | 对齐点 |
 | --- | --- | --- | --- |
 | 用户消息 | `MessageActions(showsCopy: userMessageShowsPersistentCopy)` | `ui-chat` `UserMessageNodeView` | 无常驻 copy。CI chat 禁止 `userMessageCopy` |
-| 抽屉脚 | `footerSettings` + `Spacer(minLength: 16)` + `footerPeerDevice`（dot + 截断名） | `ui-settings-general` `triggerRow` / `ConnectionIndicator` | 热区不相交、间隔 ≥ 16pt、高度 ≥ 44pt。CI 分别 tap → `settingsShell` / `connectionsScreen` |
+| 抽屉脚 | `footerSettings` + `Spacer(minLength: 16)` + `footerPeerDevice`（dot + 截断名） | `ui-settings-general` `triggerRow` / `ConnectionIndicator` | 热区不相交、间隔 ≥ 16pt、高度 ≥ 44pt。CI 分别 tap → `settingsShell` / 全屏 `connectionsScreen` |
+| 远程主机页 | 整窗 `ConnectionsView`；标题 `connectionsPageTitle`「远程主机」 | Android `Screen.Connections` + `drawer.close()`；桌面 Settings 是整栏不是 sheet。Host 侧 `pocket`「手机连接」QR 不搬 | `AppRoute.closesSessionDrawer`；CI `connections` 屏 + footer tap 断言占窗口 ≥ 98%×90%、无抽屉 chrome、标题「远程主机」 |
 | 诊断行 | `OfficialGlyph.gaugeOutline` / `.databaseOutline` | primitives `IconGaugeOutlineArtwork` / `IconDatabaseOutlineArtwork` | CI chat 禁止 SF gauge/cylinder，断言 `official.gaugeOutline` / `official.databaseOutline` 与「缓存命中 69%」 |
 | 视图选项 | `OfficialGlyph` + sliders knobs | `ui-workspace` `ViewOptionsMenu` + `IconSlidersTwoOutlineArtwork` | CI 禁止 SF slider/list/clock/archivebox；断言 official.* |
 | 插件 tooltip | 自绘 `T.tooltipBg` 气泡 + `OfficialGlyph.infoOutline` | `ui-primitives` Tooltip + `ui-plugin-manager` `IconInfoOutlineRegular` size 11 | CI plugins 点 (i)，断言 `pluginInfoTooltip` 在屏幕内 |

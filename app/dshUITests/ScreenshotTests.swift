@@ -6,7 +6,7 @@ final class ScreenshotTests: XCTestCase {
     private let screens = [
         "landing", "drawer", "viewOptions", "sessionActions", "chat",
         "models", "permission", "start", "browser", "inspector",
-        "settings", "schedule", "terminal", "trajectory", "plugins",
+        "settings", "schedule", "terminal", "trajectory", "plugins", "connections",
     ]
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool { false }
@@ -246,6 +246,9 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertTrue(app.descendants(matching: .any)["modelChipEffort"].waitForExistence(timeout: 8), "\(appearance) model chip missing effort")
                 XCTAssertTrue(app.descendants(matching: .any)["modelPickerEffort"].waitForExistence(timeout: 8), "\(appearance) model menu missing effort row")
             }
+            if screen == "connections" {
+                assertConnectionsIsFullScreen(app, appearance: appearance)
+            }
             if screen == "trajectory" {
                 XCTAssertTrue(
                     app.descendants(matching: .any)["chatTab.trajectory"].waitForExistence(timeout: 15),
@@ -294,31 +297,50 @@ final class ScreenshotTests: XCTestCase {
         let host = app.descendants(matching: .any)["drawerPeerDeviceRow"]
         XCTAssertTrue(host.waitForExistence(timeout: 8), "\(appearance) host hit missing after reopen")
         host.tap()
-        let connections = app.descendants(matching: .any)["connectionsScreen"]
+        assertConnectionsIsFullScreen(app, appearance: appearance)
+    }
+
+    /// Drawer footer Host entry must replace the window with `ConnectionsView`,
+    /// not leave the session drawer or a sheet detent covering the list.
+    private func assertConnectionsIsFullScreen(_ app: XCUIApplication, appearance: String) {
+        let page = app.descendants(matching: .any)["connectionsScreen"]
         XCTAssertTrue(
-            connections.waitForExistence(timeout: 8),
-            "\(appearance) host hit did not open Connections"
-        )
-        // Full-screen route (Android Screen.Connections): must fill the window,
-        // not sit beside / under the session drawer as a half sheet.
-        let window = app.windows.firstMatch.frame
-        XCTAssertGreaterThanOrEqual(
-            connections.frame.width,
-            window.width * 0.9,
-            "\(appearance) connections is not full-screen (\(connections.frame) vs \(window))"
-        )
-        XCTAssertGreaterThanOrEqual(
-            connections.frame.height,
-            window.height * 0.7,
-            "\(appearance) connections height looks like a sheet (\(connections.frame))"
+            page.waitForExistence(timeout: 8),
+            "\(appearance) connections page missing"
         )
         XCTAssertFalse(
             app.descendants(matching: .any)["drawerSettingsRow"].exists,
-            "\(appearance) session drawer still open over Connections"
+            "\(appearance) connections still has the session drawer on screen"
         )
         XCTAssertFalse(
             app.descendants(matching: .any)["drawerPeerDeviceRow"].exists,
-            "\(appearance) session drawer host row still visible over Connections"
+            "\(appearance) connections still shows drawer host chrome"
+        )
+        XCTAssertFalse(
+            app.descendants(matching: .any)["viewOptionsButton"].exists,
+            "\(appearance) connections still shows drawer chrome"
+        )
+        XCTAssertTrue(
+            app.staticTexts["远程主机"].waitForExistence(timeout: 4)
+                || app.descendants(matching: .any)["connectionsTitle"].waitForExistence(timeout: 2),
+            "\(appearance) connections missing 远程主机 title"
+        )
+        let window = app.windows.firstMatch.frame
+        let frame = page.frame
+        XCTAssertGreaterThanOrEqual(
+            frame.width / window.width,
+            0.98,
+            "\(appearance) connections is not full width (\(frame) vs \(window))"
+        )
+        XCTAssertGreaterThanOrEqual(
+            frame.height / window.height,
+            0.90,
+            "\(appearance) connections is not full height (\(frame) vs \(window))"
+        )
+        XCTAssertLessThanOrEqual(
+            frame.minY - window.minY,
+            40,
+            "\(appearance) connections looks like a sheet (origin \(frame.minY) vs window \(window.minY))"
         )
     }
 
