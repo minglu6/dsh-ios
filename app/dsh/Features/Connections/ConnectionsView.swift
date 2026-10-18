@@ -175,11 +175,12 @@ struct ConnectionsView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(title)
-                .font(.system(size: 14))
+                .font(.system(size: CGFloat(connectionsSectionTitleFontSizePoints)))
                 .foregroundStyle(T.ink)
+                .frame(height: CGFloat(connectionsSectionTitleLineHeightPoints), alignment: .leading)
                 .padding(.horizontal, 22)
-                .padding(.top, 16)
-                .padding(.bottom, 4)
+                .padding(.top, CGFloat(connectionsSectionTitlePaddingTopPoints))
+                .padding(.bottom, CGFloat(connectionsSectionTitlePaddingBottomPoints))
             connCard(identifier: cardIdentifier) { content() }
         }
     }
@@ -248,13 +249,9 @@ struct ConnectionsView: View {
         // with desktop `D.refresh` / `D.edit` / `D.trash`. Phone still needs
         // a dismiss control, styled as desktop Button.ghost.
         VStack(alignment: .leading, spacing: 0) {
-            Button(L.cancel()) { presented = nil }
-                .buttonStyle(.plain)
-                .font(.system(size: CGFloat(dswButtonFontSizePoints)))
-                .foregroundStyle(T.ink)
-                .padding(.horizontal, 22)
-                .padding(.vertical, 6)
-                .accessibilityIdentifier(connectionsManageCancelIdentifier())
+            connSheetCancel(identifier: connectionsManageCancelIdentifier()) {
+                presented = nil
+            }
             if renaming {
                 Text(L.rename())
                     .font(.system(size: CGFloat(connectionsSheetTitleFontSizePoints), weight: .semibold))
@@ -377,7 +374,8 @@ struct ConnectionsView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(T.bg)
+        .padding(.top, CGFloat(connectionsSheetDragHandleAreaPoints))
+        .background(T.surface)
         .tint(T.ink)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(connectionsManageSheetIdentifier())
@@ -385,30 +383,38 @@ struct ConnectionsView: View {
     }
 
     /// Android `ConnOptionRow`: 18pt official glyph + 16pt title, `T.Ink`.
-    /// Not a SwiftUI `Button` + `.contain` — that retargets XCUI taps onto
-    /// the child glyph (see ConnActionRow).
+    /// The row is one SwiftUI `Button` (VoiceOver / XCUI `.buttons`). The
+    /// official glyph is a sibling, not a Button child — a parent Button
+    /// identifier would swallow `official.trashOutline` / refresh / edit
+    /// (OfficialGlyphAccess). The 18pt leading slot matches the icon so
+    /// the button still owns the full-row tap.
     private func manageAction(
         _ title: String,
         official: OfficialGlyph.Kind,
         identifier: String,
         action: @escaping () -> Void
     ) -> some View {
-        HStack(spacing: 14) {
+        ZStack(alignment: .leading) {
             OfficialGlyph(kind: official, size: 18, color: T.ink)
-            Text(title)
-                .font(.system(size: 16))
-                .foregroundStyle(T.ink)
-            Spacer()
+                .padding(.leading, 22)
+                .allowsHitTesting(false)
+            Button(action: action) {
+                HStack(spacing: 14) {
+                    Color.clear.frame(width: 18, height: 18)
+                    Text(title)
+                        .font(.system(size: 16))
+                        .foregroundStyle(T.ink)
+                    Spacer()
+                }
+                .padding(.horizontal, 22)
+                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(title)
+            .accessibilityIdentifier(identifier)
         }
-        .padding(.horizontal, 22)
-        .padding(.vertical, 12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
-        .onTapGesture(perform: action)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(title)
-        .accessibilityAddTraits(.isButton)
-        .accessibilityIdentifier(identifier)
     }
 
     private func dotColor(_ dot: Dot?) -> Color {
@@ -685,13 +691,7 @@ private struct PairLinkSheet: View {
         // accent tint). Android `PairLinkSheet` is ConnSheet + SheetTitle;
         // phone still needs a dismiss control, styled as desktop Button.ghost.
         VStack(alignment: .leading, spacing: 0) {
-            Button(L.cancel()) { onDismiss() }
-                .buttonStyle(.plain)
-                .font(.system(size: CGFloat(dswButtonFontSizePoints)))
-                .foregroundStyle(T.ink)
-                .padding(.horizontal, 22)
-                .padding(.vertical, 6)
-                .accessibilityIdentifier(connectionsPairLinkCancelIdentifier())
+            connSheetCancel(identifier: connectionsPairLinkCancelIdentifier(), action: onDismiss)
             Text(L.pairingLink())
                 .font(.system(size: CGFloat(connectionsSheetTitleFontSizePoints), weight: .semibold))
                 .foregroundStyle(T.ink)
@@ -781,7 +781,8 @@ private struct PairLinkSheet: View {
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(T.bg)
+        .padding(.top, CGFloat(connectionsSheetDragHandleAreaPoints))
+        .background(T.surface)
         .tint(T.ink)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(connectionsPairLinkSheetIdentifier())
@@ -802,6 +803,20 @@ private struct PairLinkSheet: View {
         guard let link = parsed else { return }
         onResult(link)
     }
+}
+
+/// Ghost「取消」on ConnSheet. Android `PocketSheet` has no cancel row —
+/// it dismisses by swipe. Phone still needs a control; 44pt hit is
+/// `connectionsSheetCancelMinHeightPoints`.
+private func connSheetCancel(identifier: String, action: @escaping () -> Void) -> some View {
+    Button(L.cancel(), action: action)
+        .buttonStyle(.plain)
+        .font(.system(size: CGFloat(dswButtonFontSizePoints)))
+        .foregroundStyle(T.ink)
+        .padding(.horizontal, 22)
+        .frame(minHeight: CGFloat(connectionsSheetCancelMinHeightPoints), alignment: .leading)
+        .contentShape(Rectangle())
+        .accessibilityIdentifier(identifier)
 }
 
 private extension View {

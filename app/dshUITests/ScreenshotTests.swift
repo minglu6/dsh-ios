@@ -497,18 +497,24 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertTrue(actionsCard.exists, "\(appearance) connections missing action card")
                 let nearbyGap = nearbyCard.frame.minY - pairedCard.frame.maxY
                 let actionsGap = actionsCard.frame.minY - nearbyCard.frame.maxY
-                // Paired and nearby cards have Android ConnSectionTitle between
-                // them (14/20 + pad 16+4), plus Card vertical 6+6. That is not
-                // the 12pt adjacent-card stack.
-                XCTAssertGreaterThanOrEqual(
-                    nearbyGap,
-                    40,
-                    "\(appearance) paired/nearby missing 附近设备 title gap (gap \(nearbyGap))"
+                let nearbyTitle = app.staticTexts["附近设备"].firstMatch
+                XCTAssertTrue(nearbyTitle.exists, "\(appearance) 附近设备 title missing after card query")
+                XCTAssertGreaterThan(
+                    nearbyTitle.frame.minY,
+                    pairedCard.frame.maxY,
+                    "\(appearance) 附近设备 title is not below paired card (\(nearbyTitle.frame) vs paired \(pairedCard.frame))"
                 )
                 XCTAssertLessThan(
+                    nearbyTitle.frame.maxY,
+                    nearbyCard.frame.minY,
+                    "\(appearance) 附近设备 title is not above nearby card (\(nearbyTitle.frame) vs nearby \(nearbyCard.frame))"
+                )
+                // Card 6 + ConnSectionTitle 16+20+4 + Card 6 = connectionsPairedNearbyGapPoints.
+                XCTAssertEqual(
                     nearbyGap,
-                    64,
-                    "\(appearance) paired/nearby gap \(nearbyGap) is larger than ConnSectionTitle + Card 6+6"
+                    52,
+                    accuracy: 2,
+                    "\(appearance) paired/nearby gap \(nearbyGap) is not ConnSectionTitle 6+16+20+4+6"
                 )
                 XCTAssertGreaterThanOrEqual(
                     actionsGap,
@@ -816,10 +822,17 @@ final class ScreenshotTests: XCTestCase {
             app.descendants(matching: .any)["connectionsManageSheet"].waitForExistence(timeout: 8),
             "\(appearance) manage sheet missing"
         )
+        let manageCancel = app.descendants(matching: .any)["connectionsManageCancel"].firstMatch
         XCTAssertTrue(
-            app.descendants(matching: .any)["connectionsManageCancel"].waitForExistence(timeout: 4)
+            manageCancel.waitForExistence(timeout: 4)
                 || app.buttons["取消"].waitForExistence(timeout: 2),
             "\(appearance) manage sheet missing 取消"
+        )
+        let manageCancelFrame = manageCancel.exists ? manageCancel : app.buttons["取消"].firstMatch
+        XCTAssertGreaterThanOrEqual(
+            manageCancelFrame.frame.height,
+            44,
+            "\(appearance) manage 取消 height \(manageCancelFrame.frame.height) is under 44pt"
         )
         XCTAssertTrue(
             app.staticTexts["重新配对"].waitForExistence(timeout: 4)
@@ -892,10 +905,17 @@ final class ScreenshotTests: XCTestCase {
             app.descendants(matching: .any)["connectionsPairLinkSheet"].waitForExistence(timeout: 4),
             "\(appearance) connectionsPairLinkSheet identifier missing"
         )
+        let pairCancel = app.descendants(matching: .any)["connectionsPairLinkCancel"].firstMatch
         XCTAssertTrue(
-            app.descendants(matching: .any)["connectionsPairLinkCancel"].waitForExistence(timeout: 4)
+            pairCancel.waitForExistence(timeout: 4)
                 || app.buttons["取消"].waitForExistence(timeout: 2),
             "\(appearance) pairing-link sheet missing 取消"
+        )
+        let pairCancelFrame = pairCancel.exists ? pairCancel : app.buttons["取消"].firstMatch
+        XCTAssertGreaterThanOrEqual(
+            pairCancelFrame.frame.height,
+            44,
+            "\(appearance) pairing-link 取消 height \(pairCancelFrame.frame.height) is under 44pt"
         )
         try saveNamedScreenshot(appearance, "pairingLink")
         let paste = app.descendants(matching: .any)["connectionsPastePairingLink"]

@@ -555,6 +555,31 @@ final class AndroidParityTests: XCTestCase {
         XCTAssertEqual(connectionsPairLinkCancelIdentifier(), "connectionsPairLinkCancel")
         XCTAssertEqual(connectionsCardVerticalPaddingPoints, 6)
         XCTAssertEqual(connectionsCardStackGapPoints, 12)
+        XCTAssertEqual(connectionsSectionTitleFontSizePoints, 14)
+        XCTAssertEqual(connectionsSectionTitleLineHeightPoints, 20)
+        XCTAssertEqual(connectionsSectionTitlePaddingTopPoints, 16)
+        XCTAssertEqual(connectionsSectionTitlePaddingBottomPoints, 4)
+        XCTAssertEqual(
+            connectionsPairedNearbyGapPoints,
+            connectionsCardVerticalPaddingPoints
+                + connectionsSectionTitlePaddingTopPoints
+                + connectionsSectionTitleLineHeightPoints
+                + connectionsSectionTitlePaddingBottomPoints
+                + connectionsCardVerticalPaddingPoints
+        )
+        XCTAssertEqual(connectionsPairedNearbyGapPoints, 52)
+        XCTAssertEqual(connectionsSheetDragHandleTopPoints, 10)
+        XCTAssertEqual(connectionsSheetDragHandleHeightPoints, 4)
+        XCTAssertEqual(connectionsSheetDragHandleBottomPoints, 14)
+        XCTAssertEqual(
+            connectionsSheetDragHandleAreaPoints,
+            connectionsSheetDragHandleTopPoints
+                + connectionsSheetDragHandleHeightPoints
+                + connectionsSheetDragHandleBottomPoints
+        )
+        XCTAssertEqual(connectionsSheetDragHandleAreaPoints, 28)
+        XCTAssertEqual(connectionsSheetCancelMinHeightPoints, sidebarFooterHitMinHeightPoints)
+        XCTAssertEqual(connectionsSheetCancelMinHeightPoints, 44)
         XCTAssertEqual(dswButtonFontSizePoints, 14)
         XCTAssertEqual(dswButtonLineHeightPoints, 22)
         XCTAssertEqual(dswButtonRadiusMdPoints, 12)

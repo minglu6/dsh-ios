@@ -26,6 +26,37 @@ public let connectionsPageMinHeightRatio: Double = 0.90
 public let connectionsCardVerticalPaddingPoints: Double = 6
 public let connectionsCardStackGapPoints: Double = connectionsCardVerticalPaddingPoints * 2
 
+/// Android `ConnSectionTitle` (`Screens.kt`): 14sp / `lineHeight` 20sp,
+/// `padding(start/end = 22.dp, top = 16.dp, bottom = 4.dp)`.
+public let connectionsSectionTitleFontSizePoints: Double = 14
+public let connectionsSectionTitleLineHeightPoints: Double = 20
+public let connectionsSectionTitlePaddingTopPoints: Double = 16
+public let connectionsSectionTitlePaddingBottomPoints: Double = 4
+
+/// Paired card → nearby card: Card 6 + ConnSectionTitle 16+20+4 + Card 6.
+/// Adjacent action cards stay on `connectionsCardStackGapPoints` (12).
+public let connectionsPairedNearbyGapPoints: Double =
+    connectionsCardVerticalPaddingPoints
+    + connectionsSectionTitlePaddingTopPoints
+    + connectionsSectionTitleLineHeightPoints
+    + connectionsSectionTitlePaddingBottomPoints
+    + connectionsCardVerticalPaddingPoints
+
+/// Android `PocketSheet` dragHandle (`Sheets.kt`):
+/// `padding(top = 10.dp, bottom = 14.dp).size(40.dp, 4.dp)`.
+public let connectionsSheetDragHandleTopPoints: Double = 10
+public let connectionsSheetDragHandleHeightPoints: Double = 4
+public let connectionsSheetDragHandleBottomPoints: Double = 14
+public let connectionsSheetDragHandleAreaPoints: Double =
+    connectionsSheetDragHandleTopPoints
+    + connectionsSheetDragHandleHeightPoints
+    + connectionsSheetDragHandleBottomPoints
+
+/// Phone dismiss control on ConnSheet. Android swipes the sheet; iOS still
+/// needs a ghost「取消」. Hit height is the same 44pt as
+/// `sidebarFooterHitMinHeightPoints`.
+public let connectionsSheetCancelMinHeightPoints: Double = sidebarFooterHitMinHeightPoints
+
 /// Desktop `ui-primitives` `Button.module.css`: 14/22, `--dsw-radius-md` 12,
 /// `.button:disabled { opacity: 0.4 }`, outline `0.5px` stroke.
 /// Android `PrimaryColors` `disabledContainerColor = Caption` is **not**

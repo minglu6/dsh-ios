@@ -118,7 +118,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Markdown | `ui-chat` primitives | `Markdown.kt` | `protocol/Markdown.swift` + `Features/Chat/MarkdownView.swift` |
 | Official icons | desktop `D.*` | Android vector set | `Design/Icons.swift` SF Symbol map |
 | Connection keep-alive | — | `ConnectionService` FGS | `ConnectionKeeper` `beginBackgroundTask` + ping + `BGAppRefreshTask` `dev.dsh.pocket.ios.refresh` + path monitor + local notify |
-| Controller connections | Host pocket `settings.section` `pocket` is QR on the **computer**; Android `ConnectionsScreen` | `Screens.kt` `ConnectionsScreen` / `ConnDeviceRow` + PairLinkSheet（`9aa43c4` / `33b97b2`） | `Features/Connections/ConnectionsView.swift` + `ConnectionsLayout.swift`：全屏「远程主机」；已配对 / 附近 / 动作卡间距 12pt（`Card` 竖向 6）；附近设备 Material Outlined Computer（primitives 无 IconComputer）；管理 sheet 官方 refresh/edit/trash（非 SF、非系统 NavigationStack）；动作卡 扫码 → 配对链接（`IconLinkOutlineRegular`）→ 输入地址（Material Keyboard）；配对链接 sheet 用桌面 Button/Input token + Android 48 高，粘贴后进既有配对确认，不立刻连接。入口在抽屉脚，Settings 无连接分组 |
+| Controller connections | Host pocket `settings.section` `pocket` is QR on the **computer**; Android `ConnectionsScreen` | `Screens.kt` `ConnectionsScreen` / `ConnDeviceRow` + PairLinkSheet（`9aa43c4` / `33b97b2`） | `Features/Connections/ConnectionsView.swift` + `ConnectionsLayout.swift`：全屏「远程主机」；已配对 / 附近 / 动作卡间距 12pt（`Card` 竖向 6）；已配对与附近之间是 ConnSectionTitle 14/20+16/4（52pt）；附近设备 Material Outlined Computer（primitives 无 IconComputer）；管理 sheet 官方 refresh/edit/trash（非 SF、非系统 NavigationStack）；ConnSheet `T.Surface` + dragHandle 28pt 顶留白 + 取消 ≥44pt；动作卡 扫码 → 配对链接（`IconLinkOutlineRegular`）→ 输入地址（Material Keyboard）；配对链接 sheet 用桌面 Button/Input token + Android 48 高，粘贴后进既有配对确认，不立刻连接。入口在抽屉脚，Settings 无连接分组 |
 
 ---
 
@@ -1659,6 +1659,8 @@ Android `MainActivity` 窄屏是 `ModalNavigationDrawer`（按钮 / 手势滑出
 | --- | --- | --- | --- |
 | 附近设备电脑图标 | Android `Icons.Outlined.Computer` 18 / `T.Accent`。primitives **无** IconComputer / IconLaptop / IconMonitor | SF `desktopcomputer`；未进 CI（附近列表空） | Material 24×24 path → `connections.computer`。CI fixture 种「客厅 Mac」，`connections` 禁 SF desktopcomputer，导出仍拍 `*-connections.png` |
 | 管理 sheet 图标 | Android `ProfileManageSheet` `D.refresh` / `D.edit` / `D.trash` = primitives `IconRefreshOutlineRegular` / `IconEditOutlineRegular` / `IconTrashOutlineRegular`；`OptionRow` tint `T.Ink` | SF `arrow.clockwise` / `pencil` / `trash`，删除用自创 `T.err`；NavigationStack 系统取消栏 | 官方 SVG；删除改 `T.ink`；去掉 NavigationStack，ghost「取消」同配对 sheet。CI 打开 sheet，禁 SF，断言 `official.trashOutline` / refresh / edit，导出 `{light,dark}-manage.png` |
+| paired→nearby 间距 | Android `ConnSectionTitle` 14/20 + pad 16/4，Card 竖向 6：6+16+20+4+6=52 | 标题用 14pt 默认行高（约 16.7），量到 48.5；断言曾放宽到 40–64 | 标题行高改 20。CI：标题 frame 夹在 paired/nearby 卡之间，间距 = `connectionsPairedNearbyGapPoints` ±2。nearby→actions 仍 11..<20 |
+| 管理 / 配对 sheet 取消 | Android `PocketSheet` dragHandle `padding(top=10, bottom=14).size(40×4)`，`containerColor = T.Surface`。无取消行（下滑关） | 「取消」贴顶，命中约 29pt；背景 `T.bg` | 顶留白 `connectionsSheetDragHandleAreaPoints` 28；取消 `minHeight` 44 + `contentShape`。背景改 `T.surface`。manageAction 改为 Button |
 
 ### 逐屏核对（light+dark）
 
@@ -1676,7 +1678,7 @@ Android `MainActivity` 窄屏是 `ModalNavigationDrawer`（按钮 / 手势滑出
 | plugins / builtinPlugins | **skip / PASS** | 列表搜索框有意保留 SF；内置刷新已官方 |
 | models / permission / slash | **PASS** | 官方 chevron/check；斜杠无数量 |
 | schedule / sessionActions / viewOptions / start / composerStop | **PASS** | 既有官方 SVG / 全屏 Start |
-| connections / pairingLink / nearby / manage | **本轮修** | 附近 Material Computer；管理 sheet 官方 trash/refresh/edit |
+| connections / pairingLink / nearby / manage | **本轮修** | 附近 Material Computer；ConnSectionTitle 14/20 + 16/4（paired→nearby 52pt 结构断言）；管理/配对 sheet `T.Surface` + PocketSheet dragHandle 28pt 顶留白 + 取消 ≥44pt；manageAction 为单一 Button |
 
 ### npm dist-tag（只报告，不 bump 基线）
 
