@@ -45,25 +45,44 @@ struct PluginsScreen: View {
     private var list: some View {
         VStack(spacing: 0) {
             pluginsHeader(selected.map { pluginTitle($0, english: L.en) } ?? L.pluginsNav())
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    if let error { settingsMessage(error, error: true) }
-                    if let outcome { Text(pluginChangeText(outcome, en: L.en)).foregroundStyle(T.text2).padding(.horizontal, 22) }
-                    if loading || busy { ProgressView().frame(maxWidth: .infinity) }
-                    if let selected {
-                        if let configError { settingsMessage(configError, error: true) }
-                        bundleDetail(selected)
-                    } else {
-                        Text(L.pluginsHint())
-                            .font(.footnote)
-                            .foregroundStyle(T.text3)
-                            .padding(.horizontal, 22)
-                        market
+            ZStack(alignment: .topLeading) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        if let error { settingsMessage(error, error: true) }
+                        if let outcome { Text(pluginChangeText(outcome, en: L.en)).foregroundStyle(T.text2).padding(.horizontal, 22) }
+                        if loading || busy { ProgressView().frame(maxWidth: .infinity) }
+                        if let selected {
+                            if let configError { settingsMessage(configError, error: true) }
+                            bundleDetail(selected)
+                        } else {
+                            Text(L.pluginsHint())
+                                .font(.footnote)
+                                .foregroundStyle(T.text3)
+                                .padding(.horizontal, 22)
+                            market
+                        }
                     }
+                    .padding(.vertical, 12)
                 }
-                .padding(.vertical, 12)
+                .background(T.bg)
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 8).onChanged { _ in
+                        if showPluginInfo { showPluginInfo = false }
+                    }
+                )
+                if showPluginInfo {
+                    Color.clear
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .contentShape(Rectangle())
+                        .onTapGesture { showPluginInfo = false }
+                    pluginInfoTooltip
+                        .padding(.top, CGFloat(pluginInfoTooltipGapPoints))
+                        .padding(.horizontal, CGFloat(pluginInfoTooltipScreenInsetPoints))
+                        .transition(.opacity)
+                        .zIndex(1)
+                }
             }
-            .background(T.bg)
+            .animation(.easeInOut(duration: 0.15), value: showPluginInfo)
         }
         .background(T.bg.ignoresSafeArea())
         .sheet(isPresented: $installOpen) { installSheet }
@@ -148,21 +167,24 @@ struct PluginsScreen: View {
             Spacer(minLength: 8)
             if selected == nil {
                 Button { showPluginInfo.toggle() } label: {
-                    Image(systemName: "info.circle").foregroundStyle(T.ink)
+                    OfficialGlyph(
+                        kind: .infoOutline,
+                        size: CGFloat(pluginInfoIconSizePoints),
+                        color: T.ink
+                    )
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
                 .accessibilityLabel(pluginInfoLabel(english: L.en))
-                .popover(isPresented: $showPluginInfo, arrowEdge: .bottom) {
-                    Text(pluginInfoDescription(english: L.en))
-                        .font(.subheadline)
-                        .foregroundStyle(T.ink)
-                        .padding(16)
-                        .frame(maxWidth: 300)
-                        .modifier(PopoverCompactAdaptation())
-                }
+                .accessibilityIdentifier("pluginInfoButton")
             }
             Button(action: reload) {
-                Image(systemName: "arrow.clockwise").foregroundStyle(T.ink)
+                OfficialGlyph(kind: .refreshOutline, size: 16, color: T.ink)
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
             .accessibilityLabel(L.refresh())
             .disabled(!model.isOnline || locked)
             if selected == nil && ((managementAvailable && model.ops.contains("plugins.install")) || installRequest != nil) {
@@ -179,6 +201,25 @@ struct PluginsScreen: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(T.surface)
+    }
+
+    /// Desktop `Tooltip`: fade-in bubble under `(i)`, never a system popover.
+    /// Anchored below the header so it cannot cover Add plugin / refresh.
+    private var pluginInfoTooltip: some View {
+        Text(pluginInfoDescription(english: L.en))
+            .font(.system(size: CGFloat(pluginInfoTooltipFontSizePoints)))
+            .lineSpacing(CGFloat(pluginInfoTooltipLineHeightPoints) - 16)
+            .foregroundStyle(T.tooltipFg)
+            .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, CGFloat(pluginInfoTooltipPaddingHorizontalPoints))
+            .padding(.vertical, CGFloat(pluginInfoTooltipPaddingVerticalPoints))
+            .frame(maxWidth: CGFloat(pluginInfoTooltipMaxWidthPoints), alignment: .leading)
+            .background(
+                T.tooltipBg,
+                in: RoundedRectangle(cornerRadius: CGFloat(pluginInfoTooltipRadiusPoints), style: .continuous)
+            )
+            .accessibilityIdentifier("pluginInfoTooltip")
     }
 
     private func titleLine(_ title: String, experimental: Bool) -> some View {

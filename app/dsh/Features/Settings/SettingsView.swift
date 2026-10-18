@@ -409,6 +409,7 @@ func settingsMessage(_ text: String, error: Bool = false) -> some View {
 func header(_ title: String, back: @escaping () -> Void) -> some View {
     HStack {
         Button(action: back) { Image(systemName: "chevron.left").foregroundStyle(T.ink) }
+            .accessibilityIdentifier("navBack")
         Text(title).font(.headline).foregroundStyle(T.ink)
         Spacer()
     }

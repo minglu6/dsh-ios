@@ -135,6 +135,39 @@ public let viewOptionsMenuMinWidthPoints: Double = 200
 public let viewOptionsMenuRowMinHeightPoints: Double = 34
 public let viewOptionsEveryRowHasOfficialLeadingIcon = true
 
+/// Desktop `IconSlidersTwoOutlineArtwork` knobs (stroked circles, fill none).
+public let viewOptionsSlidersKnobTopCenterX: Double = 9.95
+public let viewOptionsSlidersKnobTopCenterY: Double = 5
+public let viewOptionsSlidersKnobBottomCenterX: Double = 5.75
+public let viewOptionsSlidersKnobBottomCenterY: Double = 11
+public let viewOptionsSlidersKnobRadius: Double = 1.45
+
+public func viewOptionsOfficialIdentifier(_ row: ViewOptionsRow) -> String {
+    "official.\(ViewOptionsMenuPolicy.icon(row))"
+}
+
+public func viewOptionsTriggerOfficialIdentifier() -> String { "official.slidersTwo" }
+
+public func isForbiddenViewOptionsSystemSymbol(_ name: String) -> Bool {
+    switch name {
+    case "slider.horizontal.3",
+         "line.3.horizontal.decrease",
+         "square.grid.2x2",
+         "list.bullet",
+         "list.bullet.rectangle",
+         "arrow.up.arrow.down",
+         "clock",
+         "clock.fill",
+         "archivebox",
+         "archivebox.fill",
+         "tray.full",
+         "folder.fill":
+        return true
+    default:
+        return false
+    }
+}
+
 public enum SchedulePagePolicy {
     public static let headerNewActionUsesShortLabel = true
     public static let showsUnofficialRefresh = false

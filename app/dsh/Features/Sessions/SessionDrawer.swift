@@ -613,9 +613,13 @@ struct SessionDrawer: View {
     }
 
     private var footer: some View {
-        HStack(spacing: CGFloat(sidebarSettingsTriggerGapPoints)) {
+        HStack(spacing: 0) {
             footerSettings
+                .layoutPriority(1)
+            Spacer(minLength: CGFloat(sidebarFooterHitGapMinPoints))
+                .allowsHitTesting(false)
             footerPeerDevice
+                .layoutPriority(0)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
@@ -623,15 +627,28 @@ struct SessionDrawer: View {
     }
 
     private var footerPeerDevice: some View {
-        Button { model.push(.connections) } label: {
-            Circle()
-                .fill(dotColor)
-                .frame(width: 8, height: 8)
-                .frame(
-                    width: CGFloat(sidebarFooterActionButtonPoints),
-                    height: CGFloat(sidebarFooterActionButtonPoints)
-                )
+        Button {
+            model.push(.connections)
+            model.showDrawer = false
+        } label: {
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(dotColor)
+                    .frame(width: 8, height: 8)
+                Text(footerHostName)
+                    .font(.system(size: CGFloat(sidebarFooterHostNameFontSizePoints)))
+                    .foregroundStyle(T.text2)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(minWidth: 0)
+                    .accessibilityIdentifier("drawerPeerDeviceName")
+            }
+            .padding(.horizontal, 8)
+            .frame(minHeight: CGFloat(sidebarFooterHitMinHeightPoints))
+            .frame(minWidth: 0)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(DrawerFooterHitStyle())
         .accessibilityLabel(footerDeviceAria)
         .accessibilityIdentifier("drawerPeerDeviceRow")
     }
@@ -652,12 +669,18 @@ struct SessionDrawer: View {
                     .lineLimit(1)
             }
             .foregroundStyle(T.ink)
-            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.leading, 8)
             .padding(.trailing, 10)
-            .frame(minHeight: CGFloat(sidebarSettingsTriggerHeightPoints))
+            .frame(minHeight: CGFloat(sidebarFooterHitMinHeightPoints))
+            .fixedSize(horizontal: true, vertical: false)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(DrawerFooterHitStyle())
         .accessibilityIdentifier("drawerSettingsRow")
+    }
+
+    private var footerHostName: String {
+        model.activeProfile?.name ?? L.notConnected()
     }
 
     private var footerDeviceAria: String {
@@ -681,6 +704,19 @@ struct SessionDrawer: View {
         case .unauthorized: return L.repairNeeded()
         default: return L.offline()
         }
+    }
+}
+
+/// Independent pressed highlight for the two footer hits. Uses desktop
+/// `--dsw-alias-interactive-bg-hover` so Settings and Host never share
+/// a full-row active state.
+private struct DrawerFooterHitStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(configuration.isPressed ? T.hoverBg : Color.clear)
+            )
     }
 }
 

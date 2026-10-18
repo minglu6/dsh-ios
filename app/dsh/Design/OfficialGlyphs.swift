@@ -32,6 +32,10 @@ struct OfficialGlyph: View {
         case send
         case trajectoryClock
         case jobsChevron
+        case gaugeOutline
+        case databaseOutline
+        case infoOutline
+        case refreshOutline
 
         var accessibilityIdentifier: String {
             switch self {
@@ -45,13 +49,28 @@ struct OfficialGlyph: View {
             case .send: return "official.send"
             case .trajectoryClock: return "official.trajectoryClock"
             case .jobsChevron: return "official.jobsChevron"
+            case .slidersTwo: return viewOptionsTriggerOfficialIdentifier()
+            case .workspaceTree: return viewOptionsOfficialIdentifier(.groupWorkspaceTree)
+            case .flatList: return viewOptionsOfficialIdentifier(.groupFlat)
+            case .clockOutline: return viewOptionsOfficialIdentifier(.orderUpdated)
+            case .chevronsUpDown: return viewOptionsOfficialIdentifier(.orderManual)
+            case .archiveOff: return viewOptionsOfficialIdentifier(.filterHide)
+            case .archiveCheck: return viewOptionsOfficialIdentifier(.filterOnly)
+            case .queue: return viewOptionsOfficialIdentifier(.filterShow)
+            case .gaugeOutline: return composerActivityGaugeSymbol()
+            case .databaseOutline: return composerUsageDatabaseSymbol()
+            case .infoOutline: return "official.infoOutline"
+            case .refreshOutline: return "official.refreshOutline"
             default: return "official.glyph"
             }
         }
 
         var hidesAccessibility: Bool {
             switch self {
-            case .folderClose, .folderOpen, .settingsOutline, .newChat, .searchOutline, .projectAdd, .trajectoryClock, .jobsChevron: return false
+            case .folderClose, .folderOpen, .settingsOutline, .newChat, .searchOutline, .projectAdd, .trajectoryClock,
+                 .slidersTwo, .workspaceTree, .flatList, .clockOutline, .chevronsUpDown, .archiveOff, .archiveCheck, .queue,
+                 .gaugeOutline, .databaseOutline, .infoOutline, .refreshOutline, .jobsChevron:
+                return false
             // plusOutline / send are decorative; ComposerView hosts own
             // official.plusOutline and official.send.
             default: return true
@@ -101,6 +120,23 @@ struct OfficialGlyph: View {
             case .slidersTwo:
                 ctx.stroke(Path(SVGPath.cgPath(Self.slidersA)), with: .color(color), style: stroke)
                 ctx.stroke(Path(SVGPath.cgPath(Self.slidersB)), with: .color(color), style: stroke)
+                let knobR = CGFloat(viewOptionsSlidersKnobRadius)
+                var topKnob = Path()
+                topKnob.addEllipse(in: CGRect(
+                    x: CGFloat(viewOptionsSlidersKnobTopCenterX) - knobR,
+                    y: CGFloat(viewOptionsSlidersKnobTopCenterY) - knobR,
+                    width: knobR * 2,
+                    height: knobR * 2
+                ))
+                var bottomKnob = Path()
+                bottomKnob.addEllipse(in: CGRect(
+                    x: CGFloat(viewOptionsSlidersKnobBottomCenterX) - knobR,
+                    y: CGFloat(viewOptionsSlidersKnobBottomCenterY) - knobR,
+                    width: knobR * 2,
+                    height: knobR * 2
+                ))
+                ctx.stroke(topKnob, with: .color(color), style: stroke)
+                ctx.stroke(bottomKnob, with: .color(color), style: stroke)
             case .workspaceTree:
                 ctx.stroke(Path(SVGPath.cgPath(Self.workspaceTreeBody)), with: .color(color), style: stroke)
                 ctx.stroke(Path(SVGPath.cgPath(Self.workspaceTreeLegs)), with: .color(color), style: stroke)
@@ -221,6 +257,24 @@ struct OfficialGlyph: View {
                     miterLimit: 10
                 )
                 ctx.stroke(Path(SVGPath.cgPath(jobsActionTriggerChevronPath)), with: .color(color), style: regular)
+            case .gaugeOutline:
+                ctx.stroke(Path(SVGPath.cgPath(composerActivityGaugeArcPath)), with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(composerActivityGaugeNeedlePath)), with: .color(color), style: stroke)
+                ctx.fill(Path(SVGPath.cgPath(composerActivityGaugeHubPath)), with: .color(color))
+            case .databaseOutline:
+                ctx.stroke(Path(SVGPath.cgPath(composerUsageDatabaseTopPath)), with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(composerUsageDatabaseLeftPath)), with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(composerUsageDatabaseRightPath)), with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(composerUsageDatabaseMidPath)), with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(composerUsageDatabaseBottomPath)), with: .color(color), style: stroke)
+            case .infoOutline:
+                ctx.scaleBy(x: 16 / CGFloat(pluginInfoIconViewBox), y: 16 / CGFloat(pluginInfoIconViewBox))
+                ctx.fill(Path(SVGPath.cgPath(pluginInfoOutlineRingPath)), with: .color(color))
+                ctx.fill(Path(SVGPath.cgPath(pluginInfoOutlineDotPath)), with: .color(color))
+                ctx.fill(Path(SVGPath.cgPath(pluginInfoOutlineStemPath)), with: .color(color))
+            case .refreshOutline:
+                ctx.stroke(Path(SVGPath.cgPath(pluginRefreshOutlineArcPath)), with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(pluginRefreshOutlineHeadPath)), with: .color(color), style: stroke)
             }
         }
         .frame(width: size, height: size)

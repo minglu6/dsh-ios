@@ -1,4 +1,5 @@
 import SwiftUI
+import DSHProtocol
 
 enum Appearance: String, CaseIterable, Codable {
     case light, dark, system
@@ -64,6 +65,8 @@ enum T {
     static var hoverBg: Color { colors.interactiveBgHover }
     static var interactiveBgActive: Color { colors.interactiveBgActive }
     static var tooltipBg: Color { colors.tooltipBg }
+    /// Desktop `--dsw-static-neutral-bluish-00` on tooltip (always light).
+    static var tooltipFg: Color { Color(hex: pluginInfoTooltipTextHex) }
     static var documentPreviewBg: Color { colors.bgDocumentPreview }
     static var ok: Color { colors.stateSuccessPrimary }
     static var err: Color { colors.stateErrorPrimary }

@@ -14,10 +14,16 @@ public enum MessageActionKind: String, Equatable, CaseIterable, Sendable {
 
 public enum MessageActionPolicy {
     public static var assistantRow: [MessageActionKind] { [.copy, .like, .dislike, .branch] }
-    public static var userRow: [MessageActionKind] { [.copy] }
+    /// Desktop `UserMessageNodeView` has no persistent copy control; mobile
+    /// only shows the start clock. Phone must not render a standalone copy
+    /// icon under the user bubble.
+    public static var userRow: [MessageActionKind] { [] }
     public static var includesBranch: Bool { true }
     public static var includesShare: Bool { false }
 }
+
+/// User bubbles never grow a permanent copy button (desktop has none).
+public let userMessageShowsPersistentCopy = false
 
 /// Desktop `TurnTailNodeView` branch control. `onBranch` is omitted when
 /// `session/fork` / `sessions.fork` is not allowed. The icon stays visible but
@@ -411,6 +417,35 @@ public func pluginInfoDescription(english: Bool) -> String {
         : "在这里配置官方插件，安装和管理其他插件。内置插件列表及运行状态可在「设置 → 内置插件」中查看"
 }
 
+/// Desktop `ui-primitives` `Tooltip.module.css`: floating bubble, not a
+/// system popover / alert / sheet. `--dsw-alias-tooltip-bg` +
+/// `--dsw-static-neutral-bluish-00` text, `--dsw-radius-sm` 6px,
+/// 13/20 type, `.bubble` `padding: 3px 7px`; PluginManagerPage passes
+/// `maxWidth: 300`, `side: "bottom"`, default `gap = 8`, `openOnClick`.
+public let pluginInfoTooltipGapPoints: Double = 8
+public let pluginInfoTooltipUsesSystemPopover = false
+public let pluginInfoTooltipMaxWidthPoints: Double = 300
+public let pluginInfoTooltipFontSizePoints: Double = 13
+public let pluginInfoTooltipLineHeightPoints: Double = 20
+public let pluginInfoTooltipRadiusPoints: Double = 6
+public let pluginInfoTooltipPaddingHorizontalPoints: Double = 7
+public let pluginInfoTooltipPaddingVerticalPoints: Double = 3
+public let pluginInfoTooltipScreenInsetPoints: Double = 16
+public let pluginInfoTooltipTextHex: UInt32 = 0xFFFFFFFF
+/// Desktop `PluginManagerPage` toolbar `IconInfoOutlineRegular` size 11.
+public let pluginInfoIconSizePoints: Double = 11
+/// Desktop `IconInfoOutlineArtwork` 14×14 view box.
+public let pluginInfoIconViewBox: Double = 14
+public let pluginInfoOutlineRingPath =
+    "M12.5757 7.00012C12.5757 3.92085 10.0794 1.42463 7.00012 1.42456C3.9208 1.42456 1.42456 3.9208 1.42456 7.00012C1.42463 10.0794 3.92085 12.5757 7.00012 12.5757C10.0793 12.5756 12.5756 10.0793 12.5757 7.00012ZM13.8002 7.00012C13.8001 10.7559 10.7559 13.8001 7.00012 13.8002C3.2443 13.8002 0.199291 10.7559 0.199219 7.00012C0.199219 3.24426 3.24426 0.199219 7.00012 0.199219C10.7559 0.199291 13.8002 3.2443 13.8002 7.00012Z"
+public let pluginInfoOutlineDotPath = "M7.6127 3.18921V4.55986H6.38735V3.18921H7.6127Z"
+public let pluginInfoOutlineStemPath = "M7.6127 5.68921V10.8109H6.38735V5.68921H7.6127Z"
+
+/// Desktop `IconRefreshOutlineArtwork` Regular, 16×16.
+public let pluginRefreshOutlineArcPath =
+    "M14.5001 8C14.5 9.28552 14.1188 10.5422 13.4045 11.611C12.6903 12.6799 11.6752 13.5129 10.4875 14.0049C9.29982 14.4968 7.99295 14.6255 6.73212 14.3747C5.4713 14.124 4.31314 13.505 3.4041 12.596C2.49514 11.687 1.87614 10.5288 1.62537 9.26798C1.37459 8.00716 1.50331 6.70028 1.99525 5.51261C2.48719 4.32494 3.32025 3.30981 4.3891 2.59557C5.45795 1.88134 6.71458 1.50008 8.0001 1.5C9.9001 1.5 11.7001 2.3 13.0001 3.6L14.5001 5.1"
+public let pluginRefreshOutlineHeadPath = "M14.4999 1.5V5.1H10.8999"
+
 /// Desktop slash-menu description clamp (`InputBar.module.css` line-clamp: 2).
 public let commandMenuDescriptionLineLimit = 2
 
@@ -596,6 +631,36 @@ public let composerActivityPopoverOpensAbove = true
 public let composerContextPopoverOpensAbove = true
 /// Desktop `StatsPills` usage trigger uses `IconDatabaseOutlineRegular`, not the gauge.
 public let composerUsagePillUsesDatabaseIcon = true
+/// Activity pill: `IconGaugeOutlineRegular` 14×14. Usage pill / popovers:
+/// `IconDatabaseOutlineRegular` 14×14. Never SF `gauge.*` / `cylinder`.
+public let composerStatisticsIconSizePoints: Double = 14
+public func composerActivityGaugeSymbol() -> String { "official.gaugeOutline" }
+public func composerUsageDatabaseSymbol() -> String { "official.databaseOutline" }
+
+public func isForbiddenComposerStatisticsSymbol(_ name: String) -> Bool {
+    name == "gauge.with.dots.needle.67percent"
+        || name == "gauge.with.needle"
+        || name == "cylinder"
+        || name == "externaldrive"
+        || name == "externaldrive.fill"
+}
+
+/// Desktop `IconGaugeOutlineArtwork` arc / needle / hub.
+public let composerActivityGaugeArcPath =
+    "M3.4041 13.096C2.49514 12.187 1.87614 11.0288 1.62537 9.76798C1.37459 8.50716 1.50331 7.20028 1.99525 6.01261C2.48719 4.82494 3.32025 3.80981 4.3891 3.09557C5.45795 2.38134 6.71458 2.00008 8.0001 2C9.28563 2.00008 10.5423 2.38134 11.6111 3.09557C12.68 3.80981 13.513 4.82494 14.005 6.01261C14.4969 7.20028 14.6256 8.50716 14.3748 9.76798C14.1241 11.0288 13.5051 12.187 12.5961 13.096"
+public let composerActivityGaugeNeedlePath = "M8 8.49994L11.6114 4.88855"
+public let composerActivityGaugeHubPath =
+    "M8 9.75C8.69036 9.75 9.25 9.19036 9.25 8.5C9.25 7.80964 8.69036 7.25 8 7.25C7.30964 7.25 6.75 7.80964 6.75 8.5C6.75 9.19036 7.30964 9.75 8 9.75Z"
+
+/// Desktop `IconDatabaseOutlineArtwork` (top ellipse, sides, mid arc, bottom arc).
+public let composerUsageDatabaseTopPath =
+    "M13.1967 5.1869C13.7232 4.77378 14.0003 4.30517 14.0001 3.82819C14.0003 3.3512 13.7232 2.88259 13.1967 2.46947C12.6702 2.05635 11.9128 1.71328 11.0006 1.47475C10.0885 1.23621 9.05371 1.11062 8.00039 1.1106C6.94707 1.11057 5.9123 1.23612 5.00009 1.47461C4.08742 1.71301 3.32948 2.05604 2.80249 2.46919C2.2755 2.88235 1.99805 3.35106 1.99805 3.82819C1.99805 4.30531 2.2755 4.77402 2.80249 5.18718C3.32948 5.60033 4.08742 5.94336 5.00009 6.18176C5.9123 6.42025 6.94707 6.5458 8.00039 6.54578C9.05371 6.54575 10.0885 6.42016 11.0006 6.18163C11.9128 5.94309 12.6702 5.60002 13.1967 5.1869Z"
+public let composerUsageDatabaseLeftPath = "M2 3.80371V11.7848"
+public let composerUsageDatabaseRightPath = "M14 3.80371V11.7848"
+public let composerUsageDatabaseMidPath =
+    "M2 7.81396C2 8.60524 2.63214 9.36411 3.75736 9.92363C4.88258 10.4832 6.4087 10.7975 8 10.7975C9.5913 10.7975 11.1174 10.4832 12.2426 9.92363C13.3679 9.36411 14 8.60524 14 7.81396"
+public let composerUsageDatabaseBottomPath =
+    "M2 11.7847C2 12.6081 2.63214 13.3977 3.75736 13.98C4.88258 14.5622 6.4087 14.8893 8 14.8893C9.5913 14.8893 11.1174 14.5622 12.2426 13.98C13.3679 13.3977 14 12.6081 14 11.7847"
 /// Desktop `ContextMeter` trigger is a 14px ring + percent, not a gauge pill.
 public let composerContextUsesRingMeter = true
 /// Desktop `ContextMeter` ring: 14×14 viewBox, r=5.5, 2px stroke.
@@ -737,6 +802,11 @@ public func composerSessionUsageRowLabel(_ row: ComposerSessionUsageRow, english
 
 public func composerSessionUsageTokenValue(exact: String) -> String {
     "\(exact) \(composerStatisticsTokenUnit)"
+}
+
+/// Compact usage pill. Desktop `stats.cacheHit` is「缓存命中」, never「缓存命中中」.
+public func composerCacheHitPill(percent: String, english: Bool) -> String {
+    english ? "Cache hit \(percent)%" : "缓存命中 \(percent)%"
 }
 
 /// Desktop `RiskConfirmation` blurs the composer first.

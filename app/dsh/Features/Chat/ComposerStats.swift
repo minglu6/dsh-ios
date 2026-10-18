@@ -20,7 +20,7 @@ struct ComposerStats: View {
     private var usage: ComposerTokenUsage? { metrics.tokens.flatMap { $0.totalTokens > 0 ? $0 : nil } }
     private var context: ComposerContext? { metrics.context }
     private var speed: String? { activity?.tokensPerSecond.map { "\(statisticsSpeed($0)) tok/s" } }
-    private var cache: String? { usage?.cacheHitPercent.map { L.t("缓存命中 \($0)%", "Cache hit \($0)%") } }
+    private var cache: String? { usage?.cacheHitPercent.map { composerCacheHitPill(percent: $0, english: L.en) } }
     private var activityText: String? {
         if detailed {
             return activity.flatMap { $0.steps > 0
@@ -57,7 +57,7 @@ struct ComposerStats: View {
         if let activityText {
             pill(
                 activityText,
-                icon: "gauge.with.dots.needle.67percent",
+                icon: .gaugeOutline,
                 clickable: detailed && activityHasDetails,
                 open: $activityOpen,
                 opensAbove: composerActivityPopoverOpensAbove
@@ -68,7 +68,7 @@ struct ComposerStats: View {
         if let usageText {
             pill(
                 usageText,
-                icon: composerUsagePillUsesDatabaseIcon ? "cylinder" : "gauge.with.dots.needle.67percent",
+                icon: .databaseOutline,
                 clickable: detailed,
                 open: $usageOpen,
                 opensAbove: composerUsagePopoverOpensAbove
@@ -105,7 +105,7 @@ struct ComposerStats: View {
 
     private func pill<Content: View>(
         _ text: String,
-        icon: String,
+        icon: OfficialGlyph.Kind,
         clickable: Bool,
         open: Binding<Bool>,
         opensAbove: Bool,
@@ -114,7 +114,7 @@ struct ComposerStats: View {
     ) -> some View {
         Button(action: action) {
             HStack(spacing: 4) {
-                Image(systemName: icon).font(.system(size: 12)).foregroundStyle(T.text3)
+                OfficialGlyph(kind: icon, size: CGFloat(composerStatisticsIconSizePoints), color: T.text3)
                 Text(text).font(.caption).foregroundStyle(T.text3).lineLimit(1)
             }
             .padding(.vertical, 5)
@@ -130,7 +130,7 @@ struct ComposerStats: View {
     private var activityPopover: some View {
         VStack(alignment: .leading, spacing: 10) {
             UsagePopoverHeader(
-                icon: "gauge.with.dots.needle.67percent",
+                icon: .gaugeOutline,
                 title: composerActivityTitle(english: L.en)
             )
             if let activity {
@@ -297,7 +297,7 @@ struct TurnUsageAction: View {
         let label = composerTurnUsageConsumed(total: count, english: L.en)
         Button { expanded.toggle() } label: {
             HStack(spacing: 4) {
-                Image(systemName: "cylinder").font(.system(size: 12)).foregroundStyle(T.text3)
+                OfficialGlyph(kind: .databaseOutline, size: CGFloat(composerStatisticsIconSizePoints), color: T.text3)
                 Text(label).font(.caption).foregroundStyle(T.text3).lineLimit(1)
             }
             .padding(.leading, 11)
@@ -365,14 +365,14 @@ struct TurnUsageAction: View {
 
 /// Desktop `stat-dialog` heading: section icon + name left, exact total right.
 private struct UsagePopoverHeader: View {
-    var icon: String = "cylinder"
+    var icon: OfficialGlyph.Kind = .databaseOutline
     let title: String
     var value: String? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .center, spacing: 6) {
-                Image(systemName: icon).font(.system(size: 14)).foregroundStyle(T.ink)
+                OfficialGlyph(kind: icon, size: CGFloat(composerStatisticsIconSizePoints), color: T.ink)
                 Text(title).font(.subheadline.weight(.medium)).foregroundStyle(T.ink)
                 Spacer(minLength: 16)
                 if let value {

@@ -126,6 +126,7 @@ struct ConnectionsView: View {
     private var header: some View {
         HStack {
             Button(action: model.pop) { Image(systemName: "chevron.left").foregroundStyle(T.ink) }
+                .accessibilityIdentifier("navBack")
             Text(L.connections()).font(.headline).foregroundStyle(T.ink)
             Spacer()
             Menu {

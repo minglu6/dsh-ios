@@ -34,6 +34,21 @@ final class SidebarParityTests: XCTestCase {
         XCTAssertTrue(viewOptionsEveryRowHasOfficialLeadingIcon)
         XCTAssertEqual(viewOptionsMenuMinWidthPoints, 200)
         XCTAssertEqual(viewOptionsMenuRowMinHeightPoints, 34)
+        XCTAssertEqual(viewOptionsOfficialIdentifier(.groupWorkspace), "official.folderClose")
+        XCTAssertEqual(viewOptionsOfficialIdentifier(.groupWorkspaceTree), "official.workspaceTree")
+        XCTAssertEqual(viewOptionsOfficialIdentifier(.groupFlat), "official.flatList")
+        XCTAssertEqual(viewOptionsOfficialIdentifier(.orderManual), "official.chevronsUpDown")
+        XCTAssertEqual(viewOptionsOfficialIdentifier(.orderUpdated), "official.clockOutline")
+        XCTAssertEqual(viewOptionsOfficialIdentifier(.filterHide), "official.archiveOff")
+        XCTAssertEqual(viewOptionsOfficialIdentifier(.filterShow), "official.queue")
+        XCTAssertEqual(viewOptionsOfficialIdentifier(.filterOnly), "official.archiveCheck")
+        XCTAssertEqual(viewOptionsTriggerOfficialIdentifier(), "official.slidersTwo")
+        XCTAssertEqual(viewOptionsSlidersKnobTopCenterX, 9.95)
+        XCTAssertEqual(viewOptionsSlidersKnobBottomCenterX, 5.75)
+        XCTAssertEqual(viewOptionsSlidersKnobRadius, 1.45)
+        XCTAssertTrue(isForbiddenViewOptionsSystemSymbol("slider.horizontal.3"))
+        XCTAssertTrue(isForbiddenViewOptionsSystemSymbol("list.bullet"))
+        XCTAssertFalse(isForbiddenViewOptionsSystemSymbol("official.slidersTwo"))
     }
 
     func testSchedulePageDropsUnofficialChrome() {

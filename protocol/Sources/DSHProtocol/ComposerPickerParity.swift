@@ -45,6 +45,25 @@ public let sidebarSettingsTriggerFontSizePoints: Double = 14
 public let sidebarFooterActionButtonPoints: Double = 28
 public let sidebarFooterActionIconSizePoints: Double = 16
 
+/// Desktop `ConnectionIndicator` shows the connected Host name next to the
+/// status dot. Disconnected copy is locale `未连接` / `Not connected`.
+public let sidebarFooterShowsHostName = true
+public let sidebarFooterHostNameFontSizePoints: Double = 12
+public let sidebarFooterHostNameTruncates = true
+
+/// Phone HIG: Settings and Remote Host are two independent buttons. Hit
+/// targets do not share a full-width row, do not overlap, and are separated
+/// by a non-interactive spacer (≥ 16pt). Height ≥ 44pt; width stays on the
+/// icon+label (Settings) or dot+name (Host).
+public let sidebarFooterHitMinHeightPoints: Double = 44
+public let sidebarFooterHitGapMinPoints: Double = 16
+public let sidebarFooterSettingsHitExpandsFullWidth = false
+public let sidebarFooterPressedUsesHoverToken = true
+
+public func sidebarFooterDisconnectedLabel(english: Bool) -> String {
+    english ? "Not connected" : "未连接"
+}
+
 /// Desktop `SettingsRoot` / `TriggerContent` uses `IconSettingsOutlineMedium`,
 /// never SF `gearshape`. Artwork is `ui-primitives` `IconSettingsOutlineArtwork`
 /// on a 16×16 view box; Medium stroke is `ICON_MEDIUM_STROKE` 1.3.

@@ -82,6 +82,11 @@ public struct ComposerContext: Equatable, Sendable {
     public var percent: Int {
         Int((usedTokens / contextWindow * 100 + 0.5).rounded(.down).clamped(to: 0...100))
     }
+
+    public init(usedTokens: Double, contextWindow: Double) {
+        self.usedTokens = usedTokens
+        self.contextWindow = contextWindow
+    }
 }
 
 public struct ComposerContextBreakdown: Equatable, Sendable {
