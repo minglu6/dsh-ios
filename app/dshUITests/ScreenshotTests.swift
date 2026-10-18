@@ -79,6 +79,11 @@ final class ScreenshotTests: XCTestCase {
                     app.descendants(matching: .any)["official.newChat"].waitForExistence(timeout: 8),
                     "\(appearance) drawer missing official new-chat glyph"
                 )
+                XCTAssertFalse(app.images["magnifyingglass"].exists, "\(appearance) drawer still exposes SF magnifyingglass")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.searchOutline"].waitForExistence(timeout: 8),
+                    "\(appearance) drawer missing official search glyph"
+                )
             }
             if screen == "models" {
                 XCTAssertTrue(app.descendants(matching: .any)["modelChipEffort"].waitForExistence(timeout: 8), "\(appearance) model chip missing effort")

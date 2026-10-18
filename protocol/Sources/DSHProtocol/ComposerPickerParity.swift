@@ -73,6 +73,29 @@ public let sidebarNewChatBubblePath =
 public let sidebarNewChatPlusVerticalPath = "M8 5V11"
 public let sidebarNewChatPlusHorizontalPath = "M5 8H11"
 
+/// Desktop `ui-workspace` `WorkspaceBrowser` search uses
+/// `IconSearchOutlineRegular`, never SF `magnifyingglass`. Artwork is
+/// `ui-primitives` `IconSearchOutlineArtwork` on a 16×16 view box; Regular
+/// stroke is `ICON_REGULAR_STROKE` 1. Wide header idle button is 14; the
+/// expanded-slot 11 is a desktop squeeze. Phone keeps the already-approved
+/// persistent field and uses the idle button size.
+public let sidebarSearchUsesOfficialGlyph = true
+public let sidebarSearchIconSizePoints: Double = 14
+public let sidebarSearchIconStrokeWidth: Double = 1
+
+public func sidebarSearchSymbol() -> String { "official.searchOutline" }
+
+public func isForbiddenSystemSearchSymbol(_ name: String) -> Bool {
+    name == "magnifyingglass"
+}
+
+/// Desktop `IconSearchOutlineArtwork` lens (`d` of the first `<path>`).
+public let sidebarSearchCirclePath =
+    "M6.58727 11.8586C9.55061 11.8586 11.9529 9.45637 11.9529 6.49304C11.9529 3.5297 9.55061 1.12744 6.58727 1.12744C3.62394 1.12744 1.22168 3.5297 1.22168 6.49304C1.22168 9.45637 3.62394 11.8586 6.58727 11.8586Z"
+
+/// Desktop `IconSearchOutlineArtwork` handle (`d` of the second `<path>`).
+public let sidebarSearchHandlePath = "M10.2991 10.3933L14.7783 14.8725"
+
 /// Desktop `IconSettingsOutlineArtwork` hub circle (`d` of the first `<path>`).
 public let sidebarSettingsOutlineHubPath =
     "M8 9.75012C8.9665 9.75012 9.75 8.96662 9.75 8.00012C9.75 7.03362 8.9665 6.25012 8 6.25012C7.0335 6.25012 6.25 7.03362 6.25 8.00012C6.25 8.96662 7.0335 9.75012 8 9.75012Z"

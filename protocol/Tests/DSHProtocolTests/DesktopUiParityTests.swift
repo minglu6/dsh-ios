@@ -218,6 +218,10 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertEqual(sidebarNewChatSymbol(), "official.newChat")
         XCTAssertFalse(isForbiddenSystemNewChatSymbol("official.newChat"))
         XCTAssertTrue(isForbiddenSystemNewChatSymbol("square.and.pencil"))
+        XCTAssertTrue(sidebarSearchUsesOfficialGlyph)
+        XCTAssertEqual(sidebarSearchSymbol(), "official.searchOutline")
+        XCTAssertFalse(isForbiddenSystemSearchSymbol("official.searchOutline"))
+        XCTAssertTrue(isForbiddenSystemSearchSymbol("magnifyingglass"))
     }
 
     func testGeneralSettingsCopyMatchesDesktopLocale() {
