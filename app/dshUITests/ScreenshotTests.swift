@@ -91,14 +91,9 @@ final class ScreenshotTests: XCTestCase {
             }
             if screen == "landing" || screen == "chat" {
                 XCTAssertFalse(app.images["plus"].exists, "\(appearance) \(screen) still exposes SF plus")
-            }
-            // Hero GeometryReader does not expose the add Button to XCUITest
-            // (exists stays false). The same ComposerView is asserted on chat.
-            if screen == "chat" {
                 XCTAssertTrue(
-                    app.buttons["official.plusOutline"].waitForExistence(timeout: 8)
-                        || app.descendants(matching: .any)["official.plusOutline"].waitForExistence(timeout: 2),
-                    "\(appearance) chat missing official composer plus glyph"
+                    app.descendants(matching: .any)["official.plusOutline"].waitForExistence(timeout: 8),
+                    "\(appearance) \(screen) missing official composer plus glyph"
                 )
             }
             if screen == "models" {

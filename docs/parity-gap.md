@@ -1151,7 +1151,7 @@ Android `c5f8cdd...56dcaa9` 一笔：`feat(android): 补齐用户选择卡片与
 
 | 模块 | iOS | 对照的桌面源码 | 对齐点 |
 | --- | --- | --- | --- |
-| composer 加号 | `OfficialGlyph.plusOutline` + `composerAddPlusVerticalPath` / `HorizontalPath` | `ui-primitives` `IconPlusOutlineArtwork` / `IconPlusOutlineMedium`；`ui-conversation` InputBar Medium 14；`.add` 28×28 | 删掉 SF `plus`；16×16 viewBox；Medium 线宽 1.3；SVG 默认 butt + miterLimit 10。CI chat 断言 `official.plusOutline`；landing/chat 禁止 SF `plus`（Hero `GeometryReader` 不向 XCUITest 暴露该 Button） |
+| composer 加号 | `OfficialGlyph.plusOutline` + `composerAddPlusVerticalPath` / `HorizontalPath` | `ui-primitives` `IconPlusOutlineArtwork` / `IconPlusOutlineMedium`；`ui-conversation` InputBar Medium 14；`.add` 28×28 | 删掉 SF `plus`；16×16 viewBox；Medium 线宽 1.3；SVG 默认 butt + miterLimit 10。CI landing/chat 断言 `official.plusOutline`、禁止 `plus` |
 
 本轮核对后**不改**（平台 / hide / 禁止发明）
 
