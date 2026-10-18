@@ -205,7 +205,7 @@ private struct SessionInspectorContent: View {
                         Text(state.grouped ? L.t("对话分组", "Chat Group") : L.t("原始数据", "Raw Log"))
                             .font(.system(size: 11))
                             .foregroundStyle(T.ink)
-                        Image(systemName: "chevron.down").font(.system(size: 9)).foregroundStyle(T.ink)
+                        OfficialGlyph(kind: .chevronDown, size: 9, color: T.ink)
                     }
                     .padding(.horizontal, 4)
                     .padding(.vertical, 2)

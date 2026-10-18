@@ -86,7 +86,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R57 | 用户复制键 / 远程主机名热区 / 诊断 OfficialGlyph / 视图选项图标 / 插件 tooltip | done (#66) |
 | R58 | 打开抽屉 / 滚动时收键盘 | done (#67) |
 | R59 | 权限选择器去掉系统 sheet；轨迹 KIND_ICON 官方 SVG | done (#68) |
-| R60 | Start/Browser/Inspector 去 grabber sheet；Start 去装饰地球；设置权限 inline select；轨迹 assistant/context token；停止 rect rx=3；chat/slash 官方 chevron/check；截图补 feedback | this PR |
+| R60 | Start/Browser/Inspector 去 grabber sheet；Start 去装饰地球；设置权限 inline select；轨迹 assistant/context token；停止 rect rx=3；chat/slash 官方 chevron/check；截图补 feedback | done (#69) |
+| R61 | 顶栏侧栏 / 消息复制·分支 / 返回 chevron / 浏览器工具栏 / 设置外观改官方 SVG | this PR |
 
 ---
 
@@ -1465,3 +1466,38 @@ Android `MainActivity` 窄屏是 `ModalNavigationDrawer`（按钮 / 手势滑出
 - 远程主机整页全屏；开抽屉 / 进设置 / 进远程主机收键盘。
 - landing 鲸鱼 logo +「探索未至之境」；landing Composer 贴底。
 - 权限 chip 只显示图标。
+
+## Round 61 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*` alpha=`0.2.1-alpha.5`）
+
+基线 `main` `4473e2f`（#69 Round 60）。桌面 pack 为第一依据；#69 CI `ios-simulator-screenshots` 逐屏看过；Android 只作参考。
+
+### 必须核实（已对齐，本轮不改）
+
+| 项 | 判定 | 证据 |
+| --- | --- | --- |
+| landing 标题「探索未至之境」+ 鲸鱼 | **PASS** | `light/dark-landing.png`；`landingHeadline` + `official.fishLogo` |
+| landing Composer 贴底 | **PASS** | composer 底边距窗口底 ≤ 40pt |
+| 抽屉底栏两枚独立按钮 + 远程主机整页 | **PASS** | 设置 / 绿点+Mac mini；`connectionsScreen` 全屏标题「远程主机」 |
+| 开抽屉 / 进设置 / 进远程主机不留键盘 | **PASS** | `KeyboardDismissalTests` |
+| 聊天顶栏无分享；用户消息无常驻复制；权限 chip 只显示图标 | **PASS** | `*-chat.png` / `*-landing.png` |
+| #69 已合项 | **PASS** | Start/Browser/Inspector 无 grabber；Start 无地球；设置权限 inline select；轨迹 color-mix；停止 rect rx=3；chevron/check/赞踩官方 SVG |
+
+### 本轮修
+
+| 屏幕 | 差异 | 桌面依据 |
+| --- | --- | --- |
+| landing / 聊天顶栏 | CI 仍是 SF `sidebar.left` / `sidebar.right`。改为 `IconPanelLeftOutline`；右侧 Start 为同一 artwork 水平镜像（primitives 无 PanelRight） | `ui-primitives` `IconPanelLeftOutlineArtwork` |
+| 聊天助手行 | 复制 / 分支仍是 SF `square.on.square` / `arrow.triangle.branch`。改为 `IconCopyOutline` / `IconBranchOutline` | `ui-primitives` MessageIconActions / TurnTail |
+| 设置 / Start / Browser / Inspector / 远程主机 / 插件 / 自动化 / 终端 | 返回仍是 SF `chevron.left`。改为 `IconChevronLeftOutline` | primitives Regular artwork |
+| 浏览器 | 工具栏 plus / 前进后退 / 刷新 / 关闭 / 链接 / 外开仍是 SF。改为 plus / chevron L·R / refresh / close / link / right-up 官方 SVG | `ui-sidebar-browser` toolbar |
+| 设置外观 | 浅色/深色/跟随系统仍是 SF sun/moon/desktopcomputer。改为 Light/Dark/Followsystem Medium | `ui-theme` AppearanceRow CUBES |
+| 模型选择器 | 行尾用旋转的 chevronDown。改为 `IconChevronRightOutline` | primitives |
+| XCUI 叶子 id | `openDrawer` / `openStartPanel` / `navBack` / `scheduleScreen` 父级 identifier 吞掉 `official.panelLeft`·`panelRight`·`chevronLeft`。Button 改 `.contain` + `.isButton`，与 `pluginInfoButton` 同模式 | 不改视觉，只让 CI 能看到官方 SVG |
+
+本轮核对后**不改**（平台 / hide / 禁止发明）
+
+- 插件列表搜索框（桌面 `ui-plugin-manager` 无该槽）。
+- `turnNavigation` / `toBottom` FAB / `ask.review` / hover chevron / Account/shortcuts / CompatibilityBanner / 审批通知 / stop-state **行为**。
+- 远程主机「扫码」行仍用 SF `qrcode.viewfinder`（桌面 primitives 无对应 QR artwork）。
+- Inspector `viewfinder` / 类型过滤器；会话工具行 SF；Jobs 展开 chevron。
+- 终端中间 ProgressView（品牌 tint，不发明 loading SVG 动画）。

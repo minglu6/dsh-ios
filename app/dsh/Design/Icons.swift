@@ -2,8 +2,6 @@ import SwiftUI
 
 /// Official desktop / Android `D.*` mapping onto SF Symbols. Layout-only; semantics stay the same.
 enum D {
-    static let panelLeft = "sidebar.left"
-    static let panelRight = "sidebar.right"
     static let goal = "target"
     static let plan = "doc.text"
     static let compact = "circle.circle"
@@ -14,12 +12,10 @@ enum D {
     static let download = "square.and.arrow.down"
     static let paperPlane = "paperplane"
     static let terminal = "terminal"
-    static let ellipsis = "ellipsis"
     static let pin = "pin"
     static let pinFill = "pin.fill"
     static let archive = "archivebox"
     static let unarchive = "archivebox.fill"
-    static let branch = "arrow.triangle.branch"
     static let edit = "pencil"
     static let clock = "clock"
     static let agentPreset = "person.crop.circle"

@@ -93,7 +93,7 @@ struct TerminalPanel: View {
 
     private func headerBar(current: TerminalMeta?, running: Bool) -> some View {
         HStack(spacing: 8) {
-            Button { model.pop() } label: { Image(systemName: "chevron.left").foregroundStyle(T.ink) }
+            Button { model.pop() } label: { OfficialGlyph(kind: .chevronLeft, size: 16, color: T.ink) }
             Menu {
                 Text(L.terminalSessions()).font(.caption).foregroundStyle(T.text3)
                 if !model.isOnline {
@@ -138,9 +138,7 @@ struct TerminalPanel: View {
                         .font(.headline)
                         .foregroundStyle(T.ink)
                         .lineLimit(1)
-                    Image(systemName: "chevron.down")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(T.text3)
+                    OfficialGlyph(kind: .chevronDown, size: 12, color: T.text3)
                 }
             }
             .accessibilityLabel(current?.title?.nilIfBlank ?? L.terminal())

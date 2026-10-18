@@ -51,6 +51,18 @@ struct OfficialGlyph: View {
         case dislikeOutline
         case dislikeFill
         case stopRect
+        case panelLeft
+        case panelRight
+        case copyOutline
+        case branchOutline
+        case chevronLeft
+        case chevronRight
+        case closeOutline
+        case linkOutline
+        case rightUp
+        case appearanceLight
+        case appearanceDark
+        case appearanceFollowSystem
 
         var accessibilityIdentifier: String {
             switch self {
@@ -91,6 +103,18 @@ struct OfficialGlyph: View {
             case .dislikeOutline: return messageDislikeSymbol()
             case .dislikeFill: return messageDislikeFillSymbol()
             case .stopRect: return composerStopSymbol()
+            case .panelLeft: return headerPanelLeftSymbol()
+            case .panelRight: return headerPanelRightSymbol()
+            case .copyOutline: return messageCopySymbol()
+            case .branchOutline: return messageBranchSymbol()
+            case .chevronLeft: return menuChevronLeftSymbol()
+            case .chevronRight: return menuChevronRightSymbol()
+            case .closeOutline: return browserCloseSymbol()
+            case .linkOutline: return browserLinkSymbol()
+            case .rightUp: return browserRightUpSymbol()
+            case .appearanceLight: return appearanceLightSymbol()
+            case .appearanceDark: return appearanceDarkSymbol()
+            case .appearanceFollowSystem: return appearanceFollowSystemSymbol()
             default: return "official.glyph"
             }
         }
@@ -102,7 +126,8 @@ struct OfficialGlyph: View {
                  .gaugeOutline, .databaseOutline, .infoOutline, .refreshOutline, .jobsChevron, .fishLogo,
                  .userOutline, .sparkle, .toolWrench, .information, .compacted, .settingsOutlineRegular,
                  .chevronDown, .chevronUp, .checkOutline, .likeOutline, .likeFill, .dislikeOutline, .dislikeFill,
-                 .stopRect:
+                 .stopRect, .panelLeft, .panelRight, .copyOutline, .branchOutline, .chevronLeft, .chevronRight,
+                 .closeOutline, .linkOutline, .rightUp, .appearanceLight, .appearanceDark, .appearanceFollowSystem:
                 return false
             // plusOutline / send are decorative; ComposerView hosts own
             // official.plusOutline and official.send.
@@ -411,6 +436,87 @@ struct OfficialGlyph: View {
                     Path(roundedRect: rect, cornerRadius: CGFloat(composerStopRectRadius)),
                     with: .color(color)
                 )
+            case .panelLeft:
+                drawPanelLeft(&ctx, color: color, stroke: stroke)
+            case .panelRight:
+                ctx.translateBy(x: 16, y: 0)
+                ctx.scaleBy(x: -1, y: 1)
+                drawPanelLeft(&ctx, color: color, stroke: stroke)
+            case .copyOutline:
+                let copyRect = CGRect(
+                    x: CGFloat(messageCopyRectX),
+                    y: CGFloat(messageCopyRectY),
+                    width: CGFloat(messageCopyRectWidth),
+                    height: CGFloat(messageCopyRectHeight)
+                )
+                ctx.stroke(
+                    Path(roundedRect: copyRect, cornerRadius: CGFloat(messageCopyRectRadius)),
+                    with: .color(color),
+                    style: stroke
+                )
+                ctx.fill(Path(SVGPath.cgPath(messageCopyBackPath)), with: .color(color))
+            case .branchOutline:
+                ctx.stroke(Path(SVGPath.cgPath(messageBranchUpperPath)), with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(messageBranchLowerPath)), with: .color(color), style: stroke)
+                let r = CGFloat(messageBranchCircleRadius)
+                let cx = CGFloat(messageBranchCircleCenterX)
+                var top = Path()
+                top.addEllipse(in: CGRect(
+                    x: cx - r,
+                    y: CGFloat(messageBranchCircleTopY) - r,
+                    width: r * 2,
+                    height: r * 2
+                ))
+                var bottom = Path()
+                bottom.addEllipse(in: CGRect(
+                    x: cx - r,
+                    y: CGFloat(messageBranchCircleBottomY) - r,
+                    width: r * 2,
+                    height: r * 2
+                ))
+                ctx.stroke(top, with: .color(color), style: stroke)
+                ctx.stroke(bottom, with: .color(color), style: stroke)
+            case .chevronLeft:
+                ctx.stroke(Path(SVGPath.cgPath(menuChevronLeftPath)), with: .color(color), style: stroke)
+            case .chevronRight:
+                ctx.stroke(Path(SVGPath.cgPath(menuChevronRightPath)), with: .color(color), style: stroke)
+            case .closeOutline:
+                ctx.stroke(Path(SVGPath.cgPath(browserCloseOutlineAPath)), with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(browserCloseOutlineBPath)), with: .color(color), style: stroke)
+            case .linkOutline:
+                ctx.stroke(Path(SVGPath.cgPath(browserLinkOutlineAPath)), with: .color(color), style: stroke)
+                ctx.stroke(Path(SVGPath.cgPath(browserLinkOutlineBPath)), with: .color(color), style: stroke)
+            case .rightUp:
+                ctx.fill(Path(SVGPath.cgPath(browserRightUpFillPath)), with: .color(color))
+                ctx.stroke(Path(SVGPath.cgPath(browserRightUpStrokePath)), with: .color(color), style: stroke)
+            case .appearanceLight:
+                let medium = StrokeStyle(
+                    lineWidth: CGFloat(appearanceCubeIconStrokeWidth),
+                    lineCap: .butt,
+                    lineJoin: .miter,
+                    miterLimit: 10
+                )
+                ctx.stroke(Path(SVGPath.cgPath(appearanceLightCorePath)), with: .color(color), style: medium)
+                for ray in appearanceLightRayPaths {
+                    ctx.stroke(Path(SVGPath.cgPath(ray)), with: .color(color), style: medium)
+                }
+            case .appearanceDark:
+                let medium = StrokeStyle(
+                    lineWidth: CGFloat(appearanceCubeIconStrokeWidth),
+                    lineCap: .butt,
+                    lineJoin: .miter,
+                    miterLimit: 10
+                )
+                ctx.stroke(Path(SVGPath.cgPath(appearanceDarkPath)), with: .color(color), style: medium)
+            case .appearanceFollowSystem:
+                let medium = StrokeStyle(
+                    lineWidth: CGFloat(appearanceCubeIconStrokeWidth),
+                    lineCap: .butt,
+                    lineJoin: .miter,
+                    miterLimit: 10
+                )
+                ctx.stroke(Path(SVGPath.cgPath(appearanceFollowSystemScreenPath)), with: .color(color), style: medium)
+                ctx.stroke(Path(SVGPath.cgPath(appearanceFollowSystemStandPath)), with: .color(color), style: medium)
             }
         }
         .frame(width: canvasWidth, height: canvasHeight)
@@ -426,6 +532,11 @@ struct OfficialGlyph: View {
         default:
             return size
         }
+    }
+
+    private func drawPanelLeft(_ ctx: inout GraphicsContext, color: Color, stroke: StrokeStyle) {
+        ctx.stroke(Path(SVGPath.cgPath(headerPanelFramePath)), with: .color(color), style: stroke)
+        ctx.stroke(Path(SVGPath.cgPath(headerPanelDividerPath)), with: .color(color), style: stroke)
     }
 
     private func drawPermission(_ ctx: inout GraphicsContext, value: String, color: Color, stroke: StrokeStyle) {
@@ -517,6 +628,8 @@ private struct OfficialGlyphAccess: ViewModifier {
             // Canvas is not an a11y element by default, so a bare identifier
             // is absorbed by the nearest Button / labeled parent. Force a
             // leaf image so XCUITest can resolve official.* as descendants.
+            // A parent Button that also sets `.accessibilityIdentifier` still
+            // combines/overwrites this leaf unless it uses `.contain`.
             content
                 .accessibilityElement()
                 .accessibilityIdentifier(kind.accessibilityIdentifier)

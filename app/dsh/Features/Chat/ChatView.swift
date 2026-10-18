@@ -166,8 +166,10 @@ struct ChatView: View {
                 Keyboard.dismiss()
                 model.showDrawer = true
             } label: {
-                Image(systemName: D.panelLeft).foregroundStyle(T.ink)
+                OfficialGlyph(kind: .panelLeft, size: 16, color: T.ink)
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier("openDrawer")
             if conversationHeaderShowsCrumbs(headerCrumbs) {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -211,10 +213,12 @@ struct ChatView: View {
                 if case .panel(.start) = model.currentRoute { return }
                 model.push(.panel(.start))
             } label: {
-                Image(systemName: D.panelRight).foregroundStyle(T.ink)
+                OfficialGlyph(kind: .panelRight, size: 16, color: T.ink)
             }
             .disabled(firstPromptBlocksComposerActions(model.firstPrompt))
             .accessibilityLabel(L.startPanel())
+            .accessibilityElement(children: .contain)
+            .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier("openStartPanel")
         }
         .padding(.horizontal, 14)
@@ -1469,8 +1473,7 @@ private struct MessageActions: View {
             }
             if showsCopy {
                 iconButton(
-                    official: copied ? .checkOutline : nil,
-                    system: copied ? nil : "square.on.square",
+                    official: copied ? .checkOutline : .copyOutline,
                     label: copied ? L.copied() : L.copy(),
                     enabled: !copied
                 ) {
@@ -1496,7 +1499,7 @@ private struct MessageActions: View {
             }
             if let branch {
                 iconButton(
-                    system: D.branch,
+                    official: .branchOutline,
                     label: messageBranchLabel(unavailable: branch.unavailable, english: L.en),
                     accessibilityLabel: L.branch(),
                     enabled: branch.enabled,

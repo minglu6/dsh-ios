@@ -174,7 +174,7 @@ struct ModelPicker: View {
                             .disabled(busy != nil)
                         if !query.isEmpty {
                             Button { query = "" } label: {
-                                Image(systemName: "xmark").font(.caption).foregroundStyle(T.caption)
+                                OfficialGlyph(kind: .closeOutline, size: 12, color: T.caption)
                             }
                             .disabled(busy != nil)
                         }
@@ -258,8 +258,7 @@ struct ModelPicker: View {
                 Text(label).foregroundStyle(T.ink)
                 Spacer()
                 Text(value).foregroundStyle(T.text3).lineLimit(1)
-                OfficialGlyph(kind: .chevronDown, size: 12, color: T.caption)
-                    .rotationEffect(.degrees(-90))
+                OfficialGlyph(kind: .chevronRight, size: 12, color: T.caption)
             }
             .font(.system(size: 13))
             .padding(.horizontal, 8)

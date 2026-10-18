@@ -122,9 +122,9 @@ struct GeneralSettingsView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Text(L.appearance()).foregroundStyle(T.ink)
                             HStack(spacing: 8) {
-                                appearanceCard(.light, L.light(), "sun.max")
-                                appearanceCard(.dark, L.dark(), "moon")
-                                appearanceCard(.system, L.followSystem(), "desktopcomputer")
+                                appearanceCard(.light, L.light(), .appearanceLight)
+                                appearanceCard(.dark, L.dark(), .appearanceDark)
+                                appearanceCard(.system, L.followSystem(), .appearanceFollowSystem)
                             }
                         }
                         .padding(.horizontal, 16)
@@ -275,15 +275,13 @@ struct GeneralSettingsView: View {
         .onAppear { if model.ops.contains("permissions.catalog") { model.reloadPermissionCatalog() } }
     }
 
-    private func appearanceCard(_ value: Appearance, _ title: String, _ system: String) -> some View {
+    private func appearanceCard(_ value: Appearance, _ title: String, _ icon: OfficialGlyph.Kind) -> some View {
         let selected = model.appearance == value
         return Button {
             model.setAppearance(value)
         } label: {
             VStack(spacing: 8) {
-                Image(systemName: system)
-                    .font(.system(size: 18))
-                    .foregroundStyle(T.ink)
+                OfficialGlyph(kind: icon, size: 18, color: T.ink)
                 Text(title)
                     .font(.caption)
                     .foregroundStyle(T.ink)
@@ -386,7 +384,7 @@ func preferenceRow(
                 if let value, !value.isEmpty {
                     Text(value).font(.subheadline).foregroundStyle(T.text3).lineLimit(2)
                 }
-                Image(systemName: "chevron.down").font(.caption).foregroundStyle(T.text2)
+                OfficialGlyph(kind: .chevronDown, size: 12, color: T.text2)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -406,7 +404,9 @@ func settingsMessage(_ text: String, error: Bool = false) -> some View {
 
 func header(_ title: String, back: @escaping () -> Void) -> some View {
     HStack {
-        Button(action: back) { Image(systemName: "chevron.left").foregroundStyle(T.ink) }
+        Button(action: back) { OfficialGlyph(kind: .chevronLeft, size: 16, color: T.ink) }
+            .accessibilityElement(children: .contain)
+            .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier("navBack")
         Text(title).font(.headline).foregroundStyle(T.ink)
         Spacer()
@@ -446,7 +446,7 @@ func nav<Icon: View>(
                 if let value, !value.isEmpty {
                     Text(value).font(.subheadline).foregroundStyle(T.text3).lineLimit(1)
                 }
-                Image(systemName: "chevron.right").font(.caption).foregroundStyle(T.text3)
+                OfficialGlyph(kind: .chevronRight, size: 12, color: T.text3)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -518,9 +518,7 @@ struct SettingsFontSizeRow: View {
                     .foregroundStyle(T.text2)
                 if let onToggle {
                     Button(action: onToggle) {
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(T.text2)
+                        OfficialGlyph(kind: .chevronDown, size: 12, color: T.text2)
                             .rotationEffect(.degrees(expanded == true ? 180 : 0))
                     }
                     .buttonStyle(.plain)
@@ -543,10 +541,7 @@ struct SettingsFontSizeRow: View {
         return Button {
             onChange(themeFontSizeStepped(role, value: value, delta: increase ? 1 : -1))
         } label: {
-            Image(systemName: "chevron.down")
-                .font(.system(size: 9, weight: .semibold))
-                .foregroundStyle(enabled ? T.ink : T.caption)
-                .rotationEffect(.degrees(increase ? 180 : 0))
+            OfficialGlyph(kind: increase ? .chevronUp : .chevronDown, size: 9, color: enabled ? T.ink : T.caption)
                 .frame(width: 17, height: 12)
                 .background(T.surface.opacity(0.75), in: RoundedRectangle(cornerRadius: 4))
                 .frame(width: 32, height: 28)

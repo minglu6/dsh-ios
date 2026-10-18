@@ -548,9 +548,20 @@ public let menuChevronUpPath =
 public func menuChevronDownSymbol() -> String { "official.chevronDown" }
 public func menuChevronUpSymbol() -> String { "official.chevronUp" }
 
+public func menuChevronLeftSymbol() -> String { "official.chevronLeft" }
+public func menuChevronRightSymbol() -> String { "official.chevronRight" }
+
+/// Desktop `IconChevronLeftOutlineArtwork` / `IconChevronRightOutlineArtwork`.
+public let menuChevronLeftPath =
+    "M10 4L6.70711 7.29289C6.31658 7.68342 6.31658 8.31658 6.70711 8.70711L10 12"
+public let menuChevronRightPath =
+    "M6 12L9.29289 8.70711C9.68342 8.31658 9.68342 7.68342 9.29289 7.29289L6 4"
+
 public func isForbiddenSystemMenuChromeSymbol(_ name: String) -> Bool {
     name == "chevron.down"
         || name == "chevron.up"
+        || name == "chevron.left"
+        || name == "chevron.right"
         || name == "checkmark"
 }
 
@@ -570,6 +581,78 @@ public func isForbiddenSystemFeedbackSymbol(_ name: String) -> Bool {
         || name == "hand.thumbsup.fill"
         || name == "hand.thumbsdown"
         || name == "hand.thumbsdown.fill"
+}
+
+/// Desktop `ui-primitives` `IconCopyOutlineArtwork` (MessageIconActions copy).
+public let messageCopyUsesOfficialGlyph = true
+public let messageCopyRectX: Double = 1.52075
+public let messageCopyRectY: Double = 4.07373
+public let messageCopyRectWidth: Double = 10.3932
+public let messageCopyRectHeight: Double = 10.3932
+public let messageCopyRectRadius: Double = 2
+public let messageCopyBackPath =
+    "M11.9792 1.53296C13.36 1.53296 14.4792 2.65225 14.4792 4.03296V9.42847C14.4792 10.3756 13.9521 11.1987 13.1755 11.6228V10.3298C13.3652 10.0787 13.4792 9.7674 13.4792 9.42847V4.03296C13.4792 3.20453 12.8077 2.53296 11.9792 2.53296H6.58374C6.27966 2.53301 5.99684 2.6235 5.7605 2.77905H4.42358C4.85652 2.03463 5.66056 1.53304 6.58374 1.53296H11.9792Z"
+
+public func messageCopySymbol() -> String { "official.copyOutline" }
+
+public func isForbiddenSystemCopySymbol(_ name: String) -> Bool {
+    name == "doc.on.doc" || name == "square.on.square"
+}
+
+/// Desktop `ui-primitives` `IconBranchOutlineArtwork` (TurnTail `onBranch`).
+public let messageBranchUsesOfficialGlyph = true
+public let messageBranchUpperPath =
+    "M1.01503 8.0001L5.6964 8.0001C6.41913 8.0001 6.78049 8.0001 7.12115 7.91951C7.4232 7.84804 7.71233 7.73014 7.97821 7.57C8.27809 7.38939 8.5364 7.13669 9.05303 6.63129L11.3281 4.40564"
+public let messageBranchLowerPath =
+    "M1.01221 7.9999L5.6964 7.9999C6.41913 7.9999 6.78049 7.9999 7.12115 8.08049C7.4232 8.15196 7.71233 8.26986 7.97821 8.43C8.27809 8.61061 8.5364 8.86331 9.05303 9.36871L11.3281 11.5944"
+public let messageBranchCircleCenterX: Double = 12.4502
+public let messageBranchCircleTopY: Double = 3.3079
+public let messageBranchCircleBottomY: Double = 12.6921
+public let messageBranchCircleRadius: Double = 1.56962
+
+public func messageBranchSymbol() -> String { "official.branchOutline" }
+
+public func isForbiddenSystemBranchSymbol(_ name: String) -> Bool {
+    name == "arrow.triangle.branch"
+}
+
+/// Desktop `ui-primitives` `IconPanelLeftOutlineArtwork`. Phone right-header
+/// Start control is the same artwork mirrored; primitives ship no PanelRight.
+public let headerPanelUsesOfficialGlyph = true
+public let headerPanelFramePath =
+    "M13.5 1.5H2.5C1.94772 1.5 1.5 1.94772 1.5 2.5V13.5C1.5 14.0523 1.94772 14.5 2.5 14.5H13.5C14.0523 14.5 14.5 14.0523 14.5 13.5V2.5C14.5 1.94772 14.0523 1.5 13.5 1.5Z"
+public let headerPanelDividerPath = "M5.5 1.5V14.5"
+
+public func headerPanelLeftSymbol() -> String { "official.panelLeft" }
+public func headerPanelRightSymbol() -> String { "official.panelRight" }
+
+public func isForbiddenSystemHeaderPanelSymbol(_ name: String) -> Bool {
+    name == "sidebar.left" || name == "sidebar.right"
+}
+
+/// Desktop `ui-sidebar-browser` toolbar Regular artwork.
+public let browserToolbarIconSizePoints: Double = 14
+public let browserCloseOutlineAPath = "M2.5 2.5L13.5 13.5"
+public let browserCloseOutlineBPath = "M13.5 2.5L2.5 13.5"
+public let browserLinkOutlineAPath =
+    "M6.59961 9.40051C6.82779 9.6334 7.10015 9.81842 7.40074 9.94472C7.70132 10.071 8.02409 10.1361 8.35013 10.1361C8.67618 10.1361 8.99894 10.071 9.29953 9.94472C9.60011 9.81842 9.87247 9.6334 10.1007 9.40051L12.9015 6.59967C13.3658 6.13541 13.6266 5.50572 13.6266 4.84915C13.6266 4.19258 13.3658 3.56289 12.9015 3.09863C12.4372 2.63436 11.8075 2.37354 11.151 2.37354C10.4944 2.37354 9.86472 2.63436 9.40045 3.09863L9.05034 3.44873"
+public let browserLinkOutlineBPath =
+    "M9.40051 6.59959C9.17233 6.3667 8.89997 6.18169 8.59939 6.05538C8.2988 5.92907 7.97603 5.86401 7.64999 5.86401C7.32395 5.86401 7.00118 5.92907 6.70059 6.05538C6.40001 6.18169 6.12765 6.3667 5.89946 6.59959L3.09863 9.40043C2.63436 9.8647 2.37354 10.4944 2.37354 11.151C2.37354 11.8075 2.63436 12.4372 3.09863 12.9015C3.56289 13.3657 4.19258 13.6266 4.84915 13.6266C5.50572 13.6266 6.13541 13.3657 6.59967 12.9015L6.94978 12.5514"
+public let browserRightUpFillPath =
+    "M11.7256 2.77441C12.5538 2.77469 13.2256 3.44616 13.2256 4.27441V10.1416H12.2256V4.27441C12.2256 3.99844 12.0015 3.77469 11.7256 3.77441H5.7207V2.77441H11.7256Z"
+public let browserRightUpStrokePath = "M2.77441 13.2255L12.3756 3.62427"
+
+public func browserCloseSymbol() -> String { "official.closeOutline" }
+public func browserLinkSymbol() -> String { "official.linkOutline" }
+public func browserRightUpSymbol() -> String { "official.rightUp" }
+
+public func isForbiddenSystemBrowserToolbarSymbol(_ name: String) -> Bool {
+    name == "chevron.left"
+        || name == "chevron.right"
+        || name == "arrow.clockwise"
+        || name == "link"
+        || name == "arrow.up.right"
+        || name == "xmark"
 }
 
 /// Desktop `ui-permission-presets` `PermissionRow` inline Select.

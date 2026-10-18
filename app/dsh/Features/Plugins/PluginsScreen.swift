@@ -162,7 +162,7 @@ struct PluginsScreen: View {
 
     private func pluginsHeader(_ title: String) -> some View {
         HStack(spacing: 10) {
-            Button(action: back) { Image(systemName: "chevron.left").foregroundStyle(T.ink) }
+            Button(action: back) { OfficialGlyph(kind: .chevronLeft, size: 16, color: T.ink) }
             Text(title).font(.headline).foregroundStyle(T.ink).lineLimit(1).minimumScaleFactor(0.8)
             Spacer(minLength: 8)
             if selected == nil {

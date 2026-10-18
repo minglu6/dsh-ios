@@ -37,6 +37,7 @@ struct ScheduleScreen: View {
             )
         } else {
             catalog
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("scheduleScreen")
         }
     }
@@ -44,7 +45,7 @@ struct ScheduleScreen: View {
     private var catalog: some View {
         VStack(spacing: 0) {
             HStack {
-                Button { model.pop() } label: { Image(systemName: "chevron.left").foregroundStyle(T.ink) }
+                Button { model.pop() } label: { OfficialGlyph(kind: .chevronLeft, size: 16, color: T.ink) }
                 Text(L.automation()).font(.headline).foregroundStyle(T.ink)
                 Spacer()
                 Button(SchedulePagePolicy.headerNewLabel(english: L.en)) { newTask() }
@@ -206,7 +207,7 @@ private struct ScheduleDetailView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Button(action: onBack) { Image(systemName: "chevron.left").foregroundStyle(T.ink) }
+                Button(action: onBack) { OfficialGlyph(kind: .chevronLeft, size: 16, color: T.ink) }
                 Text(row["title"].str() ?? "").font(.headline).foregroundStyle(T.ink).lineLimit(1)
                 Spacer()
                 if editing {
