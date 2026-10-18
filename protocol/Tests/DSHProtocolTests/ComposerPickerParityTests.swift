@@ -310,6 +310,37 @@ final class ComposerPickerParityTests: XCTestCase {
         XCTAssertEqual(modelPickerRowMinHeightPoints, 34)
     }
 
+    func testOfficialApiAndAccountFlashShareTheReleaseMarker() {
+        for provider in ["deepseek-official", "deepseek-account"] {
+            XCTAssertEqual(
+                modelReleaseBadge(provider: provider, model: "deepseek-flash", name: "DeepSeek-V4.1-Flash"),
+                "1017"
+            )
+        }
+        XCTAssertEqual(modelReleaseBadgeText, "1017")
+        XCTAssertEqual(modelReleaseBadgeCatalogName, "DeepSeek-V4.1-Flash")
+        XCTAssertEqual(modelReleaseBadgeModelId, "deepseek-flash")
+        XCTAssertEqual(modelReleaseBadgeIdentifier(), "modelReleaseBadge")
+        XCTAssertEqual(composerModelNameIdentifier(), "composerModelName")
+        XCTAssertEqual(modelPickerRootModelIdentifier(), "modelPickerModel")
+        XCTAssertEqual(modelReleaseBadgeFontSizePoints, 11)
+        XCTAssertEqual(modelReleaseBadgeLineHeightPoints, 17)
+        XCTAssertEqual(modelReleaseBadgeFontWeight, 500)
+        XCTAssertEqual(modelReleaseBadgePaddingHorizontalPoints, 8)
+        XCTAssertEqual(modelReleaseBadgePaddingVerticalPoints, 1)
+        XCTAssertEqual(modelReleaseBadgeFillOpacity, 0.1, accuracy: 0.0001)
+        XCTAssertEqual(modelReleaseBadgeGapPoints, 4)
+    }
+
+    func testThirdPartyAndRenamedModelsNeverClaimTheOfficialRelease() {
+        XCTAssertNil(modelReleaseBadge(provider: "custom", model: "deepseek-flash", name: "DeepSeek-V4.1-Flash"))
+        XCTAssertNil(modelReleaseBadge(provider: "deepseek-official", model: "deepseek-pro", name: "DeepSeek-V4.1-Flash"))
+        XCTAssertNil(modelReleaseBadge(provider: "deepseek-account", model: "deepseek-flash", name: "DeepSeek-V4-Flash"))
+        XCTAssertNil(modelReleaseBadge(provider: "deepseek-official", model: "deepseek-flash", name: "My Flash"))
+        XCTAssertNil(modelReleaseBadge(provider: "deepseek", model: "deepseek-flash", name: "DeepSeek-V4.1-Flash"))
+        XCTAssertNil(modelReleaseBadge(provider: nil, model: nil, name: nil))
+    }
+
     func testLandingModelSeatShowsCatalogDefaultEffort() throws {
         let catalog = ModelCatalog(
             groups: [

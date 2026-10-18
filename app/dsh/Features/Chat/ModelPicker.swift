@@ -15,17 +15,31 @@ struct ModelChipMenu: View {
     var onReload: () -> Void = {}
     var onPick: (ModelChoice, @escaping (Bool) -> Void) -> Void
 
+    private var displayName: String {
+        composerModelDisplayName(choiceName: current?.name, catalog: catalog)
+            ?? composerModelFallback(english: L.en)
+    }
+
+    private var chipAccessibleName: String {
+        guard let effort = modelEffortLabel(
+            catalog: catalog,
+            provider: current?.provider,
+            model: current?.model,
+            effort: current?.effort
+        ) else { return displayName }
+        return "\(displayName) · \(effort)"
+    }
+
     var body: some View {
         Button { if enabled { open.toggle() } } label: {
             HStack(spacing: 4) {
-                Text(
-                    composerModelDisplayName(choiceName: current?.name, catalog: catalog)
-                        ?? composerModelFallback(english: L.en)
+                ModelLabel(
+                    name: displayName,
+                    badge: modelReleaseBadge(provider: current?.provider, model: current?.model, name: current?.name),
+                    color: T.text2,
+                    font: .system(size: 13, weight: .regular),
+                    nameIdentifier: composerModelNameIdentifier()
                 )
-                .font(.system(size: 13, weight: .regular))
-                .foregroundStyle(T.text2)
-                .lineLimit(1)
-                .truncationMode(.tail)
                 .layoutPriority(1)
                 if let effort = modelEffortLabel(
                     catalog: catalog,
@@ -53,7 +67,10 @@ struct ModelChipMenu: View {
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier("modelChip")
+        .accessibilityLabel(chipAccessibleName)
         .popover(isPresented: $open, attachmentAnchor: .rect(.bounds), arrowEdge: composerPickerPopoverOpensAbove ? .bottom : .top) {
             ModelPicker(
                 catalog: catalog,
@@ -155,9 +172,22 @@ struct ModelPicker: View {
                 Text(selectionError).font(.system(size: 11)).foregroundStyle(T.err).padding(8)
             }
             if pane == .root {
-                cell(modelPickerRootModelLabel(english: L.en), loading && catalog == nil ? L.loading() : (composerModelDisplayName(choiceName: resolvedCurrent?.name ?? selectedModel?.name, catalog: catalog) ?? resolvedCurrent?.model ?? composerModelFallback(english: L.en))) {
+                cell(
+                    modelPickerRootModelLabel(english: L.en),
+                    loading && catalog == nil
+                        ? L.loading()
+                        : (composerModelDisplayName(choiceName: resolvedCurrent?.name ?? selectedModel?.name, catalog: catalog)
+                            ?? resolvedCurrent?.model
+                            ?? composerModelFallback(english: L.en)),
+                    badge: modelReleaseBadge(
+                        provider: resolvedCurrent?.provider,
+                        model: selectedModel?.id,
+                        name: selectedModel?.name
+                    )
+                ) {
                     pane = .models
                 }
+                .accessibilityIdentifier(modelPickerRootModelIdentifier())
                 if showEffort {
                     cell(modelPickerRootEffortLabel(english: L.en), modelEffortLabel(catalog: catalog, provider: resolvedCurrent?.provider, model: resolvedCurrent?.model, effort: resolvedCurrent?.effort) ?? "") {
                         pane = .effort
@@ -203,7 +233,12 @@ struct ModelPicker: View {
                                 .padding(.vertical, 6)
                             ForEach(group.models) { model in
                                 let selected = resolvedCurrent?.provider == group.id && resolvedCurrent?.model == model.id
-                                option(model.name, selected: selected, pending: busy?.provider == group.id && busy?.model == model.id) {
+                                option(
+                                    model.name,
+                                    selected: selected,
+                                    pending: busy?.provider == group.id && busy?.model == model.id,
+                                    badge: modelReleaseBadge(provider: group.id, model: model.id, name: model.name)
+                                ) {
                                     pick(ModelChoice(provider: group.id, model: model.id, name: model.name, effort: nil), unchanged: selected)
                                 }
                             }
@@ -252,29 +287,36 @@ struct ModelPicker: View {
         }
     }
 
-    private func cell(_ label: String, _ value: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 6) {
-                Text(label).foregroundStyle(T.ink)
-                Spacer()
-                Text(value).foregroundStyle(T.text3).lineLimit(1)
-                OfficialGlyph(kind: .chevronRight, size: 12, color: T.caption)
-            }
-            .font(.system(size: 13))
-            .padding(.horizontal, 8)
-            .frame(minHeight: CGFloat(modelPickerRowMinHeightPoints))
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func option(_ label: String, selected: Bool, pending: Bool, action: @escaping () -> Void) -> some View {
+    private func cell(_ label: String, _ value: String, badge: String? = nil, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 6) {
                 Text(label)
                     .font(.system(size: 13))
-                    .foregroundStyle(enabled || selected ? T.ink : T.text3)
-                    .lineLimit(1)
-                Spacer()
+                    .foregroundStyle(T.ink)
+                Spacer(minLength: 6)
+                ModelLabel(name: value, badge: badge, color: T.text3, font: .system(size: 13))
+                    .frame(minWidth: 0, maxWidth: .infinity, alignment: .trailing)
+                OfficialGlyph(kind: .chevronRight, size: 12, color: T.caption)
+            }
+            .padding(.horizontal, 8)
+            .frame(minHeight: CGFloat(modelPickerRowMinHeightPoints))
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel("\(label) \(value)")
+    }
+
+    private func option(_ label: String, selected: Bool, pending: Bool, badge: String? = nil, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                ModelLabel(
+                    name: label,
+                    badge: badge,
+                    color: enabled || selected ? T.ink : T.text3,
+                    font: .system(size: 13)
+                )
+                .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
                 if pending { ProgressView().controlSize(.mini) }
                 else if selected { OfficialGlyph(kind: .checkOutline, size: 14, color: T.ink) }
             }
@@ -285,6 +327,9 @@ struct ModelPicker: View {
         }
         .buttonStyle(.plain)
         .disabled(!enabled || loading || busy != nil)
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel(label)
     }
 
     private func notice(_ message: String) -> some View {

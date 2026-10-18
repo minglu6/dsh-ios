@@ -914,6 +914,16 @@ final class AppModel: ObservableObject {
     }
 
     func selectModel(_ choice: ModelChoice, onComplete: ((Bool) -> Void)? = nil) {
+        if uiTestFixture {
+            guard modelPending == nil else {
+                onComplete?(false)
+                return
+            }
+            modelChoice = choice
+            draftModel = choice
+            onComplete?(true)
+            return
+        }
         Task {
             guard modelPending == nil else {
                 onComplete?(false)
