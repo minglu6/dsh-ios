@@ -569,6 +569,10 @@ private struct PairLinkSheet: View {
     var onResult: (PairingLink) -> Void
     @State private var text = ""
     @State private var pasted = false
+    /// Skip the next `onChange(of: text)` pasted reset so 粘贴链接 can set
+    /// `pasted = true` after assigning `text` (Compose onValueChange does not
+    /// fire for programmatic paste).
+    @State private var suppressPasteReset = false
 
     private var parsed: PairingLink? { PairingUriPolicy.parse(text) }
     private var showInvalid: Bool {
@@ -592,16 +596,12 @@ private struct PairLinkSheet: View {
                     Text(L.pairingLink())
                         .font(.caption)
                         .foregroundStyle(T.text3)
-                    TextField(
-                        L.pairingLinkFieldHint(),
-                        text: Binding(
-                            get: { text },
-                            set: { newValue in
-                                text = newValue
-                                pasted = false
-                            }
-                        )
-                    )
+                    // `$text` (not a custom Binding that also writes `pasted`):
+                    // XCUI typeText talks to the UITextField; an extra @State
+                    // write in the setter can leave SwiftUI `text` on the old
+                    // URL while the field shows a concatenation, so parse
+                    // stays nil and invalid copy plus disabled 下一步 remain.
+                    TextField(L.pairingLinkFieldHint(), text: $text)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .font(.system(.body, design: .monospaced))
@@ -610,6 +610,13 @@ private struct PairLinkSheet: View {
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 0.5))
                         .accessibilityLabel(L.pairingLink())
                         .accessibilityIdentifier(connectionsPairingLinkFieldIdentifier())
+                        .onChange(of: text) { _ in
+                            if suppressPasteReset {
+                                suppressPasteReset = false
+                                return
+                            }
+                            pasted = false
+                        }
                 }
                 .padding(.horizontal, 18)
                 .padding(.vertical, 4)
@@ -660,8 +667,14 @@ private struct PairLinkSheet: View {
     }
 
     private func pasteLink() {
-        text = UIPasteboard.general.string ?? ""
+        let value = UIPasteboard.general.string ?? ""
+        if value == text {
+            pasted = true
+            return
+        }
+        suppressPasteReset = true
         pasted = true
+        text = value
     }
 
     private func continuePairing() {

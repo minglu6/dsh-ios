@@ -770,10 +770,12 @@ final class ScreenshotTests: XCTestCase {
         )
         XCTAssertFalse(next.firstMatch.isEnabled, "\(appearance) 下一步 enabled on invalid pairing link")
         replaceText(field, with: "dshpocket://pair?h=192.168.1.20:7690&c=654321")
+        let invalid = app.descendants(matching: .any)["connectionsInvalidPairingLink"].firstMatch
         XCTAssertTrue(
-            app.descendants(matching: .any)["connectionsInvalidPairingLink"].firstMatch.waitForNonExistence(timeout: 4),
+            invalid.waitForNonExistence(timeout: 4),
             "\(appearance) invalid pairing-link copy stayed after a valid paste"
         )
+        waitUntil(timeout: 4) { next.firstMatch.isEnabled }
         XCTAssertTrue(next.firstMatch.isEnabled, "\(appearance) 下一步 disabled on valid pairing link")
         next.firstMatch.tap()
         let address = app.descendants(matching: .any)["connectionsAddressField"].firstMatch
@@ -792,13 +794,54 @@ final class ScreenshotTests: XCTestCase {
         )
     }
 
+    /// Pairing-link placeholder (`connectionsPairingLinkFieldHint`). Empty
+    /// SwiftUI TextFields report this as `value`.
+    private let pairingLinkPlaceholder = "dshpocket://pair?h=…&c=…"
+
+    private func pairingLinkFieldValue(_ element: XCUIElement) -> String {
+        let raw = (element.value as? String) ?? ""
+        return (raw.isEmpty || raw == pairingLinkPlaceholder) ? "" : raw
+    }
+
+    /// Wait on an XCUI predicate. Do not sleep — CI Dark failed at 22b3312
+    /// because the field never became the valid URI, not because 4s was short.
+    @discardableResult
+    private func waitUntil(timeout: TimeInterval, _ predicate: @escaping () -> Bool) -> Bool {
+        let expectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in predicate() },
+            object: nil
+        )
+        return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    /// Center-tap + N deletes leaves the caret mid-string, so the next URL
+    /// concatenates (`https://example.comdshpocket://…`) and parse stays nil.
+    /// Put the caret at the trailing edge, wait until the field is actually
+    /// empty, then wait until `value` equals the intended string.
     private func replaceText(_ element: XCUIElement, with value: String) {
-        element.tap()
-        if let current = element.value as? String, !current.isEmpty, current != "dshpocket://pair?h=…&c=…" {
-            let delete = String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count)
-            element.typeText(delete)
+        XCTAssertTrue(element.waitForExistence(timeout: 4), "pairing-link field missing before replace")
+        element.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        var current = pairingLinkFieldValue(element)
+        if !current.isEmpty {
+            element.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count))
+            waitUntil(timeout: 4) { pairingLinkFieldValue(element).isEmpty }
+            current = pairingLinkFieldValue(element)
+            if !current.isEmpty {
+                element.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+                element.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count + 8))
+                waitUntil(timeout: 4) { pairingLinkFieldValue(element).isEmpty }
+            }
         }
+        XCTAssertEqual(
+            pairingLinkFieldValue(element),
+            "",
+            "pairing-link field still \(pairingLinkFieldValue(element)) before typing \(value)"
+        )
         element.typeText(value)
+        XCTAssertTrue(
+            waitUntil(timeout: 4) { pairingLinkFieldValue(element) == value },
+            "pairing-link field was \(pairingLinkFieldValue(element)), expected \(value)"
+        )
     }
 
     private func assertHostSurfaceFullScreen(_ app: XCUIApplication, id: String, appearance: String) throws {
