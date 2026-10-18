@@ -824,12 +824,12 @@ final class ScreenshotTests: XCTestCase {
         var current = pairingLinkFieldValue(element)
         if !current.isEmpty {
             element.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count))
-            waitUntil(timeout: 4) { pairingLinkFieldValue(element).isEmpty }
+            waitUntil(timeout: 4) { self.pairingLinkFieldValue(element).isEmpty }
             current = pairingLinkFieldValue(element)
             if !current.isEmpty {
                 element.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
                 element.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count + 8))
-                waitUntil(timeout: 4) { pairingLinkFieldValue(element).isEmpty }
+                waitUntil(timeout: 4) { self.pairingLinkFieldValue(element).isEmpty }
             }
         }
         XCTAssertEqual(
@@ -839,7 +839,7 @@ final class ScreenshotTests: XCTestCase {
         )
         element.typeText(value)
         XCTAssertTrue(
-            waitUntil(timeout: 4) { pairingLinkFieldValue(element) == value },
+            waitUntil(timeout: 4) { self.pairingLinkFieldValue(element) == value },
             "pairing-link field was \(pairingLinkFieldValue(element)), expected \(value)"
         )
     }
