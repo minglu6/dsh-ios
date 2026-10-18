@@ -41,6 +41,7 @@ struct JobsAction: View {
                 .buttonStyle(.plain)
                 .padding(.trailing, 4)
                 .accessibilityLabel(JobsActionLabel.text(chip, en: L.en))
+                .accessibilityIdentifier(jobsActionTriggerSymbol())
                 .popover(isPresented: $open, attachmentAnchor: .rect(.bounds), arrowEdge: jobsPopoverArrowPointsDown ? .top : .bottom) {
                     JobsPanel(model: model, showsNavigationHeader: false) { open = false }
                         .frame(width: CGFloat(jobsPopoverWidth(screenWidth: UIScreen.main.bounds.width)))
