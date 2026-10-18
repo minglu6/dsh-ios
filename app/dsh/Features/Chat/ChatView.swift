@@ -1692,8 +1692,9 @@ struct ComposerView: View {
                             color: T.ink
                         )
                         .frame(width: CGFloat(composerAddButtonPoints), height: CGFloat(composerAddButtonPoints))
+                        .background(T.selector, in: Circle())
                     }
-                    .background(T.selector, in: Circle())
+                    .buttonStyle(.plain)
                     .disabled(firstPromptBlocksComposerActions(model.firstPrompt))
                     .accessibilityIdentifier(composerAddSymbol())
                     .accessibilityLabel(composerCommandsAria(english: L.en))
