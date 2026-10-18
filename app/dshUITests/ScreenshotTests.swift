@@ -691,12 +691,6 @@ final class ScreenshotTests: XCTestCase {
             chip.label.contains("1017"),
             "\(appearance) model chip accessible name leaked the release badge (got \(chip.label))"
         )
-        let name = app.descendants(matching: .any)["composerModelName"]
-        XCTAssertTrue(name.waitForExistence(timeout: 8), "\(appearance) composerModelName missing")
-        XCTAssertTrue(
-            name.label == flash || name.label.contains(flash),
-            "\(appearance) composerModelName is not the catalog name (got \(name.label))"
-        )
 
         let input = app.textViews["composerInput"]
         XCTAssertTrue(input.waitForExistence(timeout: 8), "\(appearance) composer input missing")

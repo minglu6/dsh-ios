@@ -37,8 +37,7 @@ struct ModelChipMenu: View {
                     name: displayName,
                     badge: modelReleaseBadge(provider: current?.provider, model: current?.model, name: current?.name),
                     color: T.text2,
-                    font: .system(size: 13, weight: .regular),
-                    nameIdentifier: composerModelNameIdentifier()
+                    font: .system(size: 13, weight: .regular)
                 )
                 .layoutPriority(1)
                 if let effort = modelEffortLabel(
