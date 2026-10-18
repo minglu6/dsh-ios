@@ -83,7 +83,9 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R54 | 轨迹时长 chip 改用桌面 TrajectoryToolbar 内联 clock SVG | done (#63) |
 | R55 | Jobs 头栏 chip 改用桌面 JobListAction `IconChevronDownOutlineRegular` | done (#64) |
 | R56 | landing composer 贴底 + 去掉多余分享按钮 | done (#65) |
-| R57 | 用户复制键 / 远程主机名热区 / 诊断 OfficialGlyph / 视图选项图标 / 插件 tooltip | this PR |
+| R57 | 用户复制键 / 远程主机名热区 / 诊断 OfficialGlyph / 视图选项图标 / 插件 tooltip | done (#66) |
+| R58 | 打开抽屉 / 滚动时收键盘 | done (#67) |
+| R59 | 权限选择器去掉系统 sheet；轨迹 KIND_ICON 官方 SVG | this PR |
 
 ---
 
@@ -1400,3 +1402,40 @@ Android `MainActivity` 窄屏是 `ModalNavigationDrawer`（按钮 / 手势滑出
 
 - 斜杠菜单选行 / Escape 不再收键盘（`/skill `、`/goal ` 插入后要接着打字，与 main 行为一致）；只有点菜单外空白才收。
 - 点空白收键盘的 tap 只挂在被修饰的那个 `UIScrollView`（按窗口坐标匹配），不再退化挂到整个 window，免得点「发送」「+」、斜杠菜单行也把键盘收掉。
+
+## Round 59 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*` alpha=`0.2.1-alpha.5` / next=`0.2.1-rc.2`；Android `ce7d345`）
+
+基线 `main` `77bba90`（#67 Round 58 收键盘）。怀疑式对照：桌面 pack 为第一依据；#67 CI `ios-simulator-screenshots` 逐屏看过；Android 只作参考。
+
+### 必须核实
+
+| 项 | 判定 | 证据 |
+| --- | --- | --- |
+| landing 标题文案 | **PASS（已对齐，不改字）** | 桌面 `ui-conversation` `client.js` `hero.headline` zh=「**探索未至之境**」、en=`Into the Unknown`。用户口中的「探索未知之境」与源码不一致。iOS `landingHeadline(english:)` 已逐字相同。CI landing 现断言标题含「探索未至之境」、禁止「探索未知之境」 |
+| 抽屉底栏两枚独立按钮 + 远程主机整页 | **PASS（#66 仍成立）** | #67 `light/dark-drawer.png`：设置左、绿点+Mac mini 右，中间空白。`ScreenshotTests` 热区不相交、间隔 ≥16pt、高度 ≥44pt；footer tap 后 `connectionsScreen` 占窗 ≥98%×90%，标题「远程主机」，无抽屉 chrome |
+| 开抽屉 / 进设置 / 进远程主机不留键盘 | **PASS（#67 无回归）** | `KeyboardDismissalTests` 原有抽屉+远程主机；本轮补「进设置」。`openingSessionDrawerResignsComposer` / `leavingDrawerForSettingsOrHostResignsKeyboard` |
+
+### 本轮修
+
+| 项 | 判定 | 证据 |
+| --- | --- | --- |
+| Composer 权限选择器 | **GAP → 本轮** | #67 `light/dark-permission.png` 是系统 sheet：蓝「取消」、大标题「访问模式」、红字 `transport: 未连接到远程主机`。桌面 `ui-permission-presets` `PermissionSelect` 是贴 chip 的 MenuSurface（与模型选择器相同）。iOS 聊天/landing 还叠了一层 `.sheet { PermissionPickerSheet }`，UITest `permission` 打开的是这层而不是 chip 菜单，且 `onAppear` 会 `reloadPermissionCatalog()` 打到空 transport。删掉聊天/landing 的系统 sheet；`/permission` 继续 slash 内 `popupSelect`；CI `permission` 打开 chip MenuSurface |
+| 轨迹 ledger KIND_ICON | **GAP → 本轮** | #67 `*-trajectory.png` 用户行是绿色 SF person、助手行是 SF sparkle。桌面 `KIND_ICON`：system=`IconSettingsOutlineRegular` 13 / user=`IconUserOutlineRegular` 13 / context=InformationIcon / compacted=CompactedIcon / message=`IconSparkleRegular` 13 / tool+subtool=ToolWrenchIcon。窄表 `@container width<=620px` 只显示 19pt chip + 13pt 图标。`.user` 颜色是 `--dsw-alias-state-business-primary`（#4176E6）打在 business-tertiary 上，不是 success 绿。未知 kind 桌面无 fallback，不再画 SF `gearshape` |
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| 权限 chip | `PermissionChipMenu` Binding，无系统 sheet | `ui-permission-presets` `PermissionSelect` MenuSurface；`ui-commands` `/permission` `popupSelect` | `composerPermissionUsesSystemSheet = false`。CI permission：存在 `permissionPicker`、有「工作区内修改」、无「访问模式」、高度 < 70% 窗口 |
+| 轨迹 kind chip | `OfficialGlyph` userOutline / sparkle / toolWrench / information / compacted / settingsOutlineRegular | `ui-trajectory` `client.js` `KIND_ICON` + `TrajectoryTable` `.kindTag` / `@container width<=620px`；primitives Regular artwork | CI trajectory 禁止 SF person/sparkle/wrench/gearshape；断言 `official.userOutline` / `official.sparkle` |
+| landing 标题 | 仍「探索未至之境」 | `ui-conversation` `hero.headline` | 不改字。CI 禁止「探索未知之境」 |
+| 浏览器 / 诊断 / 设置权限 sheet 的「关闭」「取消」 | `Text.foregroundStyle(T.ink)` + `.tint(T.ink)` | 禁止系统蓝强调色 | 仍是 sheet（未改成全页）；只去掉系统 tint |
+
+本轮核对后**不改**（平台 / hide / 禁止发明）
+
+- Account / shortcuts / open config / CompatibilityBanner / 审批通知：仍 **hide**。
+- `chat.turnNavigation.*` / `chat.toBottom` / `ask.review` / hover chevron：仍 skip。
+- 桌面 HeaderAction 更多菜单「下载 Session 日志」：仍不发明顶栏 ⋯。
+- InputBar `.primary` 停止态圆角方块：fixture 不跑 `runningIdle`。
+- 插件库存搜索仍 SF：桌面 `ui-plugin-manager` 无该搜索槽。
+- Settings 默认权限仍走 `PermissionPickerSheet`（设置页点「权限」），不是 Composer chip；已去系统蓝。
+- Start / Browser / Inspector 仍是 sheet（桌面是侧栏/菜单），未改成远程主机那样的全页。
+- Start 页顶上的大 globe：桌面 Guide 卡没有这枚装饰鲸/地球，列为剩余差异。

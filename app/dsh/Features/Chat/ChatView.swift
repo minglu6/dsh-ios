@@ -16,7 +16,7 @@ struct ChatView: View {
     @State private var openTurns: [String: Bool] = [:]
     @State private var openProcesses: [String: Bool] = [:]
     @State private var inspectTool: Item.Tool?
-    @State private var showPermission = false
+    @State private var permissionMenuOpen = false
     @State private var riskPermission: String?
     @State private var slashMenu = SlashMenuState()
     @StateObject private var commandHost = CommandMenuHost()
@@ -63,10 +63,12 @@ struct ChatView: View {
                 },
                 onDismiss: { showStart = false }
             )
+            .tint(T.ink)
         }
         .sheet(isPresented: $showInspector) {
             if let sessionId = model.chat?.sessionId {
                 SessionInspectorPanel(model: model, sessionId: sessionId) { showInspector = false }
+                    .tint(T.ink)
             }
         }
         .onChange(of: inspectorNav.picking) { picking in
@@ -79,27 +81,6 @@ struct ChatView: View {
         }
         .onChange(of: model.showCodeWorkView) { show in
             if !show { tab = 0 }
-        }
-        .sheet(isPresented: $showPermission) {
-            PermissionPickerSheet(
-                current: model.sessionPermission ?? "",
-                catalog: model.permissionCatalog,
-                loading: model.permissionCatalogLoading,
-                error: model.permissionCatalogError,
-                enabled: model.isOnline,
-                busy: model.permissionChanging,
-                onRefresh: { model.reloadPermissionCatalog() },
-                onDismiss: { showPermission = false },
-                onPick: { value in
-                    if value == "danger-full-access" || value == "auto" {
-                        riskPermission = value
-                        showPermission = false
-                    } else {
-                        model.setPermission(value) { _ in showPermission = false }
-                    }
-                }
-            )
-            .onAppear { model.reloadPermissionCatalog() }
         }
         .sheet(item: $feedbackDraft) { draft in
             FeedbackCategorySheet(
@@ -176,7 +157,7 @@ struct ChatView: View {
             case "start": showStart = true
             case "inspector": showInspector = true
             case "models": showModels = true
-            case "permission": showPermission = true
+            case "permission": permissionMenuOpen = true
             case "trajectory": tab = 1
             default: break
             }
@@ -385,7 +366,7 @@ struct ChatView: View {
             onPlan: { model.executeCommand("/plan") },
             onFeedback: { showSessionFeedback = true },
             onCompact: { model.executeCommand("/compact") },
-            onPerm: { if model.isOnline { showPermission = true } },
+            onPerm: {},
             onModel: { if model.isOnline { showModels = true } },
             onExport: { model.exportSession() },
             onSelectPermission: { value in
@@ -618,6 +599,7 @@ struct ChatView: View {
                 }
             },
             modelMenuOpen: $showModels,
+            permissionMenuOpen: $permissionMenuOpen,
             onSend: { submitCommandMenuOrSend() },
             onCommandReturn: { commandHost.requestEnter() },
             onCommandMove: { commandHost.requestMove($0) },
@@ -1639,6 +1621,7 @@ struct ComposerView: View {
     var onPerm: () -> Void = {}
     var onSelectPermission: (String) -> Void = { _ in }
     @Binding var modelMenuOpen: Bool
+    @Binding var permissionMenuOpen: Bool
     var onSend: () -> Void = {}
     var onCommandReturn: () -> Void = {}
     var onCommandMove: (Int) -> Void = { _ in }
@@ -1740,7 +1723,8 @@ struct ComposerView: View {
                                 catalog: model.permissionCatalog,
                                 loading: model.permissionCatalogLoading,
                                 enabled: model.isOnline && !model.permissionChanging && !firstPromptBlocksComposerActions(model.firstPrompt),
-                                onSelect: onSelectPermission
+                                onSelect: onSelectPermission,
+                                open: $permissionMenuOpen
                             )
                         }
                     }

@@ -320,6 +320,7 @@ final class DesktopUiParityTests: XCTestCase {
             "Describe what you want to build, / commands, @ files or sessions"
         )
         XCTAssertEqual(landingHeadline(english: false), "探索未至之境")
+        XCTAssertNotEqual(landingHeadline(english: false), "探索未知之境")
         XCTAssertEqual(landingHeadline(english: true), "Into the Unknown")
         XCTAssertEqual(landingPreviewBadge(english: false), "预览版")
         XCTAssertEqual(landingPreviewBadge(english: true), "Preview")
@@ -465,6 +466,8 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertEqual(composerSessionUsageRowLabel(.output, english: false), "输出")
         XCTAssertEqual(composerSessionUsageTokenValue(exact: "12,345"), "12,345 tok")
         XCTAssertTrue(permissionRiskDismissesKeyboard)
+        XCTAssertTrue(composerPermissionUsesChipMenuSurface)
+        XCTAssertFalse(composerPermissionUsesSystemSheet)
         XCTAssertTrue(openingSessionDrawerResignsComposer)
         XCTAssertTrue(drawerOpenDoesNotFocusSearch)
         XCTAssertTrue(drawerScrollDismissesKeyboard)

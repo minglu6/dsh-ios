@@ -316,45 +316,62 @@ private struct TrajRowView: View {
     }
 }
 
+/// Desktop `KIND_ICON` + `.kindTag` at `@container width<=620px`: 19pt chip,
+/// 13pt official SVG, label hidden. User chip is business-primary on
+/// business-tertiary — not success green. Unknown kinds draw nothing.
 private struct KindBadge: View {
     let kind: String
 
     var body: some View {
-        Image(systemName: icon)
-            .font(.system(size: 11))
-            .foregroundStyle(fg)
-            .frame(width: 19, height: 19)
-            .background(bg, in: RoundedRectangle(cornerRadius: 3))
-            .accessibilityLabel(TrajL.kindLabel(kind))
+        ZStack {
+            if let glyph {
+                OfficialGlyph(
+                    kind: glyph,
+                    size: CGFloat(trajectoryKindIconSizePoints),
+                    color: fg
+                )
+            }
+        }
+        .frame(
+            width: CGFloat(trajectoryKindTagSizePoints),
+            height: CGFloat(trajectoryKindTagSizePoints)
+        )
+        .background(bg, in: RoundedRectangle(cornerRadius: CGFloat(trajectoryKindTagRadiusPoints)))
+        .accessibilityLabel(TrajL.kindLabel(kind))
     }
 
-    private var icon: String {
+    private var glyph: OfficialGlyph.Kind? {
         switch kind {
-        case TrajL.kindUser: return "person"
-        case TrajL.kindContext: return "doc.text"
-        case TrajL.kindAssistant: return "sparkle"
-        case TrajL.kindTool, TrajL.kindSubtool: return "wrench.and.screwdriver"
-        case TrajL.kindCompacted: return "arrow.down.right.and.arrow.up.left"
-        default: return "gearshape"
+        case TrajL.kindSystem: return .settingsOutlineRegular
+        case TrajL.kindUser: return .userOutline
+        case TrajL.kindContext: return .information
+        case TrajL.kindCompacted: return .compacted
+        case TrajL.kindAssistant: return .sparkle
+        case TrajL.kindTool, TrajL.kindSubtool: return .toolWrench
+        default: return nil
         }
     }
 
+    /// Desktop `.user` / `.systemNeutral` / `.contextGreen` / `.toolAmber` /
+    /// `.subtoolAmber` / `.assistantVioletBright` / `.compacted`.
     private var fg: Color {
         switch kind {
-        case TrajL.kindUser: return T.ok
-        case TrajL.kindContext: return T.ok.opacity(0.8)
+        case TrajL.kindUser: return T.accent
+        case TrajL.kindContext: return T.ok
         case TrajL.kindAssistant: return T.accent
         case TrajL.kindTool: return T.warnText
-        case TrajL.kindSubtool: return T.warnText.opacity(0.8)
+        case TrajL.kindSubtool: return T.warnText.opacity(0.62)
         default: return T.text2
         }
     }
 
     private var bg: Color {
         switch kind {
-        case TrajL.kindUser, TrajL.kindContext: return T.ok.opacity(0.12)
+        case TrajL.kindUser: return T.tint
+        case TrajL.kindContext: return T.ok.opacity(0.12)
         case TrajL.kindAssistant: return T.tint
-        case TrajL.kindTool, TrajL.kindSubtool: return T.warnTint
+        case TrajL.kindTool: return T.warnTint
+        case TrajL.kindSubtool: return T.warnTint.opacity(0.58)
         default: return T.fill2
         }
     }

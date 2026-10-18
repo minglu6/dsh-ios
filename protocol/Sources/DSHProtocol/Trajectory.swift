@@ -222,6 +222,68 @@ public func isForbiddenTrajectoryToolbarClockSymbol(_ name: String) -> Bool {
         || name == "IconClockOutlineArtwork"
 }
 
+/// Desktop `ui-trajectory` `KIND_ICON` (size 13) + `.kindTag` 19×19 chip.
+/// Narrow table `@container width<=620px` shows the icon and hides
+/// `kindTagLabel`. Artwork is primitives Regular stroke 1
+/// (`IconSettingsOutlineRegular` / `IconUserOutlineRegular` /
+/// `IconSparkleRegular`) plus the file-local ToolWrench / Information /
+/// Compacted SVGs. Never SF `person` / `sparkle` / `wrench` / `gearshape`.
+/// Unknown kinds have no desktop fallback — draw nothing.
+public let trajectoryKindIconSizePoints: Double = 13
+public let trajectoryKindTagSizePoints: Double = 19
+public let trajectoryKindTagRadiusPoints: Double = 4
+public let trajectoryKindIconStrokeWidth: Double = 1
+public let trajectoryToolWrenchStrokeWidth: Double = 1.5
+public let trajectoryInformationStrokeWidth: Double = 1.4
+public let trajectoryInformationStemStrokeWidth: Double = 1.8
+public let trajectoryCompactedStrokeWidth: Double = 1.5
+public let trajectoryInformationCircleCenter: Double = 8
+public let trajectoryInformationCircleRadius: Double = 6.7
+public let trajectoryInformationDotCenterX: Double = 8
+public let trajectoryInformationDotCenterY: Double = 5.5
+public let trajectoryInformationDotRadius: Double = 0.85
+public let trajectoryInformationStemPath = "M8 7.75v3.4"
+public let trajectoryUserHeadPath =
+    "M8 8.25C9.51878 8.25 10.75 7.01878 10.75 5.5C10.75 3.98122 9.51878 2.75 8 2.75C6.48122 2.75 5.25 3.98122 5.25 5.5C5.25 7.01878 6.48122 8.25 8 8.25Z"
+public let trajectoryUserShoulderPath =
+    "M2.5 14.5C2.5 11.5 5.25 10.25 8 10.25C10.75 10.25 13.5 11.5 13.5 14.5"
+public let trajectorySparkleLargePath =
+    "M5.875 3C5.875 6.33333 7.54167 8 10.875 8C7.54167 8 5.875 9.66667 5.875 13C5.875 9.66667 4.20833 8 0.875 8C4.20833 8 5.875 6.33333 5.875 3Z"
+public let trajectorySparkleMediumPath =
+    "M12.375 1.55823C12.375 3.39156 13.2917 4.30823 15.125 4.30823C13.2917 4.30823 12.375 5.22489 12.375 7.05823C12.375 5.22489 11.4583 4.30823 9.625 4.30823C11.4583 4.30823 12.375 3.39156 12.375 1.55823Z"
+public let trajectorySparkleSmallPath =
+    "M12.375 10.4418C12.375 11.7751 13.0417 12.4418 14.375 12.4418C13.0417 12.4418 12.375 13.1084 12.375 14.4418C12.375 13.1084 11.7083 12.4418 10.375 12.4418C11.7083 12.4418 12.375 11.7751 12.375 10.4418Z"
+public let trajectoryToolWrenchPath =
+    "M14 3.3a3.8 3.8 0 0 1-4.8 4.8l-5.1 5.1a1.6 1.6 0 1 1-2.3-2.3l5.1-5.1A3.8 3.8 0 0 1 11.7 1l-2.3 2.3 2.3 2.3L14 3.3Z"
+public let trajectoryCompactedTopLeftPath = "m2.5 2.5 3.75 3.75M3 6.25h3.25V3"
+public let trajectoryCompactedTopRightPath = "m13.5 2.5-3.75 3.75M13 6.25H9.75V3"
+public let trajectoryCompactedBottomLeftPath = "m2.5 13.5 3.75-3.75M3 9.75h3.25V13"
+public let trajectoryCompactedBottomRightPath = "m13.5 13.5-3.75-3.75M13 9.75H9.75V13"
+
+public func trajectoryKindSymbol(_ kind: String) -> String? {
+    switch kind {
+    case TrajL.kindSystem: return "official.settingsOutlineRegular"
+    case TrajL.kindUser: return "official.userOutline"
+    case TrajL.kindContext: return "official.information"
+    case TrajL.kindCompacted: return "official.compacted"
+    case TrajL.kindAssistant: return "official.sparkle"
+    case TrajL.kindTool, TrajL.kindSubtool: return "official.toolWrench"
+    default: return nil
+    }
+}
+
+public func isForbiddenTrajectoryKindSymbol(_ name: String) -> Bool {
+    name == "person"
+        || name == "person.fill"
+        || name == "sparkle"
+        || name == "sparkles"
+        || name == "wrench.and.screwdriver"
+        || name == "gearshape"
+        || name == "gearshape.fill"
+        || name == "doc.text"
+        || name == "arrow.down.right.and.arrow.up.left"
+}
+
 /// Desktop `code-program.ts` PTC entry point name.
 public let ptcToolName = "run_code"
 

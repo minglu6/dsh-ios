@@ -11,7 +11,7 @@ struct RootView: View {
     @State private var slashMenu = SlashMenuState()
     @StateObject private var commandHost = CommandMenuHost()
     @State private var showModels = false
-    @State private var showPermission = false
+    @State private var permissionMenuOpen = false
     @State private var riskPermission: String?
     @State private var showWorkspacePicker = false
     @State private var showFileImporter = false
@@ -201,22 +201,6 @@ struct RootView: View {
                 }
             }
         }
-        .sheet(isPresented: $showPermission) {
-            PermissionPickerSheet(
-                current: model.sessionPermission ?? model.draftPermission ?? model.defaultPermission,
-                catalog: model.permissionCatalog,
-                loading: model.permissionCatalogLoading,
-                error: model.permissionCatalogError,
-                enabled: model.isOnline,
-                busy: model.permissionChanging,
-                onRefresh: { model.reloadPermissionCatalog() },
-                onDismiss: { showPermission = false },
-                onPick: { value in
-                    showPermission = false
-                    applyLandingPermission(value)
-                }
-            )
-        }
         .overlay {
             if let value = riskPermission {
                 PermissionRiskDialog(
@@ -260,6 +244,7 @@ struct RootView: View {
             },
             onSelectPermission: { applyLandingPermission($0) },
             modelMenuOpen: $showModels,
+            permissionMenuOpen: $permissionMenuOpen,
             onSend: {
                 if landingCommandMenuVisible {
                     commandHost.requestEnter()
@@ -294,7 +279,7 @@ struct RootView: View {
             onPlan: { model.executeCommand("/plan") },
             onFeedback: { model.createAndOpenSession() },
             onCompact: { model.executeCommand("/compact") },
-            onPerm: { if model.isOnline { showPermission = true } },
+            onPerm: {},
             onModel: { if model.isOnline { showModels = true } },
             onExport: { model.createAndOpenSession() },
             onSelectPermission: { applyLandingPermission($0) }
