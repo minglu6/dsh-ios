@@ -195,6 +195,10 @@ public let inspectorPickSkipReason =
     "desktop Guide has no Session Inspector; primitives IconInspectOutline is CodeBracketsArtwork, not a viewfinder"
 public let inspectorTypeFilterSkipReason =
     "ui-primitives 0.2.1-alpha.5 has no type-filter artwork"
+public let inspectorPickSkipSymbol = "viewfinder"
+public let inspectorTypeFilterSkipSymbol = "line.3.horizontal.decrease"
+public func inspectorPickSkipIdentifier() -> String { "inspector.viewfinder" }
+public func inspectorTypeFilterSkipIdentifier() -> String { "inspector.typeFilter" }
 
 /// Desktop terminal panel has no centered spinner. `IconLoadingOutline` is a static
 /// arc used next to loading labels elsewhere; rotating it in the PTY pane would

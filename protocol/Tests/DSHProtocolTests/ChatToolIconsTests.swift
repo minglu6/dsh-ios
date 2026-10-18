@@ -111,6 +111,10 @@ final class ChatToolIconsTests: XCTestCase {
         XCTAssertFalse(inspectorPickUsesOfficialGlyph)
         XCTAssertFalse(inspectorTypeFilterUsesOfficialGlyph)
         XCTAssertTrue(inspectorPickSkipReason.contains("CodeBracketsArtwork"))
+        XCTAssertEqual(inspectorPickSkipSymbol, "viewfinder")
+        XCTAssertEqual(inspectorTypeFilterSkipSymbol, "line.3.horizontal.decrease")
+        XCTAssertEqual(inspectorPickSkipIdentifier(), "inspector.viewfinder")
+        XCTAssertEqual(inspectorTypeFilterSkipIdentifier(), "inspector.typeFilter")
         XCTAssertFalse(terminalCenterLoadingUsesOfficialGlyph)
         XCTAssertTrue(terminalCenterLoadingSkipReason.contains("no center spinner"))
     }

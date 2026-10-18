@@ -219,11 +219,14 @@ private struct SessionInspectorContent: View {
                 } label: {
                     // Skip: desktop Guide has no Session Inspector; primitives
                     // `IconInspectOutline` is CodeBracketsArtwork, not a viewfinder.
-                    Image(systemName: "viewfinder")
+                    Image(systemName: inspectorPickSkipSymbol)
                         .font(.system(size: 12))
                         .foregroundStyle(T.ink)
                         .frame(width: 22, height: 22)
+                        .accessibilityIdentifier(inspectorPickSkipIdentifier())
                 }
+                .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(.isButton)
                 .accessibilityLabel(L.t("在对话面板中选取元素", "Pick an element in Chat View"))
 
                 Text("· " + (state.filter.isEmpty ? "\(allCount)" : "\(matchingCount) / \(allCount)"))
@@ -440,11 +443,14 @@ private struct InspectorTypeFilter: View {
             open.toggle()
         } label: {
             // Skip: primitives have no type-filter artwork.
-            Image(systemName: "line.3.horizontal.decrease")
+            Image(systemName: inspectorTypeFilterSkipSymbol)
                 .font(.system(size: 11))
                 .foregroundStyle(value.isEmpty ? T.ink : T.accent)
                 .frame(width: 17, height: 17)
+                .accessibilityIdentifier(inspectorTypeFilterSkipIdentifier())
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(.isButton)
         .accessibilityLabel(L.t("筛选类型", "Filter types"))
         .popover(isPresented: $open) {
             let suggestions = inspectorTypeSuggestions(rows, filter: draft)

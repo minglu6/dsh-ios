@@ -84,7 +84,7 @@ struct ConnectionsView: View {
         // `.frame` then failed with multiple matches.
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("connectionsScreen")
-        .sheet(item: presentedItem) { item in
+        .sheet(item: $presented, onDismiss: { renaming = false }) { item in
             switch item {
             case .pairLink:
                 PairLinkSheet(
@@ -140,16 +140,6 @@ struct ConnectionsView: View {
             fatalError("manage sheet for missing profile \(id)")
         }
         return profile
-    }
-
-    private var presentedItem: Binding<Presented?> {
-        Binding(
-            get: { presented },
-            set: { value in
-                presented = value
-                if value == nil { renaming = false }
-            }
-        )
     }
 
     private var header: some View {
@@ -563,6 +553,7 @@ private struct ConnActionRow: View {
             .buttonStyle(.plain)
             .accessibilityElement(children: .contain)
             .accessibilityAddTraits(.isButton)
+            .accessibilityLabel(title)
             .accessibilityIdentifier(identifier)
             if divider {
                 Divider().padding(.horizontal, 16)
@@ -656,14 +647,14 @@ private struct PairLinkSheet: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(T.bg)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier(connectionsPairLinkSheetIdentifier())
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(L.cancel()) { onDismiss() }
                 }
             }
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier(connectionsPairLinkSheetIdentifier())
     }
 
     private func pasteLink() {
