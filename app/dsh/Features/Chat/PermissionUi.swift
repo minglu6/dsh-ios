@@ -21,7 +21,13 @@ struct PermissionRiskSheet: View {
             Circle()
                 .fill(T.warnTint)
                 .frame(width: 44, height: 44)
-                .overlay(Image(systemName: "exclamationmark.triangle").foregroundStyle(T.warnText))
+                .overlay(
+                    OfficialGlyph(
+                        kind: .warningOutline,
+                        size: CGFloat(permissionRiskIconSizePoints),
+                        color: T.warnText
+                    )
+                )
             Text(auto
                  ? permissionAutoConfirmTitle(english: L.en)
                  : L.t("确认启用完全权限？", "Enable Full access?"))

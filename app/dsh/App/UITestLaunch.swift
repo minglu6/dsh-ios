@@ -208,8 +208,32 @@ extension AppModel {
             firstPrompt = nil
         case "drawer", "viewOptions", "sessionActions":
             showDrawer = true
-        case "chat", "trajectory", "trajectoryDetail":
+        case "chat", "trajectory", "trajectoryDetail", "planMode", "mention":
             seedUITestJobs()
+            if screen == "planMode" {
+                chat?.planMode = true
+                composerText = ""
+            }
+            if screen == "mention" {
+                composerText = "@[你好](dsh-session:s-hello) @README.md @"
+                fileMentions = [
+                    FileReference.parse(.object([
+                        "path": .string("README.md"),
+                        "kind": .string("file"),
+                    ]))!,
+                    FileReference.parse(.object([
+                        "path": .string("src/"),
+                        "kind": .string("directory"),
+                    ]))!,
+                ]
+                sessionMentions = [
+                    SessionReference.parse(.object([
+                        "mention": .string("@[你好](dsh-session:s-hello)"),
+                        "title": .string("你好"),
+                        "sessionId": .string("s-hello"),
+                    ]))!,
+                ]
+            }
         case "chatDock":
             seedUITestChatDocks()
         case "jobs":

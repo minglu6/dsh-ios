@@ -86,6 +86,10 @@ struct OfficialGlyph: View {
         case paperPlaneOutline
         case compactOutline
         case permissionFullAccess
+        case warningOutline
+        case warningTriangle
+        case playOutline
+        case pauseOutline
 
         var accessibilityIdentifier: String {
             switch self {
@@ -164,6 +168,10 @@ struct OfficialGlyph: View {
             case .compactOutline: return commandMenuIconSymbol("compact")
             case .permissionFullAccess: return commandMenuIconSymbol("permission")
             case .downloadOutline: return commandMenuIconSymbol("export")
+            case .warningOutline: return permissionRiskOfficialSymbol()
+            case .warningTriangle: return documentPreviewWarningSymbol()
+            case .playOutline: return filesAutoRefreshSymbol(enabled: false)
+            case .pauseOutline: return filesAutoRefreshSymbol(enabled: true)
             case .permission: return "official.glyph"
             default: return "official.glyph"
             }
@@ -182,7 +190,7 @@ struct OfficialGlyph: View {
                  .questionOutline, .usersOutline, .checklistOutline, .goalOutline, .cordisPlugin, .stopFill,
                  .computer, .trashOutline, .queueOutline, .sendOutline, .dataOutline, .dataOutlineRegular,
                  .paperclipOutline, .paperPlaneOutline, .compactOutline, .permissionFullAccess,
-                 .downloadOutline:
+                 .downloadOutline, .warningOutline, .warningTriangle, .playOutline, .pauseOutline:
                 return false
             // plusOutline / send are decorative; ComposerView hosts own
             // official.plusOutline and official.send.
@@ -677,6 +685,21 @@ struct OfficialGlyph: View {
                 ctx.stroke(Path(SVGPath.cgPath(iconCompactOutlineArcPath)), with: .color(color), style: Self.regularStroke)
             case .permissionFullAccess:
                 drawPermission(&ctx, value: "danger-full-access", color: color, stroke: stroke)
+            case .warningOutline:
+                ctx.stroke(Path(SVGPath.cgPath(iconWarningOutlineRingPath)), with: .color(color), style: Self.regularStroke)
+                ctx.stroke(Path(SVGPath.cgPath(iconWarningOutlineStemPath)), with: .color(color), style: Self.regularStroke)
+                ctx.stroke(Path(SVGPath.cgPath(iconWarningOutlineDotPath)), with: .color(color), style: Self.regularStroke)
+            case .warningTriangle:
+                let round = StrokeStyle(lineWidth: 1, lineCap: .round, lineJoin: .round)
+                ctx.stroke(Path(SVGPath.cgPath(iconWarningTriangleOutlinePath)), with: .color(color), style: round)
+                ctx.stroke(Path(SVGPath.cgPath(iconWarningTriangleBangPath)), with: .color(color), style: round)
+            case .playOutline:
+                ctx.stroke(Path(SVGPath.cgPath(iconWarningOutlineRingPath)), with: .color(color), style: Self.regularStroke)
+                ctx.stroke(Path(SVGPath.cgPath(iconPlayOutlineTrianglePath)), with: .color(color), style: Self.regularStroke)
+            case .pauseOutline:
+                ctx.stroke(Path(SVGPath.cgPath(iconWarningOutlineRingPath)), with: .color(color), style: Self.regularStroke)
+                ctx.stroke(Path(SVGPath.cgPath(iconPauseOutlineLeftPath)), with: .color(color), style: Self.regularStroke)
+                ctx.stroke(Path(SVGPath.cgPath(iconPauseOutlineRightPath)), with: .color(color), style: Self.regularStroke)
             }
         }
         .frame(width: canvasWidth, height: canvasHeight)

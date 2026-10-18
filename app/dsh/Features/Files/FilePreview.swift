@@ -93,9 +93,14 @@ struct FilePreviewView: View {
                 .accessibilityLabel(wrap ? L.unwrapLines() : L.wrapLines())
             }
             Button { generation += 1 } label: {
-                Image(systemName: "arrow.clockwise").foregroundStyle(loading ? T.text3 : T.text2)
+                OfficialGlyph(
+                    kind: .refreshOutline,
+                    size: 16,
+                    color: loading ? T.text3 : T.text2
+                )
             }
             .disabled(loading)
+            .accessibilityElement(children: .contain)
             .accessibilityLabel(L.refreshFile())
         }
         .padding(.horizontal, 16)
@@ -413,10 +418,12 @@ private struct OfficeFontWarning: View {
             Button {
                 expanded.toggle()
             } label: {
-                Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 14))
-                    .foregroundStyle(T.warnText)
-                    .frame(width: 32, height: 32)
+                OfficialGlyph(
+                    kind: .warningTriangle,
+                    size: CGFloat(documentPreviewWarningIconSizePoints),
+                    color: T.warnText
+                )
+                .frame(width: 32, height: 32)
             }
             .accessibilityLabel(L.t("缺失 \(fonts.count) 种字体，点击查看", "Missing fonts: \(fonts.count). Click to view."))
             .popover(isPresented: $expanded) {

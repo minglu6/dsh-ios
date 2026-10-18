@@ -4,7 +4,7 @@ import XCTest
 /// screens parent / CI compare to desktop `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`.
 final class ScreenshotTests: XCTestCase {
     private let screens = [
-        "landing", "drawer", "viewOptions", "sessionActions", "chat",
+        "landing", "drawer", "viewOptions", "sessionActions", "chat", "planMode", "mention",
         "models", "permission", "start", "browser", "inspector",
         "settings", "settingsShell", "schedule", "terminal", "trajectory", "plugins", "connections",
         "composerStop", "slash", "jobs", "builtinPlugins", "trajectoryDetail",
@@ -212,7 +212,7 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertGreaterThanOrEqual(settingsFrame.height, 44, "\(appearance) settings hit shorter than 44pt")
                 XCTAssertGreaterThanOrEqual(hostFrame.height, 44, "\(appearance) host hit shorter than 44pt")
             }
-            if screen == "landing" || screen == "chat" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
+            if screen == "landing" || screen == "chat" || screen == "planMode" || screen == "mention" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
                 XCTAssertFalse(app.images["sidebar.left"].exists, "\(appearance) \(screen) still exposes SF sidebar.left")
                 XCTAssertFalse(app.images["sidebar.right"].exists, "\(appearance) \(screen) still exposes SF sidebar.right")
                 XCTAssertTrue(
@@ -220,13 +220,13 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) \(screen) missing official panel-left glyph"
                 )
             }
-            if screen == "chat" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
+            if screen == "chat" || screen == "planMode" || screen == "mention" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
                 XCTAssertTrue(
                     app.descendants(matching: .any)["official.panelRight"].waitForExistence(timeout: 8),
                     "\(appearance) \(screen) missing official panel-right glyph"
                 )
             }
-            if screen == "landing" || screen == "chat" {
+            if screen == "landing" || screen == "chat" || screen == "planMode" || screen == "mention" {
                 XCTAssertFalse(app.images["plus"].exists, "\(appearance) \(screen) still exposes SF plus")
                 XCTAssertTrue(
                     app.descendants(matching: .any)["official.plusOutline"].waitForExistence(timeout: 8),
@@ -363,7 +363,7 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) landing composer floated off the bottom (gap \(gap))"
                 )
             }
-            if screen == "chat" || screen == "trajectory" {
+            if screen == "chat" || screen == "planMode" || screen == "mention" || screen == "trajectory" {
                 XCTAssertFalse(app.images["clock"].exists, "\(appearance) \(screen) still exposes SF clock on jobs chip")
                 XCTAssertFalse(app.images["clock.fill"].exists, "\(appearance) \(screen) still exposes SF clock.fill on jobs chip")
                 XCTAssertTrue(
@@ -802,6 +802,43 @@ final class ScreenshotTests: XCTestCase {
             }
             if screen == "permission" {
                 assertOfficialMenuChrome(app, appearance: appearance, screen: screen)
+            }
+            if screen == "planMode" {
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.planOutline"].waitForExistence(timeout: 8),
+                    "\(appearance) planMode missing official plan chip glyph"
+                )
+                XCTAssertFalse(app.images["doc.text"].exists, "\(appearance) planMode still uses SF doc.text")
+                XCTAssertTrue(
+                    app.staticTexts["计划"].waitForExistence(timeout: 8),
+                    "\(appearance) planMode missing 计划 chip label"
+                )
+                let placeholder = app.descendants(matching: .any)["composerPlaceholder"]
+                XCTAssertTrue(
+                    placeholder.waitForExistence(timeout: 8),
+                    "\(appearance) planMode missing composer placeholder"
+                )
+                XCTAssertTrue(
+                    placeholder.label == "描述你的任务以生成计划"
+                        || app.staticTexts["描述你的任务以生成计划"].exists,
+                    "\(appearance) planMode placeholder is not desktop plan copy (got \(placeholder.label))"
+                )
+            }
+            if screen == "mention" {
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.queueOutline"].waitForExistence(timeout: 8),
+                    "\(appearance) mention missing official session ChatLines glyph"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.browseOutline"].exists,
+                    "\(appearance) mention missing official file Browse glyph"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.folderClose"].exists,
+                    "\(appearance) mention missing official folder Close glyph"
+                )
+                XCTAssertFalse(app.images["bubble.left"].exists, "\(appearance) mention still uses SF bubble.left")
+                XCTAssertFalse(app.images["doc"].exists, "\(appearance) mention still uses SF doc")
             }
             let shot = XCUIScreen.main.screenshot()
             let url = root.appendingPathComponent("\(appearance.lowercased())-\(screen).png")

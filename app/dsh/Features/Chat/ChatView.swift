@@ -1689,8 +1689,11 @@ struct ComposerView: View {
                             model.executeCommand("/plan off")
                         } label: {
                             HStack(spacing: 4) {
-                                Image(systemName: D.plan)
-                                    .font(.system(size: CGFloat(planChipIconSizePoints)))
+                                OfficialGlyph(
+                                    kind: .planOutline,
+                                    size: CGFloat(planChipIconSizePoints),
+                                    color: T.accent
+                                )
                                 Text(L.planChip())
                                     .font(.system(size: CGFloat(planChipFontSizePoints), weight: .medium))
                             }
@@ -1700,6 +1703,7 @@ struct ComposerView: View {
                             .background(T.tint, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
                         }
                         .buttonStyle(.plain)
+                        .accessibilityElement(children: .contain)
                         .accessibilityLabel(L.planModeOn())
                         .accessibilityHint(planChipTitle(english: L.en))
                     }
@@ -1802,7 +1806,7 @@ struct ComposerView: View {
                 ForEach(Array(references.enumerated()), id: \.offset) { _, ref in
                     HStack(spacing: 4) {
                         mentionLeading(ref.kind)
-                            .frame(width: 12, height: 12)
+                            .frame(width: CGFloat(mentionChipIconSizePoints), height: CGFloat(mentionChipIconSizePoints))
                         Text(ref.label).font(.caption)
                     }
                     .padding(.horizontal, 8)
@@ -1834,6 +1838,7 @@ struct ComposerView: View {
                             }
                             .padding(8)
                         }
+                        .accessibilityElement(children: .contain)
                     }
                 }
                 if trigger?.quoted != true && !model.sessionMentions.isEmpty {
@@ -1843,12 +1848,17 @@ struct ComposerView: View {
                             insert(session.mention)
                         } label: {
                             HStack {
-                                Image(systemName: "bubble.left").foregroundStyle(T.text3)
+                                OfficialGlyph(
+                                    kind: .queueOutline,
+                                    size: CGFloat(mentionMenuIconSizePoints),
+                                    color: T.text3
+                                )
                                 Text(session.title ?? session.mention).foregroundStyle(T.ink)
                                 Spacer()
                             }
                             .padding(8)
                         }
+                        .accessibilityElement(children: .contain)
                     }
                 }
             }
@@ -1860,22 +1870,24 @@ struct ComposerView: View {
 
     @ViewBuilder
     private func mentionLeading(_ kind: ComposerReferenceKind) -> some View {
+        let size = CGFloat(mentionChipIconSizePoints)
         switch kind {
         case .directory:
-            OfficialGlyph(kind: .folderClose, size: 12, color: T.ink)
+            OfficialGlyph(kind: .folderClose, size: size, color: T.ink)
         case .session:
-            Image(systemName: "bubble.left").font(.caption2)
+            OfficialGlyph(kind: .queueOutline, size: size, color: T.ink)
         case .file:
-            Image(systemName: "doc").font(.caption2)
+            OfficialGlyph(kind: .browseOutline, size: size, color: T.ink)
         }
     }
 
     @ViewBuilder
     private func mentionFileLeading(directory: Bool) -> some View {
+        let size = CGFloat(mentionMenuIconSizePoints)
         if directory {
-            OfficialGlyph(kind: .folderClose, size: 14, color: T.text3)
+            OfficialGlyph(kind: .folderClose, size: size, color: T.text3)
         } else {
-            Image(systemName: "doc").foregroundStyle(T.text3)
+            OfficialGlyph(kind: .browseOutline, size: size, color: T.text3)
         }
     }
 
@@ -1922,6 +1934,8 @@ private struct ComposerTextView: UIViewRepresentable {
         placeholder.textColor = UIColor.placeholderText
         placeholder.numberOfLines = 0
         placeholder.translatesAutoresizingMaskIntoConstraints = false
+        placeholder.isAccessibilityElement = true
+        placeholder.accessibilityIdentifier = "composerPlaceholder"
         view.addSubview(placeholder)
         NSLayoutConstraint.activate([
             placeholder.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: view.textContainer.lineFragmentPadding),

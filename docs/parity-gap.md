@@ -94,7 +94,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R65 | 远程主机附近设备电脑图标 + 管理 sheet 官方 trash/refresh/edit；进 CI 截图路径 | done (#74) |
 | R66 | 配对链接输入框与按钮同一 22pt 边距；Todo/Goal/Queue dock 与设置壳模型行官方 SVG + CI `chatDock`/`settingsShell` | done (#75) |
 | R66-fix | PairLinkSheet bounds host 不参与布局；小标签与标题 22pt 对齐 | done (#76) |
-| R67 | `/` 菜单行官方 SVG（paperclip / paperPlane / compact / data Regular / permission FullAccess / download / goal / plan） | this PR |
+| R67 | `/` 菜单行官方 SVG（paperclip / paperPlane / compact / data Regular / permission FullAccess / download / goal / plan） | done (#77) |
+| R68 | 计划 chip / 提及气泡 / 传统 FileGlyph / 反馈 ✓ / 风险圈叹号 / 目录 chevron 官方 SVG；CI `planMode` + `mention` | this PR |
 
 ---
 
@@ -1834,3 +1835,82 @@ Android `MainActivity` 窄屏是 `ModalNavigationDrawer`（按钮 / 手势滑出
 - 扫码 QR / Inspector viewfinder / 终端 ProgressView（primitives 无 artwork）。
 - 管理 sheet 删除确认（Android 立即删除；桌面 pocket 不是这张 sheet）。
 - 工作区 hover-chevron 互换（触控无 hover）。
+
+## Round 68 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`；Android 仅参考）
+
+基线 `main` `e61c87d`（#77 Round 67：`/` 菜单官方 SVG）。桌面是源。禁止自创颜色/图标/间距；无系统蓝；无 ActionSheet；文案「远程主机」。
+
+### 必须核实（已对齐，本轮不改）
+
+| 项 | 判定 |
+| --- | --- |
+| landing「探索未至之境」+ whale | **PASS** |
+| Composer 贴底 | **PASS** |
+| 抽屉设置 vs 绿点+主机名独立热区 ≥16pt | **PASS** |
+| 远程主机整页 | **PASS** |
+| 开抽屉 / 滚动 / 进设置 / 进远程主机收键盘 | **PASS** |
+| 权限 chip 只图标 + #68 菜单 | **PASS** |
+| #69 Start/Browser/Inspector 全屏；#70 官方 SVG；#71 Flash 1017；#72 配对链接流程与当前工作区文件夹色；#73 卡片间距与配对 sheet primitives；#74 附近电脑图标/管理 sheet 官方 SVG/取消 ≥44pt；#75 配对 22pt inset + dock/设置壳官方 SVG；#76 PairLinkSheet 版式；#77 `/` 菜单 8 个 official.* | **PASS** |
+| `/` 菜单全量不显示数量；聊天顶栏无分享；用户消息下无常驻复制 | **PASS** |
+
+### 本轮修
+
+| 项 | 桌面源码 | iOS 原状 | 处理 |
+| --- | --- | --- | --- |
+| 计划 chip `D.plan` SF `doc.text` | `ui-plan` `PlanModeControl` / `PlanChip`：`IconPlanOutlineRegular` size 14（`IconListPenOutlineArtwork`，与 `/plan` 同行 Regular） | `ChatView` modes 行 `Image(systemName: D.plan)` | 换成 `OfficialGlyph.planOutline`。CI 加 `planMode` 屏：断言 `official.planOutline`、禁 `doc.text`、文案「计划」、占位「描述你的任务以生成计划」 |
+| 提及气泡 `bubble.left` / `doc` | `ui-primitives` `ReferenceIconRegular`：`session`→`ChatLinesOutlineArtwork`（`IconQueueOutline`）、`file`→`BrowseOutlineArtwork`、`folder`→`FolderCloseArtwork`。`ReferenceChip` size 16；菜单行 14 | chip / 面板仍 SF | chip 16 / 面板 14 官方 SVG。CI 加 `mention` 屏：断言 `official.queueOutline` / `browseOutline` / `folderClose`，禁 `bubble.left` `doc` |
+| 反馈选中 ✓ | `ui-input-trigger` MenuView 选中态 `IconCheckOutlineRegular` | `FeedbackCategorySheet` SF `checkmark` | `OfficialGlyph.checkOutline` 14 |
+| 权限风险英雄图标 | `ui-primitives` `RiskConfirmation`：`IconWarningOutlineRegular` size 18（**圆圈+叹号**，不是三角） | `PermissionRiskSheet` SF `exclamationmark.triangle` | `OfficialGlyph.warningOutline` 18。勾选框仍是系统 checkbox（桌面是原生 `<input type="checkbox">`，primitives 无 checkbox artwork） |
+| 文档预览缺字体 | `ui-sidebar-documentpreview` `IconWarningTriangleOutlineRegular` | `FilePreview` `OfficeFontWarning` SF 三角 | `OfficialGlyph.warningTriangle` |
+| 目录选择 chevron / pencil / ✓ | 面包屑与列披露 `IconChevronRightOutlineRegular`；改路径 `IconEditOutlineRegular`；显示隐藏 `IconCheckOutlineRegular` | `WorkspaceDirectoryPicker` SF `chevron.right` / `pencil` / `checkmark` / `plus` | 换成官方 chevronRight / editOutline / checkOutline / plusOutline |
+| 文件树传统类型 | `ui-primitives` `FileTypeIcon` `FileGlyph` 28×28 折角纸 + 分类 mark；`--dsw-static-neutral-00` 白标；`other` 折角 `--dsw-static-neutral-400` `#a2a4a6` | `FileTypeIcon` SF `doc.richtext` / `photo` / `tablecells` / … | 提取 `FILE_BODY`/`FILE_FOLD` 与 9 类 mark。树图标 16pt。文件夹仍官方 open/close。socket/fifo `warning` 用圆圈 `IconWarningOutline`（桌面 FileTypeIcon 无 warning 档，Host `other` 走 warning 语义） |
+| 文件树工具栏 play/pause/reload | `ui-sidebar-files` header：`IconPauseOutlineRegular` / `IconPlayOutlineRegular` / `IconRefreshOutlineRegular` | `FilesPanel` SF `pause` / `play.fill` / `arrow.clockwise`；预览刷新同 SF | 换成官方 pause/play/refresh |
+
+### 查过但本轮不提取（写明包/文件）
+
+| 项 | 查过 | 结论 |
+| --- | --- | --- |
+| 语言 `CODE_FILE_ARTWORK`（python/go/swift/…） | `ui-primitives@0.2.1-alpha.5` `lib/index.js` `#region lib/types/code-file-icon-artwork.js`；`CodeFileIcon` 把整段 inner SVG（`text` / `clipPath` / `linearGradient` / 嵌套 `<svg>`）塞进 20×20 viewBox | 现有 `SVGPath` 只吃 path `d`，不能画这套全彩 markup。**不发明**简化图标。继续 `doc.fill`。下轮若加 WKWebView/`SVGRenderer` 再搬 |
+| Markdown 行内 fileChip `Text(Image(systemName: "doc"))` | 桌面 `ReferenceChip` 用 `ReferenceIconRegular` size 16 | SwiftUI `Text` 拼接不能嵌 `Canvas` OfficialGlyph。不发明 raster 附件。**skip** |
+| 变更卡 `doc.on.doc` / `doc.text` | `ui-chat` / `ui-workspace` 无独立「多文件叠层」artwork；单文件应对 `FileTypeIcon` | 多文件卡无官方叠层 SVG。**skip 不发明** |
+| 权限确认勾选 `checkmark.square.fill` | `RiskConfirmation` 原生 checkbox | primitives 无 checkbox artwork。**skip** |
+
+### 有意 skip（桌面源码依据）
+
+| 项 | 判定 | 依据 |
+| --- | --- | --- |
+| 管理 sheet「删除」无确认 | **skip** | Android 立即 `removeProfile`。桌面 pocket 无这张 sheet / 无 delete Modal |
+| 通用设置 Toggle / 语言 Picker | **skip** | 桌面 PreferenceRow 自定义开关 / MenuSurface。Phone `.labelsHidden()` Toggle + `Picker` `.tint(T.ink)`，不是系统蓝 ActionSheet |
+| Todo in_progress / 终端 / slash loading `ProgressView` | **skip** | primitives 无 loading artwork |
+| 扫码 QR / Inspector viewfinder / 类型过滤 | **skip** | primitives 无对应 artwork |
+| 插件列表搜索框 SF magnifyingglass | **skip** | 桌面 `ui-plugin-manager` 无该槽 |
+| `turnNavigation` / toBottom FAB / ask.review / hover chevron / Account/shortcuts / CompatibilityBanner / 审批通知 / stop-state | **skip** | 既定平台 / hide / 禁止发明 |
+
+### 逐屏核对（light+dark）剩余 SF / 系统控件
+
+| 屏 | 判定 | 剩余 SF / 系统控件 | 处理结论 |
+| --- | --- | --- | --- |
+| landing | **PASS** | 无计划 chip（`planMode=false`） | 标题/鲸/Composer 贴底 |
+| chat | **PASS** | 无计划 chip | 无分享、无用户常驻复制 |
+| planMode | **本轮修** | — | 官方 plan chip + 占位 |
+| mention | **本轮修** | — | 官方 session/file/folder 提及图标 |
+| chatDock | **PASS** | Todo `in_progress` `ProgressView` | 有意 skip |
+| drawer | **PASS** | — | 设置 vs 绿点+主机名 |
+| jobs | **PASS** | — | 官方 chevronDown / stopFill |
+| trajectory / trajectoryDetail | **PASS** | — | KIND_ICON + 详情官方 SVG |
+| inspector | **skip** | viewfinder / 类型过滤 | primitives 无 artwork |
+| browser | **PASS** | WK 线性 `ProgressView` | 无 primitives 进度条 |
+| terminal | **skip** | 中间 `ProgressView` | 不发明 loading SVG |
+| settings | **PASS** | Toggle / 语言 `Picker` | 有意 skip，非系统蓝 |
+| settingsShell | **PASS** | — | 模型 `IconDataOutlineMedium` |
+| plugins / builtinPlugins | **skip / PASS** | 列表搜索框 SF magnifyingglass | 桌面无该槽 |
+| models / permission | **PASS** | — | 官方 chevron/check |
+| slash | **PASS** | loading `ProgressView` | #77 行图标；loading skip |
+| schedule / sessionActions / viewOptions / start / composerStop | **PASS** | — | 既有官方 SVG / 全屏 Start |
+| connections / pairingLink / nearby / manage | **PASS** | 管理删除无确认 | #76 版式不回归 |
+| 文件树 / 目录选择 / 反馈 sheet / 风险 sheet | **本轮修** | 语言 CODE_FILE 仍 `doc.fill`；风险 checkbox 系统方框；预览 wrap/copy 仍 SF | 传统 FileGlyph + 工具栏 play/pause/refresh |
+
+### npm dist-tag（只报告，不 bump 基线）
+
+`npm view @deepseek-ai/dsh-client-ui-primitives`：`alpha` 仍 `0.2.1-alpha.5`，`next` 仍 `0.2.1-rc.2`，`latest` 仍 `0.0.1-rc.1`。alpha.5 之后**没有新的 alpha**。rc.2 与 alpha.5 的 primitives `lib/index.js` / commands `lib/client.js` sha256 **相同**（locale / 组件 API 无增量）。**只报告，不升级基线。**
+

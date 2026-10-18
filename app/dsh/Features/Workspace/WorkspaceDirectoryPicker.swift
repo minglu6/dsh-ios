@@ -108,7 +108,9 @@ struct WorkspaceDirectoryDialog: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 2) {
                             ForEach(Array(dir.crumbs.enumerated()), id: \.offset) { index, crumb in
-                                if index > 0 { Image(systemName: "chevron.right").font(.system(size: 9)).foregroundStyle(T.text3) }
+                                if index > 0 {
+                                    OfficialGlyph(kind: .chevronRight, size: 9, color: T.text3)
+                                }
                                 Button {
                                     Task { await dir.navigate(path: crumb.path) }
                                 } label: {
@@ -122,7 +124,7 @@ struct WorkspaceDirectoryDialog: View {
                         }
                     }
                     Button { dir.beginEdit() } label: {
-                        Image(systemName: "pencil").font(.system(size: 12)).foregroundStyle(T.text3)
+                        OfficialGlyph(kind: .editOutline, size: 12, color: T.text3)
                     }
                     .disabled(inert)
                     .accessibilityLabel(L.editPath())
@@ -180,13 +182,18 @@ struct WorkspaceDirectoryDialog: View {
                         folderName = ""
                         createError = nil
                     } label: {
-                        Label(L.newFolder(), systemImage: "plus")
+                        HStack(spacing: 4) {
+                            OfficialGlyph(kind: .plusOutline, size: 12, color: T.text3)
+                            Text(L.newFolder())
+                        }
                     }
                     .disabled(!(canCreate && ready))
                     Button { dir.toggleHidden() } label: {
                         HStack(spacing: 4) {
                             Text(L.showHiddenFiles()).font(.system(size: 12)).foregroundStyle(T.text3)
-                            if dir.showHidden { Image(systemName: "checkmark").font(.system(size: 11)).foregroundStyle(T.text3) }
+                            if dir.showHidden {
+                                OfficialGlyph(kind: .checkOutline, size: 11, color: T.text3)
+                            }
                         }
                     }
                     .disabled(inert)
@@ -301,7 +308,7 @@ private struct DirectoryColumn: View {
                             )
                             Text(entry.name).font(.system(size: 13)).foregroundStyle(enabled ? T.ink : T.caption).lineLimit(1)
                             Spacer()
-                            Image(systemName: "chevron.right").font(.system(size: 10)).foregroundStyle(T.text3)
+                            OfficialGlyph(kind: .chevronRight, size: 10, color: T.text3)
                         }
                         .padding(.horizontal, 6)
                         .frame(minHeight: 44)
