@@ -115,6 +115,12 @@ final class ScreenshotTests: XCTestCase {
                     app.descendants(matching: .any)["official.searchOutline"].waitForExistence(timeout: 8),
                     "\(appearance) trajectory missing official search glyph"
                 )
+                XCTAssertFalse(app.images["clock"].exists, "\(appearance) trajectory still exposes SF clock")
+                XCTAssertFalse(app.images["clock.fill"].exists, "\(appearance) trajectory still exposes SF clock.fill")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.trajectoryClock"].waitForExistence(timeout: 8),
+                    "\(appearance) trajectory missing official duration-clock glyph"
+                )
             }
             let shot = XCUIScreen.main.screenshot()
             let url = root.appendingPathComponent("\(appearance.lowercased())-\(screen).png")

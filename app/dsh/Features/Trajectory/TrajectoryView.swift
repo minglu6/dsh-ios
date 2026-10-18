@@ -167,7 +167,11 @@ struct TrajectoryView: View {
             toolbarChip(pressed: actualDuration, label: TrajL.toolbarDuration) {
                 actualDuration.toggle()
             } icon: {
-                Image(systemName: "clock").font(.caption2)
+                OfficialGlyph(
+                    kind: .trajectoryClock,
+                    size: CGFloat(trajectoryToolbarClockIconSizePoints),
+                    color: actualDuration ? T.ink : T.text3
+                )
             }
             toolbarChip(pressed: turnsCollapsed, label: TrajL.toolbarTurns) {
                 turnsCollapsed.toggle()
