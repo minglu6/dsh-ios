@@ -293,28 +293,40 @@ struct RootView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
     }
 
-    /// Desktop `HeroShell` `.headline`: title + preview pill on one row.
+    /// Desktop `HeroShell` `.headline`: FishLogo + title + preview pill.
     /// Tokens: 26/32/500 primary; badge 12/18 code, business-tertiary fill,
-    /// bluish label — not system tint.
+    /// bluish label — not system tint. Fish is primitives `FISH_LOGO_PATH`
+    /// at HeroFish width 34, fill `--dsw-alias-label-primary`, column-gap 10,
+    /// `align-items: center`. Never SF `fish`.
     private var landingHeadlineRow: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Text(L.landingHeadline())
-                .font(.system(size: CGFloat(landingHeroHeadlineSizePoints), weight: .medium))
-                .foregroundStyle(T.ink)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityAddTraits(.isHeader)
-                .accessibilityIdentifier("landingHeadline")
-            Text(L.landingPreview())
-                .font(LocalFonts.code(size: CGFloat(landingHeroPreviewFontSizePoints)))
-                .foregroundStyle(T.bluish)
-                .padding(.top, 1)
-                .padding(.horizontal, 7)
-                .background(T.tint, in: Capsule())
-                .overlay(Capsule().stroke(T.hoverBg, lineWidth: 1))
-                .offset(x: -3, y: 2)
-                .accessibilityLabel(L.landingPreview())
-                .accessibilityIdentifier("landingPreview")
+        HStack(alignment: landingHeroHeadlineAlignsCenter ? .center : .top, spacing: CGFloat(landingHeroHeadlineColumnGapPoints)) {
+            if landingHeroShowsFishLogo {
+                OfficialGlyph(
+                    kind: .fishLogo,
+                    size: CGFloat(landingHeroFishWidthPoints),
+                    color: T.ink
+                )
+                .fixedSize()
+            }
+            HStack(alignment: .top, spacing: 10) {
+                Text(L.landingHeadline())
+                    .font(.system(size: CGFloat(landingHeroHeadlineSizePoints), weight: .medium))
+                    .foregroundStyle(T.ink)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityIdentifier("landingHeadline")
+                Text(L.landingPreview())
+                    .font(LocalFonts.code(size: CGFloat(landingHeroPreviewFontSizePoints)))
+                    .foregroundStyle(T.bluish)
+                    .padding(.top, 1)
+                    .padding(.horizontal, 7)
+                    .background(T.tint, in: Capsule())
+                    .overlay(Capsule().stroke(T.hoverBg, lineWidth: 1))
+                    .offset(x: -3, y: 2)
+                    .accessibilityLabel(L.landingPreview())
+                    .accessibilityIdentifier("landingPreview")
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 14)

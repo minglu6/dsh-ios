@@ -212,6 +212,32 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertLessThanOrEqual(tipFrame.maxY, window.maxY, "\(appearance) tooltip clipped bottom")
             }
             if screen == "landing" {
+                XCTAssertFalse(app.images["fish"].exists, "\(appearance) landing still exposes SF fish")
+                XCTAssertFalse(app.images["fish.fill"].exists, "\(appearance) landing still exposes SF fish.fill")
+                XCTAssertFalse(app.images["fish.circle"].exists, "\(appearance) landing still exposes SF fish.circle")
+                let fish = app.descendants(matching: .any)["official.fishLogo"]
+                XCTAssertTrue(
+                    fish.waitForExistence(timeout: 8),
+                    "\(appearance) landing missing official whale glyph beside the headline"
+                )
+                let title = app.descendants(matching: .any)["landingHeadline"]
+                XCTAssertTrue(
+                    title.waitForExistence(timeout: 8),
+                    "\(appearance) landing headline missing"
+                )
+                XCTAssertLessThan(
+                    fish.frame.maxX,
+                    title.frame.minX + 1,
+                    "\(appearance) landing whale is not to the left of the headline"
+                )
+                let fishGap = title.frame.minX - fish.frame.maxX
+                XCTAssertGreaterThanOrEqual(fishGap, 4, "\(appearance) landing whale/title overlap (gap \(fishGap))")
+                XCTAssertLessThanOrEqual(fishGap, 16, "\(appearance) landing whale/title gap \(fishGap) is not the desktop 10pt column-gap")
+                XCTAssertLessThan(
+                    abs(fish.frame.midY - title.frame.midY),
+                    12,
+                    "\(appearance) landing whale is not vertically aligned with the headline"
+                )
                 let composer = app.descendants(matching: .any)["landingComposer"]
                 XCTAssertTrue(
                     composer.waitForExistence(timeout: 8),

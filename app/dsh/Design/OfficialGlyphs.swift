@@ -36,6 +36,7 @@ struct OfficialGlyph: View {
         case databaseOutline
         case infoOutline
         case refreshOutline
+        case fishLogo
 
         var accessibilityIdentifier: String {
             switch self {
@@ -61,6 +62,7 @@ struct OfficialGlyph: View {
             case .databaseOutline: return composerUsageDatabaseSymbol()
             case .infoOutline: return "official.infoOutline"
             case .refreshOutline: return "official.refreshOutline"
+            case .fishLogo: return landingHeroFishSymbol()
             default: return "official.glyph"
             }
         }
@@ -69,7 +71,7 @@ struct OfficialGlyph: View {
             switch self {
             case .folderClose, .folderOpen, .settingsOutline, .newChat, .searchOutline, .projectAdd, .trajectoryClock,
                  .slidersTwo, .workspaceTree, .flatList, .clockOutline, .chevronsUpDown, .archiveOff, .archiveCheck, .queue,
-                 .gaugeOutline, .databaseOutline, .infoOutline, .refreshOutline, .jobsChevron:
+                 .gaugeOutline, .databaseOutline, .infoOutline, .refreshOutline, .jobsChevron, .fishLogo:
                 return false
             // plusOutline / send are decorative; ComposerView hosts own
             // official.plusOutline and official.send.
@@ -84,9 +86,15 @@ struct OfficialGlyph: View {
 
     var body: some View {
         Canvas { context, canvas in
-            let scale = min(canvas.width, canvas.height) / 16
             var ctx = context
-            ctx.scaleBy(x: scale, y: scale)
+            switch kind {
+            case .fishLogo:
+                let scale = canvas.width / CGFloat(fishLogoViewBoxWidth)
+                ctx.scaleBy(x: scale, y: scale)
+            default:
+                let scale = min(canvas.width, canvas.height) / 16
+                ctx.scaleBy(x: scale, y: scale)
+            }
             let stroke = StrokeStyle(lineWidth: 1, lineCap: .round, lineJoin: .round)
             switch kind {
             case .think:
@@ -275,10 +283,23 @@ struct OfficialGlyph: View {
             case .refreshOutline:
                 ctx.stroke(Path(SVGPath.cgPath(pluginRefreshOutlineArcPath)), with: .color(color), style: stroke)
                 ctx.stroke(Path(SVGPath.cgPath(pluginRefreshOutlineHeadPath)), with: .color(color), style: stroke)
+            case .fishLogo:
+                ctx.fill(Path(SVGPath.cgPath(fishLogoPath)), with: .color(color))
             }
         }
-        .frame(width: size, height: size)
+        .frame(width: canvasWidth, height: canvasHeight)
         .modifier(OfficialGlyphAccess(kind: kind))
+    }
+
+    /// HeroFish `size` is width; height keeps FISH_LOGO_VIEWBOX 23.16:17.04.
+    private var canvasWidth: CGFloat { size }
+    private var canvasHeight: CGFloat {
+        switch kind {
+        case .fishLogo:
+            return size * CGFloat(fishLogoViewBoxHeight) / CGFloat(fishLogoViewBoxWidth)
+        default:
+            return size
+        }
     }
 
     private func drawPermission(_ ctx: inout GraphicsContext, value: String, color: Color, stroke: StrokeStyle) {

@@ -1330,7 +1330,7 @@ Android `c5f8cdd...56dcaa9` 一笔：`feat(android): 补齐用户选择卡片与
 
 ## Round 57 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*` alpha=`0.2.1-alpha.5` / next=`0.2.1-rc.2`；Android `ce7d345`）
 
-真机反馈（续 #65 未覆盖项 3–7）。基线 `cursor/landing-composer-bottom-75e6` `bed6a75`（#65：landing composer 贴底 + 去掉分享）。本轮只修复制键 / 抽屉脚热区 / 诊断图标 / 视图选项图标 / 插件 tooltip。
+真机反馈（续 #65 未覆盖项 3–7，再加 landing FishLogo）。基线 `cursor/landing-composer-bottom-75e6` `bed6a75`（#65：landing composer 贴底 + 去掉分享）。本轮只修复制键 / 抽屉脚热区 / 诊断图标 / 视图选项图标 / 插件 tooltip / 空会话鲸鱼 logo。
 
 | 项 | 判定 | 证据 |
 | --- | --- | --- |
@@ -1339,6 +1339,7 @@ Android `c5f8cdd...56dcaa9` 一笔：`feat(android): 补齐用户选择卡片与
 | composer 诊断 SF 图标 /「缓存命中中」 | **GAP → 本轮** | 桌面 `IconGaugeOutlineRegular` / `IconDatabaseOutlineRegular` 14×16 viewBox。iOS 用 SF `gauge.with.dots.needle.67percent` / `cylinder`。文案走 `composerCacheHitPill`（「缓存命中」，禁止「命中中」） |
 | 视图选项图标 | **GAP → 本轮** | 9 行已是 OfficialGlyph，但 `IconSlidersTwoOutlineArtwork` 缺两个 stroked knobs（`r=1.45` at `(9.95,5)` / `(5.75,11)`），测试也未禁止 SF |
 | 插件 (i) tooltip | **GAP → 本轮** | 桌面 `Tooltip.module.css`：`--dsw-alias-tooltip-bg` + `--dsw-static-neutral-bluish-00`、`--dsw-radius-sm` 6、13/20、`.bubble` padding `3px 7px`、PluginManagerPage `maxWidth: 300` / `side: bottom` / gap 8 / `openOnClick`。iOS 用系统 `.popover`，窄屏裁切。改成 header 下方自绘气泡，点 (i) 开关，点外侧 / 滚动关闭 |
+| 空会话 landing 标题旁鲸鱼 | **GAP → 本轮** | 此前 hide。用户现要求桌面 EmptyHero `HeroFish`：primitives `FISH_LOGO_PATH` viewBox `23.16×17.04`、宽 34、fill `--dsw-alias-label-primary`、headline `align-items:center` + column-gap 10。禁止 SF `fish` / BrandWordmark 偏移鲸 path |
 
 | 模块 | iOS | 对照的桌面源码 | 对齐点 |
 | --- | --- | --- | --- |
@@ -1348,13 +1349,15 @@ Android `c5f8cdd...56dcaa9` 一笔：`feat(android): 补齐用户选择卡片与
 | 诊断行 | `OfficialGlyph.gaugeOutline` / `.databaseOutline` | primitives `IconGaugeOutlineArtwork` / `IconDatabaseOutlineArtwork` | CI chat 禁止 SF gauge/cylinder，断言 `official.gaugeOutline` / `official.databaseOutline` 与「缓存命中 69%」 |
 | 视图选项 | `OfficialGlyph` + sliders knobs | `ui-workspace` `ViewOptionsMenu` + `IconSlidersTwoOutlineArtwork` | CI 禁止 SF slider/list/clock/archivebox；断言 official.* |
 | 插件 tooltip | 自绘 `T.tooltipBg` 气泡 + `OfficialGlyph.infoOutline` | `ui-primitives` Tooltip + `ui-plugin-manager` `IconInfoOutlineRegular` size 11 | CI plugins 点 (i)，断言 `pluginInfoTooltip` 在屏幕内 |
+| 空会话 Hero 鲸 | `OfficialGlyph.fishLogo` 在 `landingHeadline` 左侧 | `ui-conversation` EmptyHero `HeroFish` + primitives `FishLogo` / `FISH_LOGO_PATH` | CI landing 断言 `official.fishLogo` 在标题左侧、禁止 SF `fish` |
 
 本轮核对后**不改**（平台 / hide / 禁止发明）
 
 - landing composer 贴底 / 顶栏与消息行分享：#65。
 - 桌面 HeaderAction 更多菜单「下载 Session 日志」：仍不发明顶栏 ⋯。
 - `chat.turnNavigation.*` / `chat.toBottom` / `ask.review` / hover chevron：仍 skip。
-- Account / shortcuts / open config / CompatibilityBanner / 审批通知 / FishLogo：仍 **hide** / 不发明。
+- Account / shortcuts / open config / CompatibilityBanner / 审批通知：仍 **hide** / 不发明。
+- FishLogo hover swim（桌面 SMIL + CSS）：phone 无 hover，只放静态 filled path。
 - Android Settings「移动端 → 连接」不搬。
 - 助手行 copy / like / dislike / branch 仍保留。
 
