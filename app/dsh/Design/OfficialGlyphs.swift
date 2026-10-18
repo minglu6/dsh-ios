@@ -37,6 +37,12 @@ struct OfficialGlyph: View {
         case infoOutline
         case refreshOutline
         case fishLogo
+        case userOutline
+        case sparkle
+        case toolWrench
+        case information
+        case compacted
+        case settingsOutlineRegular
 
         var accessibilityIdentifier: String {
             switch self {
@@ -63,6 +69,12 @@ struct OfficialGlyph: View {
             case .infoOutline: return "official.infoOutline"
             case .refreshOutline: return "official.refreshOutline"
             case .fishLogo: return landingHeroFishSymbol()
+            case .userOutline: return "official.userOutline"
+            case .sparkle: return "official.sparkle"
+            case .toolWrench: return "official.toolWrench"
+            case .information: return "official.information"
+            case .compacted: return "official.compacted"
+            case .settingsOutlineRegular: return "official.settingsOutlineRegular"
             default: return "official.glyph"
             }
         }
@@ -71,7 +83,8 @@ struct OfficialGlyph: View {
             switch self {
             case .folderClose, .folderOpen, .settingsOutline, .newChat, .searchOutline, .projectAdd, .trajectoryClock,
                  .slidersTwo, .workspaceTree, .flatList, .clockOutline, .chevronsUpDown, .archiveOff, .archiveCheck, .queue,
-                 .gaugeOutline, .databaseOutline, .infoOutline, .refreshOutline, .jobsChevron, .fishLogo:
+                 .gaugeOutline, .databaseOutline, .infoOutline, .refreshOutline, .jobsChevron, .fishLogo,
+                 .userOutline, .sparkle, .toolWrench, .information, .compacted, .settingsOutlineRegular:
                 return false
             // plusOutline / send are decorative; ComposerView hosts own
             // official.plusOutline and official.send.
@@ -285,6 +298,74 @@ struct OfficialGlyph: View {
                 ctx.stroke(Path(SVGPath.cgPath(pluginRefreshOutlineHeadPath)), with: .color(color), style: stroke)
             case .fishLogo:
                 ctx.fill(Path(SVGPath.cgPath(fishLogoPath)), with: .color(color))
+            case .userOutline:
+                let regular = StrokeStyle(
+                    lineWidth: CGFloat(trajectoryKindIconStrokeWidth),
+                    lineCap: .butt,
+                    lineJoin: .miter,
+                    miterLimit: 10
+                )
+                ctx.stroke(Path(SVGPath.cgPath(trajectoryUserHeadPath)), with: .color(color), style: regular)
+                ctx.stroke(Path(SVGPath.cgPath(trajectoryUserShoulderPath)), with: .color(color), style: regular)
+            case .sparkle:
+                let regular = StrokeStyle(
+                    lineWidth: CGFloat(trajectoryKindIconStrokeWidth),
+                    lineCap: .butt,
+                    lineJoin: .miter,
+                    miterLimit: 10
+                )
+                ctx.stroke(Path(SVGPath.cgPath(trajectorySparkleLargePath)), with: .color(color), style: regular)
+                ctx.stroke(Path(SVGPath.cgPath(trajectorySparkleMediumPath)), with: .color(color), style: regular)
+                ctx.stroke(Path(SVGPath.cgPath(trajectorySparkleSmallPath)), with: .color(color), style: regular)
+            case .toolWrench:
+                let wrench = StrokeStyle(
+                    lineWidth: CGFloat(trajectoryToolWrenchStrokeWidth),
+                    lineCap: .round,
+                    lineJoin: .round
+                )
+                ctx.stroke(Path(SVGPath.cgPath(trajectoryToolWrenchPath)), with: .color(color), style: wrench)
+            case .information:
+                let ring = StrokeStyle(
+                    lineWidth: CGFloat(trajectoryInformationStrokeWidth),
+                    lineCap: .round,
+                    lineJoin: .round
+                )
+                let stem = StrokeStyle(
+                    lineWidth: CGFloat(trajectoryInformationStemStrokeWidth),
+                    lineCap: .round,
+                    lineJoin: .round
+                )
+                let cx = CGFloat(trajectoryInformationCircleCenter)
+                let cr = CGFloat(trajectoryInformationCircleRadius)
+                var circle = Path()
+                circle.addEllipse(in: CGRect(x: cx - cr, y: cx - cr, width: cr * 2, height: cr * 2))
+                ctx.stroke(circle, with: .color(color), style: ring)
+                let dx = CGFloat(trajectoryInformationDotCenterX)
+                let dy = CGFloat(trajectoryInformationDotCenterY)
+                let dr = CGFloat(trajectoryInformationDotRadius)
+                var dot = Path()
+                dot.addEllipse(in: CGRect(x: dx - dr, y: dy - dr, width: dr * 2, height: dr * 2))
+                ctx.fill(dot, with: .color(color))
+                ctx.stroke(Path(SVGPath.cgPath(trajectoryInformationStemPath)), with: .color(color), style: stem)
+            case .compacted:
+                let compacted = StrokeStyle(
+                    lineWidth: CGFloat(trajectoryCompactedStrokeWidth),
+                    lineCap: .round,
+                    lineJoin: .round
+                )
+                ctx.stroke(Path(SVGPath.cgPath(trajectoryCompactedTopLeftPath)), with: .color(color), style: compacted)
+                ctx.stroke(Path(SVGPath.cgPath(trajectoryCompactedTopRightPath)), with: .color(color), style: compacted)
+                ctx.stroke(Path(SVGPath.cgPath(trajectoryCompactedBottomLeftPath)), with: .color(color), style: compacted)
+                ctx.stroke(Path(SVGPath.cgPath(trajectoryCompactedBottomRightPath)), with: .color(color), style: compacted)
+            case .settingsOutlineRegular:
+                let regular = StrokeStyle(
+                    lineWidth: CGFloat(trajectoryKindIconStrokeWidth),
+                    lineCap: .butt,
+                    lineJoin: .miter,
+                    miterLimit: 10
+                )
+                ctx.stroke(Path(SVGPath.cgPath(sidebarSettingsOutlineHubPath)), with: .color(color), style: regular)
+                ctx.stroke(Path(SVGPath.cgPath(sidebarSettingsOutlineRingPath)), with: .color(color), style: regular)
             }
         }
         .frame(width: canvasWidth, height: canvasHeight)

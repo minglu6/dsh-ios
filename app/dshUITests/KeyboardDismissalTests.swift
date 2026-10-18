@@ -58,6 +58,27 @@ final class KeyboardDismissalTests: XCTestCase {
         assertKeyboardHidden(app, "keyboard still up on 远程主机")
     }
 
+    func testOpeningSettingsFromDrawerDoesNotLeaveKeyboard() {
+        let app = launch(screen: "landing")
+        focusComposer(app)
+        assertKeyboardVisible(app, "landing composer did not show the keyboard")
+
+        let open = app.buttons["openDrawer"]
+        XCTAssertTrue(open.waitForExistence(timeout: 8), "openDrawer missing")
+        open.tap()
+        assertKeyboardHidden(app, "keyboard still up after opening the drawer")
+
+        let settings = app.descendants(matching: .any)["drawerSettingsRow"].firstMatch
+        XCTAssertTrue(settings.waitForExistence(timeout: 8), "drawer settings hit missing")
+        settings.tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)["settingsShell"].firstMatch.waitForExistence(timeout: 8),
+            "settings page missing"
+        )
+        assertKeyboardHidden(app, "keyboard still up on Settings")
+    }
+
     private func launch(screen: String, extraChat: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         var args = [

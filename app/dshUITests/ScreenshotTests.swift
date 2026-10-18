@@ -225,6 +225,15 @@ final class ScreenshotTests: XCTestCase {
                     title.waitForExistence(timeout: 8),
                     "\(appearance) landing headline missing"
                 )
+                XCTAssertTrue(
+                    title.label.contains("探索未至之境")
+                        || app.staticTexts["探索未至之境"].waitForExistence(timeout: 2),
+                    "\(appearance) landing headline is not desktop hero.headline 探索未至之境 (got \(title.label))"
+                )
+                XCTAssertFalse(
+                    app.staticTexts["探索未知之境"].exists,
+                    "\(appearance) landing used the misremembered 探索未知之境 copy"
+                )
                 XCTAssertLessThan(
                     fish.frame.maxX,
                     title.frame.minX + 1,
@@ -272,6 +281,32 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertTrue(app.descendants(matching: .any)["modelChipEffort"].waitForExistence(timeout: 8), "\(appearance) model chip missing effort")
                 XCTAssertTrue(app.descendants(matching: .any)["modelPickerEffort"].waitForExistence(timeout: 8), "\(appearance) model menu missing effort row")
             }
+            if screen == "permission" {
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["permissionPicker"].waitForExistence(timeout: 8),
+                    "\(appearance) permission chip menu missing"
+                )
+                XCTAssertTrue(
+                    app.staticTexts["工作区内修改"].waitForExistence(timeout: 4)
+                        || app.descendants(matching: .any)["permissionPicker"].firstMatch.label.contains("工作区内修改"),
+                    "\(appearance) permission menu missing desktop catalog labels"
+                )
+                XCTAssertFalse(
+                    app.staticTexts["访问模式"].exists,
+                    "\(appearance) permission still presents the system Access-mode sheet"
+                )
+                XCTAssertFalse(
+                    app.staticTexts["transport: 未连接到远程主机"].exists,
+                    "\(appearance) permission menu reloaded the catalog over a missing transport"
+                )
+                let window = app.windows.firstMatch.frame
+                let picker = app.descendants(matching: .any)["permissionPicker"].firstMatch.frame
+                XCTAssertLessThan(
+                    picker.height / window.height,
+                    0.7,
+                    "\(appearance) permission picker looks like a full-screen sheet (\(picker) vs \(window))"
+                )
+            }
             if screen == "connections" {
                 assertConnectionsIsFullScreen(app, appearance: appearance)
             }
@@ -290,6 +325,19 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertTrue(
                     app.descendants(matching: .any)["official.trajectoryClock"].waitForExistence(timeout: 8),
                     "\(appearance) trajectory missing official duration-clock glyph"
+                )
+                XCTAssertFalse(app.images["person"].exists, "\(appearance) trajectory still exposes SF person")
+                XCTAssertFalse(app.images["sparkle"].exists, "\(appearance) trajectory still exposes SF sparkle")
+                XCTAssertFalse(app.images["sparkles"].exists, "\(appearance) trajectory still exposes SF sparkles")
+                XCTAssertFalse(app.images["wrench.and.screwdriver"].exists, "\(appearance) trajectory still exposes SF wrench")
+                XCTAssertFalse(app.images["gearshape"].exists, "\(appearance) trajectory still exposes SF gearshape")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.userOutline"].waitForExistence(timeout: 8),
+                    "\(appearance) trajectory missing official user kind glyph"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.sparkle"].exists,
+                    "\(appearance) trajectory missing official assistant sparkle glyph"
                 )
             }
             let shot = XCUIScreen.main.screenshot()

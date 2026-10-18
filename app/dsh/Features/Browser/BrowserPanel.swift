@@ -41,9 +41,12 @@ private struct BrowserPanelContent: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(L.close(), action: onDismiss)
+                    Button(action: onDismiss) {
+                        Text(L.close()).foregroundStyle(T.ink)
+                    }
                 }
             }
+            .tint(T.ink)
         }
         .onChange(of: model.profiles) { profiles in
             tabs.updatePolicy(Self.policy(for: profiles))

@@ -87,9 +87,12 @@ struct SessionInspectorPanel: View {
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
                             ToolbarItem(placement: .cancellationAction) {
-                                Button(L.close(), action: onDismiss)
+                                Button(action: onDismiss) {
+                                    Text(L.close()).foregroundStyle(T.ink)
+                                }
                             }
                         }
+                        .tint(T.ink)
                 }
             }
         }

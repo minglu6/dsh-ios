@@ -100,6 +100,34 @@ final class TrajectoryToolbarParityTests: XCTestCase {
         XCTAssertTrue(isForbiddenTrajectoryToolbarClockSymbol("IconClockOutline"))
         XCTAssertFalse(isForbiddenTrajectoryToolbarClockSymbol("official.trajectoryClock"))
     }
+
+    func testKindIconUsesDesktopArtworkNotSystemSymbols() {
+        XCTAssertEqual(trajectoryKindIconSizePoints, 13)
+        XCTAssertEqual(trajectoryKindTagSizePoints, 19)
+        XCTAssertEqual(trajectoryKindTagRadiusPoints, 4)
+        XCTAssertEqual(trajectoryKindIconStrokeWidth, 1)
+        XCTAssertEqual(trajectoryToolWrenchStrokeWidth, 1.5)
+        XCTAssertEqual(trajectoryKindSymbol(TrajL.kindUser), "official.userOutline")
+        XCTAssertEqual(trajectoryKindSymbol(TrajL.kindAssistant), "official.sparkle")
+        XCTAssertEqual(trajectoryKindSymbol(TrajL.kindTool), "official.toolWrench")
+        XCTAssertEqual(trajectoryKindSymbol(TrajL.kindSubtool), "official.toolWrench")
+        XCTAssertEqual(trajectoryKindSymbol(TrajL.kindContext), "official.information")
+        XCTAssertEqual(trajectoryKindSymbol(TrajL.kindCompacted), "official.compacted")
+        XCTAssertEqual(trajectoryKindSymbol(TrajL.kindSystem), "official.settingsOutlineRegular")
+        XCTAssertNil(trajectoryKindSymbol("unknown"))
+        XCTAssertTrue(trajectoryUserHeadPath.hasPrefix("M8 8.25C9.51878"))
+        XCTAssertEqual(trajectoryUserShoulderPath, "M2.5 14.5C2.5 11.5 5.25 10.25 8 10.25C10.75 10.25 13.5 11.5 13.5 14.5")
+        XCTAssertTrue(trajectorySparkleLargePath.hasPrefix("M5.875 3C5.875"))
+        XCTAssertTrue(trajectoryToolWrenchPath.hasPrefix("M14 3.3a3.8 3.8"))
+        XCTAssertEqual(trajectoryInformationStemPath, "M8 7.75v3.4")
+        XCTAssertEqual(trajectoryInformationCircleRadius, 6.7)
+        XCTAssertTrue(isForbiddenTrajectoryKindSymbol("person"))
+        XCTAssertTrue(isForbiddenTrajectoryKindSymbol("sparkle"))
+        XCTAssertTrue(isForbiddenTrajectoryKindSymbol("wrench.and.screwdriver"))
+        XCTAssertTrue(isForbiddenTrajectoryKindSymbol("gearshape"))
+        XCTAssertFalse(isForbiddenTrajectoryKindSymbol("official.userOutline"))
+        XCTAssertFalse(isForbiddenTrajectoryKindSymbol("official.sparkle"))
+    }
 }
 
 final class TrajectoryBuilderTests: XCTestCase {

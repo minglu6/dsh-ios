@@ -104,7 +104,14 @@ struct PermissionPickerSheet: View {
                 .padding(.vertical, 8)
             }
             .navigationTitle(forDefaults ? L.t("默认权限", "Default permission") : L.t("访问模式", "Access mode"))
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L.cancel(), action: onDismiss) } }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(action: onDismiss) {
+                        Text(L.cancel()).foregroundStyle(T.ink)
+                    }
+                }
+            }
+            .tint(T.ink)
         }
         .onChange(of: catalog?.options.map(\.value) ?? []) { _ in picked = false }
     }
@@ -234,7 +241,7 @@ struct PermissionChipMenu: View {
     var loading: Bool = false
     var enabled: Bool = true
     var onSelect: (String) -> Void
-    @State private var open = false
+    @Binding var open: Bool
 
     private var options: [PermissionOption] { catalog?.options ?? [] }
     private var currentLabel: String {
@@ -270,6 +277,7 @@ struct PermissionChipMenu: View {
         .buttonStyle(.plain)
         .disabled(!enabled)
         .accessibilityLabel(currentLabel)
+        .accessibilityIdentifier(composerPermissionChipIdentifier())
         .popover(isPresented: $open, attachmentAnchor: .rect(.bounds), arrowEdge: composerPickerPopoverOpensAbove ? .bottom : .top) {
             VStack(alignment: .leading, spacing: 0) {
                 if loading {
@@ -314,6 +322,8 @@ struct PermissionChipMenu: View {
                 }
             }
             .padding(CGFloat(permissionMenuPaddingPoints))
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier(composerPermissionPickerIdentifier())
             .frame(
                 minWidth: CGFloat(permissionMenuMinWidthPoints),
                 maxWidth: CGFloat(permissionMenuMaxWidthPoints)

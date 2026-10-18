@@ -955,7 +955,8 @@ public func skillCatalogScopeKey(sessionId: String?, subagent: Bool) -> String {
     return sessionId ?? "landing"
 }
 
-/// Desktop `conversation` `hero.headline`.
+/// Desktop `conversation` `hero.headline` (`locale/zh.json` via `client.js`).
+/// The Chinese string is **未至**, not the commonly misremembered **未知**.
 public func landingHeadline(english: Bool) -> String {
     english ? "Into the Unknown" : "探索未至之境"
 }

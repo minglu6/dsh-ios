@@ -171,6 +171,15 @@ public let permissionExpBadgeLetterSpacing: Double = 0.2
 /// on the bottom edge — same mapping as `composerUsagePopoverOpensAbove`.
 public let composerPickerPopoverOpensAbove = true
 
+/// Composer permission is the chip `PermissionSelect` MenuSurface, never a
+/// system `NavigationStack` sheet titled `访问模式` / `Access mode` with a
+/// system-blue Cancel. `/permission` stays `popupSelect` inside the slash
+/// list. Settings defaults may still use an in-page picker.
+public let composerPermissionUsesChipMenuSurface = true
+public let composerPermissionUsesSystemSheet = false
+public func composerPermissionPickerIdentifier() -> String { "permissionPicker" }
+public func composerPermissionChipIdentifier() -> String { "permissionChip" }
+
 /// Catalog rows (including Auto review) must all fit in the menu above the chip.
 public func permissionMenuHeightPoints(optionCount: Int) -> Double {
     precondition(optionCount >= 0, "permissionMenuHeightPoints optionCount must be >= 0")
