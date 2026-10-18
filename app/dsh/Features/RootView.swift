@@ -62,6 +62,10 @@ struct RootView: View {
             }
         }
         .animation(.easeOut(duration: 0.2), value: model.showDrawer)
+        .onChange(of: model.showDrawer) { _ in
+            Keyboard.dismiss()
+        }
+        .simultaneousGesture(drawerEdgeSwipe)
         .onChange(of: scenePhase) { phase in
             ConnectionKeeper.shared.sceneChanged(phase)
         }
@@ -139,7 +143,10 @@ struct RootView: View {
     private var emptyChat: some View {
         VStack(spacing: 0) {
             HStack {
-                Button { model.showDrawer = true } label: {
+                Button {
+                    Keyboard.dismiss()
+                    model.showDrawer = true
+                } label: {
                     Image(systemName: D.panelLeft).foregroundStyle(T.ink)
                 }
                 .accessibilityIdentifier("openDrawer")
@@ -152,6 +159,8 @@ struct RootView: View {
                 VStack(spacing: 0) {
                     landingHeadlineRow
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .contentShape(Rectangle())
+                        .onTapGesture { Keyboard.dismiss() }
                     VStack(spacing: CGFloat(landingHeroStackGapPoints)) {
                         landingWorkspaceRow
                         landingComposer
@@ -239,7 +248,8 @@ struct RootView: View {
         ComposerView(
             model: model,
             interceptKeys: landingCommandMenuVisible && riskPermission == nil,
-            resignKeyboard: riskPermission != nil,
+            resignKeyboard: (permissionRiskDismissesKeyboard && riskPermission != nil)
+                || (openingSessionDrawerResignsComposer && model.showDrawer),
             focusToken: composerFocus,
             heroPlaceholder: true,
             onPlus: {
@@ -278,7 +288,10 @@ struct RootView: View {
             leading: slashMenuIsLeading(model.composerText),
             consumeSlash: landingSlashTrigger != nil,
             availableHeight: availableHeight,
-            onDismiss: { slashMenu.dismiss(trigger: landingSlashTrigger) },
+            onDismiss: {
+                slashMenu.dismiss(trigger: landingSlashTrigger)
+                Keyboard.dismiss()
+            },
             onFile: { showFileImporter = true },
             onGoal: { model.insertComposer("/goal ") },
             onPlan: { model.executeCommand("/plan") },
@@ -342,7 +355,36 @@ struct RootView: View {
     }
 
     private var drawerScrim: some View {
-        T.scrim.ignoresSafeArea().onTapGesture { model.showDrawer = false }
+        T.scrim.ignoresSafeArea().onTapGesture {
+            Keyboard.dismiss()
+            model.showDrawer = false
+        }
+    }
+
+    /// Android `ModalNavigationDrawer` edge swipe. Invisible; not a control.
+    private var drawerEdgeSwipe: some Gesture {
+        DragGesture(minimumDistance: 40, coordinateSpace: .global)
+            .onChanged { value in
+                guard model.currentRoute.allowsSessionDrawer else { return }
+                if !model.showDrawer, value.startLocation.x < 24 {
+                    Keyboard.dismiss()
+                }
+            }
+            .onEnded { value in
+                guard model.currentRoute.allowsSessionDrawer else { return }
+                let horizontal = abs(value.translation.width) > abs(value.translation.height)
+                if !model.showDrawer,
+                   value.startLocation.x < 24,
+                   value.translation.width > 80,
+                   horizontal {
+                    model.showDrawer = true
+                    return
+                }
+                if model.showDrawer, value.translation.width < -80, horizontal {
+                    Keyboard.dismiss()
+                    model.showDrawer = false
+                }
+            }
     }
 
     private var preferred: ColorScheme? {

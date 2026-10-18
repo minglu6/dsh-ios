@@ -812,6 +812,22 @@ public func composerCacheHitPill(percent: String, english: Bool) -> String {
 /// Desktop `RiskConfirmation` blurs the composer first.
 public let permissionRiskDismissesKeyboard = true
 
+/// Phone session drawer. Opening it (header button or leading-edge swipe)
+/// must end composer first-responder so the IME cannot cover the drawer
+/// footer (Settings / Remote Host). Android `ModalNavigationDrawer` plus
+/// iOS convention; #65 pinned the landing composer to the bottom and #66
+/// put the host name on that footer, which made the stuck IME visible.
+public let openingSessionDrawerResignsComposer = true
+/// Drawer search is the only drawer field that may show the keyboard, and
+/// only after the user focuses it — opening the drawer does not.
+public let drawerOpenDoesNotFocusSearch = true
+public let drawerScrollDismissesKeyboardInteractively = true
+/// Chat transcript (and landing leftover space) resign the composer.
+public let chatScrollDismissesKeyboardInteractively = true
+public let tapOutsideComposerResignsKeyboard = true
+/// Pushing Settings / Remote Host from the drawer must not leave the IME.
+public let leavingDrawerForSettingsOrHostResignsKeyboard = true
+
 /// Desktop `message.ts` idle steer is `location.kind === "step" && step === 1`.
 /// A turn without a step is not step 1.
 public func wakingTriggerStep(openStep: Int?, openTurn _: Int?) -> Int? {

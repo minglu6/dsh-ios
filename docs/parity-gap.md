@@ -1361,3 +1361,38 @@ Android `c5f8cdd...56dcaa9` 一笔：`feat(android): 补齐用户选择卡片与
 - Android Settings「移动端 → 连接」不搬。
 - 助手行 copy / like / dislike / branch 仍保留。
 
+## Round 58 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*` alpha=`0.2.1-alpha.5` / next=`0.2.1-rc.2`；Android `ce7d345`）
+
+真机（深色）：会话 Composer 弹出输入法后再开左侧抽屉，键盘留在下半屏压住抽屉底栏（设置 / 远程主机名）和会话列表，且收不下去。
+
+**现状（#65 / #66 之前也没有收键盘，这两轮把它撞到前台）：**
+
+- Composer 是 `UITextView`（`ComposerTextView`）。抽屉是 `RootView` ZStack overlay，并不卸掉聊天页，UIKit first responder 继续占着 IME。
+- 斜杠菜单的 `lockFirstResponder` 会吞掉 `resignFirstResponder`（连 `UIApplication.sendAction` 也被挡）。
+- 聊天 `ScrollView` / 抽屉列表都没有 `scrollDismissesKeyboard`（只有权限确认对话框有）。
+- 点 Composer 外空白、从抽屉进设置／远程主机，都没有统一结束焦点。
+- **#65** 把 landing Composer 钉在安全区底，聚焦输入再开抽屉变成默认路径。
+- **#66** 把抽屉脚做成「设置」+「绿点 + 远程主机名」两枚独立热区，卡住的键盘正好压住这两块。
+
+Android `MainActivity` 窄屏是 `ModalNavigationDrawer`（按钮 / 手势滑出）；`Chat.kt` Column `imePadding()`。iOS 常规：开抽屉结束焦点；滚动 `scrollDismissesKeyboard(.interactively)`；点空白 resign。
+
+| 项 | 判定 | 证据 |
+| --- | --- | --- |
+| 打开抽屉收起 Composer 键盘 | **GAP → 本轮** | 真机截图 IME 压住设置 / mac mini。`openingSessionDrawerResignsComposer`：`showDrawer` 时 `resignKeyboard` + `Keyboard.dismiss()`（通知打穿 `lockFirstResponder`） |
+| 抽屉搜索才弹键盘 | **GAP → 本轮** | 打开抽屉 `searchFocused = false`，只有点搜索框才聚焦。列表滚动 / 点空白 `scrollDismissesKeyboard(.interactively)` |
+| 聊天页滚动 / 点空白收键盘 | **GAP → 本轮** | transcript `dshDismissesKeyboardOnScrollAndTap`；landing 标题剩余空白 `onTapGesture` |
+| 进设置 / 远程主机不残留键盘 | **GAP → 本轮** | `AppModel.push` 在 `closesSessionDrawer` 时 `Keyboard.dismiss()`；底栏两键先 dismiss 再 push |
+
+| 模块 | iOS | 对照 | 对齐点 |
+| --- | --- | --- | --- |
+| 抽屉 | 打开即结束 Composer 焦点；搜索框用户聚焦才出 IME | Android `ModalNavigationDrawer` + iOS 常规 | 无「收起键盘」按钮。CI：Composer 聚焦后点 `openDrawer`，`app.keyboards` 不存在或不可见 |
+| 聊天 | 消息列表 interactive 滚动收键盘；点 Composer 外空白收 | iOS `scrollDismissesKeyboard(.interactively)` | CI：chat 屏滚动 transcript 后键盘收起 |
+| 远程主机 | 从抽屉进整页不留 IME | #66 整页 `ConnectionsView`；标题「远程主机」 | `leavingDrawerForSettingsOrHostResignsKeyboard` |
+
+本轮核对后**不改**（平台 / hide / 禁止发明）
+
+- 不增加「收起键盘」或其它桌面没有的可见控件。
+- landing composer 贴底 / 顶栏与消息行分享：#65。
+- 抽屉脚热区 / 远程主机整页 / landing 鲸：#66。
+- `chat.turnNavigation.*` / `chat.toBottom` / `ask.review` / hover chevron：仍 skip。
+
