@@ -284,6 +284,7 @@ private struct TrajRowView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("\(TrajL.kindLabel(row.kind)) \(row.title)")
+            .accessibilityIdentifier("trajRow.\(row.key)")
             if let requestBoundary {
                 Button {
                     onRequestClick(requestBoundary)

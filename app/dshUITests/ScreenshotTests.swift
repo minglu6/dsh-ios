@@ -7,7 +7,7 @@ final class ScreenshotTests: XCTestCase {
         "landing", "drawer", "viewOptions", "sessionActions", "chat",
         "models", "permission", "start", "browser", "inspector",
         "settings", "schedule", "terminal", "trajectory", "plugins", "connections",
-        "composerStop", "slash",
+        "composerStop", "slash", "jobs", "builtinPlugins", "trajectoryDetail",
     ]
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool { false }
@@ -113,15 +113,41 @@ final class ScreenshotTests: XCTestCase {
                     app.descendants(matching: .any)["official.chevronLeft"].waitForExistence(timeout: 8),
                     "\(appearance) inspector missing official back chevron"
                 )
+                // Intentional skip: no viewfinder / type-filter artwork in primitives.
+                // SF images live inside Buttons, so they are not `app.images[...]`.
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["inspector.viewfinder"].waitForExistence(timeout: 8),
+                    "\(appearance) inspector pick skip lost; do not invent a viewfinder SVG"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["inspector.typeFilter"].exists,
+                    "\(appearance) inspector type-filter skip lost; do not invent a filter SVG"
+                )
             }
             if screen == "landing" || screen == "drawer" {
                 XCTAssertFalse(app.images["folder.fill"].exists, "\(appearance) \(screen) still exposes SF folder.fill")
                 XCTAssertFalse(app.images["folder"].exists, "\(appearance) \(screen) still exposes SF folder")
+            }
+            if screen == "landing" {
                 let officialOpen = app.descendants(matching: .any)["official.folderOpen"]
                 let officialClose = app.descendants(matching: .any)["official.folderClose"]
                 XCTAssertTrue(
                     officialOpen.waitForExistence(timeout: 8) || officialClose.waitForExistence(timeout: 2),
-                    "\(appearance) \(screen) missing official folder glyph"
+                    "\(appearance) landing missing official workspace-chip folder glyph"
+                )
+            }
+            if screen == "drawer" {
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.folderOpenFill"].waitForExistence(timeout: 8),
+                    "\(appearance) drawer missing desktop IconFolderOpenRegular fill glyph"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["workspaceIcon.ws-ios"].waitForExistence(timeout: 8),
+                    "\(appearance) drawer missing current workspace folder (ws-ios)"
+                )
+                XCTAssertFalse(
+                    app.images["chevron.right"].exists,
+                    "\(appearance) drawer invented a workspace expand chevron; hover-chevron swap is skip"
                 )
             }
             if screen == "drawer" {
@@ -387,17 +413,57 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) \(screen) missing official back chevron"
                 )
             }
+            if screen == "terminal" {
+                // Intentional skip: desktop sidebar-terminal has no center spinner.
+                // Do not invent a rotating official.loadingOutline.
+                XCTAssertFalse(
+                    app.descendants(matching: .any)["official.loadingOutline"].exists,
+                    "\(appearance) terminal invented a loading SVG; keep the system ProgressView skip"
+                )
+            }
             if screen == "connections" {
                 assertConnectionsIsFullScreen(app, appearance: appearance)
                 XCTAssertFalse(app.images["chevron.left"].exists, "\(appearance) connections still exposes SF chevron.left")
                 XCTAssertFalse(app.images["link"].exists, "\(appearance) connections still exposes SF link")
+                XCTAssertFalse(app.images["keyboard"].exists, "\(appearance) connections still exposes SF keyboard")
+                XCTAssertFalse(app.images["keyboard.fill"].exists, "\(appearance) connections still exposes SF keyboard.fill")
                 XCTAssertTrue(
                     app.descendants(matching: .any)["official.chevronLeft"].waitForExistence(timeout: 8),
                     "\(appearance) connections missing official back chevron"
                 )
                 XCTAssertTrue(
+                    app.staticTexts["扫码"].waitForExistence(timeout: 8)
+                        || app.buttons["扫码"].waitForExistence(timeout: 2),
+                    "\(appearance) connections missing 扫码"
+                )
+                XCTAssertTrue(
+                    app.staticTexts["配对链接"].exists || app.buttons["配对链接"].exists,
+                    "\(appearance) connections missing 配对链接"
+                )
+                XCTAssertTrue(
+                    app.staticTexts["输入地址"].exists || app.buttons["输入地址"].exists,
+                    "\(appearance) connections missing 输入地址"
+                )
+                let scan = app.descendants(matching: .any)["connectionsAction.scan"].firstMatch
+                let pairing = app.descendants(matching: .any)["connectionsAction.pairingLink"].firstMatch
+                let address = app.descendants(matching: .any)["connectionsAction.enterAddress"].firstMatch
+                XCTAssertTrue(scan.waitForExistence(timeout: 8), "\(appearance) connections missing scan row")
+                XCTAssertTrue(pairing.exists, "\(appearance) connections missing pairing-link row")
+                XCTAssertTrue(address.exists, "\(appearance) connections missing enter-address row")
+                XCTAssertLessThan(scan.frame.minY, pairing.frame.minY, "\(appearance) connections pairing-link is not after 扫码")
+                XCTAssertLessThan(pairing.frame.minY, address.frame.minY, "\(appearance) connections 输入地址 is not after 配对链接")
+                XCTAssertTrue(
                     app.descendants(matching: .any)["official.linkOutline"].exists,
-                    "\(appearance) connections missing official address-link glyph"
+                    "\(appearance) connections missing official link glyph on 配对链接"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["connections.keyboard"].exists,
+                    "\(appearance) connections missing Android keyboard glyph on 输入地址"
+                )
+                // Intentional skip: primitives have no QR artwork.
+                XCTAssertTrue(
+                    app.images["qrcode.viewfinder"].exists,
+                    "\(appearance) connections scan skip lost; do not invent a QR SVG"
                 )
             }
             if screen == "trajectory" {
@@ -457,7 +523,59 @@ final class ScreenshotTests: XCTestCase {
                     app.descendants(matching: .any)["official.branchOutline"].exists,
                     "\(appearance) chat missing official branch glyph"
                 )
+                XCTAssertFalse(app.images["doc.text.magnifyingglass"].exists, "\(appearance) chat still exposes SF browse")
+                XCTAssertFalse(app.images["terminal"].exists, "\(appearance) chat still exposes SF terminal")
+                XCTAssertFalse(app.images["curlybraces"].exists, "\(appearance) chat still exposes SF curlybraces")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.browseOutline"].waitForExistence(timeout: 8),
+                    "\(appearance) chat missing official read/browse tool glyph"
+                )
                 assertOfficialMenuChrome(app, appearance: appearance, screen: screen)
+            }
+            if screen == "jobs" {
+                let trigger = app.descendants(matching: .any)["official.jobsChevron"]
+                XCTAssertTrue(trigger.waitForExistence(timeout: 8), "\(appearance) jobs trigger missing")
+                trigger.firstMatch.tap()
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.chevronDown"].waitForExistence(timeout: 8),
+                    "\(appearance) jobs row missing official chevronDown"
+                )
+                XCTAssertFalse(app.images["chevron.down"].exists, "\(appearance) jobs still exposes SF chevron.down")
+                XCTAssertFalse(app.images["chevron.right"].exists, "\(appearance) jobs still exposes SF chevron.right")
+                XCTAssertFalse(app.images["stop.fill"].exists, "\(appearance) jobs still exposes SF stop.fill")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.stopFill"].waitForExistence(timeout: 8),
+                    "\(appearance) jobs missing official stopFill kill glyph"
+                )
+            }
+            if screen == "builtinPlugins" {
+                XCTAssertFalse(app.images["arrow.clockwise"].exists, "\(appearance) builtin plugins still exposes SF arrow.clockwise")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.refreshOutline"].waitForExistence(timeout: 8),
+                    "\(appearance) builtin plugins missing official refresh"
+                )
+                XCTAssertFalse(app.images["chevron.left"].exists, "\(appearance) builtin plugins still exposes SF chevron.left")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.chevronLeft"].waitForExistence(timeout: 8),
+                    "\(appearance) builtin plugins missing official back chevron"
+                )
+            }
+            if screen == "trajectoryDetail" {
+                let row = app.descendants(matching: .any)["trajRow.t-read"]
+                XCTAssertTrue(row.waitForExistence(timeout: 15), "\(appearance) trajectory tool row missing")
+                row.firstMatch.tap()
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.chevronRight"].waitForExistence(timeout: 8),
+                    "\(appearance) trajectory detail missing official chevronRight"
+                )
+                XCTAssertFalse(app.images["chevron.right"].exists, "\(appearance) trajectory detail still exposes SF chevron.right")
+                XCTAssertFalse(app.images["chevron.down"].exists, "\(appearance) trajectory detail still exposes SF chevron.down")
+                XCTAssertFalse(app.images["wrench.and.screwdriver"].exists, "\(appearance) trajectory detail still exposes SF wrench")
+                XCTAssertFalse(app.images["square.on.square"].exists, "\(appearance) trajectory detail still exposes SF copy")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.copyOutline"].waitForExistence(timeout: 8),
+                    "\(appearance) trajectory detail missing official copyOutline"
+                )
             }
             if screen == "settings" {
                 XCTAssertFalse(app.images["sun.max"].exists, "\(appearance) settings still exposes SF sun.max")
@@ -542,6 +660,9 @@ final class ScreenshotTests: XCTestCase {
             if screen == "drawer" {
                 try assertDrawerFooterHitsNavigate(app, appearance: appearance)
             }
+            if screen == "connections" {
+                try assertPairingLinkSheet(app, appearance: appearance)
+            }
             if screen == "models" {
                 try assertModelReleaseBadgeTracksSelection(app, appearance: appearance)
             }
@@ -623,6 +744,124 @@ final class ScreenshotTests: XCTestCase {
             frame.minY - window.minY,
             40,
             "\(appearance) connections looks like a sheet (origin \(frame.minY) vs window \(window.minY))"
+        )
+    }
+
+    /// Android `PairLinkSheet`: paste/type `dshpocket://pair`, then Continue
+    /// prefills pair confirmation and does not connect.
+    private func assertPairingLinkSheet(_ app: XCUIApplication, appearance: String) throws {
+        let pairingRow = app.descendants(matching: .any)["connectionsAction.pairingLink"].firstMatch
+        let pairingTitle = app.staticTexts["配对链接"].firstMatch
+        let pairingButton = app.buttons["配对链接"].firstMatch
+        XCTAssertTrue(
+            pairingRow.waitForExistence(timeout: 4)
+                || pairingTitle.waitForExistence(timeout: 2)
+                || pairingButton.waitForExistence(timeout: 2),
+            "\(appearance) 配对链接 row title missing"
+        )
+        if pairingRow.exists {
+            pairingRow.tap()
+        } else if pairingButton.exists {
+            pairingButton.tap()
+        } else {
+            pairingTitle.tap()
+        }
+        let hint = app.staticTexts["在电脑「设置 → 手机连接」复制配对链接，然后粘贴到这里。"]
+        XCTAssertTrue(
+            hint.waitForExistence(timeout: 8),
+            "\(appearance) pairing-link sheet missing"
+        )
+        XCTAssertTrue(
+            app.descendants(matching: .any)["connectionsPairLinkSheet"].waitForExistence(timeout: 4),
+            "\(appearance) connectionsPairLinkSheet identifier missing"
+        )
+        try saveNamedScreenshot(appearance, "pairingLink")
+        let paste = app.descendants(matching: .any)["connectionsPastePairingLink"]
+        let next = app.descendants(matching: .any)["connectionsReviewPairingLink"]
+        XCTAssertTrue(paste.waitForExistence(timeout: 4), "\(appearance) 粘贴链接 missing")
+        XCTAssertTrue(next.waitForExistence(timeout: 4), "\(appearance) 下一步 missing")
+        XCTAssertFalse(next.firstMatch.isEnabled, "\(appearance) 下一步 enabled on empty pairing link")
+        let field = app.descendants(matching: .any)["connectionsPairingLinkField"].firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 4), "\(appearance) pairing-link field missing")
+        replaceText(field, with: "https://example.com")
+        XCTAssertTrue(
+            app.descendants(matching: .any)["connectionsInvalidPairingLink"].waitForExistence(timeout: 4)
+                || app.staticTexts["请输入有效的 dshpocket://pair 链接，需包含主机地址和六位配对码。"].waitForExistence(timeout: 2),
+            "\(appearance) invalid pairing-link copy missing"
+        )
+        XCTAssertFalse(next.firstMatch.isEnabled, "\(appearance) 下一步 enabled on invalid pairing link")
+        replaceText(field, with: "dshpocket://pair?h=192.168.1.20:7690&c=654321")
+        let invalid = app.descendants(matching: .any)["connectionsInvalidPairingLink"].firstMatch
+        XCTAssertTrue(
+            invalid.waitForNonExistence(timeout: 4),
+            "\(appearance) invalid pairing-link copy stayed after a valid paste"
+        )
+        waitUntil(timeout: 4) { next.firstMatch.isEnabled }
+        XCTAssertTrue(next.firstMatch.isEnabled, "\(appearance) 下一步 disabled on valid pairing link")
+        next.firstMatch.tap()
+        let address = app.descendants(matching: .any)["connectionsAddressField"].firstMatch
+        XCTAssertTrue(address.waitForExistence(timeout: 8), "\(appearance) pair sheet address missing after 下一步")
+        XCTAssertEqual(address.value as? String, "192.168.1.20:7690", "\(appearance) pair sheet did not prefill host:port")
+        let code = app.descendants(matching: .any)["connectionsCodeField"].firstMatch
+        XCTAssertTrue(code.waitForExistence(timeout: 4), "\(appearance) pair sheet code missing after 下一步")
+        XCTAssertEqual(code.value as? String, "654321", "\(appearance) pair sheet did not prefill pairing code")
+        XCTAssertTrue(
+            app.buttons["开始配对"].waitForExistence(timeout: 4) || app.staticTexts["开始配对"].waitForExistence(timeout: 2),
+            "\(appearance) pair sheet missing 开始配对"
+        )
+        XCTAssertTrue(
+            app.descendants(matching: .any)["connectionsScreen"].firstMatch.waitForExistence(timeout: 2),
+            "\(appearance) pairing-link flow left 远程主机"
+        )
+    }
+
+    /// Pairing-link placeholder (`connectionsPairingLinkFieldHint`). Empty
+    /// SwiftUI TextFields report this as `value`.
+    private let pairingLinkPlaceholder = "dshpocket://pair?h=…&c=…"
+
+    private func pairingLinkFieldValue(_ element: XCUIElement) -> String {
+        let raw = (element.value as? String) ?? ""
+        return (raw.isEmpty || raw == pairingLinkPlaceholder) ? "" : raw
+    }
+
+    /// Wait on an XCUI predicate. Do not sleep — CI Dark failed at 22b3312
+    /// because the field never became the valid URI, not because 4s was short.
+    @discardableResult
+    private func waitUntil(timeout: TimeInterval, _ predicate: @escaping () -> Bool) -> Bool {
+        let expectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in predicate() },
+            object: nil
+        )
+        return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    /// Center-tap + N deletes leaves the caret mid-string, so the next URL
+    /// concatenates (`https://example.comdshpocket://…`) and parse stays nil.
+    /// Put the caret at the trailing edge, wait until the field is actually
+    /// empty, then wait until `value` equals the intended string.
+    private func replaceText(_ element: XCUIElement, with value: String) {
+        XCTAssertTrue(element.waitForExistence(timeout: 4), "pairing-link field missing before replace")
+        element.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        var current = pairingLinkFieldValue(element)
+        if !current.isEmpty {
+            element.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count))
+            waitUntil(timeout: 4) { self.pairingLinkFieldValue(element).isEmpty }
+            current = pairingLinkFieldValue(element)
+            if !current.isEmpty {
+                element.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+                element.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count + 8))
+                waitUntil(timeout: 4) { self.pairingLinkFieldValue(element).isEmpty }
+            }
+        }
+        XCTAssertEqual(
+            pairingLinkFieldValue(element),
+            "",
+            "pairing-link field still \(pairingLinkFieldValue(element)) before typing \(value)"
+        )
+        element.typeText(value)
+        XCTAssertTrue(
+            waitUntil(timeout: 4) { self.pairingLinkFieldValue(element) == value },
+            "pairing-link field was \(pairingLinkFieldValue(element)), expected \(value)"
         )
     }
 
@@ -766,6 +1005,17 @@ final class ScreenshotTests: XCTestCase {
         app.descendants(matching: .any)[id].waitForExistence(timeout: timeout)
             || row.descendants(matching: .any)[id].waitForExistence(timeout: 1)
             || app.buttons[id].waitForExistence(timeout: 1)
+    }
+
+    private func saveNamedScreenshot(_ appearance: String, _ name: String) throws {
+        let root = try screenshotRoot()
+        let shot = XCUIScreen.main.screenshot()
+        let url = root.appendingPathComponent("\(appearance.lowercased())-\(name).png")
+        try shot.pngRepresentation.write(to: url)
+        let attachment = XCTAttachment(screenshot: shot)
+        attachment.name = "\(appearance.lowercased())-\(name)"
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     private func screenshotRoot() throws -> URL {

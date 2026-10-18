@@ -47,6 +47,8 @@ enum T {
     static var colors: DswColors { ThemeStateHolder.shared.colors }
     static var ink: Color { colors.labelPrimary }
     static var accent: Color { colors.buttonInfoFill }
+    /// Desktop `--dsw-alias-state-business-primary` (workspace folderActive).
+    static var businessPrimary: Color { colors.stateBusinessPrimary }
     static var tint: Color { colors.stateBusinessTertiary }
     static var text2: Color { colors.labelSecondary }
     static var text3: Color { colors.labelTertiary }

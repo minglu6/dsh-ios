@@ -81,15 +81,19 @@ private struct WorkspaceBranchBlock<SessionRows: View>: View {
         let fallback = path.isEmpty ? orphans : []
         if registered.isEmpty {
             let key = "path:\(path)"
-            WorkspaceGroupHeader(
-                model: model,
-                title: path.isEmpty ? L.ungrouped() : path,
-                path: path,
-                collapsed: model.collapsedWorkspaces.contains(key),
-                workspace: nil,
-                depth: depth,
-                active: fallback.contains { $0.sessionId == model.chat?.sessionId } || containsCurrent(children, current: currentWorkspace)
-            ) { model.toggleWorkspaceCollapsed(key) }
+                WorkspaceGroupHeader(
+                    model: model,
+                    title: path.isEmpty ? L.ungrouped() : path,
+                    path: path,
+                    collapsed: model.collapsedWorkspaces.contains(key),
+                    workspace: nil,
+                    depth: depth,
+                    active: workspaceGroupFolderIsActive(
+                        containsCurrent: fallback.contains { $0.sessionId == model.chat?.sessionId },
+                        containsCurrentDescendant: containsCurrent(children, current: currentWorkspace),
+                        expanded: !model.collapsedWorkspaces.contains(key)
+                    )
+                ) { model.toggleWorkspaceCollapsed(key) }
             if !model.collapsedWorkspaces.contains(key) {
                 renderSessions(key, fallback)
                 ForEach(children, id: \.path) { child in
@@ -110,14 +114,18 @@ private struct WorkspaceBranchBlock<SessionRows: View>: View {
         } else {
             ForEach(Array(registered.enumerated()), id: \.element.workspaceId) { index, workspace in
                 let key = "workspace:\(workspace.workspaceId)"
-                WorkspaceGroupHeader(
+                    WorkspaceGroupHeader(
                     model: model,
                     title: workspaceDisplayTitle(title: workspace.title, path: workspace.path, localizedDefault: L.defaultWorkspace()),
                     path: workspace.path,
                     collapsed: model.collapsedWorkspaces.contains(key),
                     workspace: workspace,
                     depth: depth,
-                    active: workspace.workspaceId == currentWorkspace?.workspaceId || (index == 0 && containsCurrent(children, current: currentWorkspace)),
+                    active: workspaceGroupFolderIsActive(
+                        containsCurrent: workspace.workspaceId == currentWorkspace?.workspaceId,
+                        containsCurrentDescendant: index == 0 && containsCurrent(children, current: currentWorkspace),
+                        expanded: !model.collapsedWorkspaces.contains(key)
+                    ),
                     onMoveWorkspace: onMoveWorkspace
                 ) { model.toggleWorkspaceCollapsed(key) }
                 if !model.collapsedWorkspaces.contains(key) {
@@ -173,9 +181,9 @@ struct WorkspaceGroupHeader: View {
                 Button(action: onToggle) {
                     HStack(spacing: 8) {
                         OfficialGlyph(
-                            kind: collapsed ? .folderClose : .folderOpen,
-                            size: 14,
-                            color: active ? T.sidebarActiveAccent : T.text3
+                            kind: collapsed ? .folderClose : .folderOpenFill,
+                            size: CGFloat(workspaceGroupFolderIconSizePoints),
+                            color: active ? T.businessPrimary : T.text3
                         )
                         Text(title)
                             .font(.system(size: 14))
@@ -188,7 +196,11 @@ struct WorkspaceGroupHeader: View {
                     .padding(.vertical, 8)
                     .frame(minHeight: 48)
                 }
+                .buttonStyle(.plain)
+                .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(.isButton)
                 .accessibilityLabel(collapsed ? L.expand() : L.collapse())
+                .accessibilityIdentifier(workspaceGroupFolderIconIdentifier(workspace?.workspaceId ?? path))
                 if let workspace {
                     if model.ops.contains("workspace.rename") || model.ops.contains("workspace.delete") {
                         Menu {

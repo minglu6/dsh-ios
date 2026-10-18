@@ -17,13 +17,21 @@ struct PluginInventoryView: View {
         VStack(spacing: 0) {
             HStack {
                 Button { model.pop() } label: { OfficialGlyph(kind: .chevronLeft, size: 16, color: T.ink) }
+                    .accessibilityElement(children: .contain)
+                    .accessibilityAddTraits(.isButton)
                 Text(L.builtinPluginsNav()).font(.headline).foregroundStyle(T.ink)
                 Spacer()
                 Button { refresh += 1 } label: {
-                    Image(systemName: "arrow.clockwise").foregroundStyle(T.text2)
+                    OfficialGlyph(kind: .refreshOutline, size: 16, color: T.text2)
+                        .frame(width: 28, height: 28)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(.isButton)
                 .disabled(!model.isOnline || loading || !model.ops.contains("plugins.inventory"))
                 .accessibilityLabel(L.refresh())
+                .accessibilityIdentifier(builtinPluginRefreshSymbol())
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)

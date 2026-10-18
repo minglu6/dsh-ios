@@ -163,8 +163,14 @@ enum L {
     static func diagnosticsUnavailable() -> String { en ? "Diagnostics unavailable" : "诊断服务暂不可用" }
     static func nearbyDevices() -> String { en ? "Nearby devices" : "附近设备" }
     static func connections() -> String { connectionsPageTitle(english: en) }
-    static func scanQr() -> String { en ? "Scan" : "扫码" }
-    static func enterAddress() -> String { en ? "Enter address" : "输入地址" }
+    static func scanQr() -> String { connectionsActionTitle(.scan, english: en) }
+    static func pairingLink() -> String { connectionsActionTitle(.pairingLink, english: en) }
+    static func enterAddress() -> String { connectionsActionTitle(.enterAddress, english: en) }
+    static func pairingLinkHint() -> String { connectionsPairingLinkHint(english: en) }
+    static func pairingLinkFieldHint() -> String { connectionsPairingLinkFieldHint }
+    static func pastePairingLink() -> String { connectionsPastePairingLink(english: en) }
+    static func reviewPairingLink() -> String { connectionsReviewPairingLink(english: en) }
+    static func invalidPairingLink() -> String { connectionsInvalidPairingLink(english: en) }
     static func lan() -> String { en ? "LAN" : "局域网" }
     static func repairPair() -> String { en ? "Pair again" : "重新配对" }
     static func pairedDevices() -> String { en ? "Paired devices" : "已配对设备" }

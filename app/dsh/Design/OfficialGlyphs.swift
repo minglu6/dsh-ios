@@ -9,6 +9,8 @@ struct OfficialGlyph: View {
         case permission(String)
         case folderClose
         case folderOpen
+        case folderOpenFill
+        case keyboard
         case pinOutline
         case pinFill
         case archiveOutline
@@ -63,11 +65,24 @@ struct OfficialGlyph: View {
         case appearanceLight
         case appearanceDark
         case appearanceFollowSystem
+        case browseOutline
+        case editOutline
+        case apiOutline
+        case codeOutline
+        case planOutline
+        case questionOutline
+        case usersOutline
+        case checklistOutline
+        case goalOutline
+        case cordisPlugin
+        case stopFill
 
         var accessibilityIdentifier: String {
             switch self {
             case .folderClose: return "official.folderClose"
             case .folderOpen: return "official.folderOpen"
+            case .folderOpenFill: return workspaceGroupFolderSymbol(collapsed: false)
+            case .keyboard: return connectionsEnterAddressSymbol()
             case .settingsOutline: return "official.settingsOutline"
             case .newChat: return "official.newChat"
             case .searchOutline: return "official.searchOutline"
@@ -115,19 +130,36 @@ struct OfficialGlyph: View {
             case .appearanceLight: return appearanceLightSymbol()
             case .appearanceDark: return appearanceDarkSymbol()
             case .appearanceFollowSystem: return appearanceFollowSystemSymbol()
+            case .think: return "official.think"
+            case .agentPreset: return "official.agentPreset"
+            case .globe: return "official.globeOutline"
+            case .browseOutline: return "official.browseOutline"
+            case .editOutline: return "official.editOutline"
+            case .apiOutline: return "official.apiOutline"
+            case .codeOutline: return "official.codeOutline"
+            case .planOutline: return "official.planOutline"
+            case .questionOutline: return "official.questionOutline"
+            case .usersOutline: return "official.usersOutline"
+            case .checklistOutline: return "official.checklistOutline"
+            case .goalOutline: return "official.goalOutline"
+            case .cordisPlugin: return "official.cordisPlugin"
+            case .stopFill: return jobsStopFillSymbol()
+            case .permission: return "official.glyph"
             default: return "official.glyph"
             }
         }
 
         var hidesAccessibility: Bool {
             switch self {
-            case .folderClose, .folderOpen, .settingsOutline, .newChat, .searchOutline, .projectAdd, .trajectoryClock,
+            case .folderClose, .folderOpen, .folderOpenFill, .keyboard, .settingsOutline, .newChat, .searchOutline, .projectAdd, .trajectoryClock,
                  .slidersTwo, .workspaceTree, .flatList, .clockOutline, .chevronsUpDown, .archiveOff, .archiveCheck, .queue,
                  .gaugeOutline, .databaseOutline, .infoOutline, .refreshOutline, .jobsChevron, .fishLogo,
                  .userOutline, .sparkle, .toolWrench, .information, .compacted, .settingsOutlineRegular,
                  .chevronDown, .chevronUp, .checkOutline, .likeOutline, .likeFill, .dislikeOutline, .dislikeFill,
                  .stopRect, .panelLeft, .panelRight, .copyOutline, .branchOutline, .chevronLeft, .chevronRight,
-                 .closeOutline, .linkOutline, .rightUp, .appearanceLight, .appearanceDark, .appearanceFollowSystem:
+                 .closeOutline, .linkOutline, .rightUp, .appearanceLight, .appearanceDark, .appearanceFollowSystem,
+                 .think, .agentPreset, .globe, .browseOutline, .editOutline, .apiOutline, .codeOutline, .planOutline,
+                 .questionOutline, .usersOutline, .checklistOutline, .goalOutline, .cordisPlugin, .stopFill:
                 return false
             // plusOutline / send are decorative; ComposerView hosts own
             // official.plusOutline and official.send.
@@ -146,6 +178,9 @@ struct OfficialGlyph: View {
             switch kind {
             case .fishLogo:
                 let scale = canvas.width / CGFloat(fishLogoViewBoxWidth)
+                ctx.scaleBy(x: scale, y: scale)
+            case .keyboard:
+                let scale = min(canvas.width, canvas.height) / CGFloat(connectionsKeyboardViewBox)
                 ctx.scaleBy(x: scale, y: scale)
             default:
                 let scale = min(canvas.width, canvas.height) / 16
@@ -170,6 +205,22 @@ struct OfficialGlyph: View {
             case .folderOpen:
                 ctx.stroke(Path(SVGPath.cgPath(Self.folderOpenFront)), with: .color(color), style: stroke)
                 ctx.stroke(Path(SVGPath.cgPath(Self.folderOpenBack)), with: .color(color), style: stroke)
+            case .folderOpenFill:
+                ctx.fill(
+                    Path(SVGPath.cgPath(workspaceFolderOpenFillShadePath)),
+                    with: .color(color.opacity(workspaceFolderOpenFillShadeOpacity))
+                )
+                ctx.fill(Path(SVGPath.cgPath(workspaceFolderOpenFillPocketPath)), with: .color(color))
+                ctx.fill(Path(SVGPath.cgPath(workspaceFolderOpenFillTabPath)), with: .color(color))
+            case .keyboard:
+                ctx.fill(
+                    Path(SVGPath.cgPath(connectionsKeyboardFramePath)),
+                    with: .color(color),
+                    style: FillStyle(eoFill: true)
+                )
+                for key in connectionsKeyboardKeyPaths {
+                    ctx.fill(Path(SVGPath.cgPath(key)), with: .color(color))
+                }
             case .pinOutline, .pinFill:
                 ctx.stroke(Path(SVGPath.cgPath(Self.pinBody)), with: .color(color), style: stroke)
                 ctx.stroke(Path(SVGPath.cgPath(Self.pinNeedle)), with: .color(color), style: stroke)
@@ -517,6 +568,56 @@ struct OfficialGlyph: View {
                 )
                 ctx.stroke(Path(SVGPath.cgPath(appearanceFollowSystemScreenPath)), with: .color(color), style: medium)
                 ctx.stroke(Path(SVGPath.cgPath(appearanceFollowSystemStandPath)), with: .color(color), style: medium)
+            case .browseOutline:
+                let regular = Self.regularStroke
+                ctx.fill(Path(SVGPath.cgPath(chatBrowsePagePath)), with: .color(color))
+                ctx.stroke(Path(SVGPath.cgPath(chatBrowseCaptionTopPath)), with: .color(color), style: regular)
+                ctx.stroke(Path(SVGPath.cgPath(chatBrowseCaptionMidPath)), with: .color(color), style: regular)
+            case .editOutline:
+                ctx.fill(Path(SVGPath.cgPath(chatEditPagePath)), with: .color(color))
+                ctx.stroke(Path(SVGPath.cgPath(chatEditStrokePath)), with: .color(color), style: Self.regularStroke)
+            case .apiOutline:
+                ctx.stroke(Path(SVGPath.cgPath(chatApiChevronPath)), with: .color(color), style: Self.regularStroke)
+                ctx.stroke(Path(SVGPath.cgPath(chatApiBarPath)), with: .color(color), style: Self.regularStroke)
+            case .codeOutline:
+                ctx.stroke(Path(SVGPath.cgPath(chatCodeSlashLeftPath)), with: .color(color), style: Self.regularStroke)
+                ctx.stroke(Path(SVGPath.cgPath(chatCodeSlashRightPath)), with: .color(color), style: Self.regularStroke)
+                ctx.stroke(Path(SVGPath.cgPath(chatCodeRuleTopPath)), with: .color(color), style: Self.regularStroke)
+                ctx.stroke(Path(SVGPath.cgPath(chatCodeRuleBottomPath)), with: .color(color), style: Self.regularStroke)
+            case .planOutline:
+                ctx.fill(Path(SVGPath.cgPath(chatPlanPagePath)), with: .color(color))
+                ctx.fill(Path(SVGPath.cgPath(chatPlanPencilPath)), with: .color(color))
+                ctx.fill(Path(SVGPath.cgPath(chatPlanPencilBasePath)), with: .color(color))
+                ctx.stroke(Path(SVGPath.cgPath(chatPlanCaptionTopPath)), with: .color(color), style: Self.regularStroke)
+                ctx.stroke(Path(SVGPath.cgPath(chatPlanCaptionMidPath)), with: .color(color), style: Self.regularStroke)
+            case .questionOutline:
+                ctx.stroke(Path(SVGPath.cgPath(chatQuestionRingPath)), with: .color(color), style: Self.regularStroke)
+                ctx.stroke(Path(SVGPath.cgPath(chatQuestionHookPath)), with: .color(color), style: Self.regularStroke)
+                ctx.stroke(Path(SVGPath.cgPath(chatQuestionDotPath)), with: .color(color), style: Self.regularStroke)
+            case .usersOutline:
+                ctx.stroke(Path(SVGPath.cgPath(chatUsersHeadPath)), with: .color(color), style: Self.regularStroke)
+                ctx.stroke(Path(SVGPath.cgPath(chatUsersShoulderPath)), with: .color(color), style: Self.regularStroke)
+                ctx.stroke(Path(SVGPath.cgPath(chatUsersRearHeadPath)), with: .color(color), style: Self.regularStroke)
+                ctx.stroke(Path(SVGPath.cgPath(chatUsersRearShoulderPath)), with: .color(color), style: Self.regularStroke)
+            case .checklistOutline:
+                ctx.stroke(Path(SVGPath.cgPath(chatChecklistDotTopPath)), with: .color(color), style: Self.regularStroke)
+                ctx.stroke(Path(SVGPath.cgPath(chatChecklistLineTopPath)), with: .color(color), style: Self.regularStroke)
+                ctx.stroke(Path(SVGPath.cgPath(chatChecklistDotBottomPath)), with: .color(color), style: Self.regularStroke)
+                ctx.stroke(Path(SVGPath.cgPath(chatChecklistLineBottomPath)), with: .color(color), style: Self.regularStroke)
+            case .goalOutline:
+                ctx.stroke(Path(SVGPath.cgPath(chatGoalOuterArcPath)), with: .color(color), style: Self.regularStroke)
+                ctx.stroke(Path(SVGPath.cgPath(chatGoalInnerArcPath)), with: .color(color), style: Self.regularStroke)
+                ctx.stroke(Path(SVGPath.cgPath(chatGoalPointerPath)), with: .color(color), style: Self.regularStroke)
+                ctx.stroke(Path(SVGPath.cgPath(chatGoalFlagPath)), with: .color(color), style: Self.regularStroke)
+            case .cordisPlugin:
+                ctx.fill(Path(SVGPath.cgPath(chatCordisPluginFillPath)), with: .color(color))
+                let r = CGFloat(chatCordisPluginCircleRadius)
+                let c = CGFloat(chatCordisPluginCircleCenter)
+                var ring = Path()
+                ring.addEllipse(in: CGRect(x: c - r, y: c - r, width: r * 2, height: r * 2))
+                ctx.stroke(ring, with: .color(color), style: Self.regularStroke)
+            case .stopFill:
+                ctx.fill(Path(SVGPath.cgPath(jobsStopFillPath)), with: .color(color))
             }
         }
         .frame(width: canvasWidth, height: canvasHeight)
@@ -533,6 +634,13 @@ struct OfficialGlyph: View {
             return size
         }
     }
+
+    private static let regularStroke = StrokeStyle(
+        lineWidth: 1,
+        lineCap: .butt,
+        lineJoin: .miter,
+        miterLimit: 10
+    )
 
     private func drawPanelLeft(_ ctx: inout GraphicsContext, color: Color, stroke: StrokeStyle) {
         ctx.stroke(Path(SVGPath.cgPath(headerPanelFramePath)), with: .color(color), style: stroke)
@@ -616,6 +724,42 @@ struct OfficialGlyph: View {
     private static let downloadTray = "M1.5 10.0469V13.158C1.5 13.3937 1.60536 13.6198 1.79289 13.7865C1.98043 13.9532 2.23478 14.0469 2.5 14.0469H13.5C13.7652 14.0469 14.0196 13.9532 14.2071 13.7865C14.3946 13.6198 14.5 13.3937 14.5 13.158V10.0469"
     private static let terminalPrompt = "M10 11L16.606 17.606C16.6841 17.6841 16.6841 17.8107 16.606 17.8888L10 24.4948"
     private static let terminalCursor = "M20.1211 24.4946H26.8685"
+
+    static func process(_ kind: String) -> Kind {
+        switch kind {
+        case "thinking": return .think
+        case "read", "readImage", "webFetch": return .browseOutline
+        case "search": return .searchOutline
+        case "edit", "write": return .editOutline
+        case "commands": return .apiOutline
+        case "code": return .codeOutline
+        case "webSearch": return .globe
+        case "subagents": return .agentPreset
+        case "plan": return .planOutline
+        case "questions": return .questionOutline
+        case "tools": return .sparkle
+        default:
+            preconditionFailure("OfficialGlyph.process unknown PROCESS_ICONS kind \(kind)")
+        }
+    }
+
+    static func tool(_ icon: ToolProcessIcon) -> Kind {
+        switch icon {
+        case .browse: return .browseOutline
+        case .search: return .searchOutline
+        case .command: return .apiOutline
+        case .write, .edit: return .editOutline
+        case .code: return .codeOutline
+        case .generic: return .sparkle
+        case .users: return .usersOutline
+        case .checklist: return .checklistOutline
+        case .clock: return .clockOutline
+        case .goal: return .goalOutline
+        case .plugin: return .cordisPlugin
+        case .agent: return .agentPreset
+        case .branch: return .branchOutline
+        }
+    }
 }
 
 private struct OfficialGlyphAccess: ViewModifier {

@@ -217,12 +217,17 @@ private struct SessionInspectorContent: View {
                     nav.begin(sessionId: chat.sessionId)
                     onDismiss()
                 } label: {
-                    Image(systemName: "viewfinder")
+                    // Skip: desktop Guide has no Session Inspector; primitives
+                    // `IconInspectOutline` is CodeBracketsArtwork, not a viewfinder.
+                    Image(systemName: inspectorPickSkipSymbol)
                         .font(.system(size: 12))
                         .foregroundStyle(T.ink)
                         .frame(width: 22, height: 22)
+                        .accessibilityLabel(L.t("在对话面板中选取元素", "Pick an element in Chat View"))
+                        .accessibilityIdentifier(inspectorPickSkipIdentifier())
                 }
-                .accessibilityLabel(L.t("在对话面板中选取元素", "Pick an element in Chat View"))
+                .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(.isButton)
 
                 Text("· " + (state.filter.isEmpty ? "\(allCount)" : "\(matchingCount) / \(allCount)"))
                     .font(.system(size: 11, design: .monospaced))
@@ -437,12 +442,16 @@ private struct InspectorTypeFilter: View {
             draft = value
             open.toggle()
         } label: {
-            Image(systemName: "line.3.horizontal.decrease")
+            // Skip: primitives have no type-filter artwork.
+            Image(systemName: inspectorTypeFilterSkipSymbol)
                 .font(.system(size: 11))
                 .foregroundStyle(value.isEmpty ? T.ink : T.accent)
                 .frame(width: 17, height: 17)
+                .accessibilityLabel(L.t("筛选类型", "Filter types"))
+                .accessibilityIdentifier(inspectorTypeFilterSkipIdentifier())
         }
-        .accessibilityLabel(L.t("筛选类型", "Filter types"))
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(.isButton)
         .popover(isPresented: $open) {
             let suggestions = inspectorTypeSuggestions(rows, filter: draft)
             VStack(alignment: .leading, spacing: 6) {

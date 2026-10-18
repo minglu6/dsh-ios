@@ -60,6 +60,11 @@
       "name": "reject out-of-range port",
       "input": "dshpocket://pair?h=192.168.1.20:99999&c=123456",
       "expected": null
+    },
+    {
+      "name": "reject unfinished percent-escape in host",
+      "input": "dshpocket://pair?h=mac%&c=012345",
+      "expected": null
     }
   ]
 }

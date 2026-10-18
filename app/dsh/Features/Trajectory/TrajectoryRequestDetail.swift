@@ -178,10 +178,16 @@ private struct RequestOverview: View {
                 HStack {
                     Text(title).font(.caption.weight(.semibold)).foregroundStyle(T.ink)
                     Spacer()
-                    Image(systemName: "chevron.right").font(.caption2).foregroundStyle(T.caption)
+                    OfficialGlyph(
+                        kind: .chevronRight,
+                        size: CGFloat(trajectoryDetailChevronIconSizePoints),
+                        color: T.caption
+                    )
                 }
             }
             .buttonStyle(.plain)
+            .accessibilityElement(children: .contain)
+            .accessibilityAddTraits(.isButton)
             content()
         }
         .padding(.vertical, 8)

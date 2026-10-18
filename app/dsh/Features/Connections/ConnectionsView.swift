@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import DSHProtocol
 
 /// Phone controller connections list. Twin of Android `ConnectionsScreen` /
@@ -14,9 +15,18 @@ struct ConnectionsView: View {
     @State private var renaming = false
     @State private var renameDraft = ""
 
-    private enum Presented: Equatable {
+    private enum Presented: Identifiable, Equatable {
+        case pairLink
         case pair
         case manage(String)
+
+        var id: String {
+            switch self {
+            case .pairLink: return "pairLink"
+            case .pair: return "pair"
+            case .manage(let id): return "manage.\(id)"
+            }
+        }
     }
 
     var body: some View {
@@ -39,14 +49,24 @@ struct ConnectionsView: View {
                         }
                     }
                     card {
+                        // Skip: ui-primitives 0.2.1-alpha.5 has no QR artwork
+                        // (`connectionsScanUsesOfficialGlyph`). Do not invent one.
                         ConnActionRow(
                             title: L.scanQr(),
+                            identifier: connectionsActionRowIdentifier(.scan),
                             system: "qrcode.viewfinder",
                             divider: true
                         ) { showScan = true }
                         ConnActionRow(
-                            title: L.enterAddress(),
+                            title: L.pairingLink(),
+                            identifier: connectionsActionRowIdentifier(.pairingLink),
                             official: .linkOutline,
+                            divider: true
+                        ) { presented = .pairLink }
+                        ConnActionRow(
+                            title: L.enterAddress(),
+                            identifier: connectionsActionRowIdentifier(.enterAddress),
+                            official: .keyboard,
                             divider: false
                         ) { openAddressSheet() }
                     }
@@ -64,15 +84,20 @@ struct ConnectionsView: View {
         // `.frame` then failed with multiple matches.
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("connectionsScreen")
-        .sheet(isPresented: sheetPresented) {
-            switch presented {
+        .sheet(item: $presented, onDismiss: { renaming = false }) { item in
+            switch item {
+            case .pairLink:
+                PairLinkSheet(
+                    onDismiss: { presented = nil },
+                    onResult: { link in
+                        openAddressSheet(host: link.host, port: link.port, code: link.code)
+                    }
+                )
             case .pair:
                 pairSheet
             case .manage(let id):
                 manageSheet(managedProfile(id))
                     .presentationDetents([.medium])
-            case nil:
-                EmptyView()
             }
         }
         .fullScreenCover(isPresented: $showScan) {
@@ -115,18 +140,6 @@ struct ConnectionsView: View {
             fatalError("manage sheet for missing profile \(id)")
         }
         return profile
-    }
-
-    private var sheetPresented: Binding<Bool> {
-        Binding(
-            get: { presented != nil },
-            set: { open in
-                if !open {
-                    presented = nil
-                    renaming = false
-                }
-            }
-        )
     }
 
     private var header: some View {
@@ -340,10 +353,22 @@ struct ConnectionsView: View {
     private var pairSheet: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 12) {
-                field(L.addressField(), text: $address, hint: L.pairingUriHint(), mono: true)
+                field(
+                    L.addressField(),
+                    text: $address,
+                    hint: L.pairingUriHint(),
+                    mono: true,
+                    identifier: connectionsAddressFieldIdentifier()
+                )
                 field(L.nameField(), text: $name, hint: L.nameHint(), mono: false)
                 if !address.contains("dshpocket://") {
-                    field(L.pairingCode(), text: $code, hint: "123456", mono: true)
+                    field(
+                        L.pairingCode(),
+                        text: $code,
+                        hint: "123456",
+                        mono: true,
+                        identifier: connectionsCodeFieldIdentifier()
+                    )
                 }
                 Spacer()
                 Button {
@@ -372,7 +397,13 @@ struct ConnectionsView: View {
         }
     }
 
-    private func field(_ label: String, text: Binding<String>, hint: String, mono: Bool) -> some View {
+    private func field(
+        _ label: String,
+        text: Binding<String>,
+        hint: String,
+        mono: Bool,
+        identifier: String? = nil
+    ) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label).font(.caption).foregroundStyle(T.text3)
             TextField(hint, text: text)
@@ -382,6 +413,8 @@ struct ConnectionsView: View {
                 .padding(12)
                 .background(T.input, in: RoundedRectangle(cornerRadius: 12))
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 0.5))
+                .accessibilityLabel(label)
+                .accessibilityIdentifierIfPresent(identifier)
         }
     }
 
@@ -486,6 +519,7 @@ private struct ConnDeviceRow<Leading: View>: View {
 /// Desktop settingsRow action: icon + title + chevron.
 private struct ConnActionRow: View {
     var title: String
+    var identifier: String
     var official: OfficialGlyph.Kind? = nil
     var system: String? = nil
     var divider: Bool
@@ -493,33 +527,176 @@ private struct ConnActionRow: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Button(action: onClick) {
-                HStack(spacing: 12) {
-                    Group {
-                        if let official {
-                            OfficialGlyph(kind: official, size: 18, color: T.ink)
-                        } else if let system {
-                            Image(systemName: system)
-                                .font(.system(size: 18))
-                                .foregroundStyle(T.ink)
-                        } else {
-                            fatalError("ConnActionRow requires official or system icon")
-                        }
+            // Button + `.contain` lets XCUITest retarget a child glyph and
+            // never fire `action`. Hit-test the row like Android ConnActionRow.
+            HStack(spacing: 12) {
+                Group {
+                    if let official {
+                        OfficialGlyph(kind: official, size: 18, color: T.ink)
+                    } else if let system {
+                        Image(systemName: system)
+                            .font(.system(size: 18))
+                            .foregroundStyle(T.ink)
+                    } else {
+                        fatalError("ConnActionRow requires official or system icon")
                     }
-                    .frame(width: 18, height: 18)
-                    Text(title)
-                        .font(.system(size: 16))
-                        .foregroundStyle(T.ink)
-                    Spacer()
-                    OfficialGlyph(kind: .chevronRight, size: 14, color: T.caption)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 15)
+                .frame(width: 18, height: 18)
+                Text(title)
+                    .font(.system(size: 16))
+                    .foregroundStyle(T.ink)
+                Spacer()
+                OfficialGlyph(kind: .chevronRight, size: 14, color: T.caption)
             }
-            .buttonStyle(.plain)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 15)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .onTapGesture(perform: onClick)
+            // VoiceOver: one labeled button. Not a SwiftUI `Button` + `.contain`
+            // — that retargets XCUI taps onto the child glyph and never fires.
+            // `.combine` would swallow `official.linkOutline` / keyboard / QR
+            // skip leaves (see OfficialGlyphAccess). `.contain` keeps those
+            // descendants queryable; label + isButton is the activatable row.
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(title)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityIdentifier(identifier)
             if divider {
                 Divider().padding(.horizontal, 16)
             }
+        }
+    }
+}
+
+/// Android `PairLinkSheet` (9aa43c4): paste `dshpocket://pair`, then Continue
+/// prefills the existing pair confirmation. Does not connect.
+private struct PairLinkSheet: View {
+    var onDismiss: () -> Void
+    var onResult: (PairingLink) -> Void
+    @State private var text = ""
+    @State private var pasted = false
+    /// Skip the next `onChange(of: text)` pasted reset so 粘贴链接 can set
+    /// `pasted = true` after assigning `text` (Compose onValueChange does not
+    /// fire for programmatic paste).
+    @State private var suppressPasteReset = false
+
+    private var parsed: PairingLink? { PairingUriPolicy.parse(text) }
+    private var showInvalid: Bool {
+        connectionsShowsInvalidPairingLink(text: text, pasted: pasted, parsed: parsed != nil)
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 0) {
+                Text(L.pairingLink())
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(T.ink)
+                    .padding(.horizontal, 22)
+                    .padding(.vertical, 6)
+                Text(L.pairingLinkHint())
+                    .font(.system(size: 13))
+                    .foregroundStyle(T.text3)
+                    .padding(.horizontal, 22)
+                    .padding(.vertical, 8)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L.pairingLink())
+                        .font(.caption)
+                        .foregroundStyle(T.text3)
+                    // `$text` (not a custom Binding that also writes `pasted`):
+                    // XCUI typeText talks to the UITextField; an extra @State
+                    // write in the setter can leave SwiftUI `text` on the old
+                    // URL while the field shows a concatenation, so parse
+                    // stays nil and invalid copy plus disabled 下一步 remain.
+                    TextField(L.pairingLinkFieldHint(), text: $text)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .font(.system(.body, design: .monospaced))
+                        .padding(12)
+                        .background(T.input, in: RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 0.5))
+                        .accessibilityLabel(L.pairingLink())
+                        .accessibilityIdentifier(connectionsPairingLinkFieldIdentifier())
+                        .onChange(of: text) { _ in
+                            if suppressPasteReset {
+                                suppressPasteReset = false
+                                return
+                            }
+                            pasted = false
+                        }
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 4)
+                if showInvalid {
+                    Text(L.invalidPairingLink())
+                        .font(.system(size: 12))
+                        .foregroundStyle(T.err)
+                        .padding(.horizontal, 22)
+                        .padding(.vertical, 8)
+                        .accessibilityIdentifier(connectionsInvalidPairingLinkIdentifier())
+                }
+                HStack(spacing: 10) {
+                    Button(action: pasteLink) {
+                        Text(L.pastePairingLink())
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .foregroundStyle(T.ink)
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 1))
+                    }
+                    .accessibilityIdentifier(connectionsPastePairingLinkIdentifier())
+                    Button(action: continuePairing) {
+                        Text(L.reviewPairingLink())
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .foregroundStyle(T.onPrimary)
+                            .background(T.primaryButton, in: RoundedRectangle(cornerRadius: 12))
+                    }
+                    .disabled(parsed == nil)
+                    .opacity(parsed == nil ? 0.4 : 1)
+                    .accessibilityIdentifier(connectionsReviewPairingLinkIdentifier())
+                }
+                .padding(.horizontal, 22)
+                .padding(.vertical, 14)
+                Spacer()
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(T.bg)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier(connectionsPairLinkSheetIdentifier())
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(L.cancel()) { onDismiss() }
+                        .foregroundStyle(T.ink)
+                        .tint(T.ink)
+                }
+            }
+        }
+    }
+
+    private func pasteLink() {
+        let value = UIPasteboard.general.string ?? ""
+        if value == text {
+            pasted = true
+            return
+        }
+        suppressPasteReset = true
+        pasted = true
+        text = value
+    }
+
+    private func continuePairing() {
+        guard let link = parsed else { return }
+        onResult(link)
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func accessibilityIdentifierIfPresent(_ identifier: String?) -> some View {
+        if let identifier {
+            self.accessibilityIdentifier(identifier)
+        } else {
+            self
         }
     }
 }

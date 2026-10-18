@@ -12,8 +12,11 @@ public enum PairingUriPolicy {
         for part in query.split(separator: "&") where !part.isEmpty {
             let pieces = part.split(separator: "=", maxSplits: 1)
             let key = String(pieces[0])
-            let value = pieces.count > 1 ? String(pieces[1]) : ""
-            fields[key] = value.removingPercentEncoding ?? value
+            let raw = pieces.count > 1 ? String(pieces[1]) : ""
+            // Android `PairingUriPolicy`: unfinished percent-escapes (e.g. `h=mac%`)
+            // must fail closed. Do not fall back to the raw fragment.
+            guard let value = raw.removingPercentEncoding else { return nil }
+            fields[key] = value
         }
         guard let code = fields["c"], code.count == 6, code.allSatisfy(\.isNumber) else { return nil }
         if let node = fields["n"], !node.isEmpty { return nil }

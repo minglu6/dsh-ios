@@ -526,6 +526,41 @@ final class AndroidParityTests: XCTestCase {
         XCTAssertNotEqual(connectionsPageTitle(english: false), "手机连接")
     }
 
+    func testConnectionsPairingLinkMatchesAndroid9aa43c4() {
+        XCTAssertEqual(Array(ConnectionsAction.allCases), [.scan, .pairingLink, .enterAddress])
+        XCTAssertEqual(connectionsActionTitle(.scan, english: false), "扫码")
+        XCTAssertEqual(connectionsActionTitle(.pairingLink, english: false), "配对链接")
+        XCTAssertEqual(connectionsActionTitle(.enterAddress, english: false), "输入地址")
+        XCTAssertEqual(connectionsActionTitle(.pairingLink, english: true), "Pairing link")
+        XCTAssertEqual(connectionsActionTitle(.enterAddress, english: true), "Enter address")
+        XCTAssertEqual(
+            connectionsPairingLinkHint(english: false),
+            "在电脑「设置 → 手机连接」复制配对链接，然后粘贴到这里。"
+        )
+        XCTAssertEqual(connectionsPastePairingLink(english: false), "粘贴链接")
+        XCTAssertEqual(connectionsReviewPairingLink(english: false), "下一步")
+        XCTAssertEqual(
+            connectionsInvalidPairingLink(english: false),
+            "请输入有效的 dshpocket://pair 链接，需包含主机地址和六位配对码。"
+        )
+        XCTAssertEqual(connectionsPairingLinkFieldHint, "dshpocket://pair?h=…&c=…")
+        XCTAssertEqual(connectionsPairingLinkSymbol(), "official.linkOutline")
+        XCTAssertEqual(connectionsEnterAddressSymbol(), "connections.keyboard")
+        XCTAssertEqual(connectionsActionRowIdentifier(.pairingLink), "connectionsAction.pairingLink")
+        XCTAssertTrue(isForbiddenConnectionsEnterAddressSymbol("keyboard"))
+        XCTAssertFalse(isForbiddenConnectionsEnterAddressSymbol("connections.keyboard"))
+        XCTAssertEqual(connectionsKeyboardViewBox, 24)
+        XCTAssertTrue(connectionsKeyboardFramePath.hasPrefix("M20 5H4"))
+        XCTAssertEqual(connectionsKeyboardKeyPaths.count, 11)
+        XCTAssertEqual(connectionsKeyboardSpacePath, "M8 14H16V16H8V14Z")
+        XCTAssertEqual(connectionsKeyboardKeyPaths.last, connectionsKeyboardSpacePath)
+        XCTAssertFalse(connectionsKeyboardKeyPaths.contains("M6 14H14V16H6V14Z"))
+        XCTAssertFalse(connectionsShowsInvalidPairingLink(text: "", pasted: false, parsed: false))
+        XCTAssertTrue(connectionsShowsInvalidPairingLink(text: "", pasted: true, parsed: false))
+        XCTAssertTrue(connectionsShowsInvalidPairingLink(text: "https://example.com", pasted: false, parsed: false))
+        XCTAssertFalse(connectionsShowsInvalidPairingLink(text: "dshpocket://pair", pasted: true, parsed: true))
+    }
+
     func testConnectionsStatusLineMatchesAndroidDeviceMeta() {
         XCTAssertEqual(
             connectionsStatusLine(status: "在线", routeLabel: "Tailscale", current: "当前"),
