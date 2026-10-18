@@ -98,6 +98,7 @@ struct ConnectionsView: View {
             case .manage(let id):
                 manageSheet(managedProfile(id))
                     .presentationDetents([.medium])
+                    .tint(T.ink)
             }
         }
         .fullScreenCover(isPresented: $showScan) {
@@ -212,6 +213,7 @@ struct ConnectionsView: View {
             detail: profile.needsRepair ? nil : profile.subtitle,
             warn: profile.needsRepair,
             divider: divider,
+            rowIdentifier: connectionsPairedRowIdentifier(),
             onClick: { presented = .manage(profile.id) },
             onSwitch: current ? nil : {
                 model.connect(profileId: profile.id)
@@ -228,116 +230,185 @@ struct ConnectionsView: View {
             detail: "\(host.host):\(host.port)",
             warn: false,
             divider: divider,
+            rowIdentifier: connectionsNearbyRowIdentifier(),
             onClick: {
                 openAddressSheet(host: host.host, port: host.port, name: host.deviceName)
             },
             leading: {
-                Image(systemName: "desktopcomputer")
-                    .font(.system(size: 18))
-                    .foregroundStyle(T.accent)
-                    .frame(width: 18, height: 18)
+                // Material Outlined Computer (Android nearby row). primitives
+                // have no IconComputer — do not substitute a desktop monitor cube.
+                OfficialGlyph(kind: .computer, size: 18, color: T.accent)
             }
         )
     }
 
     private func manageSheet(_ profile: Profile) -> some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 0) {
-                if renaming {
-                    Text(L.rename()).font(.headline).foregroundStyle(T.ink)
-                    TextField(L.rename(), text: $renameDraft)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .padding(12)
-                        .background(T.input, in: RoundedRectangle(cornerRadius: 12))
-                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 0.5))
-                        .padding(.top, 12)
-                    HStack(spacing: 10) {
-                        Button(L.cancel()) { renaming = false }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .foregroundStyle(T.ink)
-                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 1))
-                        Button(L.save()) {
-                            do {
-                                try model.renameProfile(profile.id, name: renameDraft)
-                                renaming = false
-                            } catch {
-                                model.errorMessage = error.localizedDescription
-                            }
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .foregroundStyle(T.onPrimary)
-                        .background(T.primaryButton, in: RoundedRectangle(cornerRadius: 12))
-                        .disabled(renameDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    }
-                    .padding(.top, 16)
-                    Spacer()
-                } else {
-                    HStack(spacing: 10) {
-                        StatusDot(color: dotColor(model.status[profile.id]))
-                        Text(profile.name).font(.headline).foregroundStyle(T.ink)
-                    }
-                    Text(
-                        connectionsStatusLine(
-                            status: profile.needsRepair ? L.repairNeeded() : dotText(model.status[profile.id]),
-                            routeLabel: profile.needsRepair ? "" : (model.routes[profile.id]?.label ?? profile.kind),
-                            current: profile.id == model.activeId ? L.currentDevice() : nil
-                        )
+        // Not NavigationStack: that is system bar chrome (and can leak the
+        // accent tint). Android `ProfileManageSheet` is ConnSheet + OptionRow
+        // with desktop `D.refresh` / `D.edit` / `D.trash`. Phone still needs
+        // a dismiss control, styled as desktop Button.ghost.
+        VStack(alignment: .leading, spacing: 0) {
+            Button(L.cancel()) { presented = nil }
+                .buttonStyle(.plain)
+                .font(.system(size: CGFloat(dswButtonFontSizePoints)))
+                .foregroundStyle(T.ink)
+                .padding(.horizontal, 22)
+                .padding(.vertical, 6)
+                .accessibilityIdentifier(connectionsManageCancelIdentifier())
+            if renaming {
+                Text(L.rename())
+                    .font(.system(size: CGFloat(connectionsSheetTitleFontSizePoints), weight: .semibold))
+                    .foregroundStyle(T.ink)
+                    .padding(.horizontal, 22)
+                    .padding(.vertical, 6)
+                TextField(L.rename(), text: $renameDraft)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .font(.system(size: CGFloat(connectionsFieldFontSizePoints)))
+                    .padding(.horizontal, CGFloat(connectionsFieldHorizontalPaddingPoints))
+                    .padding(.vertical, CGFloat(connectionsFieldVerticalPaddingPoints))
+                    .background(
+                        T.input,
+                        in: RoundedRectangle(cornerRadius: CGFloat(connectionsFieldRadiusPoints))
                     )
-                    .font(.system(size: 12))
-                    .foregroundStyle(T.text3)
-                    .padding(.top, 4)
-                    if !profile.needsRepair {
-                        Text(profile.subtitle)
-                            .font(.system(size: 12, design: .monospaced))
-                            .foregroundStyle(T.caption)
-                            .padding(.top, 2)
-                    }
-                    VStack(spacing: 0) {
-                        manageAction(L.repairPair(), system: "arrow.clockwise") {
-                            openAddressSheet(
-                                host: profile.needsRepair ? nil : profile.host,
-                                port: profile.needsRepair ? nil : profile.port,
-                                name: profile.name
+                    .overlay(
+                        RoundedRectangle(cornerRadius: CGFloat(connectionsFieldRadiusPoints))
+                            .stroke(T.border, lineWidth: CGFloat(dswButtonOutlineWidthPoints))
+                    )
+                    .padding(.horizontal, 22)
+                    .padding(.top, 12)
+                HStack(spacing: 10) {
+                    Button(L.cancel()) { renaming = false }
+                        .buttonStyle(.plain)
+                        .font(.system(size: CGFloat(dswButtonFontSizePoints)))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: CGFloat(connectionsPairLinkButtonHeightPoints))
+                        .foregroundStyle(T.ink)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: CGFloat(dswButtonRadiusMdPoints))
+                                .stroke(T.border, lineWidth: CGFloat(dswButtonOutlineWidthPoints))
+                        )
+                    Button {
+                        do {
+                            try model.renameProfile(profile.id, name: renameDraft)
+                            renaming = false
+                        } catch {
+                            model.errorMessage = error.localizedDescription
+                        }
+                    } label: {
+                        Text(L.save())
+                            .font(.system(size: CGFloat(dswButtonFontSizePoints)))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: CGFloat(connectionsPairLinkButtonHeightPoints))
+                            .foregroundStyle(T.onPrimary)
+                            .background(
+                                T.primaryButton,
+                                in: RoundedRectangle(cornerRadius: CGFloat(dswButtonRadiusMdPoints))
                             )
-                        }
-                        manageAction(L.rename(), system: D.edit) {
-                            renameDraft = profile.name
-                            renaming = true
-                        }
-                        manageAction(L.delete(), system: "trash", destructive: true) {
-                            presented = nil
-                            model.removeProfile(profile.id)
-                        }
                     }
-                    .padding(.top, 16)
-                    Spacer()
+                    .buttonStyle(.plain)
+                    .disabled(renameDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .opacity(
+                        renameDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            ? dswButtonDisabledOpacity : 1
+                    )
                 }
-            }
-            .padding(22)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .background(T.bg)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(L.cancel()) { presented = nil }
+                .padding(.horizontal, 22)
+                .padding(.top, 16)
+                Spacer()
+            } else {
+                HStack(spacing: 10) {
+                    StatusDot(color: dotColor(model.status[profile.id]))
+                    Text(profile.name)
+                        .font(.system(size: CGFloat(connectionsSheetTitleFontSizePoints), weight: .semibold))
+                        .foregroundStyle(T.ink)
                 }
+                .padding(.horizontal, 22)
+                .padding(.vertical, 6)
+                Text(
+                    connectionsStatusLine(
+                        status: profile.needsRepair ? L.repairNeeded() : dotText(model.status[profile.id]),
+                        routeLabel: profile.needsRepair ? "" : (model.routes[profile.id]?.label ?? profile.kind),
+                        current: profile.id == model.activeId ? L.currentDevice() : nil
+                    )
+                )
+                .font(.system(size: 12))
+                .foregroundStyle(T.text3)
+                .padding(.horizontal, 22)
+                .padding(.vertical, 4)
+                if !profile.needsRepair {
+                    Text(profile.subtitle)
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundStyle(T.caption)
+                        .padding(.horizontal, 22)
+                        .padding(.bottom, 4)
+                }
+                VStack(spacing: 0) {
+                    manageAction(
+                        L.repairPair(),
+                        official: .refreshOutline,
+                        identifier: connectionsManageRepairIdentifier()
+                    ) {
+                        openAddressSheet(
+                            host: profile.needsRepair ? nil : profile.host,
+                            port: profile.needsRepair ? nil : profile.port,
+                            name: profile.name
+                        )
+                    }
+                    manageAction(
+                        L.rename(),
+                        official: .editOutline,
+                        identifier: connectionsManageRenameIdentifier()
+                    ) {
+                        renameDraft = profile.name
+                        renaming = true
+                    }
+                    manageAction(
+                        L.delete(),
+                        official: .trashOutline,
+                        identifier: connectionsManageDeleteIdentifier()
+                    ) {
+                        presented = nil
+                        model.removeProfile(profile.id)
+                    }
+                }
+                .padding(.top, 8)
+                Spacer()
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(T.bg)
+        .tint(T.ink)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(connectionsManageSheetIdentifier())
         .onAppear { renaming = false }
     }
 
-    private func manageAction(_ title: String, system: String, destructive: Bool = false, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                Image(systemName: system).foregroundStyle(destructive ? T.err : T.ink)
-                Text(title).foregroundStyle(destructive ? T.err : T.ink)
-                Spacer()
-            }
-            .padding(.vertical, 14)
+    /// Android `ConnOptionRow`: 18pt official glyph + 16pt title, `T.Ink`.
+    /// Not a SwiftUI `Button` + `.contain` — that retargets XCUI taps onto
+    /// the child glyph (see ConnActionRow).
+    private func manageAction(
+        _ title: String,
+        official: OfficialGlyph.Kind,
+        identifier: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        HStack(spacing: 14) {
+            OfficialGlyph(kind: official, size: 18, color: T.ink)
+            Text(title)
+                .font(.system(size: 16))
+                .foregroundStyle(T.ink)
+            Spacer()
         }
+        .padding(.horizontal, 22)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .onTapGesture(perform: action)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier(identifier)
     }
 
     private func dotColor(_ dot: Dot?) -> Color {
@@ -465,6 +536,7 @@ private struct ConnDeviceRow<Leading: View>: View {
     var detail: String?
     var warn: Bool
     var divider: Bool
+    var rowIdentifier: String
     var onClick: () -> Void
     var onSwitch: (() -> Void)?
     var leading: Leading
@@ -475,6 +547,7 @@ private struct ConnDeviceRow<Leading: View>: View {
         detail: String?,
         warn: Bool,
         divider: Bool,
+        rowIdentifier: String,
         onClick: @escaping () -> Void,
         onSwitch: (() -> Void)? = nil,
         @ViewBuilder leading: () -> Leading
@@ -484,6 +557,7 @@ private struct ConnDeviceRow<Leading: View>: View {
         self.detail = detail
         self.warn = warn
         self.divider = divider
+        self.rowIdentifier = rowIdentifier
         self.onClick = onClick
         self.onSwitch = onSwitch
         self.leading = leading()
@@ -513,6 +587,7 @@ private struct ConnDeviceRow<Leading: View>: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier(rowIdentifier)
                 if let onSwitch {
                     Button(L.switchDevice(), action: onSwitch)
                         .font(.subheadline)

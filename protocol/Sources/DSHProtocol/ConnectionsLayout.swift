@@ -95,8 +95,18 @@ public let connectionsPairingLinkFieldHint = "dshpocket://pair?h=…&c=…"
 
 /// Pairing-link row uses desktop `IconLinkOutlineRegular`. Enter-address uses
 /// Android `Icons.Outlined.Keyboard` (Material 24×24, not ui-primitives).
+/// Nearby leading icon is Android `Icons.Outlined.Computer` (Material 24×24);
+/// `ui-primitives@0.2.1-alpha.5` has no IconComputer.
 public func connectionsPairingLinkSymbol() -> String { "official.linkOutline" }
 public func connectionsEnterAddressSymbol() -> String { "connections.keyboard" }
+public func connectionsNearbyComputerSymbol() -> String { "connections.computer" }
+
+/// ProfileManageSheet actions: desktop `IconRefreshOutlineRegular` /
+/// `IconEditOutlineRegular` / `IconTrashOutlineRegular` (Android `D.refresh` /
+/// `D.edit` / `D.trash`). OptionRow tints them `T.Ink`, not a destructive red.
+public func connectionsManageRepairSymbol() -> String { "official.refreshOutline" }
+public func connectionsManageRenameSymbol() -> String { "official.editOutline" }
+public func connectionsManageTrashSymbol() -> String { "official.trashOutline" }
 
 public func connectionsActionRowIdentifier(_ action: ConnectionsAction) -> String {
     "connectionsAction.\(action.rawValue)"
@@ -104,6 +114,8 @@ public func connectionsActionRowIdentifier(_ action: ConnectionsAction) -> Strin
 
 public func connectionsPairedCardIdentifier() -> String { "connectionsPairedCard" }
 public func connectionsNearbyCardIdentifier() -> String { "connectionsNearbyCard" }
+public func connectionsPairedRowIdentifier() -> String { "connectionsPairedRow" }
+public func connectionsNearbyRowIdentifier() -> String { "connectionsNearbyRow" }
 public func connectionsActionsCardIdentifier() -> String { "connectionsActionsCard" }
 public func connectionsPairLinkSheetIdentifier() -> String { "connectionsPairLinkSheet" }
 public func connectionsPairLinkCancelIdentifier() -> String { "connectionsPairLinkCancel" }
@@ -113,9 +125,22 @@ public func connectionsReviewPairingLinkIdentifier() -> String { "connectionsRev
 public func connectionsInvalidPairingLinkIdentifier() -> String { "connectionsInvalidPairingLink" }
 public func connectionsAddressFieldIdentifier() -> String { "connectionsAddressField" }
 public func connectionsCodeFieldIdentifier() -> String { "connectionsCodeField" }
+public func connectionsManageSheetIdentifier() -> String { "connectionsManageSheet" }
+public func connectionsManageCancelIdentifier() -> String { "connectionsManageCancel" }
+public func connectionsManageRepairIdentifier() -> String { "connectionsManageRepair" }
+public func connectionsManageRenameIdentifier() -> String { "connectionsManageRename" }
+public func connectionsManageDeleteIdentifier() -> String { "connectionsManageDelete" }
 
 public func isForbiddenConnectionsEnterAddressSymbol(_ name: String) -> Bool {
     name == "keyboard" || name == "keyboard.fill"
+}
+
+public func isForbiddenConnectionsNearbySymbol(_ name: String) -> Bool {
+    name == "desktopcomputer"
+}
+
+public func isForbiddenConnectionsManageSymbol(_ name: String) -> Bool {
+    name == "trash" || name == "arrow.clockwise" || name == "pencil"
 }
 
 /// Google Material Icons Outlined Keyboard, 24×24 view box — Android 33b97b2.
@@ -137,6 +162,12 @@ public let connectionsKeyboardKeyPaths = [
     connectionsKeyboardSpacePath,
 ]
 public let connectionsKeyboardViewBox: Double = 24
+
+/// Google Material Icons Outlined Computer, 24×24 view box — Android
+/// `ConnectionsScreen` nearby row (`Icons.Outlined.Computer`, tint `T.Accent`).
+public let connectionsComputerPath =
+    "M20 18c1.1 0 1.99-.9 1.99-2L22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z"
+public let connectionsComputerViewBox: Double = 24
 
 public func connectionsShowsInvalidPairingLink(text: String, pasted: Bool, parsed: Bool) -> Bool {
     !parsed && (pasted || !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)

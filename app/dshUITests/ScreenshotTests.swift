@@ -466,6 +466,26 @@ final class ScreenshotTests: XCTestCase {
                     app.descendants(matching: .any)["connections.keyboard"].exists,
                     "\(appearance) connections missing Android keyboard glyph on 输入地址"
                 )
+                XCTAssertTrue(
+                    app.staticTexts["附近设备"].waitForExistence(timeout: 8),
+                    "\(appearance) connections missing 附近设备"
+                )
+                XCTAssertTrue(
+                    app.staticTexts["客厅 Mac"].waitForExistence(timeout: 4)
+                        || app.buttons["客厅 Mac"].waitForExistence(timeout: 2),
+                    "\(appearance) connections missing nearby 客厅 Mac"
+                )
+                XCTAssertFalse(app.images["desktopcomputer"].exists, "\(appearance) nearby still exposes SF desktopcomputer")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["connections.computer"].waitForExistence(timeout: 8),
+                    "\(appearance) nearby missing Material Computer glyph"
+                )
+                let nearbyCard = app.descendants(matching: .any)["connectionsNearbyCard"].firstMatch
+                XCTAssertTrue(nearbyCard.waitForExistence(timeout: 4), "\(appearance) connections missing 附近设备 card")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["connectionsNearbyRow"].waitForExistence(timeout: 4),
+                    "\(appearance) connections missing nearby row"
+                )
                 // Intentional skip: primitives have no QR artwork.
                 XCTAssertTrue(
                     app.images["qrcode.viewfinder"].exists,
@@ -475,11 +495,27 @@ final class ScreenshotTests: XCTestCase {
                 let actionsCard = app.descendants(matching: .any)["connectionsActionsCard"].firstMatch
                 XCTAssertTrue(pairedCard.waitForExistence(timeout: 4), "\(appearance) connections missing 已配对设备 card")
                 XCTAssertTrue(actionsCard.exists, "\(appearance) connections missing action card")
-                let cardGap = actionsCard.frame.minY - pairedCard.frame.maxY
+                let nearbyGap = nearbyCard.frame.minY - pairedCard.frame.maxY
+                let actionsGap = actionsCard.frame.minY - nearbyCard.frame.maxY
                 XCTAssertGreaterThanOrEqual(
-                    cardGap,
+                    nearbyGap,
                     11,
-                    "\(appearance) connections cards almost touch (gap \(cardGap); Android Card vertical 6+6)"
+                    "\(appearance) paired/nearby cards almost touch (gap \(nearbyGap); Android Card vertical 6+6)"
+                )
+                XCTAssertLessThan(
+                    nearbyGap,
+                    20,
+                    "\(appearance) paired/nearby gap \(nearbyGap) is not the 12pt Card stack"
+                )
+                XCTAssertGreaterThanOrEqual(
+                    actionsGap,
+                    11,
+                    "\(appearance) nearby/actions cards almost touch (gap \(actionsGap); Android Card vertical 6+6)"
+                )
+                XCTAssertLessThan(
+                    actionsGap,
+                    20,
+                    "\(appearance) nearby/actions gap \(actionsGap) is not the 12pt Card stack"
                 )
             }
             if screen == "trajectory" {
@@ -677,6 +713,7 @@ final class ScreenshotTests: XCTestCase {
                 try assertDrawerFooterHitsNavigate(app, appearance: appearance)
             }
             if screen == "connections" {
+                try assertManageSheet(app, appearance: appearance)
                 try assertPairingLinkSheet(app, appearance: appearance)
             }
             if screen == "models" {
@@ -760,6 +797,67 @@ final class ScreenshotTests: XCTestCase {
             frame.minY - window.minY,
             40,
             "\(appearance) connections looks like a sheet (origin \(frame.minY) vs window \(window.minY))"
+        )
+    }
+
+    /// Android `ProfileManageSheet`: desktop `D.refresh` / `D.edit` / `D.trash`
+    /// on ConnOptionRow (`T.Ink`), not SF symbols or a system NavigationStack.
+    private func assertManageSheet(_ app: XCUIApplication, appearance: String) throws {
+        let pairedRow = app.descendants(matching: .any)["connectionsPairedRow"].firstMatch
+        XCTAssertTrue(
+            pairedRow.waitForExistence(timeout: 8),
+            "\(appearance) paired Mac mini row missing"
+        )
+        pairedRow.tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["connectionsManageSheet"].waitForExistence(timeout: 8),
+            "\(appearance) manage sheet missing"
+        )
+        XCTAssertTrue(
+            app.descendants(matching: .any)["connectionsManageCancel"].waitForExistence(timeout: 4)
+                || app.buttons["取消"].waitForExistence(timeout: 2),
+            "\(appearance) manage sheet missing 取消"
+        )
+        XCTAssertTrue(
+            app.staticTexts["重新配对"].waitForExistence(timeout: 4)
+                || app.descendants(matching: .any)["connectionsManageRepair"].waitForExistence(timeout: 2),
+            "\(appearance) manage sheet missing 重新配对"
+        )
+        XCTAssertTrue(
+            app.staticTexts["重命名"].exists
+                || app.descendants(matching: .any)["connectionsManageRename"].exists,
+            "\(appearance) manage sheet missing 重命名"
+        )
+        XCTAssertTrue(
+            app.staticTexts["删除"].exists
+                || app.descendants(matching: .any)["connectionsManageDelete"].exists,
+            "\(appearance) manage sheet missing 删除"
+        )
+        XCTAssertFalse(app.images["trash"].exists, "\(appearance) manage still exposes SF trash")
+        XCTAssertFalse(app.images["arrow.clockwise"].exists, "\(appearance) manage still exposes SF arrow.clockwise")
+        XCTAssertFalse(app.images["pencil"].exists, "\(appearance) manage still exposes SF pencil")
+        XCTAssertTrue(
+            app.descendants(matching: .any)["official.trashOutline"].waitForExistence(timeout: 8),
+            "\(appearance) manage missing official trashOutline"
+        )
+        XCTAssertTrue(
+            app.descendants(matching: .any)["official.refreshOutline"].exists,
+            "\(appearance) manage missing official refreshOutline"
+        )
+        XCTAssertTrue(
+            app.descendants(matching: .any)["official.editOutline"].exists,
+            "\(appearance) manage missing official editOutline"
+        )
+        try saveNamedScreenshot(appearance, "manage")
+        let cancel = app.descendants(matching: .any)["connectionsManageCancel"].firstMatch
+        if cancel.exists {
+            cancel.tap()
+        } else {
+            app.buttons["取消"].firstMatch.tap()
+        }
+        XCTAssertTrue(
+            app.descendants(matching: .any)["connectionsManageSheet"].firstMatch.waitForNonExistence(timeout: 8),
+            "\(appearance) manage sheet stayed after 取消"
         )
     }
 
