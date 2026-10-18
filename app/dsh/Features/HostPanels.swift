@@ -48,6 +48,9 @@ struct HostPanelView: View {
             }
         }
         .background(T.bg.ignoresSafeArea())
+        // `.contain` keeps child ids (pluginInfoButton, official.*) addressable;
+        // a bare id on this VStack would overwrite every descendant's id.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("hostPanel.\(panel.rawValue)")
     }
 

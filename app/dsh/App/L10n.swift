@@ -143,7 +143,7 @@ enum L {
     static func pluginsNav() -> String { en ? "Plugins" : "插件" }
     static func builtinPluginsNav() -> String { en ? "Built-in plugins" : "内置插件" }
     static func scheduleNav() -> String { en ? "Scheduled tasks" : "自动化任务" }
-    /// Desktop Settings host-QR copy. Phone controller page title is `connections()`.
+    /// Desktop Settings host-QR copy. Phone controller page title is `connectionsPageTitle`.
     static func phoneConnection() -> String { en ? "Phone connection" : "手机连接" }
     static func mobileSection() -> String { en ? "Mobile" : "移动端" }
     static func hostSettingsReadOnly() -> String {
@@ -162,7 +162,7 @@ enum L {
     static func diagnosticsChecking() -> String { en ? "Checking…" : "正在检查…" }
     static func diagnosticsUnavailable() -> String { en ? "Diagnostics unavailable" : "诊断服务暂不可用" }
     static func nearbyDevices() -> String { en ? "Nearby devices" : "附近设备" }
-    static func connections() -> String { en ? "Connections" : "连接" }
+    static func connections() -> String { connectionsPageTitle(english: en) }
     static func scanQr() -> String { en ? "Scan" : "扫码" }
     static func enterAddress() -> String { en ? "Enter address" : "输入地址" }
     static func lan() -> String { en ? "LAN" : "局域网" }

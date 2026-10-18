@@ -1382,7 +1382,8 @@ struct MessageRow: View {
                     text: user.text,
                     timeMs: user.at,
                     clock: .end,
-                    trailing: true
+                    trailing: true,
+                    showsCopy: userMessageShowsPersistentCopy
                 )
             }
         case .text(let text):
@@ -1495,6 +1496,7 @@ private struct MessageActions: View {
     var onBranch: (() -> Void)? = nil
     var usageAction: (() -> TurnUsageAction)? = nil
     var trailing = false
+    var showsCopy = true
     @State private var copied = false
 
     var body: some View {
@@ -1505,16 +1507,18 @@ private struct MessageActions: View {
                     .foregroundStyle(T.text3)
                     .padding(.trailing, 8)
             }
-            iconButton(
-                system: copied ? "checkmark" : "square.on.square",
-                label: copied ? L.copied() : L.copy(),
-                enabled: !copied
-            ) {
-                UIPasteboard.general.string = text
-                copied = true
-                Task {
-                    try? await Task.sleep(nanoseconds: 1_000_000_000)
-                    copied = false
+            if showsCopy {
+                iconButton(
+                    system: copied ? "checkmark" : "square.on.square",
+                    label: copied ? L.copied() : L.copy(),
+                    enabled: !copied
+                ) {
+                    UIPasteboard.general.string = text
+                    copied = true
+                    Task {
+                        try? await Task.sleep(nanoseconds: 1_000_000_000)
+                        copied = false
+                    }
                 }
             }
             if let onLike, let onDislike {

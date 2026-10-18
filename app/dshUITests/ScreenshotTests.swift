@@ -6,7 +6,7 @@ final class ScreenshotTests: XCTestCase {
     private let screens = [
         "landing", "drawer", "viewOptions", "sessionActions", "chat",
         "models", "permission", "start", "browser", "inspector",
-        "settings", "schedule", "terminal", "trajectory",
+        "settings", "schedule", "terminal", "trajectory", "plugins", "connections",
     ]
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool { false }
@@ -36,6 +36,21 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertTrue(button.waitForExistence(timeout: 15), "view options trigger missing")
                 button.tap()
                 XCTAssertTrue(app.descendants(matching: .any)["viewOptionsMenu"].waitForExistence(timeout: 8))
+                XCTAssertFalse(app.images["slider.horizontal.3"].exists, "\(appearance) view options still exposes SF slider")
+                XCTAssertFalse(app.images["list.bullet"].exists, "\(appearance) view options still exposes SF list.bullet")
+                XCTAssertFalse(app.images["arrow.up.arrow.down"].exists, "\(appearance) view options still exposes SF arrows")
+                XCTAssertFalse(app.images["clock"].exists, "\(appearance) view options still exposes SF clock")
+                XCTAssertFalse(app.images["archivebox"].exists, "\(appearance) view options still exposes SF archivebox")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.workspaceTree"].waitForExistence(timeout: 8),
+                    "\(appearance) view options missing official workspaceTree"
+                )
+                XCTAssertTrue(app.descendants(matching: .any)["official.flatList"].exists, "\(appearance) view options missing official flatList")
+                XCTAssertTrue(app.descendants(matching: .any)["official.chevronsUpDown"].exists, "\(appearance) view options missing official chevrons")
+                XCTAssertTrue(app.descendants(matching: .any)["official.clockOutline"].exists, "\(appearance) view options missing official clockOutline")
+                XCTAssertTrue(app.descendants(matching: .any)["official.archiveOff"].exists, "\(appearance) view options missing official archiveOff")
+                XCTAssertTrue(app.descendants(matching: .any)["official.queue"].exists, "\(appearance) view options missing official queue")
+                XCTAssertTrue(app.descendants(matching: .any)["official.archiveCheck"].exists, "\(appearance) view options missing official archiveCheck")
             }
             if screen == "sessionActions" {
                 var row = app.descendants(matching: .any)["sessionRow.s-hello"]
@@ -88,6 +103,39 @@ final class ScreenshotTests: XCTestCase {
                     app.descendants(matching: .any)["official.projectAdd"].waitForExistence(timeout: 8),
                     "\(appearance) drawer missing official project-add glyph"
                 )
+                // The trigger Button owns `viewOptionsButton`, which replaces the
+                // inner OfficialGlyph id; assert the button and forbid SF slider.
+                XCTAssertTrue(
+                    app.buttons["viewOptionsButton"].waitForExistence(timeout: 8),
+                    "\(appearance) drawer missing view-options trigger"
+                )
+                XCTAssertFalse(
+                    app.images["slider.horizontal.3"].exists,
+                    "\(appearance) drawer view-options trigger still SF slider"
+                )
+                let settingsHit = app.descendants(matching: .any)["drawerSettingsRow"]
+                let hostHit = app.descendants(matching: .any)["drawerPeerDeviceRow"]
+                XCTAssertTrue(settingsHit.waitForExistence(timeout: 8), "\(appearance) drawer settings hit missing")
+                XCTAssertTrue(hostHit.waitForExistence(timeout: 8), "\(appearance) drawer host hit missing")
+                XCTAssertTrue(
+                    hostHit.label.contains("Mac mini")
+                        || app.descendants(matching: .any)["drawerPeerDeviceName"].waitForExistence(timeout: 2)
+                        || app.staticTexts["Mac mini"].waitForExistence(timeout: 2),
+                    "\(appearance) drawer missing remote host name"
+                )
+                let settingsFrame = settingsHit.frame
+                let hostFrame = hostHit.frame
+                XCTAssertFalse(
+                    settingsFrame.intersects(hostFrame),
+                    "\(appearance) drawer settings/host hits overlap \(settingsFrame) \(hostFrame)"
+                )
+                XCTAssertGreaterThanOrEqual(
+                    hostFrame.minX - settingsFrame.maxX,
+                    16,
+                    "\(appearance) drawer footer hits closer than 16pt"
+                )
+                XCTAssertGreaterThanOrEqual(settingsFrame.height, 44, "\(appearance) settings hit shorter than 44pt")
+                XCTAssertGreaterThanOrEqual(hostFrame.height, 44, "\(appearance) host hit shorter than 44pt")
             }
             if screen == "landing" || screen == "chat" {
                 XCTAssertFalse(app.images["plus"].exists, "\(appearance) \(screen) still exposes SF plus")
@@ -112,8 +160,84 @@ final class ScreenshotTests: XCTestCase {
                     app.descendants(matching: .any)["sessionShare"].exists,
                     "\(appearance) \(screen) still exposes sessionShare"
                 )
+                XCTAssertFalse(
+                    app.descendants(matching: .any)["userMessageCopy"].exists,
+                    "\(appearance) \(screen) still exposes a user-bubble copy control"
+                )
+            }
+            if screen == "chat" {
+                // Fixture: one user bubble + one assistant reply. Only the
+                // assistant MessageIconActions row may carry copy.
+                let copyButtons = app.buttons.matching(
+                    NSPredicate(format: "label == '复制' OR label == 'Copy'")
+                ).count
+                XCTAssertLessThanOrEqual(
+                    copyButtons,
+                    1,
+                    "\(appearance) chat exposes \(copyButtons) copy buttons (user bubble copy is back)"
+                )
+                XCTAssertFalse(app.images["gauge.with.dots.needle.67percent"].exists, "\(appearance) chat still exposes SF gauge")
+                XCTAssertFalse(app.images["cylinder"].exists, "\(appearance) chat still exposes SF cylinder")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.gaugeOutline"].waitForExistence(timeout: 8),
+                    "\(appearance) chat missing official activity gauge glyph"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.databaseOutline"].waitForExistence(timeout: 8),
+                    "\(appearance) chat missing official usage database glyph"
+                )
+                XCTAssertTrue(
+                    app.staticTexts["缓存命中 69%"].waitForExistence(timeout: 8),
+                    "\(appearance) chat missing cache-hit pill copy"
+                )
+                XCTAssertFalse(app.staticTexts["缓存命中中 69%"].exists, "\(appearance) chat has extra 中 in cache-hit copy")
+            }
+            if screen == "plugins" {
+                let info = app.buttons["pluginInfoButton"]
+                XCTAssertTrue(info.waitForExistence(timeout: 15), "\(appearance) plugins missing (i)")
+                XCTAssertFalse(app.images["info.circle"].exists, "\(appearance) plugins still exposes SF info.circle")
+                XCTAssertFalse(app.images["arrow.clockwise"].exists, "\(appearance) plugins still exposes SF arrow.clockwise")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.infoOutline"].waitForExistence(timeout: 8),
+                    "\(appearance) plugins missing official info glyph"
+                )
+                info.tap()
+                let tip = app.descendants(matching: .any)["pluginInfoTooltip"]
+                XCTAssertTrue(tip.waitForExistence(timeout: 8), "\(appearance) plugins tooltip missing")
+                let window = app.windows.firstMatch.frame
+                let tipFrame = tip.frame
+                XCTAssertGreaterThanOrEqual(tipFrame.minX, window.minX, "\(appearance) tooltip clipped left")
+                XCTAssertLessThanOrEqual(tipFrame.maxX, window.maxX, "\(appearance) tooltip clipped right")
+                XCTAssertGreaterThanOrEqual(tipFrame.minY, window.minY, "\(appearance) tooltip clipped top")
+                XCTAssertLessThanOrEqual(tipFrame.maxY, window.maxY, "\(appearance) tooltip clipped bottom")
             }
             if screen == "landing" {
+                XCTAssertFalse(app.images["fish"].exists, "\(appearance) landing still exposes SF fish")
+                XCTAssertFalse(app.images["fish.fill"].exists, "\(appearance) landing still exposes SF fish.fill")
+                XCTAssertFalse(app.images["fish.circle"].exists, "\(appearance) landing still exposes SF fish.circle")
+                let fish = app.descendants(matching: .any)["official.fishLogo"].firstMatch
+                XCTAssertTrue(
+                    fish.waitForExistence(timeout: 8),
+                    "\(appearance) landing missing official whale glyph beside the headline"
+                )
+                let title = app.descendants(matching: .any)["landingHeadline"].firstMatch
+                XCTAssertTrue(
+                    title.waitForExistence(timeout: 8),
+                    "\(appearance) landing headline missing"
+                )
+                XCTAssertLessThan(
+                    fish.frame.maxX,
+                    title.frame.minX + 1,
+                    "\(appearance) landing whale is not to the left of the headline"
+                )
+                let fishGap = title.frame.minX - fish.frame.maxX
+                XCTAssertGreaterThanOrEqual(fishGap, 4, "\(appearance) landing whale/title overlap (gap \(fishGap))")
+                XCTAssertLessThanOrEqual(fishGap, 16, "\(appearance) landing whale/title gap \(fishGap) is not the desktop 10pt column-gap")
+                XCTAssertLessThan(
+                    abs(fish.frame.midY - title.frame.midY),
+                    12,
+                    "\(appearance) landing whale is not vertically aligned with the headline"
+                )
                 let composer = app.descendants(matching: .any)["landingComposer"]
                 XCTAssertTrue(
                     composer.waitForExistence(timeout: 8),
@@ -148,6 +272,9 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertTrue(app.descendants(matching: .any)["modelChipEffort"].waitForExistence(timeout: 8), "\(appearance) model chip missing effort")
                 XCTAssertTrue(app.descendants(matching: .any)["modelPickerEffort"].waitForExistence(timeout: 8), "\(appearance) model menu missing effort row")
             }
+            if screen == "connections" {
+                assertConnectionsIsFullScreen(app, appearance: appearance)
+            }
             if screen == "trajectory" {
                 XCTAssertTrue(
                     app.descendants(matching: .any)["chatTab.trajectory"].waitForExistence(timeout: 15),
@@ -172,8 +299,78 @@ final class ScreenshotTests: XCTestCase {
             attachment.name = "\(appearance.lowercased())-\(screen)"
             attachment.lifetime = .keepAlways
             add(attachment)
+            if screen == "drawer" {
+                try assertDrawerFooterHitsNavigate(app, appearance: appearance)
+            }
             app.terminate()
         }
+    }
+
+    private func assertDrawerFooterHitsNavigate(_ app: XCUIApplication, appearance: String) throws {
+        let settings = app.descendants(matching: .any)["drawerSettingsRow"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 4), "\(appearance) settings hit gone before tap")
+        settings.tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["settingsShell"].waitForExistence(timeout: 8),
+            "\(appearance) settings hit did not open Settings"
+        )
+        let back = app.buttons["navBack"]
+        XCTAssertTrue(back.waitForExistence(timeout: 8), "\(appearance) settings back missing")
+        back.tap()
+        let open = app.buttons["openDrawer"]
+        XCTAssertTrue(open.waitForExistence(timeout: 8), "\(appearance) openDrawer missing after settings")
+        open.tap()
+        let host = app.descendants(matching: .any)["drawerPeerDeviceRow"]
+        XCTAssertTrue(host.waitForExistence(timeout: 8), "\(appearance) host hit missing after reopen")
+        host.tap()
+        assertConnectionsIsFullScreen(app, appearance: appearance)
+    }
+
+    /// Drawer footer Host entry must replace the window with `ConnectionsView`,
+    /// not leave the session drawer or a sheet detent covering the list.
+    private func assertConnectionsIsFullScreen(_ app: XCUIApplication, appearance: String) {
+        let query = app.descendants(matching: .any).matching(identifier: "connectionsScreen")
+        XCTAssertTrue(
+            query.firstMatch.waitForExistence(timeout: 8),
+            "\(appearance) connections page missing"
+        )
+        XCTAssertFalse(
+            app.descendants(matching: .any)["drawerSettingsRow"].exists,
+            "\(appearance) connections still has the session drawer on screen"
+        )
+        XCTAssertFalse(
+            app.descendants(matching: .any)["drawerPeerDeviceRow"].exists,
+            "\(appearance) connections still shows drawer host chrome"
+        )
+        XCTAssertFalse(
+            app.descendants(matching: .any)["viewOptionsButton"].exists,
+            "\(appearance) connections still shows drawer chrome"
+        )
+        XCTAssertTrue(
+            app.staticTexts["远程主机"].waitForExistence(timeout: 4)
+                || app.descendants(matching: .any)["connectionsTitle"].waitForExistence(timeout: 2),
+            "\(appearance) connections missing 远程主机 title"
+        )
+        let window = app.windows.firstMatch.frame
+        var frame = CGRect.null
+        for i in 0..<query.count {
+            frame = frame.union(query.element(boundBy: i).frame)
+        }
+        XCTAssertGreaterThanOrEqual(
+            frame.width / window.width,
+            0.98,
+            "\(appearance) connections is not full width (\(frame) vs \(window))"
+        )
+        XCTAssertGreaterThanOrEqual(
+            frame.height / window.height,
+            0.90,
+            "\(appearance) connections is not full height (\(frame) vs \(window))"
+        )
+        XCTAssertLessThanOrEqual(
+            frame.minY - window.minY,
+            40,
+            "\(appearance) connections looks like a sheet (origin \(frame.minY) vs window \(window.minY))"
+        )
     }
 
     /// Parent `sessionRowActions` can stay missing on iOS 18 even with

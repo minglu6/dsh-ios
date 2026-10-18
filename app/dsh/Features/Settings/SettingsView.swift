@@ -8,7 +8,6 @@ struct SettingsView: View {
     var body: some View {
         VStack(spacing: 0) {
             header(L.settings()) { model.pop() }
-                .accessibilityIdentifier("settingsShell")
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     card {
@@ -31,6 +30,10 @@ struct SettingsView: View {
             .background(T.bg)
         }
         .background(T.bg.ignoresSafeArea())
+        // `.contain` keeps header children (navBack) addressable; an id on
+        // the header HStack itself would swallow navBack.
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("settingsShell")
         .onAppear { rememberOps() }
         .onChange(of: model.isOnline) { _ in rememberOps() }
         .onChange(of: model.ops) { _ in rememberOps() }
@@ -409,6 +412,7 @@ func settingsMessage(_ text: String, error: Bool = false) -> some View {
 func header(_ title: String, back: @escaping () -> Void) -> some View {
     HStack {
         Button(action: back) { Image(systemName: "chevron.left").foregroundStyle(T.ink) }
+            .accessibilityIdentifier("navBack")
         Text(title).font(.headline).foregroundStyle(T.ink)
         Spacer()
     }

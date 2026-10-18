@@ -125,7 +125,26 @@ extension AppModel {
                 .text(Item.Text(key: "a1", text: "你好，我是 DeepSeek。", live: false, at: clock + 2_000, messageId: "m-assistant")),
             ],
             title: "你好",
-            loaded: true
+            loaded: true,
+            composerMetrics: ComposerMetrics(
+                activity: ComposerActivity(
+                    turns: 1,
+                    steps: 2,
+                    llmMs: 1000,
+                    toolMs: 0,
+                    ttftMs: 100,
+                    ttftSteps: 1,
+                    decodeMs: 1000,
+                    decodeTokens: 216
+                ),
+                tokens: ComposerTokenUsage(
+                    uncachedInputTokens: 31,
+                    cacheReadTokens: 69,
+                    cacheWriteTokens: 0,
+                    outputTokens: 10
+                ),
+                context: ComposerContext(usedTokens: 2, contextWindow: 100)
+            )
         )
 
         showDrawer = false
@@ -144,9 +163,15 @@ extension AppModel {
             seedUITestJobs()
         case "models", "permission":
             break
+        case "connections":
+            showDrawer = false
+            push(.connections)
         case "settings", "general":
             showDrawer = false
             push(.general)
+        case "plugins":
+            showDrawer = false
+            push(.panel(.plugins))
         case "schedule":
             showDrawer = false
             push(.panel(.schedule))

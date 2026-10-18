@@ -96,6 +96,22 @@ enum AppRoute: Equatable {
     case panel(DrawerPanel)
 }
 
+extension AppRoute {
+    /// Full-screen routes that must not sit under the session drawer overlay.
+    /// Matches Android `Screen.Connections` / `Screen.Settings`: replace chat
+    /// and close the drawer — never a half-sheet beside it.
+    var closesSessionDrawer: Bool {
+        switch self {
+        case .chat, .sessions: return false
+        case .panel(.browser): return false
+        default: return true
+        }
+    }
+
+    /// Drawer overlay is only legal on chat / sessions / in-app browser.
+    var allowsSessionDrawer: Bool { !closesSessionDrawer }
+}
+
 @MainActor
 final class AppModel: ObservableObject {
     static let shared = AppModel()
@@ -277,7 +293,15 @@ final class AppModel: ObservableObject {
         return .sessions
     }
 
-    func push(_ route: AppRoute) { routeStack.append(route) }
+    func push(_ route: AppRoute) {
+        routeStack.append(route)
+        // Phone (Android MainActivity): Connections / Settings / panels replace
+        // the chat screen and close the session drawer — never a half-sheet
+        // over an open drawer.
+        if route.closesSessionDrawer {
+            showDrawer = false
+        }
+    }
     func pop() { if !routeStack.isEmpty { routeStack.removeLast() } }
 
     func connect(profileId: String) {

@@ -513,6 +513,19 @@ final class AndroidParityTests: XCTestCase {
         XCTFail("timed out")
     }
 
+    func testConnectionsPageIsFullScreenRemoteHost() {
+        XCTAssertTrue(connectionsPageIsFullScreen)
+        XCTAssertTrue(connectionsPageDismissesDrawer)
+        XCTAssertFalse(connectionsPageUsesSheetPresentation)
+        XCTAssertFalse(connectionsPageUsesDrawerPresentation)
+        XCTAssertEqual(connectionsPageMinWidthRatio, 0.98)
+        XCTAssertEqual(connectionsPageMinHeightRatio, 0.90)
+        XCTAssertEqual(connectionsPageTitle(english: false), "远程主机")
+        XCTAssertEqual(connectionsPageTitle(english: true), "Remote host")
+        XCTAssertNotEqual(connectionsPageTitle(english: false), "连接")
+        XCTAssertNotEqual(connectionsPageTitle(english: false), "手机连接")
+    }
+
     func testConnectionsStatusLineMatchesAndroidDeviceMeta() {
         XCTAssertEqual(
             connectionsStatusLine(status: "在线", routeLabel: "Tailscale", current: "当前"),
