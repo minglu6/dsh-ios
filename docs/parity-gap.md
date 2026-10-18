@@ -88,7 +88,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R59 | 权限选择器去掉系统 sheet；轨迹 KIND_ICON 官方 SVG | done (#68) |
 | R60 | Start/Browser/Inspector 去 grabber sheet；Start 去装饰地球；设置权限 inline select；轨迹 assistant/context token；停止 rect rx=3；chat/slash 官方 chevron/check；截图补 feedback | done (#69) |
 | R61 | 顶栏侧栏 / 消息复制·分支 / 返回 chevron / 浏览器工具栏 / 设置外观改官方 SVG | done (#70) |
-| R62 | Composer / 模型选择器对齐桌面 Flash `1017` 绿色徽标 | this PR |
+| R62 | Composer / 模型选择器对齐桌面 Flash `1017` 绿色徽标 | done (#71) |
+| R63 | 会话工具/Jobs/轨迹官方 SVG；远程主机配对链接粘贴；抽屉当前工作区文件夹色 + 官方 fill | this PR |
 
 ---
 
@@ -115,7 +116,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Markdown | `ui-chat` primitives | `Markdown.kt` | `protocol/Markdown.swift` + `Features/Chat/MarkdownView.swift` |
 | Official icons | desktop `D.*` | Android vector set | `Design/Icons.swift` SF Symbol map |
 | Connection keep-alive | — | `ConnectionService` FGS | `ConnectionKeeper` `beginBackgroundTask` + ping + `BGAppRefreshTask` `dev.dsh.pocket.ios.refresh` + path monitor + local notify |
-| Controller connections | Host pocket `settings.section` `pocket` is QR on the **computer**; Android `ConnectionsScreen` | `Screens.kt` `ConnectionsScreen` / `ConnDeviceRow` | `Features/Connections/ConnectionsView.swift` + `ConnectionsLayout.swift`（#43 / R27）：「连接」、空节隐藏、扫码/地址在列表后、deviceRow chrome。入口在抽屉脚，Settings 无连接分组 |
+| Controller connections | Host pocket `settings.section` `pocket` is QR on the **computer**; Android `ConnectionsScreen` | `Screens.kt` `ConnectionsScreen` / `ConnDeviceRow` + PairLinkSheet（`9aa43c4` / `33b97b2`） | `Features/Connections/ConnectionsView.swift` + `ConnectionsLayout.swift`：全屏「远程主机」；动作卡 扫码 → 配对链接（`IconLinkOutlineRegular`）→ 输入地址（Material Keyboard）；配对链接粘贴后进既有配对确认，不立刻连接。入口在抽屉脚，Settings 无连接分组 |
 
 ---
 
@@ -1527,3 +1528,56 @@ Android `MainActivity` 窄屏是 `ModalNavigationDrawer`（按钮 / 手势滑出
 - 插件列表搜索框（有意保留）。
 - `turnNavigation` / `toBottom` FAB / `ask.review` / hover chevron。
 - 抽屉底栏、远程主机全屏、键盘、鲸鱼 logo、「探索未至之境」、#68/#69/#70 已合项。
+
+## Round 63 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`；Android `33b97b2`）
+
+基线 `main` `0b04aae`（#71 Round 62）。桌面是源。禁止自创颜色/图标；无系统蓝；无 ActionSheet；文案「远程主机」。
+
+### 必须核实（已对齐，本轮不改）
+
+| 项 | 判定 |
+| --- | --- |
+| landing「探索未至之境」+ whale | **PASS** |
+| Composer 贴底 | **PASS** |
+| 抽屉设置 vs 绿点+主机名独立热区 ≥16pt | **PASS** |
+| 远程主机整页 | **PASS** |
+| 开抽屉 / 滚动 / 进设置 / 进远程主机收键盘 | **PASS** |
+| 权限 chip 只图标 + #68 菜单 | **PASS** |
+| #69 Start/Browser/Inspector 全屏；#70 官方 SVG；#71 Flash 1017 | **PASS** |
+
+### 本轮修：会话 / Jobs / 轨迹 leftover SF
+
+| 屏幕 | 差异 | 桌面依据 |
+| --- | --- | --- |
+| chat 工具行 / PROCESS_ICONS | SF browse/terminal/curlybraces 等。改为 primitives PROCESS_ICONS | `ui-chat` PROCESS_ICONS + ToolRow |
+| Jobs | 行 chevron / 停止仍像系统。改为 `IconChevronDownOutlineRegular` 旋转 + `IconStopFill` | `ui-jobs` JobListAction |
+| 轨迹详情 | chevron / wrench / copy 改官方 | Trajectory detail + primitives |
+| 插件内置刷新 | SF `arrow.clockwise` → `IconRefreshOutline` | plugin inventory |
+| 压缩 / 命令卡 / 上下文注入 | `IconApiOutlineRegular` / `IconBrowseOutlineRegular` | CompactionItem / GenericCommandCard / ContextInjectionRow |
+
+### 本轮修：远程主机配对链接（Android `9aa43c4` + `33b97b2`）
+
+| 项 | Android / 桌面 | iOS |
+| --- | --- | --- |
+| 动作卡顺序 | 扫码 → 配对链接 → 输入地址 | 同序；扫码仍 SF `qrcode.viewfinder`（primitives 无 QR，有意 skip） |
+| 配对链接行图标 | `D.link` = `IconLinkOutlineRegular` | `official.linkOutline` |
+| 输入地址行图标 | Material `Icons.Outlined.Keyboard` 24×24 | `connections.keyboard`（照搬 Material path，不是 primitives，也不是 SF keyboard） |
+| 配对链接流程 | `PairLinkSheet`：hint / 粘贴链接 / 下一步；解析失败出 `invalidPairingLink`；成功后预填配对确认，**不立刻连接** | 同文案、同按钮、同预填；`PairingUriPolicy` 对未完成百分号编码 fail-closed（`h=mac%`） |
+| 页面 | 全屏 `ConnectionsScreen` | 仍全屏「远程主机」，无 sheet detent 列表 |
+
+### 本轮修：抽屉工作区文件夹（桌面 `ui-workspace` `ProjectRowItem`）
+
+| 项 | 桌面 | iOS |
+| --- | --- | --- |
+| 折叠 / 展开 logo | 折叠 `IconFolderCloseRegular`；展开填充 `IconFolderOpenRegular`（不是文件树 outline `folderOpen`） | `official.folderClose` / `official.folderOpenFill` |
+| 「当前」条件 | `active = containsCurrentDescendant \|\| (expanded && containsCurrent)`。当前 = 拥有 `mainSessionId` 的工作区。祖先在子树折叠时保持高亮；当前行本身只在展开时高亮 | `workspaceGroupFolderIsActive` 同公式。landing `chat = nil` 不高亮 |
+| 颜色 token | `.folder` `--dsw-alias-label-tertiary`；`.folderActive` `--dsw-alias-state-business-primary`（light `#4176E6` / dark `#7AAAFF`） | 闲置 `T.text3`；活动 `T.businessPrimary`。**不是** sidebar active 背景 `#E4EDFD` / `#353638` |
+| 展开/收起 | hover 才把文件夹换成三角 chevron（skip） | 不发明常驻 chevron；展开态靠文件夹 open/close 本身 |
+
+本轮核对后**不改**（平台 / hide / 禁止发明）
+
+- 远程主机「扫码」无 primitives QR artwork。
+- Inspector viewfinder / 类型过滤；终端中间 ProgressView。
+- 工作区 hover-chevron 互换（触控无 hover）。
+- 插件列表搜索框。
+- `turnNavigation` / `toBottom` FAB / `ask.review` / Account/shortcuts / CompatibilityBanner / 审批通知 / stop-state **行为**。

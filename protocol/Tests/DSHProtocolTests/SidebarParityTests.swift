@@ -51,6 +51,28 @@ final class SidebarParityTests: XCTestCase {
         XCTAssertFalse(isForbiddenViewOptionsSystemSymbol("official.slidersTwo"))
     }
 
+    func testWorkspaceGroupFolderMatchesDesktopProjectRow() {
+        XCTAssertEqual(workspaceGroupFolderSymbol(collapsed: true), "official.folderClose")
+        XCTAssertEqual(workspaceGroupFolderSymbol(collapsed: false), "official.folderOpenFill")
+        XCTAssertEqual(workspaceGroupFolderIconSizePoints, 16)
+        XCTAssertTrue(workspaceGroupFolderUsesBusinessPrimaryWhenActive())
+        XCTAssertEqual(workspaceGroupFolderActiveColorHex(dark: false), 0x4176E6)
+        XCTAssertEqual(workspaceGroupFolderActiveColorHex(dark: true), 0x7AAAFF)
+        XCTAssertTrue(workspaceGroupFolderHoverChevronSwapIsSkip)
+        XCTAssertTrue(isForbiddenWorkspaceGroupFolderSymbol("folder"))
+        XCTAssertTrue(isForbiddenWorkspaceGroupFolderSymbol("folder.fill"))
+        XCTAssertFalse(isForbiddenWorkspaceGroupFolderSymbol("official.folderOpenFill"))
+        XCTAssertEqual(workspaceGroupFolderIconIdentifier("ws-ios"), "workspaceIcon.ws-ios")
+        XCTAssertEqual(workspaceFolderOpenFillShadeOpacity, 0.16)
+        XCTAssertTrue(workspaceFolderOpenFillShadePath.hasPrefix("M2.55912 7.93683"))
+        XCTAssertTrue(workspaceFolderOpenFillPocketPath.hasPrefix("M13.6491 6.69446"))
+        XCTAssertTrue(workspaceFolderOpenFillTabPath.hasPrefix("M4.7666 1.90137"))
+        XCTAssertFalse(workspaceGroupFolderIsActive(containsCurrent: true, containsCurrentDescendant: false, expanded: false))
+        XCTAssertTrue(workspaceGroupFolderIsActive(containsCurrent: true, containsCurrentDescendant: false, expanded: true))
+        XCTAssertTrue(workspaceGroupFolderIsActive(containsCurrent: false, containsCurrentDescendant: true, expanded: false))
+        XCTAssertFalse(workspaceGroupFolderIsActive(containsCurrent: false, containsCurrentDescendant: false, expanded: true))
+    }
+
     func testSchedulePageDropsUnofficialChrome() {
         XCTAssertTrue(SchedulePagePolicy.headerNewActionUsesShortLabel)
         XCTAssertFalse(SchedulePagePolicy.showsUnofficialRefresh)

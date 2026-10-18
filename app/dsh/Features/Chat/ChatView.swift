@@ -117,7 +117,7 @@ struct ChatView: View {
         .onChange(of: scenePhase) { _ in model.setViewedSession(desiredViewedSession) }
         .onChange(of: model.showDrawer) { _ in model.setViewedSession(desiredViewedSession) }
         .onChange(of: model.chat?.sessionId) { _ in
-            tab = UITestLaunch.screen == "trajectory" ? 1 : 0
+            tab = UITestLaunch.screen == "trajectory" || UITestLaunch.screen == "trajectoryDetail" ? 1 : 0
             openTurns = [:]
             openProcesses = [:]
             model.setViewedSession(desiredViewedSession)
@@ -126,7 +126,7 @@ struct ChatView: View {
             switch UITestLaunch.screen {
             case "models": showModels = true
             case "permission": permissionMenuOpen = true
-            case "trajectory": tab = 1
+            case "trajectory", "trajectoryDetail": tab = 1
             case "slash":
                 slashMenu.track(trigger: slashMenuTrigger(model.composerText))
             default: break
@@ -784,15 +784,16 @@ private struct CompactionRow: View {
     @ViewBuilder
     private func header(title: String, summary: String, expandable: Bool) -> some View {
         let chrome = HStack(spacing: 0) {
-            Image(systemName: "curlybraces")
-                .font(.system(size: CGFloat(reasoningIconSizePoints)))
-                .foregroundStyle(T.text3)
-                .frame(
-                    width: CGFloat(reasoningLeadingBoxPoints),
-                    height: CGFloat(reasoningLeadingBoxPoints)
-                )
-                .padding(.trailing, CGFloat(reasoningRowGapPoints))
-                .accessibilityHidden(true)
+            OfficialGlyph(
+                kind: .apiOutline,
+                size: CGFloat(reasoningIconSizePoints),
+                color: T.text3
+            )
+            .frame(
+                width: CGFloat(reasoningLeadingBoxPoints),
+                height: CGFloat(reasoningLeadingBoxPoints)
+            )
+            .padding(.trailing, CGFloat(reasoningRowGapPoints))
             Text(title)
                 .font(LocalFonts.text(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
                 .foregroundStyle(T.text3)
@@ -817,11 +818,13 @@ private struct CompactionRow: View {
         if expandable {
             Button { expanded.toggle() } label: { chrome }
                 .buttonStyle(.plain)
+                .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(.isButton)
                 .accessibilityLabel(title)
                 .accessibilityValue(summary)
         } else {
             chrome
-                .accessibilityElement(children: .combine)
+                .accessibilityElement(children: .contain)
                 .accessibilityLabel("\(title) \(summary)")
         }
     }
@@ -875,15 +878,16 @@ private struct CommandRow: View {
         color: Color
     ) -> some View {
         let chrome = HStack(spacing: 0) {
-            Image(systemName: "curlybraces")
-                .font(.system(size: CGFloat(reasoningIconSizePoints)))
-                .foregroundStyle(T.text3)
-                .frame(
-                    width: CGFloat(reasoningLeadingBoxPoints),
-                    height: CGFloat(reasoningLeadingBoxPoints)
-                )
-                .padding(.trailing, CGFloat(reasoningRowGapPoints))
-                .accessibilityHidden(true)
+            OfficialGlyph(
+                kind: .apiOutline,
+                size: CGFloat(reasoningIconSizePoints),
+                color: T.text3
+            )
+            .frame(
+                width: CGFloat(reasoningLeadingBoxPoints),
+                height: CGFloat(reasoningLeadingBoxPoints)
+            )
+            .padding(.trailing, CGFloat(reasoningRowGapPoints))
             Text(title)
                 .font(LocalFonts.text(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
                 .fontWeight(.regular)
@@ -911,8 +915,11 @@ private struct CommandRow: View {
         if expandable {
             Button { expanded.toggle() } label: { chrome }
                 .buttonStyle(.plain)
+                .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(.isButton)
         } else {
             chrome
+                .accessibilityElement(children: .contain)
         }
     }
 }
@@ -961,15 +968,16 @@ private struct ContextToolChangeRow: View {
     @ViewBuilder
     private func header(title: String, summary: String?, expandable: Bool) -> some View {
         let chrome = HStack(spacing: 0) {
-            Image(systemName: "doc.text.magnifyingglass")
-                .font(.system(size: CGFloat(reasoningIconSizePoints)))
-                .foregroundStyle(T.text3)
-                .frame(
-                    width: CGFloat(reasoningLeadingBoxPoints),
-                    height: CGFloat(reasoningLeadingBoxPoints)
-                )
-                .padding(.trailing, CGFloat(reasoningRowGapPoints))
-                .accessibilityHidden(true)
+            OfficialGlyph(
+                kind: .browseOutline,
+                size: CGFloat(reasoningIconSizePoints),
+                color: T.text3
+            )
+            .frame(
+                width: CGFloat(reasoningLeadingBoxPoints),
+                height: CGFloat(reasoningLeadingBoxPoints)
+            )
+            .padding(.trailing, CGFloat(reasoningRowGapPoints))
             Text(title)
                 .font(LocalFonts.text(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))))
                 .foregroundStyle(T.text3)
@@ -996,11 +1004,13 @@ private struct ContextToolChangeRow: View {
         if expandable {
             Button { expanded.toggle() } label: { chrome }
                 .buttonStyle(.plain)
+                .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(.isButton)
                 .accessibilityLabel(title)
                 .accessibilityValue(summary ?? "")
         } else {
             chrome
-                .accessibilityElement(children: .combine)
+                .accessibilityElement(children: .contain)
                 .accessibilityLabel(summary.map { "\(title) \($0)" } ?? title)
         }
     }
@@ -1100,6 +1110,8 @@ private struct ProcessGroupView: View {
                 }
             }
             .buttonStyle(.plain)
+            .accessibilityElement(children: .contain)
+            .accessibilityAddTraits(.isButton)
             .disabled(!proc.canCollapse && proc.turnSummary)
             if open && !proc.members.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
@@ -1128,27 +1140,10 @@ private struct ProcessGroupView: View {
             } else if kind == "thinking" {
                 OfficialGlyph(kind: .think, size: CGFloat(reasoningIconSizePoints), color: T.text3)
             } else {
-                Image(systemName: processSymbol(kind))
-                    .font(.system(size: 13))
-                    .foregroundStyle(T.text3)
+                OfficialGlyph(kind: OfficialGlyph.process(kind), size: 14, color: T.text3)
             }
         }
         .frame(width: CGFloat(reasoningLeadingBoxPoints), height: CGFloat(reasoningLeadingBoxPoints))
-    }
-
-    private func processSymbol(_ kind: String) -> String {
-        switch kind {
-        case "thinking": return "brain"
-        case "read", "readImage", "webFetch": return "doc.text.magnifyingglass"
-        case "search", "webSearch": return "magnifyingglass"
-        case "edit", "write": return "pencil"
-        case "commands": return "terminal"
-        case "code": return "chevron.left.forwardslash.chevron.right"
-        case "subagents": return "person.2"
-        case "plan": return "checklist"
-        case "questions": return "questionmark.circle"
-        default: return "sparkle"
-        }
     }
 }
 
@@ -1254,7 +1249,7 @@ private struct ToolCard: View {
         }()
         Button(action: onTap) {
             HStack(spacing: CGFloat(reasoningRowGapPoints)) {
-                Image(systemName: toolSymbol(summary.icon)).foregroundStyle(tint)
+                OfficialGlyph(kind: OfficialGlyph.tool(summary.icon), size: 14, color: tint)
                     .frame(width: CGFloat(reasoningLeadingBoxPoints), height: CGFloat(reasoningLeadingBoxPoints))
                 TextShimmer(active: tool.status == .running || tool.status == .preparing) {
                     HStack(spacing: CGFloat(reasoningPreviewSeparatorSpacingPoints)) {
@@ -1283,26 +1278,10 @@ private struct ToolCard: View {
             .background(tool.status == .awaitingApproval ? T.warnTint : Color.clear, in: RoundedRectangle(cornerRadius: 8))
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(.isButton)
         .disabled(tool.status == .preparing)
         .accessibilityValue(toolRowStateStatus(tool.status, english: L.en) ?? "")
-    }
-
-    private func toolSymbol(_ icon: ToolProcessIcon) -> String {
-        switch icon {
-        case .browse: return "doc.text.magnifyingglass"
-        case .search: return "magnifyingglass"
-        case .command: return "terminal"
-        case .write, .edit: return "pencil"
-        case .code: return "chevron.left.forwardslash.chevron.right"
-        case .users: return "person.2"
-        case .checklist: return "checklist"
-        case .clock: return "clock"
-        case .goal: return D.goal
-        case .plugin: return "puzzlepiece.extension"
-        case .agent: return "person.crop.circle"
-        case .branch: return "arrow.triangle.branch"
-        case .generic: return "sparkle"
-        }
     }
 }
 

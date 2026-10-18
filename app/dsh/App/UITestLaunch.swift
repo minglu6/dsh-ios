@@ -143,6 +143,18 @@ extension AppModel {
         var items: [Item] = [
             .user(Item.User(key: "u1", text: "你好", at: clock, messageId: "m-user")),
             .context(Item.Context(key: "c1", text: "上下文注入：工具定义已更新", at: clock + 1_000)),
+            .tool(Item.Tool(
+                key: "t-read",
+                callId: "c-read",
+                name: "read",
+                arguments: #"{"path":"README.md"}"#,
+                status: .ok,
+                result: "ok",
+                startedAt: clock + 1_500,
+                endedAt: clock + 1_800,
+                turn: 1,
+                step: 1
+            )),
             .text(Item.Text(key: "a1", text: "你好，我是 DeepSeek。", live: false, at: clock + 2_000, messageId: "m-assistant")),
         ]
         if UITestLaunch.extraChatForKeyboard {
@@ -196,8 +208,17 @@ extension AppModel {
             firstPrompt = nil
         case "drawer", "viewOptions", "sessionActions":
             showDrawer = true
-        case "chat", "trajectory":
+        case "chat", "trajectory", "trajectoryDetail":
             seedUITestJobs()
+        case "jobs":
+            seedUITestJobs()
+            // `jobs.kill` only enables the stop control. Do not advertise
+            // `jobs.list`: that starts `retainJobsWatch` with no Host client.
+            ops.insert("jobs.kill")
+        case "builtinPlugins":
+            ops.insert("plugins.inventory")
+            showDrawer = false
+            push(.builtinPlugins)
         case "models", "permission":
             break
         case "connections":

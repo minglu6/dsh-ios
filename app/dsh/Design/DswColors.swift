@@ -29,6 +29,8 @@ struct DswColors {
     let markdownCodeBlock: Color
     let settingsCardFill: Color
     let settingsCardStroke: Color
+    /// Desktop `--dsw-alias-state-business-primary` (workspace `.folderActive`).
+    let stateBusinessPrimary: Color
     let stateBusinessTertiary: Color
     let stateErrorPrimary: Color
     let stateSuccessPrimary: Color
@@ -70,6 +72,7 @@ struct DswColors {
         markdownCodeBlock: Color(hex: 0xFFF9FAFB),
         settingsCardFill: Color(hex: 0xFFFFFFFF),
         settingsCardStroke: Color(hex: 0x29000000),
+        stateBusinessPrimary: Color(hex: 0xFF4176E6),
         stateBusinessTertiary: Color(hex: 0xFFE4EDFD),
         stateErrorPrimary: Color(hex: 0xFFEC1313),
         stateSuccessPrimary: Color(hex: 0xFF22C55E),
@@ -112,6 +115,7 @@ struct DswColors {
         markdownCodeBlock: Color(hex: 0xFF1B1B1C),
         settingsCardFill: Color(hex: 0xFF2C2C2E),
         settingsCardStroke: Color(hex: 0x33FFFFFF),
+        stateBusinessPrimary: Color(hex: 0xFF7AAAFF),
         stateBusinessTertiary: Color(hex: 0xFF34415B),
         stateErrorPrimary: Color(hex: 0xFFF25A5A),
         stateSuccessPrimary: Color(hex: 0xFF22C55E),

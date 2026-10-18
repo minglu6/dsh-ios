@@ -36,6 +36,8 @@ struct TerminalPanel: View {
                 TerminalView(model: model, enabled: running, platform: model.terminalPlatform)
             } else {
                 Spacer()
+                // Skip: desktop terminal has no center spinner
+                // (`terminalCenterLoadingUsesOfficialGlyph`).
                 if opening && model.isOnline { ProgressView().tint(T.accent) }
                 Spacer()
             }

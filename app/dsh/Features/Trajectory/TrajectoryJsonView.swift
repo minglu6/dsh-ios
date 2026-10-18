@@ -42,12 +42,17 @@ struct TrajectoryJsonValue: View {
                 Button {
                     if open { expanded.remove(row.path) } else { expanded.insert(row.path) }
                 } label: {
-                    Image(systemName: open ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 10))
-                        .foregroundStyle(T.text3)
-                        .frame(width: 28, height: 28)
+                    OfficialGlyph(
+                        kind: .chevronRight,
+                        size: 10,
+                        color: T.text3
+                    )
+                    .rotationEffect(.degrees(open ? trajectoryThinkingChevronExpandedRotationDegrees : 0))
+                    .frame(width: 28, height: 28)
                 }
                 .buttonStyle(.plain)
+                .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(.isButton)
                 .accessibilityLabel(open ? L.t("收起", "Collapse") : L.t("展开", "Expand"))
             } else {
                 Color.clear.frame(width: 28, height: 28)
@@ -82,12 +87,16 @@ private struct TrajectoryCopyButton: View {
         Button {
             copy(modes?.first)
         } label: {
-            Image(systemName: copyResult == "复制成功" ? "checkmark" : "square.on.square")
-                .font(.system(size: 12))
-                .foregroundStyle(T.text3)
-                .frame(width: 28, height: 28)
+            OfficialGlyph(
+                kind: copyResult == "复制成功" ? .checkOutline : .copyOutline,
+                size: 12,
+                color: T.text3
+            )
+            .frame(width: 28, height: 28)
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(.isButton)
         .accessibilityLabel(copyResult ?? modes?.first?.label ?? L.copy())
         .simultaneousGesture(LongPressGesture().onEnded { _ in
             if modes != nil { menu = true }

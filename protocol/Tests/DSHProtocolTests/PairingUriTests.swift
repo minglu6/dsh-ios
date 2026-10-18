@@ -19,4 +19,13 @@ final class PairingUriTests: XCTestCase {
             }
         }
     }
+
+    func testUnfinishedPercentEscapeFailsClosed() {
+        XCTAssertNil(PairingUriPolicy.parse("dshpocket://pair?h=mac%&c=012345"))
+        XCTAssertNil(PairingUriPolicy.parse("dshpocket://pair?h=mac%3&c=012345"))
+        XCTAssertEqual(
+            PairingUriPolicy.parse("dshpocket://pair?h=mac.tail.ts.net%3A7690&c=012345")?.host,
+            "mac.tail.ts.net"
+        )
+    }
 }

@@ -217,6 +217,8 @@ private struct SessionInspectorContent: View {
                     nav.begin(sessionId: chat.sessionId)
                     onDismiss()
                 } label: {
+                    // Skip: desktop Guide has no Session Inspector; primitives
+                    // `IconInspectOutline` is CodeBracketsArtwork, not a viewfinder.
                     Image(systemName: "viewfinder")
                         .font(.system(size: 12))
                         .foregroundStyle(T.ink)
@@ -437,6 +439,7 @@ private struct InspectorTypeFilter: View {
             draft = value
             open.toggle()
         } label: {
+            // Skip: primitives have no type-filter artwork.
             Image(systemName: "line.3.horizontal.decrease")
                 .font(.system(size: 11))
                 .foregroundStyle(value.isEmpty ? T.ink : T.accent)

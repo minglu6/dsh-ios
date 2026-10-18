@@ -159,14 +159,24 @@ struct JobsPanel: View {
                         settledOpen = jobsSettledSectionToggled(explicit: settledOpen, liveCount: liveRows.count)
                     } label: {
                         HStack(spacing: 6) {
-                            Image(systemName: settledExpanded ? "chevron.down" : "chevron.right")
-                                .font(.system(size: 11))
+                            OfficialGlyph(
+                                kind: .chevronDown,
+                                size: CGFloat(jobsRowChevronIconSizePoints),
+                                color: T.text3
+                            )
+                            .rotationEffect(.degrees(
+                                settledExpanded
+                                    ? jobsSettledChevronOpenRotationDegrees
+                                    : jobsSettledChevronCollapsedRotationDegrees
+                            ))
                             Text(jobSectionSettled(count: settledRows.count, english: L.en))
                         }
                         .font(.caption)
                         .foregroundStyle(T.text3)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityAddTraits(.isButton)
                     Spacer()
                     Button(jobSectionClear(english: L.en)) {
                         clearedKeys.formUnion(settledRows.map(\.id))
@@ -208,6 +218,8 @@ struct JobsPanel: View {
                         jobRow(job, expanded: expanded)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityAddTraits(.isButton)
                     .accessibilityLabel(
                         L.t(
                             expanded ? "收起 \(job.title) 的实时输出" : "展开 \(job.title) 的实时输出",
@@ -252,10 +264,12 @@ struct JobsPanel: View {
                 }
             }
             if job.isObservable {
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 11))
-                    .foregroundStyle(T.text3)
-                    .rotationEffect(.degrees(expanded ? 180 : 0))
+                OfficialGlyph(
+                    kind: .chevronDown,
+                    size: CGFloat(jobsRowChevronIconSizePoints),
+                    color: T.text3
+                )
+                .rotationEffect(.degrees(expanded ? jobsRowChevronOpenRotationDegrees : 0))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -301,7 +315,7 @@ struct JobsPanel: View {
             }
         } label: {
             HStack(spacing: 4) {
-                Image(systemName: "stop.fill").font(.system(size: 9))
+                OfficialGlyph(kind: .stopFill, size: 9, color: phase.stateName == "failed" ? T.err : T.text2)
                 if case .armed = phase {
                     Text(jobKillConfirmAction(english: L.en)).font(.caption)
                 }
@@ -313,6 +327,8 @@ struct JobsPanel: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(.isButton)
         .disabled(!canKill || phase.stateName == "pending")
         .accessibilityLabel(title)
     }

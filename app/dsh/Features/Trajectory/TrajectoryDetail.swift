@@ -233,11 +233,17 @@ private struct TrajOverview: View {
                     Text(title).font(.caption.weight(.semibold)).foregroundStyle(T.ink)
                     Spacer()
                     if onOpen != nil {
-                        Image(systemName: "chevron.right").font(.caption2).foregroundStyle(T.caption)
+                        OfficialGlyph(
+                            kind: .chevronRight,
+                            size: CGFloat(trajectoryDetailChevronIconSizePoints),
+                            color: T.caption
+                        )
                     }
                 }
             }
             .buttonStyle(.plain)
+            .accessibilityElement(children: .contain)
+            .accessibilityAddTraits(.isButton)
             .disabled(onOpen == nil)
             content()
         }
@@ -303,13 +309,20 @@ private struct TrajPreview: View {
             if let thinking = row.thinkingDetail, !thinking.isEmpty {
                 Button { thinkingExpanded.toggle() } label: {
                     HStack(spacing: 4) {
-                        Image(systemName: thinkingExpanded ? "chevron.down" : "chevron.right")
-                            .font(.caption2)
-                            .foregroundStyle(T.text3)
+                        OfficialGlyph(
+                            kind: .chevronRight,
+                            size: CGFloat(trajectoryDetailChevronIconSizePoints),
+                            color: T.text3
+                        )
+                        .rotationEffect(.degrees(
+                            thinkingExpanded ? trajectoryThinkingChevronExpandedRotationDegrees : 0
+                        ))
                         Text(TrajL.recordThinking).font(.caption).foregroundStyle(T.text3)
                     }
                 }
                 .buttonStyle(.plain)
+                .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(.isButton)
                 if thinkingExpanded {
                     if rendered {
                         Text(thinking).font(.footnote).foregroundStyle(T.text2)
@@ -329,7 +342,7 @@ private struct TrajPreview: View {
             ForEach(toolCalls) { call in
                 Button { onOpenTool(call) } label: {
                     HStack(spacing: 4) {
-                        Image(systemName: "wrench.and.screwdriver").font(.caption2).foregroundStyle(T.caption)
+                        OfficialGlyph(kind: .toolWrench, size: 12, color: T.caption)
                         Text(call.title)
                             .font(.system(size: 12, design: .monospaced))
                             .foregroundStyle(T.text3)
@@ -337,6 +350,8 @@ private struct TrajPreview: View {
                     }
                 }
                 .buttonStyle(.plain)
+                .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(.isButton)
             }
             if (body ?? "").isEmpty && (row.thinkingDetail ?? "").isEmpty && toolCalls.isEmpty {
                 Text(TrajL.recordNoContent).font(.subheadline).foregroundStyle(T.text3)
