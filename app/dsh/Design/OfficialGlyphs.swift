@@ -78,6 +78,9 @@ struct OfficialGlyph: View {
         case stopFill
         case computer
         case trashOutline
+        case queueOutline
+        case sendOutline
+        case dataOutline
 
         var accessibilityIdentifier: String {
             switch self {
@@ -148,6 +151,9 @@ struct OfficialGlyph: View {
             case .stopFill: return jobsStopFillSymbol()
             case .computer: return connectionsNearbyComputerSymbol()
             case .trashOutline: return connectionsManageTrashSymbol()
+            case .queueOutline: return chatQueueDockSymbol()
+            case .sendOutline: return queueSteerSendSymbol()
+            case .dataOutline: return settingsModelsSymbol()
             case .permission: return "official.glyph"
             default: return "official.glyph"
             }
@@ -164,7 +170,7 @@ struct OfficialGlyph: View {
                  .closeOutline, .linkOutline, .rightUp, .appearanceLight, .appearanceDark, .appearanceFollowSystem,
                  .think, .agentPreset, .globe, .browseOutline, .editOutline, .apiOutline, .codeOutline, .planOutline,
                  .questionOutline, .usersOutline, .checklistOutline, .goalOutline, .cordisPlugin, .stopFill,
-                 .computer, .trashOutline:
+                 .computer, .trashOutline, .queueOutline, .sendOutline, .dataOutline:
                 return false
             // plusOutline / send are decorative; ComposerView hosts own
             // official.plusOutline and official.send.
@@ -301,7 +307,7 @@ struct OfficialGlyph: View {
                 ctx.stroke(lid, with: .color(color), style: stroke)
                 ctx.stroke(Path(SVGPath.cgPath(Self.archiveOffBox)), with: .color(color), style: stroke)
                 ctx.stroke(Path(SVGPath.cgPath(Self.archiveCheckMark)), with: .color(color), style: stroke)
-            case .queue:
+            case .queue, .queueOutline:
                 ctx.stroke(Path(SVGPath.cgPath(Self.queueLineA)), with: .color(color), style: stroke)
                 ctx.stroke(Path(SVGPath.cgPath(Self.queueLineB)), with: .color(color), style: stroke)
                 ctx.stroke(Path(SVGPath.cgPath(Self.queueBubble)), with: .color(color), style: stroke)
@@ -638,6 +644,18 @@ struct OfficialGlyph: View {
                 ctx.stroke(Path(SVGPath.cgPath(iconTrashOutlineBodyPath)), with: .color(color), style: Self.regularStroke)
                 ctx.stroke(Path(SVGPath.cgPath(iconTrashOutlineLeftRibPath)), with: .color(color), style: Self.regularStroke)
                 ctx.stroke(Path(SVGPath.cgPath(iconTrashOutlineRightRibPath)), with: .color(color), style: Self.regularStroke)
+            case .sendOutline:
+                ctx.fill(Path(SVGPath.cgPath(queueSteerSendFillPath)), with: .color(color))
+                ctx.stroke(Path(SVGPath.cgPath(queueSteerSendStemPath)), with: .color(color), style: Self.regularStroke)
+            case .dataOutline:
+                let medium = StrokeStyle(
+                    lineWidth: CGFloat(appearanceCubeIconStrokeWidth),
+                    lineCap: .butt,
+                    lineJoin: .miter,
+                    miterLimit: 10
+                )
+                ctx.fill(Path(SVGPath.cgPath(settingsDataOutlineFillPath)), with: .color(color))
+                ctx.stroke(Path(SVGPath.cgPath(settingsDataOutlineGearPath)), with: .color(color), style: medium)
             }
         }
         .frame(width: canvasWidth, height: canvasHeight)

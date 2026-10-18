@@ -210,6 +210,8 @@ extension AppModel {
             showDrawer = true
         case "chat", "trajectory", "trajectoryDetail":
             seedUITestJobs()
+        case "chatDock":
+            seedUITestChatDocks()
         case "jobs":
             seedUITestJobs()
             // `jobs.kill` only enables the stop control. Do not advertise
@@ -235,6 +237,9 @@ extension AppModel {
         case "settings", "general":
             showDrawer = false
             push(.general)
+        case "settingsShell":
+            showDrawer = false
+            push(.settings)
         case "plugins":
             showDrawer = false
             push(.panel(.plugins))
@@ -264,6 +269,30 @@ extension AppModel {
         default:
             fatalError("UITestLaunch: unknown screen \(screen)")
         }
+    }
+
+    /// Desktop TodoPanel / GoalBar / QueueDock. Kept off the `chat` fixture so
+    /// `*-chat.png` stays stable; `chatDock` is the dedicated screenshot path.
+    fileprivate func seedUITestChatDocks() {
+        guard var state = chat else {
+            fatalError("UITestLaunch chatDock requires a chat session")
+        }
+        state.todos = [
+            TodoItem(content: "核对配对链接边距", status: "in_progress"),
+            TodoItem(content: "换成官方 SVG", status: "completed"),
+            TodoItem(content: "截图断言", status: "pending"),
+        ]
+        state.goal = .object([
+            "phase": .string("active"),
+            "objective": .string("对齐桌面 Todo / Goal / Queue dock"),
+            "revision": .number(1),
+        ])
+        state.queuedPrompts = [
+            QueuedPrompt(id: "q-dock", text: "继续对照桌面源码", sending: false, editable: true),
+        ]
+        chat = state
+        ops.insert("queue.update")
+        goalActivation = "armed"
     }
 
     /// Desktop `JobListAction` only paints the header trigger when the

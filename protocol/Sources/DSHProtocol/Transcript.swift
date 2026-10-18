@@ -134,6 +134,11 @@ public struct TodoItem: Sendable, Equatable, Identifiable {
     public var content: String
     public var status: String
     public var id: String { content }
+
+    public init(content: String, status: String) {
+        self.content = content
+        self.status = status
+    }
 }
 
 public enum RetryState: String, Sendable, Equatable {

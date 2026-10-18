@@ -425,20 +425,19 @@ struct TodoPanel: View {
             VStack(alignment: .leading, spacing: 8) {
                 Button { expanded.toggle() } label: {
                     HStack(spacing: 10) {
-                        Image(systemName: "checklist").foregroundStyle(T.text3)
+                        OfficialGlyph(kind: .checklistOutline, size: 14, color: T.text3)
                         Text(L.t("任务", "To-dos")).font(.subheadline.weight(.medium)).foregroundStyle(T.ink)
                         Text(todoProgressLabel(todos, en: L.en))
                             .font(.subheadline)
                             .foregroundStyle(T.text3)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                        Image(systemName: "chevron.down")
-                            .font(.caption)
-                            .foregroundStyle(T.text3)
+                        OfficialGlyph(kind: .chevronDown, size: 14, color: T.text3)
                             .rotationEffect(.degrees(expanded ? 0 : 180))
                     }
                     .frame(minHeight: 48)
                 }
                 .buttonStyle(.plain)
+                .accessibilityElement(children: .contain)
                 if expanded {
                     VStack(alignment: .leading, spacing: 8) {
                         ForEach(todos) { item in
@@ -457,6 +456,8 @@ struct TodoPanel: View {
             .overlay(RoundedRectangle(cornerRadius: 16).stroke(T.settingsCardStroke, lineWidth: 0.5))
             .padding(.horizontal, 22)
             .padding(.vertical, 4)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier(chatTodoPanelIdentifier())
             .onChange(of: sessionKey) { _ in expanded = false }
         }
     }
@@ -485,7 +486,7 @@ struct GoalBar: View {
         } else {
             Button(action: onEdit) {
                 HStack(spacing: 8) {
-                    Image(systemName: D.goal).foregroundStyle(T.text3)
+                    OfficialGlyph(kind: .goalOutline, size: 16, color: T.text3)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(goalPhaseLabel(phase: goal["phase"].str(), activation: activation, english: L.en))
                             .font(.caption)
@@ -496,12 +497,14 @@ struct GoalBar: View {
                             .lineLimit(1)
                     }
                     Spacer()
-                    Image(systemName: "chevron.right").foregroundStyle(T.text3)
+                    OfficialGlyph(kind: .chevronRight, size: 16, color: T.text3)
                 }
                 .frame(minHeight: 48)
                 .padding(.horizontal, 20)
             }
             .buttonStyle(.plain)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier(chatGoalBarIdentifier())
         }
     }
 }
@@ -617,7 +620,7 @@ struct PromptQueue: View {
                 if !single {
                     Button { collapsed.toggle() } label: {
                         HStack(spacing: 10) {
-                            Image(systemName: "text.line.first.and.arrowtriangle.forward").foregroundStyle(T.text3)
+                            OfficialGlyph(kind: .queueOutline, size: 14, color: T.text3)
                             Text(L.en ? "\(prompts.count) queued messages" : "\(prompts.count) 条排队消息")
                                 .font(.subheadline.weight(.medium))
                                 .foregroundStyle(T.text2)
@@ -625,15 +628,14 @@ struct PromptQueue: View {
                             if !expanded && prompts.contains(where: \.sending) {
                                 Text(L.t("发送中…", "Sending…")).foregroundStyle(T.text3)
                             }
-                            Image(systemName: "chevron.down")
-                                .font(.caption)
+                            OfficialGlyph(kind: .chevronDown, size: 14, color: T.text3)
                                 .rotationEffect(.degrees(expanded ? 0 : 180))
-                                .foregroundStyle(T.text3)
                         }
                         .padding(.horizontal, 12)
                         .frame(height: 36)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityElement(children: .contain)
                     .disabled(interacting)
                 }
                 if single || expanded {
@@ -651,6 +653,8 @@ struct PromptQueue: View {
                     .stroke(T.border, lineWidth: 0.5)
             }
             .padding(.horizontal, 30)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier(chatQueueDockIdentifier())
             .onChange(of: prompts) { next in
                 if next.isEmpty { collapsed = true }
                 if let editingId, !next.contains(where: { $0.id == editingId && $0.editable && !$0.sending }) {
@@ -667,7 +671,7 @@ struct PromptQueue: View {
         let preview = queuePreview(prompt)
         return HStack(spacing: 8) {
             if single {
-                Image(systemName: "text.line.first.and.arrowtriangle.forward").foregroundStyle(T.text3)
+                OfficialGlyph(kind: .queueOutline, size: 14, color: T.text3)
             }
             if editing {
                 TextField(L.t("编辑排队消息", "Edit queued message"), text: $draft, axis: .vertical)
@@ -695,20 +699,20 @@ struct PromptQueue: View {
                 Text(L.t("发送中…", "Sending…")).font(.subheadline).foregroundStyle(T.text3)
             }
             if editing {
-                icon("checkmark", enabled: actionable && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, label: L.t("保存排队消息", "Save queued message")) {
+                icon(.checkOutline, enabled: actionable && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, label: L.t("保存排队消息", "Save queued message")) {
                     apply(prompt.id, .edit(draft))
                 }
-                icon("xmark", enabled: busyId == nil, label: L.t("取消编辑", "Cancel edit")) { editingId = nil; draft = "" }
+                icon(.closeOutline, enabled: busyId == nil, label: L.t("取消编辑", "Cancel edit")) { editingId = nil; draft = "" }
             } else {
-                icon("pencil", enabled: actionable && prompt.editable, label: L.t("编辑排队消息", "Edit queued message")) {
+                icon(.editOutline, enabled: actionable && prompt.editable, label: L.t("编辑排队消息", "Edit queued message")) {
                     editingId = prompt.id
                     draft = prompt.text
                 }
-                icon("trash", enabled: actionable, label: L.t("删除排队消息", "Remove queued message")) {
+                icon(.trashOutline, enabled: actionable, label: L.t("删除排队消息", "Remove queued message")) {
                     apply(prompt.id, .remove)
                 }
                 icon(
-                    "paperplane",
+                    .sendOutline,
                     enabled: actionable && running,
                     label: running
                         ? L.t("插话发送", "Steer queued message")
@@ -732,17 +736,23 @@ struct PromptQueue: View {
         }
     }
 
-    private func icon(_ system: String, enabled: Bool, label: String? = nil, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: system)
-                .font(.system(size: 13))
-                .foregroundStyle(T.text3.opacity(enabled ? 1 : 0.45))
-                .frame(width: 32, height: 32)
+    private func icon(_ official: OfficialGlyph.Kind, enabled: Bool, label: String? = nil, action: @escaping () -> Void) -> some View {
+        ZStack {
+            OfficialGlyph(
+                kind: official,
+                size: CGFloat(queueActionIconSizePoints),
+                color: T.text3.opacity(enabled ? 1 : 0.45)
+            )
+            .allowsHitTesting(false)
+            Button(action: action) {
+                Color.clear.frame(width: 32, height: 32)
+            }
+            .buttonStyle(.plain)
+            .disabled(!enabled)
+            .accessibilityLabel(label ?? "")
+            .accessibilityHidden(label == nil)
         }
-        .buttonStyle(.plain)
-        .disabled(!enabled)
-        .accessibilityLabel(label ?? "")
-        .accessibilityHidden(label == nil)
+        .frame(width: 32, height: 32)
     }
 
     @ViewBuilder

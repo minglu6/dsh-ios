@@ -11,10 +11,20 @@ struct SettingsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     card {
-                        nav(L.generalNav(), D.sliders) { model.push(.general) }
-                        nav(L.modelsNav(), "cpu", divider: hasPresets || hasPluginSettings, enabled: model.isOnline) { model.push(.models) }
+                        nav(L.generalNav(), official: .settingsOutlineRegular) { model.push(.general) }
+                        nav(
+                            L.modelsNav(),
+                            official: .dataOutline,
+                            divider: hasPresets || hasPluginSettings,
+                            enabled: model.isOnline
+                        ) { model.push(.models) }
                         if hasPresets {
-                            nav(L.agentPresets(), D.agentPreset, divider: hasPluginSettings, enabled: model.isOnline) { model.push(.presets) }
+                            nav(
+                                L.agentPresets(),
+                                official: .agentPreset,
+                                divider: hasPluginSettings,
+                                enabled: model.isOnline
+                            ) { model.push(.presets) }
                         }
                         if hasPluginSettings {
                             nav(L.builtinPluginsNav(), divider: false, enabled: model.isOnline) {
@@ -423,9 +433,16 @@ func card<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         .padding(.horizontal, 16)
 }
 
-func nav(_ title: String, _ system: String, value: String? = nil, divider: Bool = true, enabled: Bool = true, action: @escaping () -> Void) -> some View {
+func nav(
+    _ title: String,
+    official: OfficialGlyph.Kind,
+    value: String? = nil,
+    divider: Bool = true,
+    enabled: Bool = true,
+    action: @escaping () -> Void
+) -> some View {
     nav(title, value: value, divider: divider, enabled: enabled, action: action) {
-        Image(systemName: system)
+        OfficialGlyph(kind: official, size: CGFloat(settingsNavIconSizePoints), color: T.text2)
     }
 }
 
@@ -452,6 +469,8 @@ func nav<Icon: View>(
             .padding(.vertical, 12)
             .opacity(enabled ? 1 : 0.5)
         }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .contain)
         .disabled(!enabled)
         if divider { Divider().padding(.leading, 16) }
     }
