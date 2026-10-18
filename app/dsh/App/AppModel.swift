@@ -96,6 +96,22 @@ enum AppRoute: Equatable {
     case panel(DrawerPanel)
 }
 
+extension AppRoute {
+    /// Full-screen routes that must not sit under the session drawer overlay.
+    /// Matches Android `Screen.Connections` / `Screen.Settings`: replace chat
+    /// and close the drawer — never a half-sheet beside it.
+    var closesSessionDrawer: Bool {
+        switch self {
+        case .chat, .sessions: return false
+        case .panel(.browser): return false
+        default: return true
+        }
+    }
+
+    /// Drawer overlay is only legal on chat / sessions / in-app browser.
+    var allowsSessionDrawer: Bool { !closesSessionDrawer }
+}
+
 @MainActor
 final class AppModel: ObservableObject {
     static let shared = AppModel()
