@@ -89,6 +89,13 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) drawer missing official project-add glyph"
                 )
             }
+            if screen == "landing" || screen == "chat" {
+                XCTAssertFalse(app.images["plus"].exists, "\(appearance) \(screen) still exposes SF plus")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.plusOutline"].waitForExistence(timeout: 8),
+                    "\(appearance) \(screen) missing official composer plus glyph"
+                )
+            }
             if screen == "models" {
                 XCTAssertTrue(app.descendants(matching: .any)["modelChipEffort"].waitForExistence(timeout: 8), "\(appearance) model chip missing effort")
                 XCTAssertTrue(app.descendants(matching: .any)["modelPickerEffort"].waitForExistence(timeout: 8), "\(appearance) model menu missing effort row")

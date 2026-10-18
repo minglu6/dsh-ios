@@ -1686,10 +1686,12 @@ struct ComposerView: View {
                     }
                 HStack(spacing: 8) {
                     Button(action: onPlus) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(T.ink)
-                            .frame(width: CGFloat(composerAddButtonPoints), height: CGFloat(composerAddButtonPoints))
+                        OfficialGlyph(
+                            kind: .plusOutline,
+                            size: CGFloat(composerAddIconSizePoints),
+                            color: T.ink
+                        )
+                        .frame(width: CGFloat(composerAddButtonPoints), height: CGFloat(composerAddButtonPoints))
                     }
                     .background(T.selector, in: Circle())
                     .disabled(firstPromptBlocksComposerActions(model.firstPrompt))

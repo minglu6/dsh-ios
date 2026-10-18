@@ -29,6 +29,7 @@ struct OfficialGlyph: View {
         case newChat
         case searchOutline
         case projectAdd
+        case plusOutline
 
         var accessibilityIdentifier: String {
             switch self {
@@ -38,13 +39,14 @@ struct OfficialGlyph: View {
             case .newChat: return "official.newChat"
             case .searchOutline: return "official.searchOutline"
             case .projectAdd: return "official.projectAdd"
+            case .plusOutline: return "official.plusOutline"
             default: return "official.glyph"
             }
         }
 
         var hidesAccessibility: Bool {
             switch self {
-            case .folderClose, .folderOpen, .settingsOutline, .newChat, .searchOutline, .projectAdd: return false
+            case .folderClose, .folderOpen, .settingsOutline, .newChat, .searchOutline, .projectAdd, .plusOutline: return false
             default: return true
             }
         }
@@ -180,6 +182,15 @@ struct OfficialGlyph: View {
                 ctx.fill(Path(SVGPath.cgPath(sidebarProjectAddFolderPath)), with: .color(color))
                 ctx.stroke(Path(SVGPath.cgPath(sidebarProjectAddPlusHorizontalPath)), with: .color(color), style: regular)
                 ctx.stroke(Path(SVGPath.cgPath(sidebarProjectAddPlusVerticalPath)), with: .color(color), style: regular)
+            case .plusOutline:
+                let medium = StrokeStyle(
+                    lineWidth: CGFloat(composerAddIconStrokeWidth),
+                    lineCap: .butt,
+                    lineJoin: .miter,
+                    miterLimit: 10
+                )
+                ctx.stroke(Path(SVGPath.cgPath(composerAddPlusVerticalPath)), with: .color(color), style: medium)
+                ctx.stroke(Path(SVGPath.cgPath(composerAddPlusHorizontalPath)), with: .color(color), style: medium)
             }
         }
         .frame(width: size, height: size)
