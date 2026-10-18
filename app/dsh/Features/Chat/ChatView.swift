@@ -1593,9 +1593,9 @@ private struct MessageActions: View {
     }
 }
 
-/// XCUITest host for InputBar `.add`. Landing's UITextView + former
-/// GeometryReader dropped the SwiftUI plus Button from the snapshot;
-/// a UIKit element on the composer card stays queryable.
+/// XCUITest host for InputBar `.add` / `.primary`. Landing's UITextView +
+/// former GeometryReader dropped the SwiftUI plus/send Buttons from the
+/// snapshot; a UIKit element on the composer card stays queryable.
 private struct ComposerAddA11yHost: UIViewRepresentable {
     var identifier: String
     var label: String
@@ -1783,14 +1783,16 @@ struct ComposerView: View {
                         .accessibilityLabel(composerStopLabel(english: L.en))
                     } else {
                         Button(action: onSend) {
-                            Image(systemName: "arrow.up")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(Color.white)
-                                .frame(width: CGFloat(composerSendButtonPoints), height: CGFloat(composerSendButtonPoints))
+                            OfficialGlyph(
+                                kind: .send,
+                                size: CGFloat(composerSendIconSizePoints),
+                                color: Color.white
+                            )
+                            .frame(width: CGFloat(composerSendButtonPoints), height: CGFloat(composerSendButtonPoints))
                         }
                         .background(T.accent.opacity(canSend || interceptKeys ? 1 : 0.4), in: Circle())
                         .disabled(!canSend && !interceptKeys)
-                        .accessibilityLabel(L.busySendLabel(running: model.chat?.running == true, busy: model.busySend))
+                        .accessibilityHidden(true)
                     }
                 }
             }
@@ -1813,6 +1815,19 @@ struct ComposerView: View {
             .padding(.leading, 14 + CGFloat(composerCardPaddingHorizontalPoints))
             .padding(.bottom, 2 + CGFloat(composerCardPaddingBottomPoints))
             .allowsHitTesting(false)
+        }
+        .overlay(alignment: .bottomTrailing) {
+            if !runningIdle {
+                ComposerAddA11yHost(
+                    identifier: composerSendSymbol(),
+                    label: L.busySendLabel(running: model.chat?.running == true, busy: model.busySend),
+                    onActivate: onSend
+                )
+                .frame(width: CGFloat(composerSendButtonPoints), height: CGFloat(composerSendButtonPoints))
+                .padding(.trailing, 14 + CGFloat(composerCardPaddingHorizontalPoints))
+                .padding(.bottom, 2 + CGFloat(composerCardPaddingBottomPoints))
+                .allowsHitTesting(false)
+            }
         }
     }
 

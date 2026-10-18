@@ -77,7 +77,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R48 | 抽屉新会话改用官方 `IconNewChatOutlineRegular` | done (#57) |
 | R49 | 抽屉搜索改用官方 `IconSearchOutlineRegular` | done (#58) |
 | R50 | 抽屉工作区「添加」改用官方 `IconProjectAddOutlineRegular` | done (#59) |
-| R51 | composer `+` 改用官方 `IconPlusOutlineMedium` | this PR |
+| R51 | composer `+` 改用官方 `IconPlusOutlineMedium` | done (#60) |
+| R52 | composer 发送改用官方 InputBar 16×16 SVG | this PR |
 
 ---
 
@@ -1163,4 +1164,35 @@ Android `c5f8cdd...56dcaa9` 一笔：`feat(android): 补齐用户选择卡片与
 - 插件库存搜索仍 SF `magnifyingglass`：桌面 `ui-plugin-manager` 无该搜索槽，不发明。
 - 轨迹工具栏搜索仍 SF `magnifyingglass`：桌面 `IconSearchOutlineRegular` size 11，CI 无轨迹屏。
 - composer 发送仍 SF `arrow.up`：桌面 InputBar primary 是内联 16×16 SVG（非 `IconSendOutlineRegular`），本轮只修截图打脸的加号。
+
+## Round 52 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*` alpha=`0.2.1-alpha.5` / next=`0.2.1-rc.2`；Android `ce7d345`）
+
+直播核对（2026-10-18）：iOS `main` tip `95586bb`（#60 squash）。CI run 39093228926：`protocol` / `screenshots` / `ios` 全绿。`npm view`：`alpha` 仍 `0.2.1-alpha.5`，`next` 仍 `0.2.1-rc.2`。pack 对比 primitives `index.js` 与 conversation `client.js` **字节相同**（sha256 一致；locale / `.tsx` / CSS / 组件 API **无增量**）。Android `main` `ce7d345`；`compare/ce7d345...main` `ahead_by: 0`。#67 仅 Host plugin，无新 iOS UI 可搬。
+
+#60 后源码 + 桌面 pack 怀疑式重审：
+
+| 项 | 判定 | 证据 |
+| --- | --- | --- |
+| composer 加号 OfficialGlyph.plusOutline | **PASS** | `ComposerView` Medium 14 / 1.3；CI 断言 `official.plusOutline`、禁止 `plus` |
+| 抽屉 settings/newChat/search/projectAdd OfficialGlyphs | **PASS** | #56–#59；CI drawer 断言 |
+| HeroShell center gap 12；view-options compact popover | **PASS** | #55 / #54 |
+| effort 仅 reasoning；permission chip 仅图标 | **PASS** | #53 |
+| composer 发送 | **GAP → 本轮** | `ComposerView` 仍 SF `arrow.up` 13/semibold。桌面 InputBar `.primary` 是内联 16×16 filled SVG（`fill: currentColor`），**不是** `IconSendOutlineRegular`（QueueDock `queue.steer`）。path 与 Android `dsh_composer_send.xml` 字节对齐 |
+| 轨迹工具栏搜索 SF `magnifyingglass` | **GAP（本轮不修）** | 桌面 `ui-trajectory` TrajectoryToolbar `IconSearchOutlineRegular` size 11；CI 无轨迹屏 |
+| 插件库存搜索 SF | **skip** | 桌面 `ui-plugin-manager` 无 `IconSearch` / 搜索槽 |
+| 轨迹未知 cell SF `gearshape` | **skip** | 桌面 `KIND_ICON` 无 unknown；不发明 fallback |
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| composer 发送 | `OfficialGlyph.send` + `composerSendPath` | `ui-conversation` InputBar `.primary` 内联 `<path d>`；34×34 `--dsw-alias-button-info-fill`；图标 16×16 白填充 | 删掉 SF `arrow.up`；禁止用 primitives `IconSendOutlineArtwork`。CI landing/chat 断言 `official.send`、禁止 `arrow.up` |
+
+本轮核对后**不改**（平台 / hide / 禁止发明）
+
+- `chat.turnNavigation.*` / `chat.toBottom` / `ask.review` / hover chevron：仍 skip。
+- Account / shortcuts / open config / CompatibilityBanner / 审批通知 / FishLogo：仍 **hide** / 不发明。
+- Android Settings「移动端 → 连接」不搬。
+- 轨迹未知 cell 仍映射 SF `gearshape`：桌面 `KIND_ICON` 无 unknown，不发明 fallback。
+- 插件库存搜索仍 SF：桌面 `ui-plugin-manager` 无该搜索槽。
+- 轨迹工具栏搜索仍 SF `magnifyingglass`：桌面 `IconSearchOutlineRegular` size 11，CI 无轨迹屏；本轮只修截图打脸的发送。
+- InputBar `.primary` 停止态圆角方块：同一按钮的另一态，fixture 不跑，本轮不扩。
 
