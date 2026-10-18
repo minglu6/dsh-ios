@@ -497,15 +497,18 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertTrue(actionsCard.exists, "\(appearance) connections missing action card")
                 let nearbyGap = nearbyCard.frame.minY - pairedCard.frame.maxY
                 let actionsGap = actionsCard.frame.minY - nearbyCard.frame.maxY
+                // Paired and nearby cards have Android ConnSectionTitle between
+                // them (14/20 + pad 16+4), plus Card vertical 6+6. That is not
+                // the 12pt adjacent-card stack.
                 XCTAssertGreaterThanOrEqual(
                     nearbyGap,
-                    11,
-                    "\(appearance) paired/nearby cards almost touch (gap \(nearbyGap); Android Card vertical 6+6)"
+                    40,
+                    "\(appearance) paired/nearby missing 附近设备 title gap (gap \(nearbyGap))"
                 )
                 XCTAssertLessThan(
                     nearbyGap,
-                    20,
-                    "\(appearance) paired/nearby gap \(nearbyGap) is not the 12pt Card stack"
+                    64,
+                    "\(appearance) paired/nearby gap \(nearbyGap) is larger than ConnSectionTitle + Card 6+6"
                 )
                 XCTAssertGreaterThanOrEqual(
                     actionsGap,
