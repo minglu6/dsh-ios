@@ -174,9 +174,13 @@ struct PluginsScreen: View {
                     )
                     .frame(width: 28, height: 28)
                     .contentShape(Rectangle())
+                    .accessibilityLabel(pluginInfoLabel(english: L.en))
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(pluginInfoLabel(english: L.en))
+                // Default Button combining keeps `pluginInfoButton` and wipes
+                // `official.infoOutline`. `.contain` + button trait exposes both.
+                .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(.isButton)
                 .accessibilityIdentifier("pluginInfoButton")
             }
             Button(action: reload) {
@@ -201,6 +205,7 @@ struct PluginsScreen: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(T.surface)
+        .accessibilityElement(children: .contain)
     }
 
     /// Desktop `Tooltip`: fade-in bubble under `(i)`, never a system popover.

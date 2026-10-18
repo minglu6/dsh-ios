@@ -388,7 +388,13 @@ private struct OfficialGlyphAccess: ViewModifier {
         if kind.hidesAccessibility {
             content.accessibilityHidden(true)
         } else {
-            content.accessibilityIdentifier(kind.accessibilityIdentifier)
+            // Canvas is not an a11y element by default, so a bare identifier
+            // is absorbed by the nearest Button / labeled parent. Force a
+            // leaf image so XCUITest can resolve official.* as descendants.
+            content
+                .accessibilityElement()
+                .accessibilityIdentifier(kind.accessibilityIdentifier)
+                .accessibilityAddTraits(.isImage)
         }
     }
 }
