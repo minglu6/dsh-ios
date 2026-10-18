@@ -1562,7 +1562,7 @@ Android `MainActivity` 窄屏是 `ModalNavigationDrawer`（按钮 / 手势滑出
 | 动作卡顺序 | 扫码 → 配对链接 → 输入地址 | 同序；扫码仍 SF `qrcode.viewfinder`（primitives 无 QR，有意 skip） |
 | 配对链接行图标 | `D.link` = `IconLinkOutlineRegular` | `official.linkOutline` |
 | 输入地址行图标 | Material `Icons.Outlined.Keyboard` 24×24 | `connections.keyboard`（照搬 Material path，不是 primitives，也不是 SF keyboard） |
-| 配对链接流程 | `PairLinkSheet`：hint / 粘贴链接 / 下一步；解析失败出 `invalidPairingLink`；成功后预填配对确认，**不立刻连接** | 同文案、同按钮、同预填；`PairingUriPolicy` 对未完成百分号编码 fail-closed（`h=mac%`）。CI `22b3312` Dark：`replaceText` 中心 tap 使 caret 落在 `https://example.com` 中间，19 次 delete 删不干净，有效 URI 叠上去解析仍失败（无效文案残留、「下一步」禁用、未进预填）。不是二次解析缓存。TextField 改 `$text`；测试点右缘清空并用 predicate 等到 `value` 等于目标串 |
+| 配对链接流程 | `PairLinkSheet`：hint / 粘贴链接 / 下一步；解析失败出 `invalidPairingLink`；成功后预填配对确认，**不立刻连接** | 同文案、同按钮、同预填；`PairingUriPolicy` 对未完成百分号编码 fail-closed（`h=mac%`）。CI `22b3312` Dark：`replaceText` 中心 tap 使 caret 落在 `https://example.com` 中间，19 次 delete 删不干净，有效 URI 叠上去解析仍失败（无效文案残留、「下一步」禁用、未进预填）。不是二次解析缓存。TextField 改 `$text`；测试点右缘清空并用 predicate 等到 `value` 等于目标串。ConnActionRow `accessibilityLabel(title)` + contain/isButton（不用 Button+.contain，以免 tap 打到 glyph）。sheet 展开导出 `{light,dark}-pairingLink` |
 | 页面 | 全屏 `ConnectionsScreen` | 仍全屏「远程主机」，无 sheet detent 列表 |
 
 ### 本轮修：抽屉工作区文件夹（桌面 `ui-workspace` `ProjectRowItem`）
