@@ -550,9 +550,16 @@ private struct ConnActionRow: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 15)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
             .onTapGesture(perform: onClick)
+            // VoiceOver: one labeled button. Not a SwiftUI `Button` + `.contain`
+            // — that retargets XCUI taps onto the child glyph and never fires.
+            // `.combine` would swallow `official.linkOutline` / keyboard / QR
+            // skip leaves (see OfficialGlyphAccess). `.contain` keeps those
+            // descendants queryable; label + isButton is the activatable row.
             .accessibilityElement(children: .contain)
+            .accessibilityLabel(title)
             .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier(identifier)
             if divider {

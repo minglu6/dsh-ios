@@ -432,11 +432,18 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) connections missing official back chevron"
                 )
                 XCTAssertTrue(
-                    app.staticTexts["扫码"].waitForExistence(timeout: 8),
+                    app.staticTexts["扫码"].waitForExistence(timeout: 8)
+                        || app.buttons["扫码"].waitForExistence(timeout: 2),
                     "\(appearance) connections missing 扫码"
                 )
-                XCTAssertTrue(app.staticTexts["配对链接"].exists, "\(appearance) connections missing 配对链接")
-                XCTAssertTrue(app.staticTexts["输入地址"].exists, "\(appearance) connections missing 输入地址")
+                XCTAssertTrue(
+                    app.staticTexts["配对链接"].exists || app.buttons["配对链接"].exists,
+                    "\(appearance) connections missing 配对链接"
+                )
+                XCTAssertTrue(
+                    app.staticTexts["输入地址"].exists || app.buttons["输入地址"].exists,
+                    "\(appearance) connections missing 输入地址"
+                )
                 let scan = app.descendants(matching: .any)["connectionsAction.scan"].firstMatch
                 let pairing = app.descendants(matching: .any)["connectionsAction.pairingLink"].firstMatch
                 let address = app.descendants(matching: .any)["connectionsAction.enterAddress"].firstMatch
@@ -743,9 +750,22 @@ final class ScreenshotTests: XCTestCase {
     /// Android `PairLinkSheet`: paste/type `dshpocket://pair`, then Continue
     /// prefills pair confirmation and does not connect.
     private func assertPairingLinkSheet(_ app: XCUIApplication, appearance: String) throws {
+        let pairingRow = app.descendants(matching: .any)["connectionsAction.pairingLink"].firstMatch
         let pairingTitle = app.staticTexts["配对链接"].firstMatch
-        XCTAssertTrue(pairingTitle.waitForExistence(timeout: 4), "\(appearance) 配对链接 row title missing")
-        pairingTitle.tap()
+        let pairingButton = app.buttons["配对链接"].firstMatch
+        XCTAssertTrue(
+            pairingRow.waitForExistence(timeout: 4)
+                || pairingTitle.waitForExistence(timeout: 2)
+                || pairingButton.waitForExistence(timeout: 2),
+            "\(appearance) 配对链接 row title missing"
+        )
+        if pairingRow.exists {
+            pairingRow.tap()
+        } else if pairingButton.exists {
+            pairingButton.tap()
+        } else {
+            pairingTitle.tap()
+        }
         let hint = app.staticTexts["在电脑「设置 → 手机连接」复制配对链接，然后粘贴到这里。"]
         XCTAssertTrue(
             hint.waitForExistence(timeout: 8),
@@ -755,6 +775,7 @@ final class ScreenshotTests: XCTestCase {
             app.descendants(matching: .any)["connectionsPairLinkSheet"].waitForExistence(timeout: 4),
             "\(appearance) connectionsPairLinkSheet identifier missing"
         )
+        try saveNamedScreenshot(appearance, "pairingLink")
         let paste = app.descendants(matching: .any)["connectionsPastePairingLink"]
         let next = app.descendants(matching: .any)["connectionsReviewPairingLink"]
         XCTAssertTrue(paste.waitForExistence(timeout: 4), "\(appearance) 粘贴链接 missing")
@@ -984,6 +1005,17 @@ final class ScreenshotTests: XCTestCase {
         app.descendants(matching: .any)[id].waitForExistence(timeout: timeout)
             || row.descendants(matching: .any)[id].waitForExistence(timeout: 1)
             || app.buttons[id].waitForExistence(timeout: 1)
+    }
+
+    private func saveNamedScreenshot(_ appearance: String, _ name: String) throws {
+        let root = try screenshotRoot()
+        let shot = XCUIScreen.main.screenshot()
+        let url = root.appendingPathComponent("\(appearance.lowercased())-\(name).png")
+        try shot.pngRepresentation.write(to: url)
+        let attachment = XCTAttachment(screenshot: shot)
+        attachment.name = "\(appearance.lowercased())-\(name)"
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     private func screenshotRoot() throws -> URL {
