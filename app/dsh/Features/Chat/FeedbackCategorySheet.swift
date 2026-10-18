@@ -29,7 +29,11 @@ struct FeedbackCategorySheet: View {
                                     Text(row.label).foregroundStyle(T.ink)
                                     Spacer()
                                     if category == row.id {
-                                        Image(systemName: "checkmark").foregroundStyle(T.accent)
+                                        OfficialGlyph(
+                                            kind: .checkOutline,
+                                            size: 14,
+                                            color: T.accent
+                                        )
                                     }
                                 }
                                 .padding(.horizontal, 16)

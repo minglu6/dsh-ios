@@ -514,6 +514,15 @@ public let planChipFontSizePoints: Double = 13
 public let planChipFontWeight: Double = 500
 public let planChipIconSizePoints: Double = 14
 
+/// Desktop `ui-plan` `PlanModeControl` / `PlanChip` uses
+/// `IconPlanOutlineRegular` size 14 (`IconListPenOutlineArtwork`), never SF
+/// `doc.text`. Same Regular artwork as `/plan` in the slash menu.
+public func planChipOfficialSymbol() -> String { "official.planOutline" }
+
+public func isForbiddenPlanChipSystemSymbol(_ name: String) -> Bool {
+    name == "doc.text"
+}
+
 /// Desktop `PermissionSelect` returns null until `catalog` is loaded.
 public let permissionChipRequiresCatalog = true
 
@@ -608,6 +617,42 @@ public let menuChevronLeftPath =
     "M10 4L6.70711 7.29289C6.31658 7.68342 6.31658 8.31658 6.70711 8.70711L10 12"
 public let menuChevronRightPath =
     "M6 12L9.29289 8.70711C9.68342 8.31658 9.68342 7.68342 9.29289 7.29289L6 4"
+
+/// Desktop `ui-primitives` `RiskConfirmation` hero is
+/// `IconWarningOutlineRegular` size 18 (circle + bang, not a triangle).
+public func permissionRiskOfficialSymbol() -> String { "official.warningOutline" }
+public let permissionRiskIconSizePoints: Double = 18
+
+public func isForbiddenPermissionRiskSystemSymbol(_ name: String) -> Bool {
+    name == "exclamationmark.triangle"
+}
+
+/// Desktop `IconWarningOutlineArtwork` Regular, 16×16 view box.
+public let iconWarningOutlineRingPath =
+    "M8 14.5C11.5899 14.5 14.5 11.5899 14.5 8C14.5 4.41015 11.5899 1.5 8 1.5C4.41015 1.5 1.5 4.41015 1.5 8C1.5 11.5899 4.41015 14.5 8 14.5Z"
+public let iconWarningOutlineStemPath = "M8 4.29199V9.79199"
+public let iconWarningOutlineDotPath = "M8 10.708V11.708"
+
+/// Desktop `ui-sidebar-documentpreview` missing-font / unsupported notice
+/// uses `IconWarningTriangleOutlineRegular`, not the circle warning.
+public func documentPreviewWarningSymbol() -> String { "official.warningTriangle" }
+public let documentPreviewWarningIconSizePoints: Double = 16
+
+/// Desktop `IconWarningTriangleOutlineArtwork` Regular. Round caps.
+public let iconWarningTriangleOutlinePath =
+    "M6.87 2.6a1.33 1.33 0 0 1 2.26 0l5.34 9.33A1.33 1.33 0 0 1 13.33 14H2.67a1.33 1.33 0 0 1-1.14-2.07Z"
+public let iconWarningTriangleBangPath = "M8 6v3m0 2.33h.01"
+
+/// Desktop workspace directory picker breadcrumbs / column disclosure use
+/// `IconChevronRightOutlineRegular`; edit path uses `IconEditOutlineRegular`;
+/// hidden-files check uses `IconCheckOutlineRegular`.
+public func directoryPickerChevronSymbol() -> String { menuChevronRightSymbol() }
+public func directoryPickerEditSymbol() -> String { "official.editOutline" }
+public func directoryPickerCheckSymbol() -> String { menuCheckSymbol() }
+
+public func isForbiddenDirectoryPickerSystemSymbol(_ name: String) -> Bool {
+    name == "chevron.right" || name == "pencil" || name == "checkmark"
+}
 
 public func isForbiddenSystemMenuChromeSymbol(_ name: String) -> Bool {
     name == "chevron.down"

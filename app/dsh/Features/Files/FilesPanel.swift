@@ -80,17 +80,26 @@ struct FilesPanel: View {
                 autoRefresh.enabled.toggle()
                 if autoRefresh.enabled { refreshToken += 1 }
             } label: {
-                Image(systemName: autoRefresh.enabled ? "pause" : "play.fill")
-                    .foregroundStyle(canWatch ? T.text2 : T.caption)
+                OfficialGlyph(
+                    kind: autoRefresh.enabled ? .pauseOutline : .playOutline,
+                    size: 16,
+                    color: canWatch ? T.text2 : T.caption
+                )
             }
             .disabled(!canWatch)
+            .accessibilityElement(children: .contain)
             .accessibilityLabel(L.autoRefresh())
             .accessibilityHint(autoRefresh.enabled ? L.autoRefreshDisable() : L.autoRefreshEnable())
             .accessibilityAddTraits(autoRefresh.enabled ? [.isSelected] : [])
             Button { refreshToken += 1 } label: {
-                Image(systemName: "arrow.clockwise").foregroundStyle(canList && !(cwd ?? "").isEmpty ? T.text2 : T.caption)
+                OfficialGlyph(
+                    kind: .refreshOutline,
+                    size: 16,
+                    color: canList && !(cwd ?? "").isEmpty ? T.text2 : T.caption
+                )
             }
             .disabled(!(canList && !(cwd ?? "").isEmpty))
+            .accessibilityElement(children: .contain)
             .accessibilityLabel(L.reload())
         }
         .padding(.horizontal, 12)

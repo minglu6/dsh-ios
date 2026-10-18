@@ -189,6 +189,28 @@ public func mentionFileRowLabel(_ path: String, directory: Bool) -> String {
     return directory ? name + "/" : name
 }
 
+/// Desktop `ui-primitives` `ReferenceIconRegular`: `session` →
+/// `ChatLinesOutlineArtwork` (`IconQueueOutline`), `file` →
+/// `BrowseOutlineArtwork`, `folder` → `FolderCloseArtwork`. Never SF
+/// `bubble.left` / `doc`.
+public func mentionReferenceOfficialSymbol(_ kind: ComposerReferenceKind) -> String {
+    switch kind {
+    case .session: return "official.queueOutline"
+    case .file: return "official.browseOutline"
+    case .directory: return "official.folderClose"
+    }
+}
+
+public func isForbiddenMentionSystemSymbol(_ name: String) -> Bool {
+    name == "bubble.left" || name == "doc" || name == "folder" || name == "folder.fill"
+}
+
+/// Desktop `ReferenceChip` passes `size: 16` into `ReferenceIconRegular`.
+public let mentionChipIconSizePoints: Double = 16
+
+/// Desktop `ui-input-trigger` MenuView `.itemIcon` is 14×14.
+public let mentionMenuIconSizePoints: Double = 14
+
 private func mentionFileLabel(_ path: String) -> String {
     mentionFileRowLabel(path, directory: path.hasSuffix("/"))
 }
