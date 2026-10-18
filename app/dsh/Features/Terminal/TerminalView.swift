@@ -70,7 +70,10 @@ struct TerminalView: View {
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(T.bg)
+                .accessibilityElement()
                 .accessibilityLabel(L.terminalOutputHint())
+                .accessibilityIdentifier("terminalScreen")
+                .accessibilityValue(model.terminal.plainText())
                 .onSizeChange { size in
                     viewport = size
                     resizeToViewport()
@@ -112,7 +115,7 @@ struct TerminalView: View {
                     "",
                     enabled: enabled || selecting,
                     active: inputFocused,
-                    icon: selecting ? "checkmark" : "keyboard",
+                    glyph: selecting ? .checkOutline : .keyboard,
                     description: selecting ? L.terminalDone() : (inputFocused ? L.hideKeyboard() : L.showKeyboard())
                 ) {
                     if selecting {
@@ -130,13 +133,15 @@ struct TerminalView: View {
                     if selecting && !isMac { copySelection() } else { send("\u{0003}") }
                 }
                 TerminalKey("Ctrl+D", enabled: inputEnabled) { send("\u{0004}") }
-                TerminalKey(L.paste(), enabled: inputEnabled) { paste() }
-                TerminalKey(L.copy(), enabled: selecting) { copySelection() }
+                TerminalKey(terminalKeyPasteLabel(platform: platform), enabled: inputEnabled, description: L.paste()) { paste() }
+                TerminalKey(terminalKeyCopyLabel(platform: platform), enabled: selecting, description: L.copy()) { copySelection() }
             }
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 2)
         .background(T.surface)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("terminalKeyBar")
     }
 
     private func resizeToViewport() {
@@ -181,30 +186,38 @@ private struct TerminalKey: View {
     let label: String
     var enabled: Bool = true
     var active: Bool = false
-    var icon: String?
+    var glyph: OfficialGlyph.Kind?
     var description: String
     let action: () -> Void
 
-    init(_ label: String, enabled: Bool = true, active: Bool = false, icon: String? = nil, description: String? = nil, action: @escaping () -> Void) {
+    init(
+        _ label: String,
+        enabled: Bool = true,
+        active: Bool = false,
+        glyph: OfficialGlyph.Kind? = nil,
+        description: String? = nil,
+        action: @escaping () -> Void
+    ) {
         self.label = label
         self.enabled = enabled
         self.active = active
-        self.icon = icon
+        self.glyph = glyph
         self.description = description ?? label
         self.action = action
     }
 
     var body: some View {
+        let color = enabled ? (active ? T.accent : T.text2) : T.text3.opacity(0.5)
         Button(action: action) {
             Group {
-                if let icon {
-                    Image(systemName: icon).font(.system(size: 16))
+                if let glyph {
+                    OfficialGlyph(kind: glyph, size: CGFloat(terminalKeyGlyphSizePoints), color: color)
                 } else {
                     Text(label).font(.system(size: 13)).lineLimit(1)
                 }
             }
-            .frame(maxWidth: .infinity, minHeight: 48)
-            .foregroundStyle(enabled ? (active ? T.accent : T.text2) : T.text3.opacity(0.5))
+            .frame(maxWidth: .infinity, minHeight: CGFloat(terminalKeyMinHeightPoints))
+            .foregroundStyle(color)
             .background(active ? T.tint : Color.clear, in: RoundedRectangle(cornerRadius: 8))
         }
         .buttonStyle(.plain)
@@ -313,6 +326,7 @@ private struct TerminalCanvas: View {
 
     private func beginOrExtend(_ point: CGPoint) {
         let grid = selection ?? terminal.snapshot()
+        if selection == nil, terminalGridIsBlank(grid) { return }
         let cell = cellAt(point, cols: grid.cols)
         let pos = grid.position(row: cell.row, col: cell.col)
         if selection == nil {

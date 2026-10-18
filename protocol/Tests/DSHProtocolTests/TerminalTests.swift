@@ -115,6 +115,47 @@ final class TerminalTests: XCTestCase {
         XCTAssertEqual(terminalCharWidth("中"), 2)
         XCTAssertEqual(terminalCharWidth("A"), 1)
     }
+
+    func testBlankSnapshotRefusesSelection() {
+        let empty = AnsiTerminal(cols: 40, rows: 8)
+        XCTAssertTrue(terminalGridIsBlank(empty.snapshot()))
+        empty.write("original output")
+        XCTAssertFalse(terminalGridIsBlank(empty.snapshot()))
+    }
+
+    func testAttachOnOnlineMatchesAndroidEffect() {
+        XCTAssertTrue(terminalShouldAttachOnOnline(isOnline: true, exited: false))
+        XCTAssertFalse(terminalShouldAttachOnOnline(isOnline: false, exited: false))
+        XCTAssertFalse(terminalShouldAttachOnOnline(isOnline: true, exited: true))
+        XCTAssertFalse(terminalShouldAttachOnOnline(isOnline: false, exited: true))
+    }
+
+    func testDesktopTerminalCopyAndKeycaps() {
+        XCTAssertEqual(terminalDisconnectedCopy(english: false), "连接已断开。")
+        XCTAssertEqual(terminalDisconnectedCopy(english: true), "Disconnected.")
+        XCTAssertEqual(terminalConnectingCopy(english: false), "正在连接…")
+        XCTAssertEqual(terminalFailureCopy(message: "follow is not a function", english: false), "终端错误：follow is not a function")
+        XCTAssertEqual(terminalFailureCopy(message: "boom", english: true), "Terminal error: boom")
+        XCTAssertEqual(terminalMissingCopy(english: false), "此终端已不存在，请新建终端。")
+        XCTAssertEqual(terminalRetryLabel(hasScreenInfo: true, disconnected: false, english: false), "重新连接")
+        XCTAssertEqual(terminalRetryLabel(hasScreenInfo: false, disconnected: true, english: false), "重新连接")
+        XCTAssertEqual(terminalRetryLabel(hasScreenInfo: false, disconnected: false, english: false), "重试")
+        XCTAssertEqual(terminalKeyPasteLabel(platform: "darwin"), "Cmd+V")
+        XCTAssertEqual(terminalKeyPasteLabel(platform: "linux"), "Ctrl+V")
+        XCTAssertEqual(terminalKeyCopyLabel(platform: "darwin"), "Cmd+C")
+        XCTAssertEqual(terminalKeyCopyLabel(platform: nil), "Copy")
+        XCTAssertEqual(terminalMissingArtSizePoints, 36)
+        XCTAssertEqual(terminalMissingArtViewBox, 28)
+        XCTAssertEqual(terminalMissingArtFillHex, 0xFF17191D)
+        XCTAssertEqual(terminalStatusPaddingXPoints, 12)
+        XCTAssertEqual(terminalStatusPaddingYPoints, 5)
+        XCTAssertEqual(terminalStatusGapPoints, 8)
+        XCTAssertEqual(terminalErrorPaddingYPoints, 10)
+        XCTAssertEqual(terminalEmptyGapPoints, 16)
+        XCTAssertEqual(terminalEmptyPaddingPoints, 24)
+        XCTAssertEqual(terminalKeyGlyphSizePoints, 20)
+        XCTAssertEqual(terminalMissingIdentityCode, "terminal/unavailable")
+    }
 }
 
 final class WorkspaceTests: XCTestCase {
