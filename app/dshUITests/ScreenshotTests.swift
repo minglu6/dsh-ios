@@ -215,12 +215,12 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertFalse(app.images["fish"].exists, "\(appearance) landing still exposes SF fish")
                 XCTAssertFalse(app.images["fish.fill"].exists, "\(appearance) landing still exposes SF fish.fill")
                 XCTAssertFalse(app.images["fish.circle"].exists, "\(appearance) landing still exposes SF fish.circle")
-                let fish = app.descendants(matching: .any)["official.fishLogo"]
+                let fish = app.descendants(matching: .any)["official.fishLogo"].firstMatch
                 XCTAssertTrue(
                     fish.waitForExistence(timeout: 8),
                     "\(appearance) landing missing official whale glyph beside the headline"
                 )
-                let title = app.descendants(matching: .any)["landingHeadline"]
+                let title = app.descendants(matching: .any)["landingHeadline"].firstMatch
                 XCTAssertTrue(
                     title.waitForExistence(timeout: 8),
                     "\(appearance) landing headline missing"
@@ -329,9 +329,9 @@ final class ScreenshotTests: XCTestCase {
     /// Drawer footer Host entry must replace the window with `ConnectionsView`,
     /// not leave the session drawer or a sheet detent covering the list.
     private func assertConnectionsIsFullScreen(_ app: XCUIApplication, appearance: String) {
-        let page = app.descendants(matching: .any)["connectionsScreen"]
+        let query = app.descendants(matching: .any).matching(identifier: "connectionsScreen")
         XCTAssertTrue(
-            page.waitForExistence(timeout: 8),
+            query.firstMatch.waitForExistence(timeout: 8),
             "\(appearance) connections page missing"
         )
         XCTAssertFalse(
@@ -352,7 +352,10 @@ final class ScreenshotTests: XCTestCase {
             "\(appearance) connections missing 远程主机 title"
         )
         let window = app.windows.firstMatch.frame
-        let frame = page.frame
+        var frame = CGRect.null
+        for i in 0..<query.count {
+            frame = frame.union(query.element(boundBy: i).frame)
+        }
         XCTAssertGreaterThanOrEqual(
             frame.width / window.width,
             0.98,

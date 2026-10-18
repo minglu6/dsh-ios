@@ -58,6 +58,11 @@ struct ConnectionsView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(T.bg.ignoresSafeArea())
+        // Same as settingsShell: `.contain` keeps header children (navBack /
+        // connectionsTitle) addressable. An identifier on the VStack alone
+        // leaked onto Back / 远程主机 / 更多 / ScrollView, and XCUITest
+        // `.frame` then failed with multiple matches.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("connectionsScreen")
         .sheet(isPresented: sheetPresented) {
             switch presented {
