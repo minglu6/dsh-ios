@@ -103,9 +103,15 @@ final class ScreenshotTests: XCTestCase {
                     app.descendants(matching: .any)["official.projectAdd"].waitForExistence(timeout: 8),
                     "\(appearance) drawer missing official project-add glyph"
                 )
+                // The trigger Button owns `viewOptionsButton`, which replaces the
+                // inner OfficialGlyph id; assert the button and forbid SF slider.
                 XCTAssertTrue(
-                    app.descendants(matching: .any)["official.slidersTwo"].waitForExistence(timeout: 8),
-                    "\(appearance) drawer missing official view-options trigger glyph"
+                    app.buttons["viewOptionsButton"].waitForExistence(timeout: 8),
+                    "\(appearance) drawer missing view-options trigger"
+                )
+                XCTAssertFalse(
+                    app.images["slider.horizontal.3"].exists,
+                    "\(appearance) drawer view-options trigger still SF slider"
                 )
                 let settingsHit = app.descendants(matching: .any)["drawerSettingsRow"]
                 let hostHit = app.descendants(matching: .any)["drawerPeerDeviceRow"]
