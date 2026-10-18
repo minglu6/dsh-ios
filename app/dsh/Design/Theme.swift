@@ -86,6 +86,11 @@ enum T {
     static var borderStrong: Color { colors.borderL4 }
     static var sidebarActive: Color { colors.specificSidebarNavItemActive }
     static var sidebarActiveAccent: Color { colors.specificSidebarNavItemActiveAccent }
+    /// Desktop `ui-trajectory` `.assistantVioletBright` / `.contextGreen`.
+    static var trajectoryAssistant: Color { Color(hex: trajectoryAssistantForegroundHex(dark: ThemeStateHolder.shared.dark)) }
+    static var trajectoryAssistantBg: Color { Color(hex: trajectoryAssistantBackgroundHex(dark: ThemeStateHolder.shared.dark)) }
+    static var trajectoryContext: Color { Color(hex: trajectoryContextForegroundHex(dark: ThemeStateHolder.shared.dark)) }
+    static var trajectoryContextBg: Color { Color(hex: trajectoryContextBackgroundHex(dark: ThemeStateHolder.shared.dark)) }
 }
 
 enum ThemeStateHolder {

@@ -40,6 +40,15 @@ struct HostPanelView: View {
                         .background(T.bg)
                         .onAppear { model.pop() }
                 }
+            case .start:
+                StartPanel(
+                    model: model,
+                    onFiles: { model.push(.panel(.files)) },
+                    onTerminal: { model.push(.panel(.terminal)) },
+                    onBrowser: { model.push(.panel(.browser)) },
+                    onInspector: { model.push(.panel(.inspector)) },
+                    onDismiss: { model.pop() }
+                )
             case .settings:
                 Color.clear
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -56,7 +65,7 @@ struct HostPanelView: View {
 
     private var showsSharedHeader: Bool {
         switch panel {
-        case .files, .terminal, .jobs, .plugins, .schedule, .browser, .inspector: return false
+        case .files, .terminal, .jobs, .plugins, .schedule, .browser, .inspector, .start: return false
         default: return true
         }
     }
@@ -71,6 +80,7 @@ struct HostPanelView: View {
         case .jobs: return L.jobs()
         case .browser: return L.browser()
         case .inspector: return L.sessionInspector()
+        case .start: return L.startPanel()
         case .settings: return L.settings()
         }
     }
@@ -92,9 +102,7 @@ struct StartPanel: View {
         VStack(spacing: 0) {
             header(L.startPanel()) { onDismiss() }
             ScrollView {
-                VStack(spacing: 14) {
-                    OfficialGlyph(kind: .globe, size: 40, color: T.caption)
-                        .padding(.bottom, 16)
+                VStack(alignment: .leading, spacing: 12) {
                     ForEach(
                         StartPanelPolicy.entries(
                             files: model.canShowFiles,
@@ -148,10 +156,10 @@ struct StartPanel: View {
                         }
                     }
                 }
-                .padding(.horizontal, 24)
-                .padding(.vertical, 24)
-                .frame(maxWidth: 380)
-                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 24)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
             }
         }
         .background(T.bg.ignoresSafeArea())
@@ -182,9 +190,7 @@ struct StartPanel: View {
                         .foregroundStyle(T.caption)
                 }
                 if chevron {
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(T.caption)
+                    OfficialGlyph(kind: .chevronDown, size: 14, color: T.caption)
                 }
             }
             .padding(.horizontal, 20)

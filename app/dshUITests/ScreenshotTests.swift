@@ -7,6 +7,7 @@ final class ScreenshotTests: XCTestCase {
         "landing", "drawer", "viewOptions", "sessionActions", "chat",
         "models", "permission", "start", "browser", "inspector",
         "settings", "schedule", "terminal", "trajectory", "plugins", "connections",
+        "composerStop", "slash",
     ]
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool { false }
@@ -70,7 +71,22 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertTrue(waitAny(app, row, id: "sessionRowMore", timeout: 4), "more action missing")
             }
             if screen == "start" {
-                XCTAssertTrue(app.descendants(matching: .any)["startPanel"].waitForExistence(timeout: 15))
+                try assertHostSurfaceFullScreen(app, id: "startPanel", appearance: appearance)
+                let files = app.descendants(matching: .any)["start.工作区文件"]
+                XCTAssertTrue(files.waitForExistence(timeout: 8), "\(appearance) start missing workspace card")
+                let panel = app.descendants(matching: .any)["startPanel"].firstMatch
+                XCTAssertLessThan(
+                    files.frame.minY - panel.frame.minY,
+                    120,
+                    "\(appearance) start left a large blank above the Guide cards (\(files.frame) vs \(panel.frame))"
+                )
+                assertOfficialMenuChrome(app, appearance: appearance, screen: screen)
+            }
+            if screen == "browser" {
+                try assertHostSurfaceFullScreen(app, id: "browserPanel", appearance: appearance)
+            }
+            if screen == "inspector" {
+                try assertHostSurfaceFullScreen(app, id: "sessionInspector", appearance: appearance)
             }
             if screen == "landing" || screen == "drawer" {
                 XCTAssertFalse(app.images["folder.fill"].exists, "\(appearance) \(screen) still exposes SF folder.fill")
@@ -339,6 +355,80 @@ final class ScreenshotTests: XCTestCase {
                     app.descendants(matching: .any)["official.sparkle"].exists,
                     "\(appearance) trajectory missing official assistant sparkle glyph"
                 )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.information"].exists,
+                    "\(appearance) trajectory missing 14px desktop InformationIcon"
+                )
+            }
+            if screen == "chat" {
+                XCTAssertFalse(app.images["hand.thumbsup"].exists, "\(appearance) chat still exposes SF thumbsup")
+                XCTAssertFalse(app.images["hand.thumbsup.fill"].exists, "\(appearance) chat still exposes SF thumbsup.fill")
+                XCTAssertFalse(app.images["hand.thumbsdown"].exists, "\(appearance) chat still exposes SF thumbsdown")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.likeFill"].waitForExistence(timeout: 8),
+                    "\(appearance) chat missing official like glyph after feedback.set"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.dislikeOutline"].exists,
+                    "\(appearance) chat missing official dislike glyph"
+                )
+                assertOfficialMenuChrome(app, appearance: appearance, screen: screen)
+            }
+            if screen == "settings" {
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["settingsPermissionSelect"].waitForExistence(timeout: 15),
+                    "\(appearance) settings missing desktop PermissionRow select"
+                )
+                XCTAssertFalse(app.staticTexts["访问模式"].exists, "\(appearance) settings still presents Access-mode sheet")
+                XCTAssertFalse(app.staticTexts["默认权限"].exists, "\(appearance) settings still presents Default-permission sheet")
+                app.descendants(matching: .any)["settingsPermissionSelect"].firstMatch.tap()
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["settingsPermissionMenu"].waitForExistence(timeout: 8),
+                    "\(appearance) settings permission menu missing"
+                )
+                XCTAssertFalse(app.images["checkmark"].exists, "\(appearance) settings permission still uses SF checkmark")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.checkOutline"].exists,
+                    "\(appearance) settings permission missing official check"
+                )
+                let window = app.windows.firstMatch.frame
+                let menu = app.descendants(matching: .any)["settingsPermissionMenu"].firstMatch.frame
+                XCTAssertLessThan(
+                    menu.height / window.height,
+                    0.7,
+                    "\(appearance) settings permission looks like a sheet (\(menu) vs \(window))"
+                )
+            }
+            if screen == "composerStop" {
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.stopRect"].waitForExistence(timeout: 8),
+                    "\(appearance) composer stop missing desktop rect rx=3 glyph"
+                )
+                XCTAssertFalse(
+                    app.descendants(matching: .any)["official.send"].exists,
+                    "\(appearance) running composer still shows send instead of stop"
+                )
+            }
+            if screen == "slash" {
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["slashMenu"].waitForExistence(timeout: 15),
+                    "\(appearance) slash menu missing"
+                )
+                let permission = app.staticTexts["权限"]
+                XCTAssertTrue(permission.waitForExistence(timeout: 8), "\(appearance) slash missing 权限")
+                permission.tap()
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.checkOutline"].waitForExistence(timeout: 8),
+                    "\(appearance) slash permission missing official check"
+                )
+                XCTAssertFalse(app.images["checkmark"].exists, "\(appearance) slash still uses SF checkmark")
+                assertOfficialMenuChrome(app, appearance: appearance, screen: screen)
+            }
+            if screen == "models" {
+                assertOfficialMenuChrome(app, appearance: appearance, screen: screen)
+            }
+            if screen == "permission" {
+                assertOfficialMenuChrome(app, appearance: appearance, screen: screen)
             }
             let shot = XCUIScreen.main.screenshot()
             let url = root.appendingPathComponent("\(appearance.lowercased())-\(screen).png")
@@ -349,6 +439,16 @@ final class ScreenshotTests: XCTestCase {
             add(attachment)
             if screen == "drawer" {
                 try assertDrawerFooterHitsNavigate(app, appearance: appearance)
+            }
+            if screen == "start" || screen == "browser" || screen == "inspector" {
+                let back = app.buttons["navBack"]
+                XCTAssertTrue(back.waitForExistence(timeout: 4), "\(appearance) \(screen) back gone before tap")
+                back.tap()
+                let surfaceId = screen == "start" ? "startPanel" : (screen == "browser" ? "browserPanel" : "sessionInspector")
+                XCTAssertFalse(
+                    app.descendants(matching: .any)[surfaceId].waitForExistence(timeout: 4),
+                    "\(appearance) \(screen) did not dismiss after back"
+                )
             }
             app.terminate()
         }
@@ -418,6 +518,53 @@ final class ScreenshotTests: XCTestCase {
             frame.minY - window.minY,
             40,
             "\(appearance) connections looks like a sheet (origin \(frame.minY) vs window \(window.minY))"
+        )
+    }
+
+    private func assertHostSurfaceFullScreen(_ app: XCUIApplication, id: String, appearance: String) throws {
+        let query = app.descendants(matching: .any).matching(identifier: id)
+        XCTAssertTrue(
+            query.firstMatch.waitForExistence(timeout: 15),
+            "\(appearance) \(id) missing"
+        )
+        XCTAssertTrue(
+            app.buttons["navBack"].waitForExistence(timeout: 8),
+            "\(appearance) \(id) missing back/close"
+        )
+        let window = app.windows.firstMatch.frame
+        var frame = CGRect.null
+        for i in 0..<query.count {
+            frame = frame.union(query.element(boundBy: i).frame)
+        }
+        XCTAssertGreaterThanOrEqual(
+            frame.width / window.width,
+            0.98,
+            "\(appearance) \(id) is not full width (\(frame) vs \(window))"
+        )
+        XCTAssertGreaterThanOrEqual(
+            frame.height / window.height,
+            0.90,
+            "\(appearance) \(id) is not full height (\(frame) vs \(window))"
+        )
+        XCTAssertLessThanOrEqual(
+            frame.minY - window.minY,
+            40,
+            "\(appearance) \(id) looks like a grabber sheet (origin \(frame.minY) vs window \(window.minY))"
+        )
+    }
+
+    private func assertOfficialMenuChrome(_ app: XCUIApplication, appearance: String, screen: String) {
+        XCTAssertFalse(
+            app.images["chevron.down"].exists,
+            "\(appearance) \(screen) still exposes SF chevron.down"
+        )
+        XCTAssertFalse(
+            app.images["chevron.up"].exists,
+            "\(appearance) \(screen) still exposes SF chevron.up"
+        )
+        XCTAssertFalse(
+            app.images["checkmark"].exists,
+            "\(appearance) \(screen) still exposes SF checkmark"
         )
     }
 

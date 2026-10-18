@@ -79,6 +79,12 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertNil(StartPanelPolicy.shortcut(.newTerminal))
         XCTAssertTrue(StartPanelPolicy.showsChevron(.newTerminal))
         XCTAssertFalse(StartPanelPolicy.showsChevron(.workspaceFiles))
+        XCTAssertFalse(StartPanelPolicy.usesSystemSheet)
+        XCTAssertFalse(StartPanelPolicy.hasDecorativeGlobe)
+        XCTAssertFalse(HostSurfacePresentation.startUsesSystemSheet)
+        XCTAssertFalse(HostSurfacePresentation.browserUsesSystemSheet)
+        XCTAssertFalse(HostSurfacePresentation.inspectorUsesSystemSheet)
+        XCTAssertFalse(HostSurfacePresentation.settingsPermissionUsesSystemSheet)
     }
 
     func testComposerShowsConcreteModelNameNotSelectPrompt() {

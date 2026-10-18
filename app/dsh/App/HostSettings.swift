@@ -172,4 +172,55 @@ final class HostSettings: ObservableObject {
             saving = false
         }
     }
+
+    /// Screenshot / XCUITest writable Host snapshot. No transport.
+    func installUITestFixture() {
+        online = true
+        loading = false
+        saving = false
+        error = nil
+        let fixture = JSONValue.object([
+            "writable": .bool(true),
+            "namespaces": .array([
+                .object([
+                    "ns": .string("permission"),
+                    "writable": .bool(true),
+                    "revision": .number(1),
+                    "value": .object(["defaultPreset": .string("workspace-write")]),
+                ]),
+                .object([
+                    "ns": .string("locale"),
+                    "writable": .bool(true),
+                    "revision": .number(1),
+                    "value": .object(["preference": .string("zh")]),
+                ]),
+                .object([
+                    "ns": .string("ui-chat"),
+                    "writable": .bool(true),
+                    "revision": .number(1),
+                    "value": .object([
+                        "transcriptView": .string("detailed"),
+                        "collapseTiming": .string("completion"),
+                        "performanceUsage": .string("compact"),
+                        "linkOpening": .string("sidebar"),
+                    ]),
+                ]),
+                .object([
+                    "ns": .string("ui-settings"),
+                    "writable": .bool(true),
+                    "revision": .number(1),
+                    "value": .object(["enabled": .bool(true)]),
+                ]),
+                .object([
+                    "ns": .string("ui-conversation"),
+                    "writable": .bool(true),
+                    "revision": .number(1),
+                    "value": .object(["busyEnter": .string("queue")]),
+                ]),
+            ]),
+        ])
+        snapshot = fixture
+        describe = { fixture }
+        mutate = { _, _, _ in fixture }
+    }
 }

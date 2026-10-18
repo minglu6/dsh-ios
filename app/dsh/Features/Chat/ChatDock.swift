@@ -159,7 +159,7 @@ struct UserQuestionCard: View {
                     }
                 }
                 Spacer()
-                if selected { Image(systemName: "checkmark").foregroundStyle(T.accent) }
+                if selected { OfficialGlyph(kind: .checkOutline, size: 14, color: T.accent) }
             }
             .padding(12)
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(selected ? T.accent : T.border, lineWidth: 1))
@@ -252,9 +252,8 @@ struct QuestionReplyRow: View {
                 } label: {
                     VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 3) {
-                            Image(systemName: open ? "chevron.down" : "chevron.right")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(T.text3)
+                            OfficialGlyph(kind: .chevronDown, size: 12, color: T.text3)
+                                .rotationEffect(.degrees(open ? 0 : -90))
                             Text(questionReplyLabel(english: L.en))
                                 .font(.system(size: 13))
                                 .foregroundStyle(T.text3)
@@ -301,10 +300,16 @@ struct QuestionReplyRow: View {
                     copied = true
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1) { copied = false }
                 } label: {
-                    Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                        .font(.system(size: 13))
-                        .foregroundStyle(T.text3)
-                        .frame(width: 28, height: 28)
+                    Group {
+                        if copied {
+                            OfficialGlyph(kind: .checkOutline, size: 14, color: T.text3)
+                        } else {
+                            Image(systemName: "doc.on.doc")
+                                .font(.system(size: 13))
+                                .foregroundStyle(T.text3)
+                        }
+                    }
+                    .frame(width: 28, height: 28)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(copied ? L.t("已复制", "Copied") : L.copy())
@@ -950,6 +955,8 @@ struct CommandMenuOverlay: View {
             .background(T.settingsCard)
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 0.5))
             .clipShape(RoundedRectangle(cornerRadius: 12))
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("slashMenu")
     }
 
     @ViewBuilder
@@ -995,7 +1002,7 @@ struct CommandMenuOverlay: View {
                         Text(permissionLabel(value: option.value, option: option, english: L.en)).foregroundStyle(T.ink)
                         Spacer()
                         if option.value == currentPermission {
-                            Image(systemName: "checkmark").font(.system(size: 12, weight: .semibold)).foregroundStyle(T.accent)
+                            OfficialGlyph(kind: .checkOutline, size: 14, color: T.ink)
                         }
                     }
                     .padding(.horizontal, 12)

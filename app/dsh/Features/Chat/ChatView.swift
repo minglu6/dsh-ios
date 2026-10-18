@@ -9,8 +9,6 @@ struct ChatView: View {
     @State private var showModels = false
     @State private var tab = 0
     @State private var feedbackDraft: FeedbackDraft?
-    @State private var showStart = false
-    @State private var showInspector = false
     @State private var highlightedRow: String?
     @ObservedObject private var inspectorNav = InspectorNavigation.shared
     @State private var openTurns: [String: Bool] = [:]
@@ -42,38 +40,10 @@ struct ChatView: View {
             }
         }
         .background(T.bg.ignoresSafeArea())
-        .sheet(isPresented: $showStart) {
-            StartPanel(
-                model: model,
-                onFiles: {
-                    model.push(.panel(.files))
-                    showStart = false
-                },
-                onTerminal: {
-                    model.push(.panel(.terminal))
-                    showStart = false
-                },
-                onBrowser: {
-                    model.push(.panel(.browser))
-                    showStart = false
-                },
-                onInspector: {
-                    showStart = false
-                    showInspector = true
-                },
-                onDismiss: { showStart = false }
-            )
-            .tint(T.ink)
-        }
-        .sheet(isPresented: $showInspector) {
-            if let sessionId = model.chat?.sessionId {
-                SessionInspectorPanel(model: model, sessionId: sessionId) { showInspector = false }
-                    .tint(T.ink)
-            }
-        }
         .onChange(of: inspectorNav.picking) { picking in
             if !picking, inspectorNav.sessionId == model.chat?.sessionId {
-                showInspector = true
+                if case .panel(.inspector) = model.currentRoute { return }
+                model.push(.panel(.inspector))
             }
         }
         .onChange(of: model.showDrawer) { show in
@@ -154,11 +124,11 @@ struct ChatView: View {
         }
         .onAppear {
             switch UITestLaunch.screen {
-            case "start": showStart = true
-            case "inspector": showInspector = true
             case "models": showModels = true
             case "permission": permissionMenuOpen = true
             case "trajectory": tab = 1
+            case "slash":
+                slashMenu.track(trigger: slashMenuTrigger(model.composerText))
             default: break
             }
         }
@@ -236,7 +206,11 @@ struct ChatView: View {
                     .lineLimit(1)
             }
             Spacer()
-            Button { showStart = true } label: {
+            Button {
+                Keyboard.dismiss()
+                if case .panel(.start) = model.currentRoute { return }
+                model.push(.panel(.start))
+            } label: {
                 Image(systemName: D.panelRight).foregroundStyle(T.ink)
             }
             .disabled(firstPromptBlocksComposerActions(model.firstPrompt))
@@ -1046,9 +1020,7 @@ private struct TurnTriggerRow: View {
                     if let at = item.at {
                         Text(formatMessageClock(at, english: L.en)).font(.caption).foregroundStyle(T.text3)
                     }
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 11))
-                        .foregroundStyle(T.text3)
+                    OfficialGlyph(kind: .chevronDown, size: 14, color: T.text3)
                         .rotationEffect(.degrees(open ? 180 : 0))
                 }
             }
@@ -1103,9 +1075,7 @@ private struct ProcessGroupView: View {
                             .foregroundStyle(T.text3)
                             .lineLimit(1)
                         if proc.canCollapse {
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 11))
-                                .foregroundStyle(T.text3)
+                            OfficialGlyph(kind: .chevronDown, size: 14, color: T.text3)
                                 .rotationEffect(.degrees(open ? 180 : 0))
                         }
                         Spacer(minLength: 0)
@@ -1150,9 +1120,7 @@ private struct ProcessGroupView: View {
     private func processLeading(kind: String, open: Bool) -> some View {
         ZStack {
             if open {
-                Image(systemName: "chevron.up")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(T.text3)
+                OfficialGlyph(kind: .chevronUp, size: 14, color: T.text3)
             } else if kind == "thinking" {
                 OfficialGlyph(kind: .think, size: CGFloat(reasoningIconSizePoints), color: T.text3)
             } else {
@@ -1193,9 +1161,7 @@ private struct ReasoningRow: View {
                 HStack(spacing: CGFloat(reasoningRowGapPoints)) {
                     ZStack {
                         if open && reasoningChevronReplacesIconWhenExpanded {
-                            Image(systemName: "chevron.up")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(T.text3)
+                            OfficialGlyph(kind: .chevronUp, size: 14, color: T.text3)
                         } else {
                             OfficialGlyph(kind: .think, size: CGFloat(reasoningIconSizePoints), color: T.text3)
                         }
@@ -1503,7 +1469,8 @@ private struct MessageActions: View {
             }
             if showsCopy {
                 iconButton(
-                    system: copied ? "checkmark" : "square.on.square",
+                    official: copied ? .checkOutline : nil,
+                    system: copied ? nil : "square.on.square",
                     label: copied ? L.copied() : L.copy(),
                     enabled: !copied
                 ) {
@@ -1517,12 +1484,12 @@ private struct MessageActions: View {
             }
             if let onLike, let onDislike {
                 iconButton(
-                    system: rating == "positive" ? "hand.thumbsup.fill" : "hand.thumbsup",
+                    official: rating == "positive" ? .likeFill : .likeOutline,
                     label: rating == "positive" ? L.undoRating() : L.like(),
                     action: onLike
                 )
                 iconButton(
-                    system: rating == "negative" ? "hand.thumbsdown.fill" : "hand.thumbsdown",
+                    official: rating == "negative" ? .dislikeFill : .dislikeOutline,
                     label: rating == "negative" ? L.undoRating() : L.dislike(),
                     action: onDislike
                 )
@@ -1554,7 +1521,8 @@ private struct MessageActions: View {
     }
 
     private func iconButton(
-        system: String,
+        official: OfficialGlyph.Kind? = nil,
+        system: String? = nil,
         label: String,
         accessibilityLabel: String? = nil,
         enabled: Bool = true,
@@ -1562,11 +1530,17 @@ private struct MessageActions: View {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            Image(systemName: system)
-                .font(.system(size: 15))
-                .foregroundStyle(T.text3)
-                .opacity(faded ? 0.4 : 1)
-                .frame(width: 36, height: 48)
+            Group {
+                if let official {
+                    OfficialGlyph(kind: official, size: 16, color: T.text3)
+                } else if let system {
+                    Image(systemName: system)
+                        .font(.system(size: 15))
+                        .foregroundStyle(T.text3)
+                }
+            }
+            .opacity(faded ? 0.4 : 1)
+            .frame(width: 36, height: 48)
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
@@ -1760,11 +1734,16 @@ struct ComposerView: View {
                     )
                     if runningIdle {
                         Button(action: model.stopRun) {
-                            RoundedRectangle(cornerRadius: 3).fill(Color.white).frame(width: 8, height: 8)
-                                .frame(width: CGFloat(composerSendButtonPoints), height: CGFloat(composerSendButtonPoints))
+                            OfficialGlyph(
+                                kind: .stopRect,
+                                size: CGFloat(composerStopIconSizePoints),
+                                color: Color.white
+                            )
+                            .frame(width: CGFloat(composerSendButtonPoints), height: CGFloat(composerSendButtonPoints))
                         }
                         .background(T.accent, in: Circle())
                         .accessibilityLabel(composerStopLabel(english: L.en))
+                        .accessibilityIdentifier(composerStopSymbol())
                     } else {
                         Button(action: onSend) {
                             OfficialGlyph(

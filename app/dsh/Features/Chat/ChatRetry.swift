@@ -38,10 +38,8 @@ private struct RetryAttemptRow: View {
                         .font(LocalFonts.text(size: CGFloat(AppPrefs.fontSize - 1)))
                         .foregroundStyle(T.text3)
                     Spacer()
-                    Image(systemName: "chevron.down")
-                        .font(.caption2)
+                    OfficialGlyph(kind: .chevronDown, size: 12, color: T.text3)
                         .rotationEffect(.degrees(expanded ? 0 : -90))
-                        .foregroundStyle(T.text3)
                 }
                 .frame(minHeight: 40)
             }

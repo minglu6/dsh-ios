@@ -103,8 +103,21 @@ final class TrajectoryToolbarParityTests: XCTestCase {
 
     func testKindIconUsesDesktopArtworkNotSystemSymbols() {
         XCTAssertEqual(trajectoryKindIconSizePoints, 13)
+        XCTAssertEqual(trajectoryInformationIconSizePoints, 14)
+        XCTAssertEqual(trajectoryKindIconSizePoints(for: TrajL.kindContext), 14)
+        XCTAssertEqual(trajectoryKindIconSizePoints(for: TrajL.kindAssistant), 13)
         XCTAssertEqual(trajectoryKindTagSizePoints, 19)
         XCTAssertEqual(trajectoryKindTagRadiusPoints, 4)
+        XCTAssertEqual(dswRadiusXsPoints, 4)
+        XCTAssertEqual(trajectoryAssistantForegroundHex(dark: false), srgbHex(srgbMix(dswBrandPrimaryNewMixLight, dswStateErrorSecondary, amountA: 0.60)))
+        XCTAssertEqual(trajectoryAssistantForegroundHex(dark: true), srgbHex(srgbMix(dswBrandPrimaryNewMixDark, dswStateErrorSecondary, amountA: 0.60)))
+        XCTAssertEqual(dswBrandPrimaryNewMixDark, 0x007AAAFF)
+        XCTAssertEqual(trajectoryContextBackgroundHex(dark: false), srgbHex(dswStateSuccessTertiaryLight))
+        XCTAssertEqual(trajectoryContextBackgroundHex(dark: true), srgbHex(dswStateSuccessTertiaryDark))
+        XCTAssertEqual(
+            trajectoryContextForegroundHex(dark: false),
+            srgbHex(srgbMix(dswStateSuccessPrimary, dswLabelSecondaryLight, amountA: 0.68))
+        )
         XCTAssertEqual(trajectoryKindIconStrokeWidth, 1)
         XCTAssertEqual(trajectoryToolWrenchStrokeWidth, 1.5)
         XCTAssertEqual(trajectoryKindSymbol(TrajL.kindUser), "official.userOutline")

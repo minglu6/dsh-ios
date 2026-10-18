@@ -52,6 +52,7 @@ struct GeneralSettingsView: View {
     @ObservedObject var model: AppModel
     @ObservedObject private var shared: HostSettings
     @State private var sheet: String?
+    @State private var permissionSelectOpen = false
     @State private var riskPermission: String?
     @State private var fontsExpanded = false
 
@@ -83,12 +84,33 @@ struct GeneralSettingsView: View {
                     }
                     card {
                         if model.ops.contains("permissions.catalog") {
-                            preferenceRow(
-                                L.t("权限", "Permission"),
-                                permissionDefaultDescription(english: L.en),
-                                value: defaultPermissionLabel,
-                                enabled: model.isOnline && shared.writable(.permission)
-                            ) { sheet = "perm" }
+                            HStack(alignment: .center, spacing: 8) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(L.t("权限", "Permission")).foregroundStyle(T.ink)
+                                    Text(permissionDefaultDescription(english: L.en))
+                                        .font(.caption)
+                                        .foregroundStyle(T.text3)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                SettingsPermissionSelect(
+                                    current: model.defaultPermission,
+                                    catalog: model.permissionCatalog,
+                                    loading: model.permissionCatalogLoading,
+                                    enabled: model.isOnline && shared.writable(.permission),
+                                    onSelect: { value in
+                                        if value == "danger-full-access" {
+                                            riskPermission = value
+                                        } else if model.permissionCatalog?.allowsDefault(value) == true {
+                                            shared.write(.permission, value: .string(value))
+                                        }
+                                    },
+                                    open: $permissionSelectOpen
+                                )
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 16)
+                            .opacity(model.isOnline && shared.writable(.permission) ? 1 : 0.5)
+                            Divider().padding(.leading, 16)
                         }
                         picker(L.language(), selection: Binding(
                             get: { model.language },
@@ -231,27 +253,8 @@ struct GeneralSettingsView: View {
             .background(T.bg)
         }
         .background(T.bg.ignoresSafeArea())
-        .sheet(isPresented: Binding(get: { sheet != nil && sheet != "perm" && riskPermission == nil }, set: { if !$0 { sheet = nil } })) {
+        .sheet(isPresented: Binding(get: { sheet != nil && riskPermission == nil }, set: { if !$0 { sheet = nil } })) {
             optionSheet
-        }
-        .sheet(isPresented: Binding(get: { sheet == "perm" && riskPermission == nil }, set: { if !$0 { sheet = nil } })) {
-            PermissionPickerSheet(
-                current: model.defaultPermission,
-                catalog: model.permissionCatalog,
-                loading: model.permissionCatalogLoading,
-                error: model.permissionCatalogError,
-                enabled: model.isOnline && shared.writable(.permission),
-                forDefaults: true,
-                onRefresh: { model.reloadPermissionCatalog() },
-                onDismiss: { sheet = nil },
-                onPick: { value in
-                    if value == "danger-full-access" {
-                        riskPermission = value
-                    } else if model.permissionCatalog?.allowsDefault(value) == true {
-                        shared.write(.permission, value: .string(value)) { sheet = nil }
-                    }
-                }
-            )
         }
         .overlay {
             if let value = riskPermission {
@@ -259,11 +262,11 @@ struct GeneralSettingsView: View {
                     preset: value,
                     enabled: model.isOnline && shared.writable(.permission) && model.permissionCatalog?.allowsDefault(value) == true,
                     forDefaults: true,
-                    onDismiss: { riskPermission = nil; sheet = nil },
+                    onDismiss: { riskPermission = nil; permissionSelectOpen = false },
                     onConfirm: {
                         shared.write(.permission, value: .string(value)) {
                             riskPermission = nil
-                            sheet = nil
+                            permissionSelectOpen = false
                         }
                     }
                 )
@@ -299,11 +302,6 @@ struct GeneralSettingsView: View {
         .accessibilityIdentifier("appearance.\(value.rawValue)")
     }
 
-    private var defaultPermissionLabel: String {
-        let value = model.defaultPermission
-        return permissionLabel(value: value, option: model.permissionCatalog?.find(value), english: L.en)
-    }
-
     @ViewBuilder
     private var optionSheet: some View {
         NavigationStack {
@@ -330,8 +328,6 @@ struct GeneralSettingsView: View {
                             shared.write(.performance, value: .string(mode.rawValue)) { sheet = nil }
                         }
                     }
-                case "perm":
-                    EmptyView()
                 case "links":
                     let current = shared.value(.linkOpening)?.str()
                     ForEach(linkOpeningValues, id: \.self) { value in
@@ -355,7 +351,6 @@ struct GeneralSettingsView: View {
         case "collapse": return L.collapseTiming()
         case "busy": return L.t("繁忙时的发送行为", "Send behavior while busy")
         case "perf": return L.performanceUsage()
-        case "perm": return L.t("权限", "Permission")
         case "links": return linkOpeningTitle(english: L.en)
         default: return ""
         }

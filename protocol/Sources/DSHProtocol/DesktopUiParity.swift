@@ -152,6 +152,21 @@ public enum StartPanelPolicy {
     public static func showsChevron(_ entry: StartPanelEntry) -> Bool {
         entry == .newTerminal
     }
+
+    /// Desktop Guide is the right-sidebar default page, never a grabber sheet.
+    public static var usesSystemSheet: Bool { false }
+    /// Desktop Guide cards have no ornamental globe above the list.
+    public static var hasDecorativeGlobe: Bool { false }
+}
+
+/// Phone Start / Browser / Inspector follow desktop header-menu / sidebar
+/// chrome: a full-screen page (or full-height sidebar panel) with a back
+/// control. Never a system sheet with a grabber.
+public enum HostSurfacePresentation {
+    public static var startUsesSystemSheet: Bool { false }
+    public static var browserUsesSystemSheet: Bool { false }
+    public static var inspectorUsesSystemSheet: Bool { false }
+    public static var settingsPermissionUsesSystemSheet: Bool { false }
 }
 
 /// Composer shows a concrete model name. "选择模型" is a prompt, not a model.

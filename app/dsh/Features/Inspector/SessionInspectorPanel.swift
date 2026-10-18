@@ -80,20 +80,13 @@ struct SessionInspectorPanel: View {
     var body: some View {
         Group {
             if let chat = model.chat, chat.sessionId == sessionId, !sessionId.isEmpty {
-                NavigationStack {
+                VStack(spacing: 0) {
+                    header(L.sessionInspector()) { onDismiss() }
                     SessionInspectorContent(model: model, sessionId: sessionId, state: state, onDismiss: onDismiss)
                         .background(T.bg)
-                        .navigationTitle(L.sessionInspector())
-                        .navigationBarTitleDisplayMode(.inline)
-                        .toolbar {
-                            ToolbarItem(placement: .cancellationAction) {
-                                Button(action: onDismiss) {
-                                    Text(L.close()).foregroundStyle(T.ink)
-                                }
-                            }
-                        }
-                        .tint(T.ink)
                 }
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("sessionInspector")
             }
         }
         .onDisappear {

@@ -60,7 +60,7 @@ struct ModelChoice: Equatable {
 }
 
 enum DrawerPanel: String, Identifiable {
-    case plugins, schedule, files, terminal, trajectory, jobs, settings, browser, inspector
+    case plugins, schedule, files, terminal, trajectory, jobs, settings, browser, inspector, start
     var id: String { rawValue }
 }
 
@@ -1117,6 +1117,7 @@ final class AppModel: ObservableObject {
     }
 
     func commandCatalog(sessionId: String?) async throws -> [JSONValue] {
+        if uiTestFixture { return commandEntries }
         guard let client else { throw PocketError(code: "transport", message: L.t("未连接", "Not connected")) }
         let entries = try await client.listCommands(sessionId: sessionId)
         if sessionId == nil || chat?.sessionId == sessionId { commandEntries = entries }
@@ -1985,6 +1986,7 @@ final class AppModel: ObservableObject {
     }
 
     func reloadPermissionCatalog() {
+        if uiTestFixture { return }
         guard ops.contains("permissions.catalog") else {
             permissionCatalog = nil
             permissionCatalogLoading = false

@@ -524,6 +524,61 @@ public func isForbiddenSystemComposerSendSymbol(_ name: String) -> Bool {
 public let composerSendPath =
     "M8.3125 0.980183C8.66767 1.0531 8.97902 1.20418 9.2627 1.43233C9.48724 1.61297 9.73029 1.85793 9.97949 2.10714L14.707 6.83468L13.293 8.24874L9 3.95577V15.0417H7V3.95577L2.70703 8.24874L1.29297 6.83468L6.02051 2.10714C6.26971 1.85793 6.51277 1.61297 6.7373 1.43233C6.97662 1.23986 7.28445 1.04402 7.6875 0.980183C7.8973 0.947006 8.1031 0.95516 8.3125 0.980183Z"
 
+/// Desktop InputBar `.primary` stop: 16×16 SVG, `<rect x=3 y=3 width=10 height=10 rx=3>`.
+public let composerStopUsesOfficialGlyph = true
+public let composerStopIconSizePoints: Double = 16
+public let composerStopRectX: Double = 3
+public let composerStopRectY: Double = 3
+public let composerStopRectWidth: Double = 10
+public let composerStopRectHeight: Double = 10
+public let composerStopRectRadius: Double = 3
+
+public func composerStopSymbol() -> String { "official.stopRect" }
+
+/// Desktop `ui-primitives` `IconCheckOutlineArtwork` (`d` of the `<path>`).
+public let menuCheckOutlinePath =
+    "M2.25 8.5L5.49732 11.7473C5.90519 12.1552 6.57263 12.1344 6.95426 11.7018L13.75 4"
+
+public func menuCheckSymbol() -> String { "official.checkOutline" }
+
+/// Desktop `IconChevronUpOutlineArtwork`.
+public let menuChevronUpPath =
+    "M12 10L8.70711 6.70711C8.31658 6.31658 7.68342 6.31658 7.29289 6.70711L4 10"
+
+public func menuChevronDownSymbol() -> String { "official.chevronDown" }
+public func menuChevronUpSymbol() -> String { "official.chevronUp" }
+
+public func isForbiddenSystemMenuChromeSymbol(_ name: String) -> Bool {
+    name == "chevron.down"
+        || name == "chevron.up"
+        || name == "checkmark"
+}
+
+/// Desktop `ui-message-feedback` `IconLikeOutlineArtwork` / `IconDislikeOutlineArtwork`.
+public let messageLikePath =
+    "M13.537 8.12098L12.3983 12.8455C12.1818 13.7438 11.378 14.3769 10.454 14.3769L9.35595 14.3769H7.43799H5.16577C3.50892 14.3769 2.16577 13.0337 2.16577 11.3769V7.88668C2.16577 7.33439 2.61349 6.88668 3.16577 6.88668H4.02665C5.84943 6.88668 7.38083 3.28711 7.67689 2.54578C7.71259 2.45639 7.73501 2.36373 7.77922 2.27824C7.86506 2.11221 8.08228 1.87578 8.59039 2.07775C10.3291 2.76886 9.23144 6.04071 8.96955 6.75058C8.94502 6.81707 8.99495 6.88668 9.06581 6.88668H12.5648C13.2119 6.88668 13.6886 7.49192 13.537 8.12098Z"
+public let messageDislikePath =
+    "M2.46302 8.06749L3.60171 3.34299C3.81822 2.44467 4.62196 1.81162 5.546 1.8116L6.64406 1.81158L8.56202 1.81158L10.8342 1.81158C12.4911 1.81158 13.8342 3.15473 13.8342 4.81158L13.8342 8.3018C13.8342 8.85408 13.3865 9.3018 12.8342 9.3018L11.9734 9.3018C10.1506 9.3018 8.61918 12.9014 8.32311 13.6427C8.28741 13.7321 8.26499 13.8247 8.22078 13.9102C8.13494 14.0763 7.91772 14.3127 7.40961 14.1107C5.67089 13.4196 6.76856 10.1478 7.03045 9.43789C7.05498 9.37141 7.00505 9.3018 6.93419 9.3018L3.43519 9.3018C2.78811 9.3018 2.31141 8.69656 2.46302 8.06749Z"
+
+public func messageLikeSymbol() -> String { "official.likeOutline" }
+public func messageDislikeSymbol() -> String { "official.dislikeOutline" }
+public func messageLikeFillSymbol() -> String { "official.likeFill" }
+public func messageDislikeFillSymbol() -> String { "official.dislikeFill" }
+
+public func isForbiddenSystemFeedbackSymbol(_ name: String) -> Bool {
+    name == "hand.thumbsup"
+        || name == "hand.thumbsup.fill"
+        || name == "hand.thumbsdown"
+        || name == "hand.thumbsdown.fill"
+}
+
+/// Desktop `ui-permission-presets` `PermissionRow` inline Select.
+public let settingsPermissionSelectorHeightPoints: Double = 36
+public let settingsPermissionSelectorRadiusPoints: Double = 12
+public let settingsPermissionSelectorPaddingHorizontalPoints: Double = 14
+public let settingsPermissionSelectorGapPoints: Double = 12
+public func settingsPermissionSelectSymbol() -> String { "settingsPermissionSelect" }
+
 /// Desktop `conversation.input.left` has no occupant. Ask reopen lives on
 /// `ui-tool` `AskQuestionRow` (`ask.reopen`), not a composer chip.
 public let composerShowsAskChip = false

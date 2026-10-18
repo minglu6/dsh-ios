@@ -85,7 +85,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R56 | landing composer 贴底 + 去掉多余分享按钮 | done (#65) |
 | R57 | 用户复制键 / 远程主机名热区 / 诊断 OfficialGlyph / 视图选项图标 / 插件 tooltip | done (#66) |
 | R58 | 打开抽屉 / 滚动时收键盘 | done (#67) |
-| R59 | 权限选择器去掉系统 sheet；轨迹 KIND_ICON 官方 SVG | this PR |
+| R59 | 权限选择器去掉系统 sheet；轨迹 KIND_ICON 官方 SVG | done (#68) |
+| R60 | Start/Browser/Inspector 去 grabber sheet；Start 去装饰地球；设置权限 inline select；轨迹 assistant/context token；停止 rect rx=3；chat/slash 官方 chevron/check；截图补 feedback | this PR |
 
 ---
 
@@ -105,7 +106,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Jobs | `job-controller` | `JobsAction.kt`, jobs follow in `Pocket.kt` | header chip 锚定 popover + `JobsPanel`（两次 Button 点按停止） |
 | Plugins | `ui-plugin-manager`, `ui-settings-plugins` | `PluginsScreen.kt`, `PluginInventory.kt` | `Features/Plugins/` + `PluginPolicy.swift` |
 | Schedule | `ui-schedule` (sidebar, not settings) | `ScheduleScreen.kt`; drawer row | `Features/Schedule/ScheduleScreen.swift`; drawer only |
-| Permissions | `ui-permission` | `PermissionUi.kt` `permissions.catalog/get/set` + risk sheet | `PermissionUi.swift` + session picker + Settings defaults + `danger-full-access`/`auto` confirm |
+| Permissions | `ui-permission` | `PermissionUi.kt` `permissions.catalog/get/set` + risk sheet | `PermissionUi.swift` + composer chip MenuSurface + Settings `PermissionRow` inline select + `danger-full-access`/`auto` confirm |
 | Model picker | composer model menu | `ModelPicker.kt` + effort pane | `ModelPicker.swift` two-level picker; switching models clears effort |
 | Composer dock | `ui-chat` | UserQ / Approval / Todo / Goal / Queue / Composer / Stats | same stack in `ChatView` + `ChatDock.swift` |
 | Host UI | pocket `ui.open` | native plugin manager; no embedded WebView | same; desktop market has no `ui.open` banner |
@@ -227,7 +228,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Offline gray-out (no unofficial banner) | Android `SettingsScaffold` invents 「远程主机未连接，需连接的操作暂不可用」; desktop has no such chrome | **desktop-first:** no top banner / no extra copy; status 「未连接」; Models / 内置插件 / Agent 预设 / drawer 插件·自动化 gray + unclickable; `lastOps` keeps rows | **missing** → **present** | **H** |
 | Qoder CN card | `QoderConnectionCard.kt` last in `llm-qoder` | same PAT write-only + revision fence | **missing** → **present** | **H** |
 | Models intro | `modelsSettingsIntro` | 「填入各提供商的 API 密钥即可使用其模型。」 | **partial** → **present** | **P1** / **H** |
-| Permission defaults | `PermissionPickerSheet(forDefaults)` + risk | same; `auto` cannot be a default | **partial** → **present** | **E** |
+| Permission defaults | desktop `PermissionRow` inline Select + risk | same; `auto` cannot be a default | **present** | **E** / **R60** |
 | Models provider editor + keys | `ModelsSettingsScreen.kt` | `models.providers*` + `credentials.*` | **present** | **D** |
 | 「移动端」 group / 代码自动换行 | Android still has these (audit S2/S5) | wrap is local; no extra mobile group copied | **present** | — |
 | Version only on General | audit S3 | General only | **present** | — |
@@ -464,7 +465,7 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 | 权限 chip 目录 | `permissionChipRequiresCatalog` | `PermissionSelect` `catalog === null → null` | 目录未到不画死 chip |
 | 抽屉脚顺序 | `SessionDrawer.footer` | `ui-settings-general` `SettingsRoot` `triggerRow`：Settings 左、trailing 动作右 | 设置与远程主机入口同一行；Settings 仍不含「手机连接」 |
 | Agent 预设菜单 | `AgentPresetSeat` | `ui-agent-preset` `noDescription` / `seatHint` | 空描述「暂无描述。」；hint「选择新任务使用的 Agent 预设」 |
-| 设置默认权限说明 | `PermissionPickerSheet` | `settings.permission` `description` | 仅「选择新会话的默认权限模式」，去掉自撰「自动审查仅适用于…」 |
+| 设置默认权限说明 | `SettingsPermissionSelect` | `settings.permission` `description` | 仅「选择新会话的默认权限模式」；触发器是桌面 36pt Select，不再弹 sheet |
 | 斜杠空态 | `CommandMenuOverlay` | `ui-commands` `status.loading` / `status.empty` | 「正在加载选项…」/「无选项」 |
 | 插件添加菜单 | `PluginAddMenu` popover | `ui-plugin-manager` `AddPluginMenu` | 两行 MenuSurface：第三方 + 创造；不再用 confirmationDialog |
 
@@ -1436,6 +1437,31 @@ Android `MainActivity` 窄屏是 `ModalNavigationDrawer`（按钮 / 手势滑出
 - 桌面 HeaderAction 更多菜单「下载 Session 日志」：仍不发明顶栏 ⋯。
 - InputBar `.primary` 停止态圆角方块：fixture 不跑 `runningIdle`。
 - 插件库存搜索仍 SF：桌面 `ui-plugin-manager` 无该搜索槽。
-- Settings 默认权限仍走 `PermissionPickerSheet`（设置页点「权限」），不是 Composer chip；已去系统蓝。
-- Start / Browser / Inspector 仍是 sheet（桌面是侧栏/菜单），未改成远程主机那样的全页。
-- Start 页顶上的大 globe：桌面 Guide 卡没有这枚装饰鲸/地球，列为剩余差异。
+- Settings 默认权限仍走 `PermissionPickerSheet`（设置页点「权限」），不是 Composer chip；已去系统蓝。 → **R60 已改为桌面 `PermissionRow` inline Select**
+- Start / Browser / Inspector 仍是 sheet（桌面是侧栏/菜单），未改成远程主机那样的全页。 → **R60 已改为 header 全屏页 / 全高侧栏式面板**
+- Start 页顶上的大 globe：桌面 Guide 卡没有这枚装饰鲸/地球，列为剩余差异。 → **R60 已去掉装饰地球，按桌面 Guide 卡顶对齐**
+
+## Round 60 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*` alpha=`0.2.1-alpha.5`）
+
+基线 `main` `8f2ea9c`（#68 Round 59）。桌面 pack 为第一依据；Android 只作参考。
+
+### 本轮修
+
+| 项 | 桌面源码 | iOS | 截图 |
+| --- | --- | --- | --- |
+| Start / Browser / Inspector 无 grabber sheet | `ui-sidebar-files` / `ui-sidebar-terminal` / `ui-sidebar-browser` Guide；desktop Start 是右侧栏默认页 | `HostSurfacePresentation.*UsesSystemSheet = false`；`model.push(.panel)` + `header()` 返回 | `light/dark-start.png` `*-browser.png` `*-inspector.png` |
+| Start 去掉装饰地球、顶对齐 Guide 卡 | Guide cards 无 ornamental globe | `StartPanelPolicy.hasDecorativeGlobe = false`；`StartPanel` 顶对齐 12pt | `*-start.png` |
+| 设置「权限」inline select | `ui-permission-presets` `PermissionRow.module.css` `.selector` 36 / radius-md 12 / pad 14 / gap 12 | `SettingsPermissionSelect` MenuSurface，删除 `PermissionPickerSheet` | `*-settings.png` |
+| 轨迹 assistant / context 色 + Information 14 + chip radius-xs | `ui-trajectory` `.assistantVioletBright` / `.contextGreen`；InformationIcon 14；`--dsw-radius-xs` 4 | `srgbMix` token + `trajectoryKindIconSizePoints(for:)` + `dswRadiusXsPoints` | `*-trajectory.png` |
+| Composer 停止内部 rect rx=3 | InputBar `.primary` 16×16 `<rect x=3 y=3 width=10 height=10 rx=3>` | `OfficialGlyph.stopRect` / `composerStopRect*` | `*-composerStop.png` |
+| chat / slash 官方 chevron / check | primitives `IconChevronDownOutlineRegular` / `IconCheckOutlineArtwork` | `OfficialGlyph.chevronDown` / `.checkOutline` | `*-chat.png` `*-slash.png` `*-models.png` `*-permission.png` |
+| 助手赞/踩可见 | `ui-message-feedback` Like/Dislike；`feedback.set` | fixture `ops` 含 `feedback.set` + `MessageFeedback` | `*-chat.png` |
+
+本轮核对后**不改**（平台 / hide / 禁止发明）
+
+- 插件列表搜索框（有意保留）。
+- `turnNavigation` / `toBottom` FAB / `ask.review` / hover chevron / Account/shortcuts / CompatibilityBanner / 审批通知 / stop-state **行为**。
+- 抽屉底栏「设置」与「绿点+远程主机名称」两枚独立按钮（间隔 ≥16pt）。
+- 远程主机整页全屏；开抽屉 / 进设置 / 进远程主机收键盘。
+- landing 鲸鱼 logo +「探索未至之境」；landing Composer 贴底。
+- 权限 chip 只显示图标。

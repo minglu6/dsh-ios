@@ -30,24 +30,15 @@ private struct BrowserPanelContent: View {
     }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                tabStrip
-                BrowserSelectedPage(tabs: tabs, page: tabs.selected)
-                    .id(tabs.selectedId)
-            }
-            .background(T.bg)
-            .navigationTitle(tabs.selected.title.isEmpty ? L.t("浏览器", "Browser") : tabs.selected.title)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(action: onDismiss) {
-                        Text(L.close()).foregroundStyle(T.ink)
-                    }
-                }
-            }
-            .tint(T.ink)
+        VStack(spacing: 0) {
+            header(tabs.selected.title.isEmpty ? L.t("浏览器", "Browser") : tabs.selected.title) { onDismiss() }
+            tabStrip
+            BrowserSelectedPage(tabs: tabs, page: tabs.selected)
+                .id(tabs.selectedId)
         }
+        .background(T.bg)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("browserPanel")
         .onChange(of: model.profiles) { profiles in
             tabs.updatePolicy(Self.policy(for: profiles))
         }

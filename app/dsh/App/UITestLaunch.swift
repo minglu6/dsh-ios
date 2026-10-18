@@ -59,8 +59,20 @@ extension AppModel {
             "workspace.pinSession", "workspace.archiveSession", "workspace.unarchiveSession",
             "sessions.rename", "sessions.fork", "sessions.create",
             "session.export", "models.catalog", "permissions.catalog",
-            "workspace.create",
+            "workspace.create", "feedback.set", "commands.list",
         ]
+        commandEntries = [
+            .object([
+                "name": .string("permission"),
+                "definitionId": .string("@deepseek-ai/dsh-permission-presets"),
+            ]),
+        ]
+        hostSettings.installUITestFixture()
+        feedback["m-assistant"] = MessageFeedback(
+            messageId: "m-assistant",
+            rating: "positive",
+            version: "1"
+        )
 
         let now = Int64(Date().timeIntervalSince1970 * 1000)
         let chatId = "s-hello"
@@ -126,6 +138,7 @@ extension AppModel {
         let clock = now - 5 * 60_000
         var items: [Item] = [
             .user(Item.User(key: "u1", text: "你好", at: clock, messageId: "m-user")),
+            .context(Item.Context(key: "c1", text: "上下文注入：工具定义已更新", at: clock + 1_000)),
             .text(Item.Text(key: "a1", text: "你好，我是 DeepSeek。", live: false, at: clock + 2_000, messageId: "m-assistant")),
         ]
         if UITestLaunch.extraChatForKeyboard {
@@ -206,8 +219,15 @@ extension AppModel {
             push(.panel(.browser))
         case "inspector":
             showDrawer = false
+            push(.panel(.inspector))
         case "start":
-            break
+            showDrawer = false
+            push(.panel(.start))
+        case "composerStop":
+            chat?.running = true
+            composerText = ""
+        case "slash":
+            composerText = "/"
         default:
             fatalError("UITestLaunch: unknown screen \(screen)")
         }
