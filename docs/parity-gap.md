@@ -92,7 +92,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R63 | 会话工具/Jobs/轨迹官方 SVG；远程主机配对链接粘贴；抽屉当前工作区文件夹色 + 官方 fill | done (#72) |
 | R64 | 远程主机卡片间距；配对链接 sheet primitives；landing 工作区 chip 官方 chevron/check/plus | done (#73) |
 | R65 | 远程主机附近设备电脑图标 + 管理 sheet 官方 trash/refresh/edit；进 CI 截图路径 | done (#74) |
-| R66 | 配对链接输入框与按钮同一 22pt 边距；Todo/Goal/Queue dock 与设置壳模型行官方 SVG + CI `chatDock`/`settingsShell` | this PR |
+| R66 | 配对链接输入框与按钮同一 22pt 边距；Todo/Goal/Queue dock 与设置壳模型行官方 SVG + CI `chatDock`/`settingsShell` | done (#75) |
+| R66-fix | PairLinkSheet bounds host 不参与布局；小标签与标题 22pt 对齐 | this PR |
 
 ---
 
@@ -1715,7 +1716,8 @@ Android `MainActivity` 窄屏是 `ModalNavigationDrawer`（按钮 / 手势滑出
 
 | 项 | 桌面 / Android | iOS | 处理 |
 | --- | --- | --- | --- |
-| 配对链接输入框 vs「粘贴链接 / 下一步」水平边距 | Android `PairLinkSheet`：`ConnField` 外沿 18、按钮行 22。桌面 Input wrap pad 只是内部 `0 8`，没有这层 sheet inset。Phone chrome 是 SheetTitle / hint / 按钮已经在用的 22 | 输入框贴 ~20pt（18 leftover），按钮 ~25pt（22） | 输入框改 `connectionsSheetContentPaddingPoints = 22`，与按钮同一 token。CI 用 `connectionsPairingLinkFieldBounds`（视觉圆角框，不是内层 UITextField）对按钮行 minX/maxX ±1pt |
+| 配对链接输入框 vs「粘贴链接 / 下一步」水平边距 | Android `PairLinkSheet`：`ConnField` 外沿 18、按钮行 22。桌面 Input wrap pad 只是内部 `0 8`，没有这层 sheet inset。Phone chrome 是 SheetTitle / hint / 按钮已经在用的 22 | 输入框贴 ~20pt（18 leftover），按钮 ~25pt（22） | 输入框改 `connectionsSheetContentPaddingPoints = 22`，与按钮同一 token。CI 用 `connectionsPairingLinkFieldBounds`（字段列 overlay 上的 UIKit host，**不是** ZStack 兄弟、**不是** TextField overlay）对按钮行 minX/maxX ±1pt |
+| 配对链接 sheet 版式被撑开 | #74：输入框紧跟说明、按钮紧跟输入框。Android 按钮行 `padding(vertical = 14.dp)` | #75 `d41d329`：`PairingFieldBoundsHost().frame(maxHeight: .infinity)` 作 ZStack 兄弟吃掉底部 Spacer，输入框掉到中部、按钮贴底 | host 改挂字段列 `.overlay`，不参与布局。小标签去掉 ConnField 18 leftover 的 +4（26→22）与标题对齐。CI：hint→字段 ≤24pt；「粘贴链接」− 字段 ≈14±4；小标签 vs 标题 minX ±1pt。host 仅 UITestLaunch 时进无障碍树 |
 | Todo / Goal / Queue dock SF | 桌面 `TodoPanel` / `GoalBar` / `QueueDock`：`IconChecklistOutlineRegular` / `IconGoalOutlineRegular` / `IconQueueOutlineRegular`（ChatLinesOutline，id 与视图选项 `official.queue` 分开）+ 队列动作 `IconEditOutline` / `IconTrashOutline` / `IconSendOutlineRegular`（不是 InputBar filled send） | SF `checklist` / `target` / `text.line.first.and.arrowtriangle.forward` / `pencil` / `trash` / `paperplane`；CI `chat` fixture 不画这些行 | 官方 SVG。steer 用 `official.sendOutline`。新 CI 屏 `chatDock`（light+dark），不改 `*-chat.png` |
 | 设置壳模型行 SF `cpu` | 桌面/Android 设置壳「模型」是 `IconDataOutlineMedium`（fill 圆柱 + `ICON_MEDIUM_STROKE` 1.3 齿轮）。通用 `IconSettingsOutlineRegular`，预设 `IconAgentPresetOutline` | SF `cpu`；CI `settings` 进的是通用页 | `official.dataOutline` size 16。新 CI 屏 `settingsShell`。删掉无人调用的 SF `nav(_:system:)` |
 
@@ -1747,7 +1749,7 @@ Android `MainActivity` 窄屏是 `ModalNavigationDrawer`（按钮 / 手势滑出
 | plugins / builtinPlugins | **skip / PASS** | 列表搜索框有意保留 SF；内置刷新已官方 |
 | models / permission / slash | **PASS / skip** | 官方 chevron/check；斜杠无数量。slash 行图标仍 SF，见上 |
 | schedule / sessionActions / viewOptions / start / composerStop | **PASS** | 既有官方 SVG / 全屏 Start |
-| connections / pairingLink / nearby / manage | **本轮修 / PASS** | 输入框与按钮 22pt 对齐 ±1pt。删除无确认（Android 同源）。附近/管理 #74 不回归 |
+| connections / pairingLink / nearby / manage | **本轮修 / PASS** | 输入框与按钮 22pt 对齐 ±1pt。输入框紧跟说明、按钮紧跟输入框（#74 版式）。小标签与标题 22pt 对齐。删除无确认（Android 同源）。附近/管理 #74 不回归 |
 
 ### npm dist-tag（只报告，不 bump 基线）
 
