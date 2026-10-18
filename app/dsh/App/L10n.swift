@@ -65,7 +65,6 @@ enum L {
     static func showArchived() -> String { ViewOptionsMenuPolicy.label(.filterShow, english: en) }
     static func onlyArchived() -> String { ViewOptionsMenuPolicy.label(.filterOnly, english: en) }
     static func downloadSessionLog() -> String { downloadSessionLogLabel(english: en) }
-    static func share() -> String { en ? "Share" : "分享" }
     static func pairingCode() -> String { pairingCodeFieldLabel(english: en) }
     static func sessionInspector() -> String { en ? "Session diagnostics" : "会话数据诊断" }
     static func browser() -> String { en ? "Browser" : "浏览器" }

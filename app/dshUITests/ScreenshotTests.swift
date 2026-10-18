@@ -100,6 +100,41 @@ final class ScreenshotTests: XCTestCase {
                     app.descendants(matching: .any)["official.send"].waitForExistence(timeout: 8),
                     "\(appearance) \(screen) missing official composer send glyph"
                 )
+                XCTAssertFalse(
+                    app.images["square.and.arrow.up"].exists,
+                    "\(appearance) \(screen) still exposes extra SF share"
+                )
+                XCTAssertFalse(
+                    app.buttons["sessionShare"].exists,
+                    "\(appearance) \(screen) still exposes extra header share"
+                )
+                XCTAssertFalse(
+                    app.descendants(matching: .any)["sessionShare"].exists,
+                    "\(appearance) \(screen) still exposes sessionShare"
+                )
+            }
+            if screen == "landing" {
+                let composer = app.descendants(matching: .any)["landingComposer"]
+                XCTAssertTrue(
+                    composer.waitForExistence(timeout: 8),
+                    "\(appearance) landing composer identifier missing"
+                )
+                XCTAssertGreaterThan(
+                    composer.frame.height,
+                    40,
+                    "\(appearance) landing composer frame is empty"
+                )
+                // Protocol `landingComposerBottomGapMaxPoints`: card bottom vs
+                // the window bottom. On a home-indicator phone the composer
+                // sits on the safe-area floor, so this gap is the indicator
+                // (~34pt) plus the 2pt card padding — still ≤ 40.
+                let window = app.windows.firstMatch.frame
+                let gap = window.maxY - composer.frame.maxY
+                XCTAssertLessThanOrEqual(
+                    gap,
+                    40,
+                    "\(appearance) landing composer floated off the bottom (gap \(gap))"
+                )
             }
             if screen == "chat" || screen == "trajectory" {
                 XCTAssertFalse(app.images["clock"].exists, "\(appearance) \(screen) still exposes SF clock on jobs chip")

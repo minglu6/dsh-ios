@@ -12,7 +12,6 @@ enum D {
     static let sliders = "slider.horizontal.3"
     static let newChat = "square.and.pencil"
     static let download = "square.and.arrow.down"
-    static let share = "square.and.arrow.up"
     static let paperPlane = "paperplane"
     static let terminal = "terminal"
     static let ellipsis = "ellipsis"

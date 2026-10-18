@@ -81,7 +81,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R52 | composer 发送改用官方 InputBar 16×16 SVG | done (#61) |
 | R53 | 轨迹工具栏搜索改用官方 `IconSearchOutlineRegular` size 11 | done (#62) |
 | R54 | 轨迹时长 chip 改用桌面 TrajectoryToolbar 内联 clock SVG | done (#63) |
-| R55 | Jobs 头栏 chip 改用桌面 JobListAction `IconChevronDownOutlineRegular` | this PR |
+| R55 | Jobs 头栏 chip 改用桌面 JobListAction `IconChevronDownOutlineRegular` | done (#64) |
+| R56 | landing composer 贴底 + 去掉多余分享按钮 | this PR |
 
 ---
 
@@ -90,7 +91,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Surface | Official package | Android | iOS now |
 | --- | --- | --- | --- |
 | Transcript fold | `ui-chat` / `ui-conversation` | `protocol/Transcript.kt`, `Chat.kt`, `ChatProcess.kt` (Compacted still hidden; no CommandNode) | `protocol/…/Transcript.swift`, `ChatProcess.swift`, `Features/Chat/ChatView.swift` — chat shows desktop `CompactionItem` + `CommandNode` (`command/run`+`command/done`) + tool-change `ContextInjectionRow`; Android still folds Compacted |
-| Message actions | `ui-chat` `MessageIconActions` | `Chat.kt` `MessageActions` | `ChatView` `MessageActions` (copy / like / dislike / share / branch + turn usage；会话行菜单仍保留无 seq 的 `sessions.fork`) |
+| Message actions | `ui-chat` `MessageIconActions` | `Chat.kt` `MessageActions` | `ChatView` `MessageActions` (copy / like / dislike / branch + turn usage；无分享。会话行菜单仍保留无 seq 的 `sessions.fork`) |
 | Trajectory | `ui-trajectory` | `Trajectory.kt` + Detail/Inspector/Request/Locales; `protocol/TrajectoryTimeline.kt` | `Features/Trajectory/` + `protocol/Trajectory.swift` / `TrajectoryRequest.swift` |
 | WorkspaceChanges | Host `workspaceChanges.summary/diff` | `WorkspaceChanges.kt` | `Features/Chat/WorkspaceChanges.swift` + `protocol/WorkspaceChanges.swift` |
 | Session Inspector | Android `SessionInspectorPanel`（桌面 Guide **无**此卡） | `SessionInspectorPanel.kt` / Log / Model / Navigation | Start 第四项「会话数据诊断」+ `DrawerPanel.inspector`；桌面 0.2.1-alpha.5 Guide 只有 files/terminal/browser |
@@ -126,7 +127,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Context tool-change row | desktop `ContextInjectionRow`; Android hides ordinary Context | `developer/message` / non-user `user/message` 的 `tool-addition`/`tool-removal` 可见；skill-catalog / time-context / session-reference / agent-instructions 仍隐藏（桌面 `isVisibleChatNode` 同样隐藏）；recall 标签投到用户气泡 | **missing** → **present** | **R23** / **R25** |
 | Deliverables | `Item.Deliverable` | tap opens workspace file preview | **present** | **B** |
 | Markdown / code block / tables | `Markdown.kt` | AST + GFM tables / code / file chips | **present** | **D** |
-| Copy / like / dislike / share / branch | `MessageActions` + `FeedbackCategory` | desktop `MessageIconActions`：copy → extraActions（赞/踩/分享）→ branch → usage；无 `sessions.fork` 不画；无 `endSeq` 灰显。会话行菜单仍保留无 seq 的分叉 | **present** | **A** / **P1** / **R35** |
+| Copy / like / dislike / branch | `MessageActions` + `FeedbackCategory` | desktop `MessageIconActions`：copy → extraActions（赞/踩，`ui-message-feedback`）→ branch → usage；无分享。无 `sessions.fork` 不画；无 `endSeq` 灰显。会话行菜单仍保留无 seq 的分叉 | **present** | **A** / **P1** / **R35** / **R56** |
 | Message / trigger clock | `formatMessageClock` | 同日 `HH:mm`；同年 `clock.md`+时钟；跨年 `clock.ymd`+时钟（zh `m月d日` / `y年m月d日`，en `m/d` / `y-m-d`）；本地时区；无今天/昨天 | **present** | **R13** |
 | Turn usage pill | `ComposerStats.kt` `TurnUsageAction` | `TurnUsagePanel`：chip `用量 {n} tok`；popover 在 pill 上方；表头图标 +「本轮用量」左、合计右；无「合计」行；推理挂在输出行 `（其中推理 {n} tok）` | **missing** → **present** | **E** / **R6** / **R12** |
 | Composer statistics | Activity / Usage / Context pills | `ComposerStats` 单行 HStack；Activity / Token 用量 / ContextMeter 均为贴 chip 的 popover（在 chip **上方**）。用量 pill 用数据库图标；上下文为 14px 环 + 百分比；弹层文案 `stats.dialog.*` / `context.*`（「工具定义」「对话消息」） | **missing** → **present** | **E** / **R8** / **R11** / **R12** / **R18** |
@@ -804,7 +805,7 @@ Android `4052adb` / `50257c1` / `825b235`：落地页首条发送立刻画出 pe
 
 | 模块 | iOS | 对照的源码 | 对齐点 |
 | --- | --- | --- | --- |
-| 助手消息行 branch | `MessageActions` + `messageBranchChrome` | 桌面 `ui-chat` `MessageIconActions` / `TurnTailNodeView`；Android `Chat.kt` `messageBranch` | 顺序 copy → 赞/踩/分享 → branch → 用量 → 时钟。`sessions.fork` 才画；`endSeq` 有则 `forkCurrent(atSeq:)`，无则灰显 `message.branchUnavailable`。用户行不画。会话行菜单仍保留无 seq 分叉 |
+| 助手消息行 branch | `MessageActions` + `messageBranchChrome` | 桌面 `ui-chat` `MessageIconActions` / `TurnTailNodeView`；Android `Chat.kt` `messageBranch` | 顺序 copy → 赞/踩 → branch → 用量 → 时钟。`sessions.fork` 才画；`endSeq` 有则 `forkCurrent(atSeq:)`，无则灰显 `message.branchUnavailable`。用户行不画。会话行菜单仍保留无 seq 分叉 |
 | 文案 | `messageBranchLabel` | 桌面 `message.branch` / `message.branchUnavailable` | 「在新对话中分支」/「仅可从已完成轮次的最后一条消息分支」 |
 
 本轮核对后**不改**（平台 / hide / 禁止发明）
@@ -827,7 +828,7 @@ Android `4052adb` / `50257c1` / `825b235`：落地页首条发送立刻画出 pe
 
 | 项 | 判定 | 证据 |
 | --- | --- | --- |
-| MessageIconActions 顺序 | **PASS** | 桌面 `ui-chat` `MessageIconActions`：copy → extraActions（赞/踩/分享）→ branch → usage+clock。iOS `MessageActions` 同序。用户行只 copy+start clock，无 `onBranch`（`UserMessageNodeView`） |
+| MessageIconActions 顺序 | **PASS** | 桌面 `ui-chat` `MessageIconActions`：copy → extraActions（赞/踩，`ui-message-feedback`）→ branch → usage+clock。iOS `MessageActions` 同序。用户行只 copy+start clock，无 `onBranch`（`UserMessageNodeView`） |
 | TurnTail branch 接线 | **PASS** | `sessions.fork` 才画；`forkAt(data.seq)` = `turn/end` seq = iOS `endSeq`。无 `endSeq` 灰显 `message.branchUnavailable` |
 | FirstPrompt echo | **PASS** | #48：pending `local-{requestId}`、`queue.sending`、send/plus/perm/model/Start 锁 |
 | Composer / 会话行 / Connections | **PASS** | 无新「桌面有、iOS 缺」的可搬语义。连接入口仍在抽屉脚 |
@@ -1301,4 +1302,28 @@ Android `c5f8cdd...56dcaa9` 一笔：`feat(android): 补齐用户选择卡片与
 - 插件库存搜索仍 SF：桌面 `ui-plugin-manager` 无该搜索槽。
 - InputBar `.primary` 停止态圆角方块：fixture 不跑 `runningIdle`。
 - 轨迹 ledger `KIND_ICON` 已知 kind（user/sparkle/wrench/…）仍是 SF：本轮只修 Jobs trigger chevron。
+
+## Round 56 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*` alpha=`0.2.1-alpha.5` / next=`0.2.1-rc.2`；Android `ce7d345`）
+
+真机（iPhone，IPA @ `10960ec`）反馈：#60 把 landing 移出 GeometryReader 后双 `Spacer` 把 Hero+workspace+composer 整列垂直居中，Composer 下方半屏空白。另：多余分享按钮。
+
+| 项 | 判定 | 证据 |
+| --- | --- | --- |
+| 空会话 Composer 贴底 | **GAP → 本轮** | 真机截图 Composer 悬在中部。桌面 `HeroShell.module.css` `.root` 是 `justify-content:center`（宽屏）。窄屏参考 Android `Chat.kt`：`Box(weight(1f), Center) { Hero() }` + workspace 行 + Composer 在 Column 底部（`imePadding`）。用户要求输入框到底部，覆盖桌面居中 |
+| 顶栏分享 | **GAP → 本轮** | iOS `sessionShare` / `OfficialGlyph.shareOutline` 在 `ConversationSessionHeader` 位置。桌面该处是 slots（`header.actions` / `utilities` / `corner`），没有 share glyph。导出是 `session-log-export` HeaderAction 更多菜单「下载 Session 日志」+ `/export`（`HeaderAction.d.ts` / README）。P2 已去掉 ⋯，顶栏分享图标是后来多出来的 |
+| 消息行分享 | **GAP → 本轮** | iOS `MessageActions` `square.and.arrow.up` + `ShareSheet(text)`。桌面 `MessageIconActions` extraActions 只挂 `ui-message-feedback` 赞/踩（`MessageFeedbackActions.d.ts`）。Android `Chat.kt` `MessageActions` 无分享 |
+| `/export` 导出 ZIP | **保留** | 桌面 `session-log-export` `/export` 下载 ZIP。iOS `exportSession()` + `ShareSheet(url)` 是把 ZIP 交给系统分享页，不是顶栏/消息行按钮 |
+
+| 模块 | iOS | 对照的桌面 / Android 源码 | 对齐点 |
+| --- | --- | --- | --- |
+| 空会话 Hero | `RootView.emptyChat`：headline 在剩余高度里居中；workspace 行 `gap: 12` 贴在 composer 上方；composer 钉安全区底（与聊天页同一 `ComposerView`）。斜杠菜单 overlay 仍用 GeometryReader，composer 本身不进 GeometryReader | Android `Chat.kt` 405–413 + Composer；桌面 `HeroShell.module.css` / `EmptyHero.d.ts` | 不再双 Spacer 居中整列。CI landing 断言 `landingComposer` 底边距屏幕底 ≤ 40pt；保留 `official.plusOutline` / `official.send` |
+| 顶栏分享 | 删除 `sessionShare` | `ui-conversation` `ConversationSessionHeader`；`session-log-export` `HeaderAction` | `conversationHeaderShowsShare = false`。CI landing/chat 禁止 `sessionShare` / `square.and.arrow.up` |
+| 消息行分享 | 删除 share 按钮与 `D.share` / `OfficialGlyph.shareOutline` / `L.share` | `ui-chat` `MessageIconActions` + `ui-message-feedback` `MessageFeedbackActions`；Android `Chat.kt` `MessageActions` | `MessageActionPolicy.includesShare = false`；assistantRow = copy / like / dislike / branch |
+
+本轮核对后**不改**（平台 / hide / 禁止发明）
+
+- 桌面 HeaderAction 更多菜单「下载 Session 日志」：P2 已按「phone 无 ⋯」去掉；导出继续走 `/` `+` 的 `/export`，不发明顶栏 ⋯。
+- `chat.turnNavigation.*` / `chat.toBottom` / `ask.review` / hover chevron：仍 skip。
+- Account / shortcuts / open config / CompatibilityBanner / 审批通知 / FishLogo：仍 **hide** / 不发明。
+- Android Settings「移动端 → 连接」不搬。
 

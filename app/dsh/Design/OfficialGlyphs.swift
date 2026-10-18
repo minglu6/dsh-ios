@@ -23,7 +23,6 @@ struct OfficialGlyph: View {
         case archiveCheck
         case queue
         case downloadOutline
-        case shareOutline
         case terminalPrompt
         case settingsOutline
         case newChat
@@ -145,8 +144,6 @@ struct OfficialGlyph: View {
                 ctx.stroke(Path(SVGPath.cgPath(Self.downloadStem)), with: .color(color), style: stroke)
                 ctx.stroke(Path(SVGPath.cgPath(Self.downloadArrow)), with: .color(color), style: stroke)
                 ctx.stroke(Path(SVGPath.cgPath(Self.downloadTray)), with: .color(color), style: stroke)
-            case .shareOutline:
-                ctx.fill(Path(SVGPath.cgPath(Self.shareBody)), with: .color(color))
             case .terminalPrompt:
                 let term = StrokeStyle(lineWidth: 1.55, lineCap: .round, lineJoin: .round)
                 ctx.scaleBy(x: 16 / 36, y: 16 / 36)
@@ -305,7 +302,6 @@ struct OfficialGlyph: View {
     private static let downloadStem = "M8 1.95317V10.0469"
     private static let downloadArrow = "M4.25 6.29688L8 10.0469L11.75 6.29688"
     private static let downloadTray = "M1.5 10.0469V13.158C1.5 13.3937 1.60536 13.6198 1.79289 13.7865C1.98043 13.9532 2.23478 14.0469 2.5 14.0469H13.5C13.7652 14.0469 14.0196 13.9532 14.2071 13.7865C14.3946 13.6198 14.5 13.3937 14.5 13.158V10.0469"
-    private static let shareBody = "M14.1256 7.58723C14.3483 7.81942 14.3482 8.18589 14.1254 8.41799L8.6646 14.1077C8.53985 14.2377 8.32031 14.1494 8.32031 13.9692L8.32035 10.2039C8.32035 10.1943 8.31534 10.1864 8.30592 10.1849C8.08306 10.148 5.30067 9.7729 1.50993 13.2904C1.49711 13.3023 1.47561 13.2943 1.4757 13.2768C1.49273 9.87168 3.42001 5.07166 8.29999 5.05835C8.31103 5.05832 8.32035 5.04937 8.32035 5.03832L8.32031 2.03109C8.32031 1.85088 8.53993 1.76259 8.66466 1.89266L14.1256 7.58723Z"
     private static let terminalPrompt = "M10 11L16.606 17.606C16.6841 17.6841 16.6841 17.8107 16.606 17.8888L10 24.4948"
     private static let terminalCursor = "M20.1211 24.4946H26.8685"
 }
