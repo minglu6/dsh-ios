@@ -66,6 +66,17 @@ final class ComposerPickerParityTests: XCTestCase {
         XCTAssertTrue(isForbiddenTrajectoryToolbarClockSymbol("clock"))
         XCTAssertTrue(isForbiddenTrajectoryToolbarClockSymbol("official.clockOutline"))
         XCTAssertFalse(isForbiddenTrajectoryToolbarClockSymbol("official.trajectoryClock"))
+        XCTAssertTrue(jobsActionTriggerUsesOfficialGlyph)
+        XCTAssertEqual(jobsActionTriggerSymbol(), "official.jobsChevron")
+        XCTAssertEqual(jobsActionTriggerIconSizePoints, 12)
+        XCTAssertEqual(jobsActionTriggerIconStrokeWidth, 1)
+        XCTAssertEqual(
+            jobsActionTriggerChevronPath,
+            "M4 6L7.29289 9.29289C7.68342 9.68342 8.31658 9.68342 8.70711 9.29289L12 6"
+        )
+        XCTAssertTrue(isForbiddenJobsActionTriggerSymbol("clock"))
+        XCTAssertTrue(isForbiddenJobsActionTriggerSymbol("official.trajectoryClock"))
+        XCTAssertFalse(isForbiddenJobsActionTriggerSymbol("official.jobsChevron"))
         XCTAssertTrue(sidebarProjectAddUsesOfficialGlyph)
         XCTAssertEqual(sidebarProjectAddSymbol(), "official.projectAdd")
         XCTAssertEqual(sidebarProjectAddIconSizePoints, 16)

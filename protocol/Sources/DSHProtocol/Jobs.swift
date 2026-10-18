@@ -425,6 +425,35 @@ public func jobIdentity(_ element: JSONValue) -> String? {
 /// Chip `.task` must run before any roster exists (same empty-Group trap as ChangesCard).
 public let jobsActionWatchAnchorPoints: Double = 1
 
+/// Desktop `ui-jobs` `JobListAction` trigger is `StateDot?` + count +
+/// `IconChevronDownOutlineRegular` size 12. It is never SF `clock` and
+/// never primitives `IconClock*` / the trajectory toolbar clock. Artwork
+/// is `ui-primitives` `IconChevronDownOutlineArtwork` on a 16×16 view box;
+/// the Regular wrapper passes `strokeWidth: 1` (`ICON_REGULAR_STROKE`).
+/// Open state applies `.triggerOpen` `rotate(180deg)`.
+public let jobsActionTriggerUsesOfficialGlyph = true
+public let jobsActionTriggerIconSizePoints: Double = 12
+public let jobsActionTriggerIconStrokeWidth: Double = 1
+
+public func jobsActionTriggerSymbol() -> String { "official.jobsChevron" }
+
+/// Desktop `IconChevronDownOutlineArtwork` chevron (`d` of the `<path>`).
+public let jobsActionTriggerChevronPath =
+    "M4 6L7.29289 9.29289C7.68342 9.68342 8.31658 9.68342 8.70711 9.29289L12 6"
+
+public func isForbiddenJobsActionTriggerSymbol(_ name: String) -> Bool {
+    name == "clock"
+        || name == "clock.fill"
+        || name == "chevron.down"
+        || name == "chevron.up"
+        || name == "official.clockOutline"
+        || name == "official.trajectoryClock"
+        || name == "IconClockOutline"
+        || name == "IconClockOutlineRegular"
+        || name == "IconClockOutlineMedium"
+        || name == "IconClockOutlineArtwork"
+}
+
 public func jobsActionShouldWatch(online: Bool, hasListOp: Bool) -> Bool {
     online && hasListOp
 }

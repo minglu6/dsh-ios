@@ -101,6 +101,14 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) \(screen) missing official composer send glyph"
                 )
             }
+            if screen == "chat" || screen == "trajectory" {
+                XCTAssertFalse(app.images["clock"].exists, "\(appearance) \(screen) still exposes SF clock on jobs chip")
+                XCTAssertFalse(app.images["clock.fill"].exists, "\(appearance) \(screen) still exposes SF clock.fill on jobs chip")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.jobsChevron"].waitForExistence(timeout: 8),
+                    "\(appearance) \(screen) missing official jobs-trigger chevron"
+                )
+            }
             if screen == "models" {
                 XCTAssertTrue(app.descendants(matching: .any)["modelChipEffort"].waitForExistence(timeout: 8), "\(appearance) model chip missing effort")
                 XCTAssertTrue(app.descendants(matching: .any)["modelPickerEffort"].waitForExistence(timeout: 8), "\(appearance) model menu missing effort row")

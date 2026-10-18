@@ -140,7 +140,9 @@ extension AppModel {
             firstPrompt = nil
         case "drawer", "viewOptions", "sessionActions":
             showDrawer = true
-        case "chat", "models", "permission", "trajectory":
+        case "chat", "trajectory":
+            seedUITestJobs()
+        case "models", "permission":
             break
         case "settings", "general":
             showDrawer = false
@@ -164,5 +166,22 @@ extension AppModel {
         default:
             fatalError("UITestLaunch: unknown screen \(screen)")
         }
+    }
+
+    /// Desktop `JobListAction` only paints the header trigger when the
+    /// session can see at least one job. Seed a live bash row so chat /
+    /// trajectory screenshots lock the official chevron (not SF `clock`).
+    /// Do not advertise `jobs.list`: that starts `retainJobsWatch`, which
+    /// clears the snapshot and then has no Host client to refill it.
+    fileprivate func seedUITestJobs() {
+        jobs = [
+            JobRow(
+                id: "bash-1",
+                status: "running",
+                title: "sleep 600",
+                kind: "bash",
+                startedAt: Int64(Date().timeIntervalSince1970 * 1000) - 12_000
+            )
+        ]
     }
 }

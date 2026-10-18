@@ -246,6 +246,24 @@ final class JobsTests: XCTestCase {
         XCTAssertFalse(jobsPopoverClockRuns(open: false, liveCount: 3))
     }
 
+    func testTriggerUsesOfficialChevronDownNotSystemClock() {
+        XCTAssertTrue(jobsActionTriggerUsesOfficialGlyph)
+        XCTAssertEqual(jobsActionTriggerSymbol(), "official.jobsChevron")
+        XCTAssertEqual(jobsActionTriggerIconSizePoints, 12)
+        XCTAssertEqual(jobsActionTriggerIconStrokeWidth, 1)
+        XCTAssertEqual(
+            jobsActionTriggerChevronPath,
+            "M4 6L7.29289 9.29289C7.68342 9.68342 8.31658 9.68342 8.70711 9.29289L12 6"
+        )
+        XCTAssertTrue(isForbiddenJobsActionTriggerSymbol("clock"))
+        XCTAssertTrue(isForbiddenJobsActionTriggerSymbol("clock.fill"))
+        XCTAssertTrue(isForbiddenJobsActionTriggerSymbol("chevron.down"))
+        XCTAssertTrue(isForbiddenJobsActionTriggerSymbol("official.clockOutline"))
+        XCTAssertTrue(isForbiddenJobsActionTriggerSymbol("official.trajectoryClock"))
+        XCTAssertTrue(isForbiddenJobsActionTriggerSymbol("IconClockOutlineRegular"))
+        XCTAssertFalse(isForbiddenJobsActionTriggerSymbol("official.jobsChevron"))
+    }
+
     func testKilledHostExitObjectProjectsJobViewStatusAndDetail() throws {
         let result = try JSONValue.parse("""
         {"type":"rows","jobs":[
