@@ -1196,3 +1196,35 @@ Android `c5f8cdd...56dcaa9` 一笔：`feat(android): 补齐用户选择卡片与
 - 轨迹工具栏搜索仍 SF `magnifyingglass`：桌面 `IconSearchOutlineRegular` size 11，CI 无轨迹屏；本轮只修截图打脸的发送。
 - InputBar `.primary` 停止态圆角方块：同一按钮的另一态，fixture 不跑，本轮不扩。
 
+## Round 53 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*` alpha=`0.2.1-alpha.5` / next=`0.2.1-rc.2`；Android `ce7d345`）
+
+直播核对（2026-10-18）：iOS `main` tip `4bd88f5`（#61 squash）。CI run 39096651151：`protocol` / `screenshots` / `ios` 全绿。`npm view`：`alpha` 仍 `0.2.1-alpha.5`，`next` 仍 `0.2.1-rc.2`。primitives `index.js` 与 trajectory `client.js` **sha256 与 alpha.5 相同**（locale / 组件 API **无增量**）。Android `main` `ce7d345`；`compare/ce7d345...main` `ahead_by: 0`。#67 仅 Host plugin，无新 iOS UI 可搬。
+
+#61 后源码 + 桌面 pack 怀疑式重审：
+
+| 项 | 判定 | 证据 |
+| --- | --- | --- |
+| composer 发送 OfficialGlyph.send | **PASS** | InputBar 内联 filled 16×16；CI landing/chat 断言 `official.send`、禁止 `arrow.up` |
+| composer 加号 OfficialGlyph.plusOutline | **PASS** | Medium 14 / 1.3；CI 断言 `official.plusOutline`、禁止 `plus` |
+| 抽屉 settings/newChat/search/projectAdd OfficialGlyphs | **PASS** | #56–#59；CI drawer 断言 |
+| HeroShell center gap 12；view-options compact popover | **PASS** | #55 / #54 |
+| effort 仅 reasoning；permission chip 仅图标 | **PASS** | #53 |
+| 轨迹工具栏搜索 | **GAP → 本轮** | `TrajectoryView` 仍 SF `magnifyingglass`。桌面 `ui-trajectory` `TrajectoryToolbar` 用 `IconSearchOutlineRegular` size **11**（同一 `IconSearchOutlineArtwork` 圆环+斜柄，Regular 1；搜索槽 `--dsw-alias-label-caption`） |
+| 插件库存搜索 SF | **skip** | 桌面 `ui-plugin-manager` 无 `IconSearch` / 搜索槽 |
+| 轨迹未知 cell SF `gearshape` | **skip** | 桌面 `KIND_ICON` 无 unknown；不发明 fallback |
+| 轨迹时长 chip SF `clock` | **GAP（本轮不修）** | 桌面是工具栏内联 16×16 clock SVG（`circle r=5.25` + `M8 4.75V8l2.25 1.5`），不是 primitives `IconClock*`；本轮只修已有 OfficialGlyph 的搜索 |
+
+| 模块 | iOS | 对照的桌面源码 | 对齐点 |
+| --- | --- | --- | --- |
+| 轨迹工具栏搜索 | `OfficialGlyph.searchOutline` + `trajectoryToolbarSearchIconSizePoints` 11 | `ui-trajectory` TrajectoryToolbar `IconSearchOutlineRegular` size 11；`ui-primitives` `IconSearchOutlineArtwork` | 删掉 SF `magnifyingglass`；复用已锁定圆环/斜柄 path；Regular 线宽 1；颜色 `T.caption`（`--dsw-alias-label-caption`）。CI 新 `trajectory` 屏断言 `official.searchOutline`、禁止 `magnifyingglass` |
+
+本轮核对后**不改**（平台 / hide / 禁止发明）
+
+- `chat.turnNavigation.*` / `chat.toBottom` / `ask.review` / hover chevron：仍 skip。
+- Account / shortcuts / open config / CompatibilityBanner / 审批通知 / FishLogo：仍 **hide** / 不发明。
+- Android Settings「移动端 → 连接」不搬。
+- 轨迹未知 cell 仍映射 SF `gearshape`：桌面 `KIND_ICON` 无 unknown，不发明 fallback。
+- 插件库存搜索仍 SF：桌面 `ui-plugin-manager` 无该搜索槽。
+- 轨迹时长 chip 仍 SF `clock`：桌面是另一套内联 SVG，不是已有 OfficialGlyph；本轮不扩。
+- InputBar `.primary` 停止态圆角方块：同一按钮的另一态，fixture 不跑。
+

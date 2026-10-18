@@ -181,7 +181,11 @@ struct TrajectoryView: View {
             }
             Spacer()
             HStack(spacing: 4) {
-                Image(systemName: "magnifyingglass").font(.caption2).foregroundStyle(T.caption)
+                OfficialGlyph(
+                    kind: .searchOutline,
+                    size: CGFloat(trajectoryToolbarSearchIconSizePoints),
+                    color: T.caption
+                )
                 TextField(TrajL.toolbarSearchPlaceholder, text: $searchQuery)
                     .font(.caption)
                     .textInputAutocapitalization(.never)

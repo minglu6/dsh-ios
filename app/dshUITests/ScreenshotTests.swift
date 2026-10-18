@@ -6,7 +6,7 @@ final class ScreenshotTests: XCTestCase {
     private let screens = [
         "landing", "drawer", "viewOptions", "sessionActions", "chat",
         "models", "permission", "start", "browser", "inspector",
-        "settings", "schedule", "terminal",
+        "settings", "schedule", "terminal", "trajectory",
     ]
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool { false }
@@ -104,6 +104,17 @@ final class ScreenshotTests: XCTestCase {
             if screen == "models" {
                 XCTAssertTrue(app.descendants(matching: .any)["modelChipEffort"].waitForExistence(timeout: 8), "\(appearance) model chip missing effort")
                 XCTAssertTrue(app.descendants(matching: .any)["modelPickerEffort"].waitForExistence(timeout: 8), "\(appearance) model menu missing effort row")
+            }
+            if screen == "trajectory" {
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["chatTab.trajectory"].waitForExistence(timeout: 15),
+                    "\(appearance) trajectory tab missing"
+                )
+                XCTAssertFalse(app.images["magnifyingglass"].exists, "\(appearance) trajectory still exposes SF magnifyingglass")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.searchOutline"].waitForExistence(timeout: 8),
+                    "\(appearance) trajectory missing official search glyph"
+                )
             }
             let shot = XCUIScreen.main.screenshot()
             let url = root.appendingPathComponent("\(appearance.lowercased())-\(screen).png")

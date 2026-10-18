@@ -65,6 +65,21 @@ final class TrajectoryTimelineTests: XCTestCase {
     }
 }
 
+final class TrajectoryToolbarParityTests: XCTestCase {
+    func testToolbarSearchUsesOfficialSearchOutlineSize11() {
+        XCTAssertTrue(trajectoryToolbarSearchUsesOfficialGlyph)
+        XCTAssertEqual(trajectoryToolbarSearchSymbol(), "official.searchOutline")
+        XCTAssertEqual(trajectoryToolbarSearchSymbol(), sidebarSearchSymbol())
+        XCTAssertEqual(trajectoryToolbarSearchIconSizePoints, 11)
+        XCTAssertEqual(trajectoryToolbarSearchIconStrokeWidth, 1)
+        XCTAssertEqual(trajectoryToolbarSearchIconStrokeWidth, sidebarSearchIconStrokeWidth)
+        XCTAssertTrue(isForbiddenSystemSearchSymbol("magnifyingglass"))
+        XCTAssertFalse(isForbiddenSystemSearchSymbol("official.searchOutline"))
+        XCTAssertTrue(sidebarSearchCirclePath.hasPrefix("M6.58727 11.8586"))
+        XCTAssertEqual(sidebarSearchHandlePath, "M10.2991 10.3933L14.7783 14.8725")
+    }
+}
+
 final class TrajectoryBuilderTests: XCTestCase {
     func testGroupsUserTurnWithTools() {
         let turns = buildTrajectory([
