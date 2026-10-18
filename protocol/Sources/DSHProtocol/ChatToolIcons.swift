@@ -139,6 +139,24 @@ public let jobsStopFillPath =
 
 public func jobsStopFillSymbol() -> String { "official.stopFill" }
 
+/// Desktop `TodoPanel` / `GoalBar` / `QueueDock` leading + queue actions.
+/// View-options `.queue` keeps `official.queue` (filterShow); the dock uses
+/// the same ChatLinesOutline artwork under `official.queueOutline`.
+public func chatTodoDockSymbol() -> String { "official.checklistOutline" }
+public func chatGoalDockSymbol() -> String { "official.goalOutline" }
+public func chatQueueDockSymbol() -> String { "official.queueOutline" }
+public func chatTodoPanelIdentifier() -> String { "todoPanel" }
+public func chatGoalBarIdentifier() -> String { "goalBar" }
+public func chatQueueDockIdentifier() -> String { "promptQueue" }
+public func isForbiddenChatDockSystemSymbol(_ name: String) -> Bool {
+    name == "checklist"
+        || name == "target"
+        || name == "text.line.first.and.arrowtriangle.forward"
+        || name == "pencil"
+        || name == "trash"
+        || name == "paperplane"
+}
+
 public func isForbiddenJobsRowChromeSymbol(_ name: String) -> Bool {
     name == "chevron.down"
         || name == "chevron.right"

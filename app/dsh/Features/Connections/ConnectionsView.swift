@@ -256,7 +256,7 @@ struct ConnectionsView: View {
                 Text(L.rename())
                     .font(.system(size: CGFloat(connectionsSheetTitleFontSizePoints), weight: .semibold))
                     .foregroundStyle(T.ink)
-                    .padding(.horizontal, 22)
+                    .padding(.horizontal, CGFloat(connectionsSheetContentPaddingPoints))
                     .padding(.vertical, 6)
                 TextField(L.rename(), text: $renameDraft)
                     .textInputAutocapitalization(.never)
@@ -272,7 +272,7 @@ struct ConnectionsView: View {
                         RoundedRectangle(cornerRadius: CGFloat(connectionsFieldRadiusPoints))
                             .stroke(T.border, lineWidth: CGFloat(dswButtonOutlineWidthPoints))
                     )
-                    .padding(.horizontal, 22)
+                    .padding(.horizontal, CGFloat(connectionsSheetContentPaddingPoints))
                     .padding(.top, 12)
                 HStack(spacing: 10) {
                     Button(L.cancel()) { renaming = false }
@@ -310,7 +310,7 @@ struct ConnectionsView: View {
                             ? dswButtonDisabledOpacity : 1
                     )
                 }
-                .padding(.horizontal, 22)
+                .padding(.horizontal, CGFloat(connectionsSheetContentPaddingPoints))
                 .padding(.top, 16)
                 Spacer()
             } else {
@@ -320,7 +320,7 @@ struct ConnectionsView: View {
                         .font(.system(size: CGFloat(connectionsSheetTitleFontSizePoints), weight: .semibold))
                         .foregroundStyle(T.ink)
                 }
-                .padding(.horizontal, 22)
+                .padding(.horizontal, CGFloat(connectionsSheetContentPaddingPoints))
                 .padding(.vertical, 6)
                 Text(
                     connectionsStatusLine(
@@ -331,13 +331,13 @@ struct ConnectionsView: View {
                 )
                 .font(.system(size: 12))
                 .foregroundStyle(T.text3)
-                .padding(.horizontal, 22)
+                .padding(.horizontal, CGFloat(connectionsSheetContentPaddingPoints))
                 .padding(.vertical, 4)
                 if !profile.needsRepair {
                     Text(profile.subtitle)
                         .font(.system(size: 12, design: .monospaced))
                         .foregroundStyle(T.caption)
-                        .padding(.horizontal, 22)
+                        .padding(.horizontal, CGFloat(connectionsSheetContentPaddingPoints))
                         .padding(.bottom, 4)
                 }
                 VStack(spacing: 0) {
@@ -396,7 +396,7 @@ struct ConnectionsView: View {
     ) -> some View {
         ZStack(alignment: .leading) {
             OfficialGlyph(kind: official, size: 18, color: T.ink)
-                .padding(.leading, 22)
+                .padding(.leading, CGFloat(connectionsSheetContentPaddingPoints))
                 .allowsHitTesting(false)
             Button(action: action) {
                 HStack(spacing: 14) {
@@ -406,7 +406,7 @@ struct ConnectionsView: View {
                         .foregroundStyle(T.ink)
                     Spacer()
                 }
-                .padding(.horizontal, 22)
+                .padding(.horizontal, CGFloat(connectionsSheetContentPaddingPoints))
                 .padding(.vertical, 12)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
@@ -695,12 +695,12 @@ private struct PairLinkSheet: View {
             Text(L.pairingLink())
                 .font(.system(size: CGFloat(connectionsSheetTitleFontSizePoints), weight: .semibold))
                 .foregroundStyle(T.ink)
-                .padding(.horizontal, 22)
+                .padding(.horizontal, CGFloat(connectionsSheetContentPaddingPoints))
                 .padding(.vertical, 6)
             Text(L.pairingLinkHint())
                 .font(.system(size: CGFloat(connectionsSheetHintFontSizePoints)))
                 .foregroundStyle(T.text3)
-                .padding(.horizontal, 22)
+                .padding(.horizontal, CGFloat(connectionsSheetContentPaddingPoints))
                 .padding(.vertical, 8)
             VStack(alignment: .leading, spacing: 4) {
                 Text(L.pairingLink())
@@ -726,6 +726,12 @@ private struct PairLinkSheet: View {
                         RoundedRectangle(cornerRadius: CGFloat(connectionsFieldRadiusPoints))
                             .stroke(T.border, lineWidth: CGFloat(dswButtonOutlineWidthPoints))
                     )
+                    .overlay {
+                        Color.clear
+                            .accessibilityElement()
+                            .accessibilityIdentifier(connectionsPairingLinkFieldBoundsIdentifier())
+                            .allowsHitTesting(false)
+                    }
                     .accessibilityLabel(L.pairingLink())
                     .accessibilityIdentifier(connectionsPairingLinkFieldIdentifier())
                     .onChange(of: text) { _ in
@@ -736,13 +742,13 @@ private struct PairLinkSheet: View {
                         pasted = false
                     }
             }
-            .padding(.horizontal, 18)
+            .padding(.horizontal, CGFloat(connectionsFieldOuterPaddingPoints))
             .padding(.vertical, 4)
             if showInvalid {
                 Text(L.invalidPairingLink())
                     .font(.system(size: 12))
                     .foregroundStyle(T.err)
-                    .padding(.horizontal, 22)
+                    .padding(.horizontal, CGFloat(connectionsSheetContentPaddingPoints))
                     .padding(.vertical, 8)
                     .accessibilityIdentifier(connectionsInvalidPairingLinkIdentifier())
             }
@@ -776,7 +782,7 @@ private struct PairLinkSheet: View {
                 .opacity(parsed == nil ? dswButtonDisabledOpacity : 1)
                 .accessibilityIdentifier(connectionsReviewPairingLinkIdentifier())
             }
-            .padding(.horizontal, 22)
+            .padding(.horizontal, CGFloat(connectionsSheetContentPaddingPoints))
             .padding(.vertical, 14)
             Spacer()
         }
@@ -813,7 +819,7 @@ private func connSheetCancel(identifier: String, action: @escaping () -> Void) -
         .buttonStyle(.plain)
         .font(.system(size: CGFloat(dswButtonFontSizePoints)))
         .foregroundStyle(T.ink)
-        .padding(.horizontal, 22)
+        .padding(.horizontal, CGFloat(connectionsSheetContentPaddingPoints))
         .frame(minHeight: CGFloat(connectionsSheetCancelMinHeightPoints), alignment: .leading)
         .contentShape(Rectangle())
         .accessibilityIdentifier(identifier)

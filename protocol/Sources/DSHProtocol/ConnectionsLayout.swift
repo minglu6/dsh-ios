@@ -79,6 +79,17 @@ public let connectionsFieldHorizontalPaddingPoints: Double = 14
 public let connectionsFieldVerticalPaddingPoints: Double = 12
 public let connectionsSheetTitleFontSizePoints: Double = 18
 public let connectionsSheetHintFontSizePoints: Double = 13
+/// ConnSheet title / hint / invalid / buttons inset. Android `ConnField` used
+/// 18 while the button row used 22, so the input sat wider than「粘贴链接 /
+/// 下一步」. Desktop Input has no sheet inset (wrap pad is 0 8 inner).
+/// Phone chrome is the 22 used by SheetTitle / hint / buttons — unify the
+/// field to that, do not keep the 18 leftover.
+public let connectionsSheetContentPaddingPoints: Double = 22
+public let connectionsFieldOuterPaddingPoints: Double = connectionsSheetContentPaddingPoints
+/// Android `ProfileManageSheet` `ConnOptionRow(L.delete())` calls
+/// `Pocket.removeProfile` immediately. Desktop Host `ui-settings` pocket
+/// is the computer QR page, not this phone manage sheet — no Modal confirm.
+public let connectionsManageDeleteConfirms = false
 
 /// Controller page title. Desktop Settings `pocket` is Host-side
 /// 「手机连接」QR — that copy stays off the phone.
@@ -151,6 +162,10 @@ public func connectionsActionsCardIdentifier() -> String { "connectionsActionsCa
 public func connectionsPairLinkSheetIdentifier() -> String { "connectionsPairLinkSheet" }
 public func connectionsPairLinkCancelIdentifier() -> String { "connectionsPairLinkCancel" }
 public func connectionsPairingLinkFieldIdentifier() -> String { "connectionsPairingLinkField" }
+/// Visual field chrome (inner pad + stroke). XCUI `TextField` can report the
+/// inner UITextField, which is inset by `connectionsFieldHorizontalPaddingPoints`
+/// and would fail a minX/maxX check against the button row.
+public func connectionsPairingLinkFieldBoundsIdentifier() -> String { "connectionsPairingLinkFieldBounds" }
 public func connectionsPastePairingLinkIdentifier() -> String { "connectionsPastePairingLink" }
 public func connectionsReviewPairingLinkIdentifier() -> String { "connectionsReviewPairingLink" }
 public func connectionsInvalidPairingLinkIdentifier() -> String { "connectionsInvalidPairingLink" }

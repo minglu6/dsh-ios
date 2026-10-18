@@ -6,8 +6,9 @@ final class ScreenshotTests: XCTestCase {
     private let screens = [
         "landing", "drawer", "viewOptions", "sessionActions", "chat",
         "models", "permission", "start", "browser", "inspector",
-        "settings", "schedule", "terminal", "trajectory", "plugins", "connections",
+        "settings", "settingsShell", "schedule", "terminal", "trajectory", "plugins", "connections",
         "composerStop", "slash", "jobs", "builtinPlugins", "trajectoryDetail",
+        "chatDock",
     ]
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool { false }
@@ -638,6 +639,85 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) trajectory detail missing official copyOutline"
                 )
             }
+            if screen == "settingsShell" {
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["settingsShell"].waitForExistence(timeout: 15),
+                    "\(appearance) settingsShell missing"
+                )
+                XCTAssertFalse(app.images["cpu"].exists, "\(appearance) settingsShell still exposes SF cpu")
+                XCTAssertFalse(
+                    app.images["slider.horizontal.3"].exists,
+                    "\(appearance) settingsShell still exposes SF slider"
+                )
+                XCTAssertFalse(
+                    app.images["person.crop.circle"].exists,
+                    "\(appearance) settingsShell still exposes SF person.crop.circle"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.dataOutline"].waitForExistence(timeout: 8),
+                    "\(appearance) settingsShell missing IconDataOutlineMedium"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.settingsOutlineRegular"].exists,
+                    "\(appearance) settingsShell missing official settings glyph"
+                )
+                XCTAssertTrue(
+                    app.staticTexts["模型"].waitForExistence(timeout: 4)
+                        || app.buttons["模型"].waitForExistence(timeout: 2),
+                    "\(appearance) settingsShell missing 模型 row"
+                )
+                XCTAssertTrue(
+                    app.staticTexts["通用设置"].exists || app.buttons["通用设置"].exists,
+                    "\(appearance) settingsShell missing 通用设置 row"
+                )
+            }
+            if screen == "chatDock" {
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["todoPanel"].waitForExistence(timeout: 15),
+                    "\(appearance) chatDock missing todoPanel"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["goalBar"].waitForExistence(timeout: 8),
+                    "\(appearance) chatDock missing goalBar"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["promptQueue"].waitForExistence(timeout: 8),
+                    "\(appearance) chatDock missing promptQueue"
+                )
+                XCTAssertFalse(app.images["checklist"].exists, "\(appearance) chatDock still exposes SF checklist")
+                XCTAssertFalse(app.images["target"].exists, "\(appearance) chatDock still exposes SF target")
+                XCTAssertFalse(
+                    app.images["text.line.first.and.arrowtriangle.forward"].exists,
+                    "\(appearance) chatDock still exposes SF queue lines"
+                )
+                XCTAssertFalse(app.images["pencil"].exists, "\(appearance) chatDock still exposes SF pencil")
+                XCTAssertFalse(app.images["trash"].exists, "\(appearance) chatDock still exposes SF trash")
+                XCTAssertFalse(app.images["paperplane"].exists, "\(appearance) chatDock still exposes SF paperplane")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.checklistOutline"].waitForExistence(timeout: 8),
+                    "\(appearance) chatDock missing official checklistOutline"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.goalOutline"].exists,
+                    "\(appearance) chatDock missing official goalOutline"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.queueOutline"].exists,
+                    "\(appearance) chatDock missing official queueOutline"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.editOutline"].exists,
+                    "\(appearance) chatDock missing official editOutline"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.trashOutline"].exists,
+                    "\(appearance) chatDock missing official trashOutline"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.sendOutline"].exists,
+                    "\(appearance) chatDock missing official sendOutline"
+                )
+            }
             if screen == "settings" {
                 XCTAssertFalse(app.images["sun.max"].exists, "\(appearance) settings still exposes SF sun.max")
                 XCTAssertFalse(app.images["moon"].exists, "\(appearance) settings still exposes SF moon")
@@ -934,9 +1014,29 @@ final class ScreenshotTests: XCTestCase {
             accuracy: 2,
             "\(appearance) 下一步 height \(next.firstMatch.frame.height) is not Android PairLinkSheet 48"
         )
-        XCTAssertFalse(next.firstMatch.isEnabled, "\(appearance) 下一步 enabled on empty pairing link")
         let field = app.descendants(matching: .any)["connectionsPairingLinkField"].firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 4), "\(appearance) pairing-link field missing")
+        let bounds = app.descendants(matching: .any)["connectionsPairingLinkFieldBounds"].firstMatch
+        XCTAssertTrue(
+            bounds.waitForExistence(timeout: 4),
+            "\(appearance) pairing-link field bounds missing"
+        )
+        let fieldFrame = bounds.frame
+        let pasteFrame = paste.firstMatch.frame
+        let nextFrame = next.firstMatch.frame
+        XCTAssertEqual(
+            fieldFrame.minX,
+            pasteFrame.minX,
+            accuracy: 1,
+            "\(appearance) pairing field minX \(fieldFrame.minX) != 粘贴链接 minX \(pasteFrame.minX)"
+        )
+        XCTAssertEqual(
+            fieldFrame.maxX,
+            nextFrame.maxX,
+            accuracy: 1,
+            "\(appearance) pairing field maxX \(fieldFrame.maxX) != 下一步 maxX \(nextFrame.maxX)"
+        )
+        XCTAssertFalse(next.firstMatch.isEnabled, "\(appearance) 下一步 enabled on empty pairing link")
         replaceText(field, with: "https://example.com")
         XCTAssertTrue(
             app.descendants(matching: .any)["connectionsInvalidPairingLink"].waitForExistence(timeout: 4)

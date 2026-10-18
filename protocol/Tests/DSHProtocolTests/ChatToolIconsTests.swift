@@ -105,6 +105,27 @@ final class ChatToolIconsTests: XCTestCase {
         XCTAssertFalse(isForbiddenChatToolSystemSymbol(commandCardOfficialSymbol()))
     }
 
+    func testChatDockUsesDesktopOutlineIcons() {
+        XCTAssertEqual(chatTodoDockSymbol(), "official.checklistOutline")
+        XCTAssertEqual(chatGoalDockSymbol(), "official.goalOutline")
+        XCTAssertEqual(chatQueueDockSymbol(), "official.queueOutline")
+        XCTAssertNotEqual(chatQueueDockSymbol(), viewOptionsOfficialIdentifier(.filterShow))
+        XCTAssertEqual(chatTodoPanelIdentifier(), "todoPanel")
+        XCTAssertEqual(chatGoalBarIdentifier(), "goalBar")
+        XCTAssertEqual(chatQueueDockIdentifier(), "promptQueue")
+        XCTAssertEqual(queueSteerSendSymbol(), "official.sendOutline")
+        XCTAssertEqual(queueActionIconSizePoints, 14)
+        XCTAssertTrue(queueSteerSendFillPath.hasPrefix("M6.97211 1.94476"))
+        XCTAssertEqual(queueSteerSendStemPath, "M7.97571 14.5732L8.02421 2.34139")
+        XCTAssertTrue(isForbiddenChatDockSystemSymbol("checklist"))
+        XCTAssertTrue(isForbiddenChatDockSystemSymbol("target"))
+        XCTAssertTrue(isForbiddenChatDockSystemSymbol("trash"))
+        XCTAssertTrue(isForbiddenChatDockSystemSymbol("pencil"))
+        XCTAssertTrue(isForbiddenChatDockSystemSymbol("paperplane"))
+        XCTAssertFalse(isForbiddenChatDockSystemSymbol("official.checklistOutline"))
+        XCTAssertFalse(isForbiddenChatDockSystemSymbol(queueSteerSendSymbol()))
+    }
+
     func testDocumentedSkipsHaveNoInventedArtwork() {
         XCTAssertFalse(connectionsScanUsesOfficialGlyph)
         XCTAssertTrue(connectionsScanSkipReason.contains("no QR"))

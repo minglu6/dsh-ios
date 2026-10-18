@@ -91,7 +91,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R62 | Composer / 模型选择器对齐桌面 Flash `1017` 绿色徽标 | done (#71) |
 | R63 | 会话工具/Jobs/轨迹官方 SVG；远程主机配对链接粘贴；抽屉当前工作区文件夹色 + 官方 fill | done (#72) |
 | R64 | 远程主机卡片间距；配对链接 sheet primitives；landing 工作区 chip 官方 chevron/check/plus | done (#73) |
-| R65 | 远程主机附近设备电脑图标 + 管理 sheet 官方 trash/refresh/edit；进 CI 截图路径 | this PR |
+| R65 | 远程主机附近设备电脑图标 + 管理 sheet 官方 trash/refresh/edit；进 CI 截图路径 | done (#74) |
+| R66 | 配对链接输入框与按钮同一 22pt 边距；Todo/Goal/Queue dock 与设置壳模型行官方 SVG + CI `chatDock`/`settingsShell` | this PR |
 
 ---
 
@@ -118,7 +119,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Markdown | `ui-chat` primitives | `Markdown.kt` | `protocol/Markdown.swift` + `Features/Chat/MarkdownView.swift` |
 | Official icons | desktop `D.*` | Android vector set | `Design/Icons.swift` SF Symbol map |
 | Connection keep-alive | — | `ConnectionService` FGS | `ConnectionKeeper` `beginBackgroundTask` + ping + `BGAppRefreshTask` `dev.dsh.pocket.ios.refresh` + path monitor + local notify |
-| Controller connections | Host pocket `settings.section` `pocket` is QR on the **computer**; Android `ConnectionsScreen` | `Screens.kt` `ConnectionsScreen` / `ConnDeviceRow` + PairLinkSheet（`9aa43c4` / `33b97b2`） | `Features/Connections/ConnectionsView.swift` + `ConnectionsLayout.swift`：全屏「远程主机」；已配对 / 附近 / 动作卡间距 12pt（`Card` 竖向 6）；已配对与附近之间是 ConnSectionTitle 14/20+16/4（52pt）；附近设备 Material Outlined Computer（primitives 无 IconComputer）；管理 sheet 官方 refresh/edit/trash（非 SF、非系统 NavigationStack）；ConnSheet `T.Surface` + dragHandle 28pt 顶留白 + 取消 ≥44pt；动作卡 扫码 → 配对链接（`IconLinkOutlineRegular`）→ 输入地址（Material Keyboard）；配对链接 sheet 用桌面 Button/Input token + Android 48 高，粘贴后进既有配对确认，不立刻连接。入口在抽屉脚，Settings 无连接分组 |
+| Controller connections | Host pocket `settings.section` `pocket` is QR on the **computer**; Android `ConnectionsScreen` | `Screens.kt` `ConnectionsScreen` / `ConnDeviceRow` + PairLinkSheet（`9aa43c4` / `33b97b2`） | `Features/Connections/ConnectionsView.swift` + `ConnectionsLayout.swift`：全屏「远程主机」；已配对 / 附近 / 动作卡间距 12pt（`Card` 竖向 6）；已配对与附近之间是 ConnSectionTitle 14/20+16/4（52pt）；附近设备 Material Outlined Computer（primitives 无 IconComputer）；管理 sheet 官方 refresh/edit/trash（非 SF、非系统 NavigationStack）；删除无确认（Android 立即 `removeProfile`）；ConnSheet `T.Surface` + dragHandle 28pt 顶留白 + 取消 ≥44pt；动作卡 扫码 → 配对链接（`IconLinkOutlineRegular`）→ 输入地址（Material Keyboard）；配对链接 sheet 用桌面 Button/Input token + Android 48 高，**输入框与按钮同一 22pt 外沿**（去掉 ConnField 18 leftover），粘贴后进既有配对确认，不立刻连接。入口在抽屉脚，Settings 无连接分组 |
 
 ---
 
@@ -1691,4 +1692,72 @@ Android `MainActivity` 窄屏是 `ModalNavigationDrawer`（按钮 / 手势滑出
 - 扫码 QR / Inspector viewfinder / 终端 ProgressView（primitives 无 artwork）。
 - Todo/Goal/Queue dock SF：桌面有 `IconChecklistOutline` / `IconGoalOutline` / `IconTrashOutline` / `IconEditOutline`，但 CI chat fixture 不画这些 dock，本轮不加行以免改 `*-chat.png`。
 - 设置壳模型行 SF `cpu`：CI 进通用页；对应桌面 `IconDataOutlineMedium`。
+- 工作区 hover-chevron 互换（触控无 hover）。
+
+## Round 66 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`；Android `33b97b2`）
+
+基线 `main` `f423310`（#74 Round 65）。桌面是源。禁止自创颜色/图标/间距；无系统蓝；无 ActionSheet；文案「远程主机」。
+
+### 必须核实（已对齐，本轮不改）
+
+| 项 | 判定 |
+| --- | --- |
+| landing「探索未至之境」+ whale | **PASS** |
+| Composer 贴底 | **PASS** |
+| 抽屉设置 vs 绿点+主机名独立热区 ≥16pt | **PASS** |
+| 远程主机整页 | **PASS** |
+| 开抽屉 / 滚动 / 进设置 / 进远程主机收键盘 | **PASS** |
+| 权限 chip 只图标 + #68 菜单 | **PASS** |
+| #69 Start/Browser/Inspector 全屏；#70 官方 SVG；#71 Flash 1017；#72 配对链接流程与当前工作区文件夹色；#73 卡片间距与配对 sheet primitives；#74 附近电脑图标/管理 sheet 官方 SVG/取消 ≥44pt/分组标题行高 20 | **PASS** |
+| `/` 菜单全量不显示数量；聊天顶栏无分享；用户消息下无常驻复制 | **PASS** |
+
+### 本轮修
+
+| 项 | 桌面 / Android | iOS | 处理 |
+| --- | --- | --- | --- |
+| 配对链接输入框 vs「粘贴链接 / 下一步」水平边距 | Android `PairLinkSheet`：`ConnField` 外沿 18、按钮行 22。桌面 Input wrap pad 只是内部 `0 8`，没有这层 sheet inset。Phone chrome 是 SheetTitle / hint / 按钮已经在用的 22 | 输入框贴 ~20pt（18 leftover），按钮 ~25pt（22） | 输入框改 `connectionsSheetContentPaddingPoints = 22`，与按钮同一 token。CI 用 `connectionsPairingLinkFieldBounds`（视觉圆角框，不是内层 UITextField）对按钮行 minX/maxX ±1pt |
+| Todo / Goal / Queue dock SF | 桌面 `TodoPanel` / `GoalBar` / `QueueDock`：`IconChecklistOutlineRegular` / `IconGoalOutlineRegular` / `IconQueueOutlineRegular`（ChatLinesOutline，id 与视图选项 `official.queue` 分开）+ 队列动作 `IconEditOutline` / `IconTrashOutline` / `IconSendOutlineRegular`（不是 InputBar filled send） | SF `checklist` / `target` / `text.line.first.and.arrowtriangle.forward` / `pencil` / `trash` / `paperplane`；CI `chat` fixture 不画这些行 | 官方 SVG。steer 用 `official.sendOutline`。新 CI 屏 `chatDock`（light+dark），不改 `*-chat.png` |
+| 设置壳模型行 SF `cpu` | 桌面/Android 设置壳「模型」是 `IconDataOutlineMedium`（fill 圆柱 + `ICON_MEDIUM_STROKE` 1.3 齿轮）。通用 `IconSettingsOutlineRegular`，预设 `IconAgentPresetOutline` | SF `cpu`；CI `settings` 进的是通用页 | `official.dataOutline` size 16。新 CI 屏 `settingsShell`。删掉无人调用的 SF `nav(_:system:)` |
+
+### 有意 skip（桌面源码依据）
+
+| 项 | 判定 | 依据 |
+| --- | --- | --- |
+| 管理 sheet「删除」无确认 | **skip** | Android `ProfileManageSheet` `ConnOptionRow(L.delete())` 直接 `Pocket.removeProfile; onDismiss()`，无 `AlertDialog`。桌面 Host `ui-settings` pocket 是电脑二维码页，不是这张手机管理 sheet，没有对应 Modal |
+| `/` 菜单行图标仍 SF | **skip / 下轮** | 桌面/Android `CommandPopupSheet`：`D.paperclip` / `D.data` / `D.goal` / `D.plan` / `D.paperPlane` / `D.compact` / `D.permission` / `D.download` = primitives Outline。iOS `commandMenuIconSymbol` 仍是 SF。缺尚未提取的 `IconPaperclipOutline`；本轮不扩 slash 以免改 `*-slash.png` |
+| 计划 chip `D.plan` SF | **skip** | 桌面 modes 行是 `IconPlanOutlineRegular`。CI `chat`/`landing` `planMode=false`，chip 不进截图 |
+| 通用设置 Toggle / 语言 Picker | **skip** | 桌面 PreferenceRow 是自定义开关 / MenuSurface。Phone 映射为 `.labelsHidden()` Toggle 与 `Picker` `.tint(T.ink)`，不是系统蓝 ActionSheet。无 primitives 开关 artwork |
+| Todo in_progress `ProgressView` | **skip** | primitives 无 loading artwork（与终端 ProgressView 同一铁律） |
+
+### 逐屏核对（light+dark）
+
+| 屏 | 判定 | 说明 |
+| --- | --- | --- |
+| landing | **PASS** | 标题/鲸/Composer 贴底；工作区 chip 官方 chevron |
+| chat | **PASS** | 无分享、无用户常驻复制。dock 改走 `chatDock`，本屏不加行 |
+| chatDock | **本轮修** | Todo/Goal/Queue 官方 SVG；禁 SF checklist/target/pencil/trash/paperplane |
+| drawer | **PASS** | 设置 vs 绿点+主机名；当前工作区 `businessPrimary` 文件夹 |
+| jobs | **PASS** | 官方 chevronDown / stopFill |
+| trajectory / trajectoryDetail | **PASS** | KIND_ICON + 详情官方 SVG |
+| inspector | **skip** | viewfinder / 类型过滤无 primitives artwork |
+| browser | **PASS** | #70 官方工具栏 |
+| terminal | **skip** | 中间 ProgressView（不发明 loading SVG） |
+| settings | **PASS** | 外观立方 + 权限 inline。仍进通用页 |
+| settingsShell | **本轮修** | 模型 `IconDataOutlineMedium`；禁 SF cpu/slider/person.crop.circle |
+| plugins / builtinPlugins | **skip / PASS** | 列表搜索框有意保留 SF；内置刷新已官方 |
+| models / permission / slash | **PASS / skip** | 官方 chevron/check；斜杠无数量。slash 行图标仍 SF，见上 |
+| schedule / sessionActions / viewOptions / start / composerStop | **PASS** | 既有官方 SVG / 全屏 Start |
+| connections / pairingLink / nearby / manage | **本轮修 / PASS** | 输入框与按钮 22pt 对齐 ±1pt。删除无确认（Android 同源）。附近/管理 #74 不回归 |
+
+### npm dist-tag（只报告，不 bump 基线）
+
+`npm view @deepseek-ai/dsh-client-ui-primitives dist-tags`：`alpha` 仍 `0.2.1-alpha.5`，`next` 仍 `0.2.1-rc.2`，`latest` 仍旧线 `0.0.1-rc.1`。`0.2.1-alpha.5` 之后没有新的 alpha。rc.2 相对 alpha.5 的 UI 增量与 #74 相同（只报告，不升级）。
+
+本轮核对后**不改**（平台 / hide / 禁止发明）
+
+- `turnNavigation` / `toBottom` FAB / `ask.review` / hover chevron / Account/shortcuts / CompatibilityBanner / 审批通知 / stop-state **行为**。
+- 插件列表搜索框（桌面 `ui-plugin-manager` 无该槽）。
+- 扫码 QR / Inspector viewfinder / 终端 ProgressView（primitives 无 artwork）。
+- 管理 sheet 删除确认（Android 立即删除；桌面 pocket 不是这张 sheet）。
+- `/` 菜单行 SF 图标（缺 paperclip 提取；下轮再搬）。
 - 工作区 hover-chevron 互换（触控无 hover）。
