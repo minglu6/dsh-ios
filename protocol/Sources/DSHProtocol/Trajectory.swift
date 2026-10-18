@@ -302,9 +302,9 @@ public func srgbMix(_ a: UInt32, _ b: UInt32, amountA: Double) -> UInt32 {
     func mix(_ lhs: Double, _ rhs: Double) -> UInt32 {
         UInt32((lhs * amountA + rhs * (1 - amountA)).rounded())
     }
-    let r = mix(channel(a, 16), channel(b, 16))
-    let g = mix(channel(a, 8), channel(b, 8))
-    let blue = mix(channel(a, 0), channel(b, 0))
+    let r = mix(channel(a, shift: 16), channel(b, shift: 16))
+    let g = mix(channel(a, shift: 8), channel(b, shift: 8))
+    let blue = mix(channel(a, shift: 0), channel(b, shift: 0))
     return (r << 16) | (g << 8) | blue
 }
 
