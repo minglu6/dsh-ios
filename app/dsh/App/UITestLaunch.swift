@@ -171,8 +171,9 @@ extension AppModel {
     /// Desktop `JobListAction` only paints the header trigger when the
     /// session can see at least one job. Seed a live bash row so chat /
     /// trajectory screenshots lock the official chevron (not SF `clock`).
+    /// Do not advertise `jobs.list`: that starts `retainJobsWatch`, which
+    /// clears the snapshot and then has no Host client to refill it.
     fileprivate func seedUITestJobs() {
-        ops.insert("jobs.list")
         jobs = [
             JobRow(
                 id: "bash-1",

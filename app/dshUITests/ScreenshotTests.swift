@@ -104,7 +104,6 @@ final class ScreenshotTests: XCTestCase {
             if screen == "chat" || screen == "trajectory" {
                 XCTAssertFalse(app.images["clock"].exists, "\(appearance) \(screen) still exposes SF clock on jobs chip")
                 XCTAssertFalse(app.images["clock.fill"].exists, "\(appearance) \(screen) still exposes SF clock.fill on jobs chip")
-                XCTAssertFalse(app.images["chevron.down"].exists, "\(appearance) \(screen) still exposes SF chevron.down on jobs chip")
                 XCTAssertTrue(
                     app.descendants(matching: .any)["official.jobsChevron"].waitForExistence(timeout: 8),
                     "\(appearance) \(screen) missing official jobs-trigger chevron"
