@@ -65,7 +65,7 @@ private struct BrowserPanelContent: View {
             Button {
                 tabs.add()
             } label: {
-                Image(systemName: "plus").font(.system(size: 12)).foregroundStyle(T.text2).frame(width: 32, height: 32)
+                OfficialGlyph(kind: .plusOutline, size: 12, color: T.text2).frame(width: 32, height: 32)
             }
             .accessibilityLabel(L.t("新标签页", "New tab"))
         }
@@ -114,15 +114,15 @@ private struct BrowserSelectedPage: View {
 
     private var toolbar: some View {
         HStack(spacing: 4) {
-            IconHit(system: "chevron.left", label: L.t("后退", "Back"), enabled: state.canBack, tint: state.canBack ? T.text2 : T.text3.opacity(0.4)) {
+            IconHit(kind: .chevronLeft, label: L.t("后退", "Back"), enabled: state.canBack, tint: state.canBack ? T.text2 : T.text3.opacity(0.4)) {
                 state.error = nil
                 state.goBack()
             }
-            IconHit(system: "chevron.right", label: L.t("前进", "Forward"), enabled: state.canForward, tint: state.canForward ? T.text2 : T.text3.opacity(0.4)) {
+            IconHit(kind: .chevronRight, label: L.t("前进", "Forward"), enabled: state.canForward, tint: state.canForward ? T.text2 : T.text3.opacity(0.4)) {
                 state.error = nil
                 state.goForward()
             }
-            IconHit(system: "arrow.clockwise", label: L.t("刷新", "Reload"), enabled: !state.url.isEmpty, tint: T.text2) {
+            IconHit(kind: .refreshOutline, label: L.t("刷新", "Reload"), enabled: !state.url.isEmpty, tint: T.text2) {
                 state.reload()
             }
             HStack(spacing: 0) {
@@ -140,7 +140,8 @@ private struct BrowserSelectedPage: View {
                 .onSubmit { go() }
                 .accessibilityLabel(L.t("输入 HTTP(S) 地址", "Enter an HTTP(S) address"))
                 Button(action: go) {
-                    Image(systemName: "link").font(.system(size: 12)).foregroundStyle(T.text2).frame(width: 32, height: 32)
+                    OfficialGlyph(kind: .linkOutline, size: CGFloat(browserToolbarIconSizePoints), color: T.text2)
+                        .frame(width: 32, height: 32)
                 }
                 .accessibilityLabel(L.t("前往", "Go"))
             }
@@ -148,7 +149,7 @@ private struct BrowserSelectedPage: View {
             .frame(height: 32)
             .background(T.bg, in: RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(T.border, lineWidth: 0.5))
-            IconHit(system: "arrow.up.right", label: L.t("在系统浏览器中打开", "Open in system browser"), enabled: !state.url.isEmpty, tint: T.text2) {
+            IconHit(kind: .rightUp, label: L.t("在系统浏览器中打开", "Open in system browser"), enabled: !state.url.isEmpty, tint: T.text2) {
                 external()
             }
         }
@@ -229,7 +230,7 @@ private struct BrowserTabChip: View {
             Button {
                 tabs.close(page)
             } label: {
-                Image(systemName: "xmark").font(.system(size: 9)).foregroundStyle(T.text3).frame(width: 32, height: 32)
+                OfficialGlyph(kind: .closeOutline, size: 9, color: T.text3).frame(width: 32, height: 32)
             }
             .accessibilityLabel(L.t("关闭", "Close"))
         }
@@ -242,7 +243,7 @@ private struct BrowserTabChip: View {
 }
 
 private struct IconHit: View {
-    let system: String
+    let kind: OfficialGlyph.Kind
     let label: String
     let enabled: Bool
     let tint: Color
@@ -250,7 +251,8 @@ private struct IconHit: View {
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: system).font(.system(size: 14)).foregroundStyle(tint).frame(width: 32, height: 32)
+            OfficialGlyph(kind: kind, size: CGFloat(browserToolbarIconSizePoints), color: tint)
+                .frame(width: 32, height: 32)
         }
         .disabled(!enabled)
         .accessibilityLabel(label)

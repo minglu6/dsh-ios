@@ -461,6 +461,35 @@ public let pluginRefreshOutlineArcPath =
     "M14.5001 8C14.5 9.28552 14.1188 10.5422 13.4045 11.611C12.6903 12.6799 11.6752 13.5129 10.4875 14.0049C9.29982 14.4968 7.99295 14.6255 6.73212 14.3747C5.4713 14.124 4.31314 13.505 3.4041 12.596C2.49514 11.687 1.87614 10.5288 1.62537 9.26798C1.37459 8.00716 1.50331 6.70028 1.99525 5.51261C2.48719 4.32494 3.32025 3.30981 4.3891 2.59557C5.45795 1.88134 6.71458 1.50008 8.0001 1.5C9.9001 1.5 11.7001 2.3 13.0001 3.6L14.5001 5.1"
 public let pluginRefreshOutlineHeadPath = "M14.4999 1.5V5.1H10.8999"
 
+/// Desktop `ui-theme` AppearanceRow cubes: `IconLightOutlineMedium` /
+/// `IconDarkOutlineMedium` / `IconFollowsystemOutlineMedium` (`ICON_MEDIUM_STROKE` 1.3).
+public let appearanceCubeIconStrokeWidth: Double = 1.3
+public let appearanceLightCorePath =
+    "M8.00007 11.8117C10.1052 11.8117 11.8117 10.1052 11.8117 8.00007C11.8117 5.89499 10.1052 4.18848 8.00007 4.18848C5.89499 4.18848 4.18848 5.89499 4.18848 8.00007C4.18848 10.1052 5.89499 11.8117 8.00007 11.8117Z"
+public let appearanceLightRayPaths = [
+    "M13.3899 8H15.1499",
+    "M11.8115 11.8115L13.0556 13.0556",
+    "M8 13.3901V15.1501",
+    "M4.18868 11.8115L2.94458 13.0556",
+    "M2.6101 8H0.850098",
+    "M4.18868 4.18856L2.94458 2.94446",
+    "M8 2.6101V0.850098",
+    "M11.8115 4.18856L13.0556 2.94446",
+]
+public let appearanceDarkPath =
+    "M14.1127 8.70663C14.2576 8.60602 14.4627 8.71355 14.4386 8.88834C14.2901 9.96567 13.8731 10.9912 13.2229 11.8692C12.479 12.8735 11.4613 13.6421 10.2917 14.0829C9.1222 14.5236 7.85038 14.6179 6.62865 14.3543C5.40692 14.0907 4.28709 13.4805 3.40332 12.5967C2.51955 11.7129 1.90931 10.5931 1.64572 9.37135C1.38212 8.14962 1.47635 6.87779 1.91711 5.70825C2.35787 4.5387 3.12647 3.52103 4.13083 2.77714C5.00878 2.12689 6.03433 1.70994 7.11166 1.5614C7.28645 1.5373 7.39397 1.74238 7.29337 1.88734C6.68703 2.76099 6.37885 3.81241 6.42313 4.88345C6.47392 6.11194 6.98471 7.27645 7.85413 8.14587C8.72355 9.01529 9.88805 9.52608 11.1166 9.57687C12.1876 9.62114 13.239 9.31296 14.1127 8.70663Z"
+public let appearanceFollowSystemScreenPath =
+    "M13.5 2.5H2.5C1.94772 2.5 1.5 2.94772 1.5 3.5V11.5C1.5 12.0523 1.94772 12.5 2.5 12.5H13.5C14.0523 12.5 14.5 12.0523 14.5 11.5V3.5C14.5 2.94772 14.0523 2.5 13.5 2.5Z"
+public let appearanceFollowSystemStandPath = "M5 14.5H11"
+
+public func appearanceLightSymbol() -> String { "official.appearanceLight" }
+public func appearanceDarkSymbol() -> String { "official.appearanceDark" }
+public func appearanceFollowSystemSymbol() -> String { "official.appearanceFollowSystem" }
+
+public func isForbiddenSystemAppearanceSymbol(_ name: String) -> Bool {
+    name == "sun.max" || name == "moon" || name == "desktopcomputer"
+}
+
 /// Desktop slash-menu description clamp (`InputBar.module.css` line-clamp: 2).
 public let commandMenuDescriptionLineLimit = 2
 

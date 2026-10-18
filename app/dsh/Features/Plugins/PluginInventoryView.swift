@@ -16,7 +16,7 @@ struct PluginInventoryView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Button { model.pop() } label: { Image(systemName: "chevron.left").foregroundStyle(T.ink) }
+                Button { model.pop() } label: { OfficialGlyph(kind: .chevronLeft, size: 16, color: T.ink) }
                 Text(L.builtinPluginsNav()).font(.headline).foregroundStyle(T.ink)
                 Spacer()
                 Button { refresh += 1 } label: {

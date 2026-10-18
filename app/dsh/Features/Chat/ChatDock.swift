@@ -304,9 +304,7 @@ struct QuestionReplyRow: View {
                         if copied {
                             OfficialGlyph(kind: .checkOutline, size: 14, color: T.text3)
                         } else {
-                            Image(systemName: "doc.on.doc")
-                                .font(.system(size: 13))
-                                .foregroundStyle(T.text3)
+                            OfficialGlyph(kind: .copyOutline, size: 14, color: T.text3)
                         }
                     }
                     .frame(width: 28, height: 28)

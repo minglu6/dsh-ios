@@ -72,6 +72,11 @@ final class ScreenshotTests: XCTestCase {
             }
             if screen == "start" {
                 try assertHostSurfaceFullScreen(app, id: "startPanel", appearance: appearance)
+                XCTAssertFalse(app.images["chevron.left"].exists, "\(appearance) start still exposes SF chevron.left")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.chevronLeft"].waitForExistence(timeout: 8),
+                    "\(appearance) start missing official back chevron"
+                )
                 let files = app.descendants(matching: .any)["start.工作区文件"]
                 XCTAssertTrue(files.waitForExistence(timeout: 8), "\(appearance) start missing workspace card")
                 let panel = app.descendants(matching: .any)["startPanel"].firstMatch
@@ -84,9 +89,30 @@ final class ScreenshotTests: XCTestCase {
             }
             if screen == "browser" {
                 try assertHostSurfaceFullScreen(app, id: "browserPanel", appearance: appearance)
+                XCTAssertFalse(app.images["plus"].exists, "\(appearance) browser still exposes SF plus")
+                XCTAssertFalse(app.images["chevron.left"].exists, "\(appearance) browser still exposes SF chevron.left")
+                XCTAssertFalse(app.images["chevron.right"].exists, "\(appearance) browser still exposes SF chevron.right")
+                XCTAssertFalse(app.images["arrow.clockwise"].exists, "\(appearance) browser still exposes SF arrow.clockwise")
+                XCTAssertFalse(app.images["link"].exists, "\(appearance) browser still exposes SF link")
+                XCTAssertFalse(app.images["arrow.up.right"].exists, "\(appearance) browser still exposes SF arrow.up.right")
+                XCTAssertFalse(app.images["xmark"].exists, "\(appearance) browser still exposes SF xmark")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.chevronLeft"].waitForExistence(timeout: 8),
+                    "\(appearance) browser missing official chevronLeft"
+                )
+                XCTAssertTrue(app.descendants(matching: .any)["official.chevronRight"].exists, "\(appearance) browser missing official chevronRight")
+                XCTAssertTrue(app.descendants(matching: .any)["official.refreshOutline"].exists, "\(appearance) browser missing official refresh")
+                XCTAssertTrue(app.descendants(matching: .any)["official.linkOutline"].exists, "\(appearance) browser missing official link")
+                XCTAssertTrue(app.descendants(matching: .any)["official.rightUp"].exists, "\(appearance) browser missing official right-up")
+                XCTAssertTrue(app.descendants(matching: .any)["official.closeOutline"].exists, "\(appearance) browser missing official close")
             }
             if screen == "inspector" {
                 try assertHostSurfaceFullScreen(app, id: "sessionInspector", appearance: appearance)
+                XCTAssertFalse(app.images["chevron.left"].exists, "\(appearance) inspector still exposes SF chevron.left")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.chevronLeft"].waitForExistence(timeout: 8),
+                    "\(appearance) inspector missing official back chevron"
+                )
             }
             if screen == "landing" || screen == "drawer" {
                 XCTAssertFalse(app.images["folder.fill"].exists, "\(appearance) \(screen) still exposes SF folder.fill")
@@ -153,6 +179,20 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertGreaterThanOrEqual(settingsFrame.height, 44, "\(appearance) settings hit shorter than 44pt")
                 XCTAssertGreaterThanOrEqual(hostFrame.height, 44, "\(appearance) host hit shorter than 44pt")
             }
+            if screen == "landing" || screen == "chat" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
+                XCTAssertFalse(app.images["sidebar.left"].exists, "\(appearance) \(screen) still exposes SF sidebar.left")
+                XCTAssertFalse(app.images["sidebar.right"].exists, "\(appearance) \(screen) still exposes SF sidebar.right")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.panelLeft"].waitForExistence(timeout: 8),
+                    "\(appearance) \(screen) missing official panel-left glyph"
+                )
+            }
+            if screen == "chat" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.panelRight"].waitForExistence(timeout: 8),
+                    "\(appearance) \(screen) missing official panel-right glyph"
+                )
+            }
             if screen == "landing" || screen == "chat" {
                 XCTAssertFalse(app.images["plus"].exists, "\(appearance) \(screen) still exposes SF plus")
                 XCTAssertTrue(
@@ -209,6 +249,11 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertFalse(app.staticTexts["缓存命中中 69%"].exists, "\(appearance) chat has extra 中 in cache-hit copy")
             }
             if screen == "plugins" {
+                XCTAssertFalse(app.images["chevron.left"].exists, "\(appearance) plugins still exposes SF chevron.left")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.chevronLeft"].waitForExistence(timeout: 8),
+                    "\(appearance) plugins missing official back chevron"
+                )
                 let info = app.buttons["pluginInfoButton"]
                 XCTAssertTrue(info.waitForExistence(timeout: 15), "\(appearance) plugins missing (i)")
                 XCTAssertFalse(app.images["info.circle"].exists, "\(appearance) plugins still exposes SF info.circle")
@@ -323,8 +368,25 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) permission picker looks like a full-screen sheet (\(picker) vs \(window))"
                 )
             }
+            if screen == "schedule" || screen == "terminal" {
+                XCTAssertFalse(app.images["chevron.left"].exists, "\(appearance) \(screen) still exposes SF chevron.left")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.chevronLeft"].waitForExistence(timeout: 8),
+                    "\(appearance) \(screen) missing official back chevron"
+                )
+            }
             if screen == "connections" {
                 assertConnectionsIsFullScreen(app, appearance: appearance)
+                XCTAssertFalse(app.images["chevron.left"].exists, "\(appearance) connections still exposes SF chevron.left")
+                XCTAssertFalse(app.images["link"].exists, "\(appearance) connections still exposes SF link")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.chevronLeft"].waitForExistence(timeout: 8),
+                    "\(appearance) connections missing official back chevron"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.linkOutline"].exists,
+                    "\(appearance) connections missing official address-link glyph"
+                )
             }
             if screen == "trajectory" {
                 XCTAssertTrue(
@@ -372,9 +434,37 @@ final class ScreenshotTests: XCTestCase {
                     app.descendants(matching: .any)["official.dislikeOutline"].exists,
                     "\(appearance) chat missing official dislike glyph"
                 )
+                XCTAssertFalse(app.images["square.on.square"].exists, "\(appearance) chat still exposes SF square.on.square")
+                XCTAssertFalse(app.images["doc.on.doc"].exists, "\(appearance) chat still exposes SF doc.on.doc")
+                XCTAssertFalse(app.images["arrow.triangle.branch"].exists, "\(appearance) chat still exposes SF branch")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.copyOutline"].waitForExistence(timeout: 8),
+                    "\(appearance) chat missing official copy glyph"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.branchOutline"].exists,
+                    "\(appearance) chat missing official branch glyph"
+                )
                 assertOfficialMenuChrome(app, appearance: appearance, screen: screen)
             }
             if screen == "settings" {
+                XCTAssertFalse(app.images["sun.max"].exists, "\(appearance) settings still exposes SF sun.max")
+                XCTAssertFalse(app.images["moon"].exists, "\(appearance) settings still exposes SF moon")
+                XCTAssertFalse(app.images["desktopcomputer"].exists, "\(appearance) settings still exposes SF desktopcomputer")
+                XCTAssertFalse(app.images["chevron.left"].exists, "\(appearance) settings still exposes SF chevron.left")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.appearanceLight"].waitForExistence(timeout: 8),
+                    "\(appearance) settings missing official light cube"
+                )
+                XCTAssertTrue(app.descendants(matching: .any)["official.appearanceDark"].exists, "\(appearance) settings missing official dark cube")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.appearanceFollowSystem"].exists,
+                    "\(appearance) settings missing official follow-system cube"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.chevronLeft"].waitForExistence(timeout: 8),
+                    "\(appearance) settings missing official back chevron"
+                )
                 XCTAssertTrue(
                     app.descendants(matching: .any)["settingsPermissionSelect"].waitForExistence(timeout: 15),
                     "\(appearance) settings missing desktop PermissionRow select"
@@ -561,6 +651,14 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertFalse(
             app.images["chevron.up"].exists,
             "\(appearance) \(screen) still exposes SF chevron.up"
+        )
+        XCTAssertFalse(
+            app.images["chevron.left"].exists,
+            "\(appearance) \(screen) still exposes SF chevron.left"
+        )
+        XCTAssertFalse(
+            app.images["chevron.right"].exists,
+            "\(appearance) \(screen) still exposes SF chevron.right"
         )
         XCTAssertFalse(
             app.images["checkmark"].exists,

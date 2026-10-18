@@ -63,7 +63,7 @@ struct AgentPresetSettingsView: View {
 
     private var header: some View {
         HStack {
-            Button(action: model.pop) { Image(systemName: "chevron.left").foregroundStyle(T.ink) }
+            Button(action: model.pop) { OfficialGlyph(kind: .chevronLeft, size: 16, color: T.ink) }
             Text(L.agentPresets()).font(.headline).foregroundStyle(T.ink)
             Spacer()
             if error != nil {

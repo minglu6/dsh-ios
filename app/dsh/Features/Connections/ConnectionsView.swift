@@ -46,7 +46,7 @@ struct ConnectionsView: View {
                         ) { showScan = true }
                         ConnActionRow(
                             title: L.enterAddress(),
-                            system: "link",
+                            official: .linkOutline,
                             divider: false
                         ) { openAddressSheet() }
                     }
@@ -131,7 +131,7 @@ struct ConnectionsView: View {
 
     private var header: some View {
         HStack {
-            Button(action: model.pop) { Image(systemName: "chevron.left").foregroundStyle(T.ink) }
+            Button(action: model.pop) { OfficialGlyph(kind: .chevronLeft, size: 16, color: T.ink) }
                 .accessibilityIdentifier("navBack")
             Text(L.connections())
                 .font(.headline)
@@ -143,7 +143,7 @@ struct ConnectionsView: View {
                 // is system-prompted by NWBrowser — no equivalent request API.
                 Button(L.diagnosticsCopy()) { Task { _ = await model.copyDiagnostics() } }
             } label: {
-                Image(systemName: D.ellipsis).foregroundStyle(T.ink).padding(8)
+                OfficialGlyph(kind: .ellipsis, size: 16, color: T.ink).padding(8)
             }
             .accessibilityLabel(L.moreActions())
         }
@@ -467,9 +467,7 @@ private struct ConnDeviceRow<Leading: View>: View {
                         .opacity(warn ? 0.4 : 1)
                 }
                 Button(action: onClick) {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14))
-                        .foregroundStyle(T.caption)
+                    OfficialGlyph(kind: .chevronRight, size: 14, color: T.caption)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(L.moreActions())
@@ -486,7 +484,8 @@ private struct ConnDeviceRow<Leading: View>: View {
 /// Desktop settingsRow action: icon + title + chevron.
 private struct ConnActionRow: View {
     var title: String
-    var system: String
+    var official: OfficialGlyph.Kind? = nil
+    var system: String? = nil
     var divider: Bool
     var onClick: () -> Void
 
@@ -494,17 +493,23 @@ private struct ConnActionRow: View {
         VStack(spacing: 0) {
             Button(action: onClick) {
                 HStack(spacing: 12) {
-                    Image(systemName: system)
-                        .font(.system(size: 18))
-                        .foregroundStyle(T.ink)
-                        .frame(width: 18, height: 18)
+                    Group {
+                        if let official {
+                            OfficialGlyph(kind: official, size: 18, color: T.ink)
+                        } else if let system {
+                            Image(systemName: system)
+                                .font(.system(size: 18))
+                                .foregroundStyle(T.ink)
+                        } else {
+                            fatalError("ConnActionRow requires official or system icon")
+                        }
+                    }
+                    .frame(width: 18, height: 18)
                     Text(title)
                         .font(.system(size: 16))
                         .foregroundStyle(T.ink)
                     Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14))
-                        .foregroundStyle(T.caption)
+                    OfficialGlyph(kind: .chevronRight, size: 14, color: T.caption)
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 15)

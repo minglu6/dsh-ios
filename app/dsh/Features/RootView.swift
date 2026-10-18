@@ -147,7 +147,7 @@ struct RootView: View {
                     Keyboard.dismiss()
                     model.showDrawer = true
                 } label: {
-                    Image(systemName: D.panelLeft).foregroundStyle(T.ink)
+                    OfficialGlyph(kind: .panelLeft, size: 16, color: T.ink)
                 }
                 .accessibilityIdentifier("openDrawer")
                 BrandWordmark(height: 20)

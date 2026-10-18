@@ -691,6 +691,17 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertEqual(pluginInfoOutlineDotPath, "M7.6127 3.18921V4.55986H6.38735V3.18921H7.6127Z")
         XCTAssertTrue(pluginRefreshOutlineArcPath.hasPrefix("M14.5001 8C14.5"))
         XCTAssertEqual(pluginRefreshOutlineHeadPath, "M14.4999 1.5V5.1H10.8999")
+        XCTAssertEqual(appearanceCubeIconStrokeWidth, 1.3)
+        XCTAssertEqual(appearanceLightSymbol(), "official.appearanceLight")
+        XCTAssertEqual(appearanceDarkSymbol(), "official.appearanceDark")
+        XCTAssertEqual(appearanceFollowSystemSymbol(), "official.appearanceFollowSystem")
+        XCTAssertTrue(appearanceLightCorePath.hasPrefix("M8.00007 11.8117"))
+        XCTAssertEqual(appearanceLightRayPaths.count, 8)
+        XCTAssertTrue(appearanceDarkPath.hasPrefix("M14.1127 8.70663"))
+        XCTAssertEqual(appearanceFollowSystemStandPath, "M5 14.5H11")
+        XCTAssertTrue(isForbiddenSystemAppearanceSymbol("sun.max"))
+        XCTAssertTrue(isForbiddenSystemAppearanceSymbol("desktopcomputer"))
+        XCTAssertFalse(isForbiddenSystemAppearanceSymbol("official.appearanceLight"))
         XCTAssertEqual(pluginInfoLabel(english: false), "插件说明")
         XCTAssertEqual(
             pluginInfoDescription(english: false),
