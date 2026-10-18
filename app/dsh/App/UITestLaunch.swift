@@ -20,6 +20,12 @@ enum UITestLaunch {
         }
         return args[index + 1]
     }
+
+    /// Extra chat rows so the transcript can scroll in keyboard XCUITests
+    /// without changing screenshot fixtures.
+    static var extraChatForKeyboard: Bool {
+        ProcessInfo.processInfo.arguments.contains("-UITestKeyboard")
+    }
 }
 
 extension AppModel {
@@ -118,12 +124,26 @@ extension AppModel {
         archivedIds = []
 
         let clock = now - 5 * 60_000
+        var items: [Item] = [
+            .user(Item.User(key: "u1", text: "你好", at: clock, messageId: "m-user")),
+            .text(Item.Text(key: "a1", text: "你好，我是 DeepSeek。", live: false, at: clock + 2_000, messageId: "m-assistant")),
+        ]
+        if UITestLaunch.extraChatForKeyboard {
+            for i in 2...16 {
+                let at = clock + Int64(i) * 1_000
+                items.append(.user(Item.User(key: "u\(i)", text: "消息 \(i)", at: at, messageId: "m-user-\(i)")))
+                items.append(.text(Item.Text(
+                    key: "a\(i)",
+                    text: "回复 \(i)。",
+                    live: false,
+                    at: at + 500,
+                    messageId: "m-assistant-\(i)"
+                )))
+            }
+        }
         chat = ChatState(
             sessionId: chatId,
-            items: [
-                .user(Item.User(key: "u1", text: "你好", at: clock, messageId: "m-user")),
-                .text(Item.Text(key: "a1", text: "你好，我是 DeepSeek。", live: false, at: clock + 2_000, messageId: "m-assistant")),
-            ],
+            items: items,
             title: "你好",
             loaded: true,
             composerMetrics: ComposerMetrics(

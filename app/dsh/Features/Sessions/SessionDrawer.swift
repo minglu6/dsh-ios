@@ -16,6 +16,7 @@ struct SessionDrawer: View {
     @State private var renameBusy = false
     @State private var draggingSession: String?
     @State private var lastOps: Set<String> = []
+    @FocusState private var searchFocused: Bool
 
     private var visibleOps: Set<String> { model.isOnline ? model.ops : lastOps }
 
@@ -54,6 +55,7 @@ struct SessionDrawer: View {
                 .accessibilityLabel(L.searchSessionsAria())
                 TextField(L.searchSessions(), text: $query)
                     .textInputAutocapitalization(.never)
+                    .focused($searchFocused)
                     .accessibilityIdentifier("sessionSearch")
                 if !query.isEmpty {
                     Button(L.clearSearch()) {
@@ -150,6 +152,7 @@ struct SessionDrawer: View {
                     }
                 }
             }
+            .dshDismissesKeyboardOnScrollAndTap()
             footer
         }
         .background(T.drawer.ignoresSafeArea())
@@ -163,6 +166,7 @@ struct SessionDrawer: View {
             if model.sessionOrderBy == .manual { model.persistManualOrder(value) }
         }
         .onAppear {
+            searchFocused = false
             rememberOps()
             model.refreshSessionsWhenVisible()
         }
@@ -531,6 +535,7 @@ struct SessionDrawer: View {
 
     private func panel<Icon: View>(_ title: String, _ panel: DrawerPanel, @ViewBuilder icon: () -> Icon) -> some View {
         Button {
+            Keyboard.dismiss()
             model.push(.panel(panel))
             model.showDrawer = false
         } label: {
@@ -628,6 +633,7 @@ struct SessionDrawer: View {
 
     private var footerPeerDevice: some View {
         Button {
+            Keyboard.dismiss()
             model.push(.connections)
             model.showDrawer = false
         } label: {
@@ -655,6 +661,7 @@ struct SessionDrawer: View {
 
     private var footerSettings: some View {
         Button {
+            Keyboard.dismiss()
             model.push(.settings)
             model.showDrawer = false
         } label: {

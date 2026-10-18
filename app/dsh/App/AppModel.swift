@@ -297,9 +297,11 @@ final class AppModel: ObservableObject {
         routeStack.append(route)
         // Phone (Android MainActivity): Connections / Settings / panels replace
         // the chat screen and close the session drawer — never a half-sheet
-        // over an open drawer.
+        // over an open drawer. Drop the IME so Settings / 远程主机 are not
+        // covered by a leftover composer keyboard.
         if route.closesSessionDrawer {
             showDrawer = false
+            Keyboard.dismiss()
         }
     }
     func pop() { if !routeStack.isEmpty { routeStack.removeLast() } }

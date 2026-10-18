@@ -211,7 +211,10 @@ struct ChatView: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            Button { model.showDrawer = true } label: {
+            Button {
+                Keyboard.dismiss()
+                model.showDrawer = true
+            } label: {
                 Image(systemName: D.panelLeft).foregroundStyle(T.ink)
             }
             .accessibilityIdentifier("openDrawer")
@@ -355,7 +358,11 @@ struct ChatView: View {
         ZStack(alignment: .bottom) {
             Color.clear
                 .contentShape(Rectangle())
-                .onTapGesture { dismissCommandMenu() }
+                .onTapGesture {
+                    // Blank space outside the menu: close it and drop the IME.
+                    dismissCommandMenu()
+                    Keyboard.dismiss()
+                }
             commandMenu(maxHeight: maxHeight)
                 .padding(.horizontal, 14)
                 .padding(.bottom, 4)
@@ -392,6 +399,8 @@ struct ChatView: View {
     }
 
     private func dismissCommandMenu() {
+        // Picking a row / Escape keeps the composer focused (desktop
+        // CommandMenu): `/skill ` and `/goal ` are typed into right after.
         slashMenu.dismiss(trigger: slashTrigger)
     }
 
@@ -538,6 +547,8 @@ struct ChatView: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
             }
+            .accessibilityIdentifier("chatTranscript")
+            .dshDismissesKeyboardOnScrollAndTap()
             .onAppear {
                 if inspectorNav.picking { return }
                 proxy.scrollTo("bottom", anchor: .bottom)
@@ -589,7 +600,8 @@ struct ChatView: View {
         ComposerView(
             model: model,
             interceptKeys: commandMenuVisible && riskPermission == nil,
-            resignKeyboard: riskPermission != nil,
+            resignKeyboard: (permissionRiskDismissesKeyboard && riskPermission != nil)
+                || (openingSessionDrawerResignsComposer && model.showDrawer),
             focusToken: composerFocus,
             onPlus: {
                 if firstPromptBlocksComposerActions(model.firstPrompt) { return }
@@ -1958,6 +1970,8 @@ private struct ComposerTextView: UIViewRepresentable {
         view.isScrollEnabled = false
         view.adjustsFontForContentSizeCategory = true
         view.text = text
+        view.accessibilityIdentifier = "composerInput"
+        context.coordinator.startObserving(view)
         let placeholder = UILabel()
         placeholder.font = view.font
         placeholder.textColor = UIColor.placeholderText
@@ -1981,18 +1995,24 @@ private struct ComposerTextView: UIViewRepresentable {
         view.onChord = onChord
         view.lockFirstResponder = interceptKeys && !resignKeyboard
         view.interceptArrows = interceptKeys
+        view.accessibilityIdentifier = "composerInput"
         if view.text != text && view.markedTextRange == nil {
             view.text = text
         }
         context.coordinator.applyPlaceholder(view)
-        if resignKeyboard, view.isFirstResponder {
-            _ = view.resignFirstResponder()
+        if resignKeyboard {
+            if view.isFirstResponder { view.forceResign() }
         } else if focusToken != context.coordinator.focusToken {
             context.coordinator.focusToken = focusToken
             if focusToken > 0 {
                 view.becomeFirstResponder()
             }
         }
+    }
+
+    static func dismantleUIView(_ view: ComposerUITextView, coordinator: Coordinator) {
+        coordinator.stopObserving()
+        view.forceResign()
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: ComposerUITextView, context: Context) -> CGSize? {
@@ -2010,10 +2030,34 @@ private struct ComposerTextView: UIViewRepresentable {
         var parent: ComposerTextView
         var placeholder: UILabel?
         var focusToken = 0
+        weak var textView: ComposerUITextView?
+        private var dismissObserver: NSObjectProtocol?
 
         init(_ parent: ComposerTextView) {
             self.parent = parent
         }
+
+        func startObserving(_ view: ComposerUITextView) {
+            textView = view
+            guard dismissObserver == nil else { return }
+            dismissObserver = NotificationCenter.default.addObserver(
+                forName: Keyboard.dismissNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                self?.textView?.forceResign()
+            }
+        }
+
+        func stopObserving() {
+            if let dismissObserver {
+                NotificationCenter.default.removeObserver(dismissObserver)
+            }
+            dismissObserver = nil
+            textView = nil
+        }
+
+        deinit { stopObserving() }
 
         func applyPlaceholder(_ view: UITextView) {
             placeholder?.text = parent.placeholder
@@ -2052,8 +2096,17 @@ private final class ComposerUITextView: UITextView {
     }
 
     override func resignFirstResponder() -> Bool {
-        if lockFirstResponder { return false }
+        if lockFirstResponder && !Keyboard.shouldAllowResign(window: window) {
+            return false
+        }
         return super.resignFirstResponder()
+    }
+
+    func forceResign() {
+        lockFirstResponder = false
+        Keyboard.allowsResign = true
+        _ = super.resignFirstResponder()
+        Keyboard.allowsResign = false
     }
 
     @objc private func chordEnter() {
