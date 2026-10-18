@@ -31,7 +31,8 @@ final class KeyboardDismissalTests: XCTestCase {
 
         let transcript = app.descendants(matching: .any)["chatTranscript"].firstMatch
         XCTAssertTrue(transcript.waitForExistence(timeout: 8), "chat transcript missing")
-        transcript.swipeUp()
+        // Transcript opens at the bottom; pull down toward older messages.
+        transcript.swipeDown()
 
         assertKeyboardHidden(app, "keyboard still up after scrolling the message list")
     }

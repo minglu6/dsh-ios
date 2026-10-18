@@ -1374,19 +1374,19 @@ Android `c5f8cdd...56dcaa9` 一笔：`feat(android): 补齐用户选择卡片与
 - **#65** 把 landing Composer 钉在安全区底，聚焦输入再开抽屉变成默认路径。
 - **#66** 把抽屉脚做成「设置」+「绿点 + 远程主机名」两枚独立热区，卡住的键盘正好压住这两块。
 
-Android `MainActivity` 窄屏是 `ModalNavigationDrawer`（按钮 / 手势滑出）；`Chat.kt` Column `imePadding()`。iOS 常规：开抽屉结束焦点；滚动 `scrollDismissesKeyboard(.interactively)`；点空白 resign。
+Android `MainActivity` 窄屏是 `ModalNavigationDrawer`（按钮 / 手势滑出）；`Chat.kt` Column `imePadding()`。iOS 常规：开抽屉结束焦点；滚动 `scrollDismissesKeyboard(.immediately)`；点空白 resign。
 
 | 项 | 判定 | 证据 |
 | --- | --- | --- |
 | 打开抽屉收起 Composer 键盘 | **GAP → 本轮** | 真机截图 IME 压住设置 / mac mini。`openingSessionDrawerResignsComposer`：`showDrawer` 时 `resignKeyboard` + `Keyboard.dismiss()`（通知打穿 `lockFirstResponder`） |
-| 抽屉搜索才弹键盘 | **GAP → 本轮** | 打开抽屉 `searchFocused = false`，只有点搜索框才聚焦。列表滚动 / 点空白 `scrollDismissesKeyboard(.interactively)` |
+| 抽屉搜索才弹键盘 | **GAP → 本轮** | 打开抽屉 `searchFocused = false`，只有点搜索框才聚焦。列表滚动 / 点空白 `scrollDismissesKeyboard(.immediately)` |
 | 聊天页滚动 / 点空白收键盘 | **GAP → 本轮** | transcript `dshDismissesKeyboardOnScrollAndTap`；landing 标题剩余空白 `onTapGesture` |
 | 进设置 / 远程主机不残留键盘 | **GAP → 本轮** | `AppModel.push` 在 `closesSessionDrawer` 时 `Keyboard.dismiss()`；底栏两键先 dismiss 再 push |
 
 | 模块 | iOS | 对照 | 对齐点 |
 | --- | --- | --- | --- |
 | 抽屉 | 打开即结束 Composer 焦点；搜索框用户聚焦才出 IME | Android `ModalNavigationDrawer` + iOS 常规 | 无「收起键盘」按钮。CI：Composer 聚焦后点 `openDrawer`，`app.keyboards` 不存在或不可见 |
-| 聊天 | 消息列表 interactive 滚动收键盘；点 Composer 外空白收 | iOS `scrollDismissesKeyboard(.interactively)` | CI：chat 屏滚动 transcript 后键盘收起 |
+| 聊天 | 消息列表一滚动就收键盘；点列表空白收 | iOS `scrollDismissesKeyboard(.immediately)`（`.interactively` 只在拖进键盘区才收，CI 证实向上滑不收） | CI：chat 屏滚动 transcript 后键盘收起 |
 | 远程主机 | 从抽屉进整页不留 IME | #66 整页 `ConnectionsView`；标题「远程主机」 | `leavingDrawerForSettingsOrHostResignsKeyboard` |
 
 本轮核对后**不改**（平台 / hide / 禁止发明）
@@ -1396,3 +1396,7 @@ Android `MainActivity` 窄屏是 `ModalNavigationDrawer`（按钮 / 手势滑出
 - 抽屉脚热区 / 远程主机整页 / landing 鲸：#66。
 - `chat.turnNavigation.*` / `chat.toBottom` / `ask.review` / hover chevron：仍 skip。
 
+自审补丁（Round 58）：
+
+- 斜杠菜单选行 / Escape 不再收键盘（`/skill `、`/goal ` 插入后要接着打字，与 main 行为一致）；只有点菜单外空白才收。
+- 点空白收键盘的 tap 只挂在被修饰的那个 `UIScrollView`（按窗口坐标匹配），不再退化挂到整个 window，免得点「发送」「+」、斜杠菜单行也把键盘收掉。

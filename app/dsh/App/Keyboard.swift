@@ -29,56 +29,95 @@ enum Keyboard {
 }
 
 extension View {
-    /// iOS 16 `scrollDismissesKeyboard(.interactively)` plus a tap that does
-    /// not cancel button hits (`cancelsTouchesInView = false`).
+    /// iOS 16 `scrollDismissesKeyboard(.immediately)` plus a tap that does
+    /// not cancel button hits (`cancelsTouchesInView = false`). `.interactively`
+    /// only drops the IME when the drag reaches the keyboard, so scrolling
+    /// a transcript that is already at the bottom left it stuck (Round 58 CI).
     func dshDismissesKeyboardOnScrollAndTap() -> some View {
         self
-            .scrollDismissesKeyboard(.interactively)
+            .scrollDismissesKeyboard(.immediately)
             .background(KeyboardDismissTapInstaller())
     }
 }
 
-/// Attaches to the enclosing scroll view (or window) so tapping blank space
-/// resigns the composer without stealing pin / archive / message-action taps.
+/// Attaches to the scroll view this modifier decorates so tapping inside the
+/// list resigns the composer without stealing pin / archive / message-action
+/// taps. `.background` puts the probe beside the `UIScrollView`, not inside
+/// it, so the target is the scroll view whose window frame matches the
+/// probe. Never falls back to the window: a window-wide tap would also drop
+/// the IME on Send, `+`, and slash-menu rows.
 private struct KeyboardDismissTapInstaller: UIViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator() }
 
-    func makeUIView(context: Context) -> UIView {
-        let view = UIView(frame: .zero)
+    func makeUIView(context: Context) -> ProbeView {
+        let view = ProbeView(frame: .zero)
         view.isUserInteractionEnabled = false
         view.backgroundColor = .clear
+        let coordinator = context.coordinator
+        view.onLayout = { [weak coordinator] probe in coordinator?.install(from: probe) }
         return view
     }
 
-    func updateUIView(_ view: UIView, context: Context) {
+    func updateUIView(_ view: ProbeView, context: Context) {
         context.coordinator.install(from: view)
     }
 
-    static func dismantleUIView(_ view: UIView, coordinator: Coordinator) {
+    static func dismantleUIView(_ view: ProbeView, coordinator: Coordinator) {
+        view.onLayout = nil
         coordinator.remove()
     }
 
+    final class ProbeView: UIView {
+        var onLayout: ((ProbeView) -> Void)?
+
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            onLayout?(self)
+        }
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            onLayout?(self)
+        }
+    }
+
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
-        private weak var host: UIView?
+        private weak var host: UIScrollView?
         private weak var recognizer: UITapGestureRecognizer?
         private var installing = false
 
         func install(from probe: UIView) {
             if recognizer != nil || installing { return }
             installing = true
-            DispatchQueue.main.async { [weak self] in
+            DispatchQueue.main.async { [weak self, weak probe] in
                 guard let self else { return }
                 defer { self.installing = false }
                 if self.recognizer != nil { return }
-                let host = probe.dsh_enclosingScrollView ?? probe.window
-                guard let host else { return }
-                let tap = UITapGestureRecognizer(target: self, action: #selector(tapped))
+                guard let probe, let host = Self.target(for: probe) else { return }
+                let tap = UITapGestureRecognizer(target: self, action: #selector(self.tapped))
                 tap.cancelsTouchesInView = false
                 tap.delegate = self
                 host.addGestureRecognizer(tap)
                 self.host = host
                 self.recognizer = tap
             }
+        }
+
+        private static func target(for probe: UIView) -> UIScrollView? {
+            guard let window = probe.window else { return nil }
+            let frame = probe.convert(probe.bounds, to: window)
+            guard frame.width > 1, frame.height > 1 else { return nil }
+            var match: UIScrollView?
+            window.dsh_visitScrollViews { scroll in
+                if scroll is UITextView { return }
+                guard let parent = scroll.superview else { return }
+                let candidate = parent.convert(scroll.frame, to: window)
+                if abs(candidate.minX - frame.minX) < 1, abs(candidate.minY - frame.minY) < 1,
+                   abs(candidate.width - frame.width) < 1, abs(candidate.height - frame.height) < 1 {
+                    match = scroll
+                }
+            }
+            return match
         }
 
         func remove() {
@@ -119,12 +158,8 @@ private extension UIView {
         return subviews.contains { $0.dsh_isScrollViewTracking }
     }
 
-    var dsh_enclosingScrollView: UIScrollView? {
-        var view: UIView? = self
-        while let current = view {
-            if let scroll = current as? UIScrollView { return scroll }
-            view = current.superview
-        }
-        return nil
+    func dsh_visitScrollViews(_ visit: (UIScrollView) -> Void) {
+        if let scroll = self as? UIScrollView { visit(scroll) }
+        for sub in subviews { sub.dsh_visitScrollViews(visit) }
     }
 }

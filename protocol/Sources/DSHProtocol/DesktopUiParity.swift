@@ -821,9 +821,9 @@ public let openingSessionDrawerResignsComposer = true
 /// Drawer search is the only drawer field that may show the keyboard, and
 /// only after the user focuses it — opening the drawer does not.
 public let drawerOpenDoesNotFocusSearch = true
-public let drawerScrollDismissesKeyboardInteractively = true
+public let drawerScrollDismissesKeyboard = true
 /// Chat transcript (and landing leftover space) resign the composer.
-public let chatScrollDismissesKeyboardInteractively = true
+public let chatScrollDismissesKeyboard = true
 public let tapOutsideComposerResignsKeyboard = true
 /// Pushing Settings / Remote Host from the drawer must not leave the IME.
 public let leavingDrawerForSettingsOrHostResignsKeyboard = true

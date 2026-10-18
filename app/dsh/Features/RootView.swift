@@ -288,10 +288,7 @@ struct RootView: View {
             leading: slashMenuIsLeading(model.composerText),
             consumeSlash: landingSlashTrigger != nil,
             availableHeight: availableHeight,
-            onDismiss: {
-                slashMenu.dismiss(trigger: landingSlashTrigger)
-                Keyboard.dismiss()
-            },
+            onDismiss: { slashMenu.dismiss(trigger: landingSlashTrigger) },
             onFile: { showFileImporter = true },
             onGoal: { model.insertComposer("/goal ") },
             onPlan: { model.executeCommand("/plan") },

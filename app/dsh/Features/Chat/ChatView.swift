@@ -358,7 +358,11 @@ struct ChatView: View {
         ZStack(alignment: .bottom) {
             Color.clear
                 .contentShape(Rectangle())
-                .onTapGesture { dismissCommandMenu() }
+                .onTapGesture {
+                    // Blank space outside the menu: close it and drop the IME.
+                    dismissCommandMenu()
+                    Keyboard.dismiss()
+                }
             commandMenu(maxHeight: maxHeight)
                 .padding(.horizontal, 14)
                 .padding(.bottom, 4)
@@ -395,8 +399,9 @@ struct ChatView: View {
     }
 
     private func dismissCommandMenu() {
+        // Picking a row / Escape keeps the composer focused (desktop
+        // CommandMenu): `/skill ` and `/goal ` are typed into right after.
         slashMenu.dismiss(trigger: slashTrigger)
-        Keyboard.dismiss()
     }
 
     private func submitCommandMenuOrSend() {
