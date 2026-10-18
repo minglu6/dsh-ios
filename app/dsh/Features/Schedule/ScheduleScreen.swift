@@ -37,6 +37,7 @@ struct ScheduleScreen: View {
             )
         } else {
             catalog
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("scheduleScreen")
         }
     }

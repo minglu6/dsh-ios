@@ -1492,6 +1492,7 @@ Android `MainActivity` 窄屏是 `ModalNavigationDrawer`（按钮 / 手势滑出
 | 浏览器 | 工具栏 plus / 前进后退 / 刷新 / 关闭 / 链接 / 外开仍是 SF。改为 plus / chevron L·R / refresh / close / link / right-up 官方 SVG | `ui-sidebar-browser` toolbar |
 | 设置外观 | 浅色/深色/跟随系统仍是 SF sun/moon/desktopcomputer。改为 Light/Dark/Followsystem Medium | `ui-theme` AppearanceRow CUBES |
 | 模型选择器 | 行尾用旋转的 chevronDown。改为 `IconChevronRightOutline` | primitives |
+| XCUI 叶子 id | `openDrawer` / `openStartPanel` / `navBack` / `scheduleScreen` 父级 identifier 吞掉 `official.panelLeft`·`panelRight`·`chevronLeft`。Button 改 `.contain` + `.isButton`，与 `pluginInfoButton` 同模式 | 不改视觉，只让 CI 能看到官方 SVG |
 
 本轮核对后**不改**（平台 / hide / 禁止发明）
 

@@ -628,6 +628,8 @@ private struct OfficialGlyphAccess: ViewModifier {
             // Canvas is not an a11y element by default, so a bare identifier
             // is absorbed by the nearest Button / labeled parent. Force a
             // leaf image so XCUITest can resolve official.* as descendants.
+            // A parent Button that also sets `.accessibilityIdentifier` still
+            // combines/overwrites this leaf unless it uses `.contain`.
             content
                 .accessibilityElement()
                 .accessibilityIdentifier(kind.accessibilityIdentifier)

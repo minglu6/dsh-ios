@@ -405,6 +405,8 @@ func settingsMessage(_ text: String, error: Bool = false) -> some View {
 func header(_ title: String, back: @escaping () -> Void) -> some View {
     HStack {
         Button(action: back) { OfficialGlyph(kind: .chevronLeft, size: 16, color: T.ink) }
+            .accessibilityElement(children: .contain)
+            .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier("navBack")
         Text(title).font(.headline).foregroundStyle(T.ink)
         Spacer()

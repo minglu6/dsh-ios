@@ -168,6 +168,8 @@ struct ChatView: View {
             } label: {
                 OfficialGlyph(kind: .panelLeft, size: 16, color: T.ink)
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier("openDrawer")
             if conversationHeaderShowsCrumbs(headerCrumbs) {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -215,6 +217,8 @@ struct ChatView: View {
             }
             .disabled(firstPromptBlocksComposerActions(model.firstPrompt))
             .accessibilityLabel(L.startPanel())
+            .accessibilityElement(children: .contain)
+            .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier("openStartPanel")
         }
         .padding(.horizontal, 14)

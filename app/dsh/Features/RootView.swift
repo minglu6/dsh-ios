@@ -149,6 +149,8 @@ struct RootView: View {
                 } label: {
                     OfficialGlyph(kind: .panelLeft, size: 16, color: T.ink)
                 }
+                .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(.isButton)
                 .accessibilityIdentifier("openDrawer")
                 BrandWordmark(height: 20)
                 Spacer()

@@ -132,6 +132,8 @@ struct ConnectionsView: View {
     private var header: some View {
         HStack {
             Button(action: model.pop) { OfficialGlyph(kind: .chevronLeft, size: 16, color: T.ink) }
+                .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(.isButton)
                 .accessibilityIdentifier("navBack")
             Text(L.connections())
                 .font(.headline)
