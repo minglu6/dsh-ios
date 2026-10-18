@@ -1036,6 +1036,37 @@ final class ScreenshotTests: XCTestCase {
             accuracy: 1,
             "\(appearance) pairing field maxX \(fieldFrame.maxX) != 下一步 maxX \(nextFrame.maxX)"
         )
+        let hintGap = fieldFrame.minY - hint.frame.maxY
+        XCTAssertLessThanOrEqual(
+            hintGap,
+            24,
+            "\(appearance) pairing field minY \(fieldFrame.minY) is \(hintGap)pt below hint maxY \(hint.frame.maxY)"
+        )
+        XCTAssertEqual(
+            pasteFrame.minY - fieldFrame.maxY,
+            14,
+            accuracy: 4,
+            "\(appearance) 粘贴链接 minY \(pasteFrame.minY) is \(pasteFrame.minY - fieldFrame.maxY)pt below field maxY \(fieldFrame.maxY), not Android button-row vertical 14"
+        )
+        let pairingTexts = app.staticTexts.matching(NSPredicate(format: "label == %@", "配对链接"))
+        var titleMinX: CGFloat?
+        var labelMinX: CGFloat?
+        for index in 0..<pairingTexts.count {
+            let frame = pairingTexts.element(boundBy: index).frame
+            if frame.maxY <= hint.frame.minY + 1 {
+                titleMinX = frame.minX
+            } else if frame.minY >= hint.frame.maxY - 1 && frame.minY < fieldFrame.maxY {
+                labelMinX = frame.minX
+            }
+        }
+        let titleX = try XCTUnwrap(titleMinX, "\(appearance) pairing-link sheet title missing")
+        let labelX = try XCTUnwrap(labelMinX, "\(appearance) pairing-link field label missing")
+        XCTAssertEqual(
+            labelX,
+            titleX,
+            accuracy: 1,
+            "\(appearance) pairing field label minX \(labelX) != title minX \(titleX)"
+        )
         XCTAssertFalse(next.firstMatch.isEnabled, "\(appearance) 下一步 enabled on empty pairing link")
         replaceText(field, with: "https://example.com")
         XCTAssertTrue(
