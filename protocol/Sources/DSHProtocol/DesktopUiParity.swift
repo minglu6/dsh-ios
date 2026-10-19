@@ -260,7 +260,8 @@ public let conversationHeaderTabFontSizePoints: Double = 13
 public let conversationHeaderTabLineHeightPoints: Double = 16
 public let conversationHeaderTabWeight: Double = 500
 public let conversationHeaderTabUnderlineHeightPoints: Double = 2
-/// CSS `.tab:after { bottom:-1px }` — 1pt of the 2pt bar sits below the tab box.
+/// CSS `.tab:after { bottom:-1px }` — 1pt of the 2pt bar sits in the leftover
+/// of `.header` min-height 76 after 10+30+10+16+9.
 public let conversationHeaderTabUnderlineOverflowPoints: Double = 1
 public let conversationHeaderBorderWidthPoints: Double = 0.5
 

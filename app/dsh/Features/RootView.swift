@@ -153,8 +153,7 @@ struct RootView: View {
             ) {
                 BrandWordmark(height: 20)
             }
-            .padding(.bottom, CGFloat(conversationHeaderBlankPaddingBottomPoints))
-            .background(T.surface)
+            .modifier(ConversationHeaderBox(blank: true))
             ZStack(alignment: .bottom) {
                 VStack(spacing: 0) {
                     landingHeadlineRow

@@ -33,7 +33,6 @@ struct ChatView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            tabs
             if tab == 0 {
                 chatTab
             } else if model.showCodeWorkView {
@@ -168,54 +167,61 @@ struct ChatView: View {
     }
 
     private var header: some View {
-        ConversationTitleRow(
-            onOpenDrawer: { model.showDrawer = true },
-            onOpenStart: {
-                if case .panel(.start) = model.currentRoute { return }
-                model.push(.panel(.start))
-            },
-            startDisabled: firstPromptBlocksComposerActions(model.firstPrompt)
-        ) {
-            if conversationHeaderShowsCrumbs(headerCrumbs) {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 4) {
-                        ForEach(Array(headerCrumbs.enumerated()), id: \.element.sessionId) { index, crumb in
-                            if index > 0 {
-                                Text("/")
-                                    .font(conversationHeaderTitleFont())
-                                    .foregroundStyle(T.text3)
-                            }
-                            if crumb.current {
-                                Text(crumb.title)
-                                    .font(conversationHeaderTitleFont())
-                                    .foregroundStyle(crumb.subagent ? T.text2 : T.ink)
-                                    .lineLimit(1)
-                            } else {
-                                Button {
-                                    model.openSession(crumb.sessionId)
-                                } label: {
+        VStack(spacing: CGFloat(conversationHeaderTabsMarginTopPoints)) {
+            ConversationTitleRow(
+                onOpenDrawer: { model.showDrawer = true },
+                onOpenStart: {
+                    if case .panel(.start) = model.currentRoute { return }
+                    model.push(.panel(.start))
+                },
+                startDisabled: firstPromptBlocksComposerActions(model.firstPrompt)
+            ) {
+                if conversationHeaderShowsCrumbs(headerCrumbs) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 4) {
+                            ForEach(Array(headerCrumbs.enumerated()), id: \.element.sessionId) { index, crumb in
+                                if index > 0 {
+                                    Text("/")
+                                        .font(conversationHeaderTitleFont())
+                                        .foregroundStyle(T.text3)
+                                }
+                                if crumb.current {
                                     Text(crumb.title)
                                         .font(conversationHeaderTitleFont())
-                                        .foregroundStyle(T.text2)
+                                        .foregroundStyle(crumb.subagent ? T.text2 : T.ink)
                                         .lineLimit(1)
+                                } else {
+                                    Button {
+                                        model.openSession(crumb.sessionId)
+                                    } label: {
+                                        Text(crumb.title)
+                                            .font(conversationHeaderTitleFont())
+                                            .foregroundStyle(T.text2)
+                                            .lineLimit(1)
+                                    }
+                                    .buttonStyle(.plain)
                                 }
-                                .buttonStyle(.plain)
                             }
                         }
                     }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(sessionHierarchyAria(english: L.en))
+                } else {
+                    Text(headerTitle)
+                        .font(conversationHeaderTitleFont())
+                        .foregroundStyle(T.ink)
+                        .lineLimit(1)
+                        .frame(
+                            minHeight: CGFloat(conversationHeaderTitleLineHeightPoints),
+                            maxHeight: CGFloat(conversationHeaderTitleLineHeightPoints),
+                            alignment: .center
+                        )
+                        .accessibilityIdentifier(conversationHeaderTitleIdentifier())
                 }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(sessionHierarchyAria(english: L.en))
-            } else {
-                Text(headerTitle)
-                    .font(conversationHeaderTitleFont())
-                    .foregroundStyle(T.ink)
-                    .lineLimit(1)
-                    .frame(minHeight: CGFloat(conversationHeaderTitleLineHeightPoints), alignment: .center)
-                    .accessibilityIdentifier(conversationHeaderTitleIdentifier())
             }
+            tabs
         }
-        .background(T.surface)
+        .modifier(ConversationHeaderBox(blank: false))
     }
 
     private var tabs: some View {
@@ -228,13 +234,6 @@ struct ChatView: View {
             if let sessionId = model.chat?.sessionId {
                 JobsAction(model: model, sessionId: sessionId)
             }
-        }
-        .padding(.top, CGFloat(conversationHeaderTabsMarginTopPoints))
-        .padding(.horizontal, CGFloat(conversationHeaderPaddingHorizontalPoints))
-        .padding(.bottom, CGFloat(conversationHeaderTabUnderlineOverflowPoints))
-        .background(T.surface)
-        .overlay(alignment: .bottom) {
-            T.borderL3.frame(height: CGFloat(conversationHeaderBorderWidthPoints))
         }
     }
 
@@ -251,6 +250,7 @@ struct ChatView: View {
                         T.businessPrimary
                             .frame(height: CGFloat(conversationHeaderTabUnderlineHeightPoints))
                             .offset(y: CGFloat(conversationHeaderTabUnderlineOverflowPoints))
+                            .allowsHitTesting(false)
                     }
                 }
         }

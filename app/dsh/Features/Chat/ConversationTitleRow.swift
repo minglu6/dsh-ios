@@ -1,8 +1,9 @@
 import SwiftUI
 import DSHProtocol
 
-/// Desktop `ConversationRoot.module.css` `.titleRow` (min-height 30, header
-/// padding-top 10). Shared by landing (headerBlank, no tabs) and ChatView.
+/// Desktop `ConversationRoot.module.css` `.titleRow` `{ min-height:30px }`
+/// inside `.header` padding. Shared by landing (`headerBlank`, no tabs) and
+/// ChatView (title row then `.tabs { margin-top:10px }`).
 struct ConversationTitleRow<Title: View>: View {
     var onOpenDrawer: () -> Void
     var onOpenStart: () -> Void
@@ -17,6 +18,7 @@ struct ConversationTitleRow<Title: View>: View {
             } label: {
                 OfficialGlyph(kind: .panelLeft, size: 16, color: T.ink)
             }
+            .buttonStyle(.plain)
             .accessibilityElement(children: .contain)
             .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier("openDrawer")
@@ -28,15 +30,18 @@ struct ConversationTitleRow<Title: View>: View {
             } label: {
                 OfficialGlyph(kind: .panelRight, size: 16, color: T.ink)
             }
+            .buttonStyle(.plain)
             .disabled(startDisabled)
             .accessibilityLabel(L.startPanel())
             .accessibilityElement(children: .contain)
             .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier("openStartPanel")
         }
-        .frame(minHeight: CGFloat(conversationHeaderTitleRowMinHeightPoints), alignment: .center)
-        .padding(.top, CGFloat(conversationHeaderPaddingTopPoints))
-        .padding(.horizontal, CGFloat(conversationHeaderPaddingHorizontalPoints))
+        .frame(
+            minHeight: CGFloat(conversationHeaderTitleRowMinHeightPoints),
+            maxHeight: CGFloat(conversationHeaderTitleRowMinHeightPoints),
+            alignment: .center
+        )
     }
 }
 
@@ -46,4 +51,33 @@ func conversationHeaderTitleFont() -> Font {
 
 func conversationHeaderTabFont() -> Font {
     .system(size: CGFloat(conversationHeaderTabFontSizePoints), weight: .medium)
+}
+
+/// Desktop `.header` / `.headerBlank` box: padding `10 14 0 14`, tabs case
+/// `min-height:76` and `border-bottom:.5px l3`. One chrome so keyboard
+/// compression cannot independently reflow title row vs tabs.
+struct ConversationHeaderBox: ViewModifier {
+    var blank: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .padding(.top, CGFloat(conversationHeaderPaddingTopPoints))
+            .padding(.horizontal, CGFloat(conversationHeaderPaddingHorizontalPoints))
+            .padding(
+                .bottom,
+                CGFloat(blank ? conversationHeaderBlankPaddingBottomPoints : 0)
+            )
+            .frame(
+                minHeight: blank ? 0 : CGFloat(conversationHeaderMinHeightPoints),
+                maxHeight: blank ? nil : CGFloat(conversationHeaderMinHeightPoints),
+                alignment: .top
+            )
+            .background(T.surface)
+            .overlay(alignment: .bottom) {
+                if !blank {
+                    T.borderL3.frame(height: CGFloat(conversationHeaderBorderWidthPoints))
+                }
+            }
+            .transaction { $0.animation = nil }
+    }
 }
