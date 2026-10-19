@@ -220,6 +220,7 @@ final class AppModel: ObservableObject {
     @Published var archiveConfirm: ArchiveConfirmRequest?
     var uiTestFixture = false
     var uiTestFilePreviewText: String?
+    var uiTestTerminalEntries: [TerminalSessionEntry] = []
 
     let terminal = AnsiTerminal()
     let hostSettings = HostSettings()

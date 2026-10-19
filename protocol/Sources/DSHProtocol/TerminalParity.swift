@@ -102,6 +102,86 @@ public func terminalKeyCopyLabel(platform: String?) -> String {
     platform == "darwin" ? "Cmd+C" : "Copy"
 }
 
+/// Desktop `ui-sidebar-terminal` `TerminalTitle` (`client.js` TerminalTitle):
+/// `state?.info?.title ?? state?.title ?? tab.title`. Create writes
+/// `title: shell.name` (`api-terminal-controller` `index.js` spawn). Duplicate
+/// shells keep the same string — dockkit chips do not append an index, cwd, or
+/// process. `cwd` / `shell` stay on `WebTerminalInfo` but are not painted on
+/// the chip or the primitives `Menu` selected row.
+public func terminalSwitcherTitle(title: String?, shellName: String?) -> String {
+    let named = title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    if !named.isEmpty { return named }
+    return terminalTabTitle(shellName)
+}
+
+public func terminalSwitcherTitle(_ entry: TerminalSessionEntry) -> String {
+    terminalSwitcherTitle(title: entry.title, shellName: entry.shellName)
+}
+
+/// Host `list()` returns Map insertion order (create order). Do not sort.
+public func terminalSwitcherLabels(_ entries: [TerminalSessionEntry]) -> [String] {
+    entries.map(terminalSwitcherTitle)
+}
+
+public func terminalSwitcherIsCurrent(
+    entry: TerminalSessionEntry,
+    currentSessionId: String?,
+    currentId: String?
+) -> Bool {
+    currentSessionId == entry.sessionId && currentId == entry.id
+}
+
+/// Desktop close is `sidebarRight.registerCloseHandler` → `webTerminals.close`
+/// with no Modal (`ui-sidebar-terminal` `client.js` apply). Tab chip close is
+/// the same intent (`dockkit` `onCloseTab`).
+public let terminalCloseAsksConfirmation = false
+
+/// Title chevron opens a primitives `Menu` / `MenuSurface`, never UIKit Menu.
+public let terminalSwitcherUsesSystemMenu = false
+
+/// Desktop `ui-primitives` `Menu.module.css` `.list`.
+public let terminalSwitcherMenuPaddingPoints: Double = 4
+public let terminalSwitcherMenuMinWidthPoints: Double = 144
+public let terminalSwitcherMenuMaxWidthPoints: Double = 360
+/// `MenuSurface.module.css` `.surface` `--dsw-radius-lg` (same 12 as mention).
+public let terminalSwitcherMenuRadiusPoints: Double = 12
+/// `.item` `min-height: 34px; padding: 6px 8px; gap: 6px; font-size: 13px;
+/// line-height: 20px; border-radius: var(--dsw-radius-md)`.
+public let terminalSwitcherRowMinHeightPoints: Double = 34
+public let terminalSwitcherRowPaddingYPoints: Double = 6
+public let terminalSwitcherRowPaddingXPoints: Double = 8
+public let terminalSwitcherRowGapPoints: Double = 6
+public let terminalSwitcherRowFontSizePoints: Double = 13
+public let terminalSwitcherRowLineHeightPoints: Double = 20
+public let terminalSwitcherRowRadiusPoints: Double = 12
+/// `.label` `padding: 6px 8px; font-size: 11px; line-height: 15px`.
+public let terminalSwitcherSectionFontSizePoints: Double = 11
+public let terminalSwitcherSectionLineHeightPoints: Double = 15
+public let terminalSwitcherSectionPaddingYPoints: Double = 6
+public let terminalSwitcherSectionPaddingXPoints: Double = 8
+/// `.separator` `height: 0.5px; margin: 3px 2px`.
+public let terminalSwitcherSeparatorHeightPoints: Double = 0.5
+public let terminalSwitcherSeparatorMarginYPoints: Double = 3
+public let terminalSwitcherSeparatorMarginXPoints: Double = 2
+/// `.footer` `margin-top: 3px; padding-top: 3px`.
+public let terminalSwitcherFooterGapPoints: Double = 3
+/// `.itemIcon` / `.check` 14×14. Tab chip `TerminalIcon` is 16; the switcher
+/// is a Menu, so the row uses the Menu icon size.
+public let terminalSwitcherIconSizePoints: Double = 14
+/// `ui-sidebar-terminal` `TerminalIcon` `width/height` 16, `viewBox 0 0 16 16`.
+public let terminalTabIconSizePoints: Double = 16
+public let terminalTabIconPromptPath = "M3 4L7 8L3 12"
+public let terminalTabIconCursorPath = "M9 12H13"
+
+public func terminalSwitcherMenuIdentifier() -> String { "terminalSwitcherMenu" }
+public func terminalSwitcherButtonIdentifier() -> String { "terminalSwitcherButton" }
+public func terminalSwitcherRowIdentifier(id: String) -> String { "terminalSwitcher.row.\(id)" }
+public func terminalTabIconSymbol() -> String { "official.terminalTab" }
+
+public func isForbiddenTerminalSwitcherSystemSymbol(_ name: String) -> Bool {
+    name == "terminal" || name == "checkmark" || name == "plus" || name == "xmark"
+}
+
 public func terminalGridIsBlank(_ grid: TerminalGrid) -> Bool {
     for r in 0..<grid.rows {
         var c = 0

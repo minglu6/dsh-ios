@@ -8,7 +8,7 @@ struct TerminalPanel: View {
     @State private var attempt = 0
     @State private var forceNew = false
     @State private var requestedTerminalId: String?
-    @State private var exitTarget: TerminalMeta?
+    @State private var switcherOpen = false
     @State private var terminating = false
     @State private var entries: [TerminalSessionEntry] = []
     @State private var listing = false
@@ -61,26 +61,6 @@ struct TerminalPanel: View {
             }
         }
         .background(T.bg)
-        .confirmationDialog(L.exitTerminalTitle(), isPresented: Binding(
-            get: { exitTarget != nil },
-            set: { if !$0 { exitTarget = nil } }
-        ), titleVisibility: .visible) {
-            Button(L.exitTerminal(), role: .destructive) {
-                guard let target = exitTarget else { return }
-                exitTarget = nil
-                terminating = true
-                Task {
-                    model.terminalExited = true
-                    model.terminateTerminal(sessionId: target.sessionId, terminalId: target.id)
-                    requestedTerminalId = nil
-                    listAttempt += 1
-                    terminating = false
-                }
-            }
-            Button(L.cancel(), role: .cancel) { exitTarget = nil }
-        } message: {
-            Text(L.exitTerminalBody())
-        }
         .onChange(of: attempt) { _ in attach() }
         .onChange(of: model.isOnline) { online in
             if terminalShouldAttachOnOnline(isOnline: online, exited: model.terminalExited) {
@@ -90,6 +70,12 @@ struct TerminalPanel: View {
         .onAppear { attach() }
         .onDisappear { model.closeTerminalFollow() }
         .task(id: "\(listAttempt)-\(model.isOnline)-\(ownerSessionId)") {
+            if model.uiTestFixture {
+                entries = model.uiTestTerminalEntries
+                listing = false
+                listError = nil
+                return
+            }
             guard model.isOnline, model.ops.contains("terminal.list") else { return }
             listing = true
             listError = nil
@@ -118,48 +104,8 @@ struct TerminalPanel: View {
     private func headerBar(current: TerminalMeta?, running: Bool) -> some View {
         HStack(spacing: 8) {
             Button { model.pop() } label: { OfficialGlyph(kind: .chevronLeft, size: 16, color: T.ink) }
-            Menu {
-                Text(L.terminalSessions()).font(.caption).foregroundStyle(T.text3)
-                if !model.isOnline {
-                    Text(L.connectToSwitchSessions()).font(.caption).foregroundStyle(T.text3)
-                } else if listing {
-                    ProgressView()
-                } else if let listError {
-                    Text(listError).foregroundStyle(T.err)
-                    Button(L.retry()) { listAttempt += 1 }
-                } else if entries.isEmpty {
-                    Text(L.noRetainedSessions()).font(.caption).foregroundStyle(T.text3)
-                }
-                ForEach(entries, id: \.sessionTerminalKey) { entry in
-                    let isCurrent = current?.sessionId == entry.sessionId && current?.id == entry.id
-                    Button {
-                        if !isCurrent { openEntry(entry) }
-                    } label: {
-                        HStack(spacing: 8) {
-                            if isCurrent {
-                                OfficialGlyph(kind: .checkOutline, size: 14, color: T.ink)
-                            }
-                            Text(entryLabel(entry))
-                        }
-                    }
-                    .disabled(!(model.isOnline && !opening && !terminating && model.ops.contains("terminal.follow")))
-                }
-                Divider()
-                if model.ops.contains("terminal.create") {
-                    Button {
-                        createTerminal()
-                    } label: {
-                        HStack(spacing: CGFloat(dswButtonIconGapPoints)) {
-                            OfficialGlyph(kind: .plusOutline, size: 14, color: T.ink)
-                            Text(L.newTerminal())
-                        }
-                    }
-                    .disabled(!(model.isOnline && !opening && !terminating))
-                }
-                if current != nil, model.ops.contains("terminal.close") {
-                    Button(L.close()) { exitTarget = current }
-                        .disabled(!(model.isOnline && !opening && !terminating))
-                }
+            Button {
+                switcherOpen.toggle()
             } label: {
                 HStack(spacing: 4) {
                     Text(current?.title?.nilIfBlank ?? L.terminal())
@@ -169,7 +115,12 @@ struct TerminalPanel: View {
                     OfficialGlyph(kind: .chevronDown, size: 12, color: T.text3)
                 }
             }
+            .buttonStyle(.plain)
             .accessibilityLabel(current?.title?.nilIfBlank ?? L.terminal())
+            .accessibilityIdentifier(terminalSwitcherButtonIdentifier())
+            .popover(isPresented: $switcherOpen, attachmentAnchor: .rect(.bounds), arrowEdge: .top) {
+                terminalSwitcherMenu(current: current)
+            }
             Spacer()
             HStack(spacing: 5) {
                 Circle().fill(running ? T.ok : T.text3).frame(width: 6, height: 6)
@@ -265,8 +216,128 @@ struct TerminalPanel: View {
         return L.terminalStopped()
     }
 
-    private func entryLabel(_ entry: TerminalSessionEntry) -> String {
-        terminalTabTitle(entry.title)
+    private func terminalSwitcherMenu(current: TerminalMeta?) -> some View {
+        let canSwitch = model.isOnline && !opening && !terminating && model.ops.contains("terminal.follow")
+        let canMutate = model.isOnline && !opening && !terminating
+        return VStack(alignment: .leading, spacing: 0) {
+            Text(L.terminalSessions())
+                .font(.system(size: CGFloat(terminalSwitcherSectionFontSizePoints)))
+                .foregroundStyle(T.text3)
+                .padding(.horizontal, CGFloat(terminalSwitcherSectionPaddingXPoints))
+                .padding(.vertical, CGFloat(terminalSwitcherSectionPaddingYPoints))
+            if !model.isOnline {
+                Text(L.connectToSwitchSessions())
+                    .font(.system(size: CGFloat(terminalSwitcherSectionFontSizePoints)))
+                    .foregroundStyle(T.text3)
+                    .padding(.horizontal, CGFloat(terminalSwitcherSectionPaddingXPoints))
+                    .padding(.vertical, CGFloat(terminalSwitcherSectionPaddingYPoints))
+            } else if listing {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, CGFloat(terminalSwitcherRowPaddingYPoints))
+            } else if let listError {
+                Text(listError)
+                    .font(.system(size: CGFloat(terminalSwitcherRowFontSizePoints)))
+                    .foregroundStyle(T.err)
+                    .padding(.horizontal, CGFloat(terminalSwitcherRowPaddingXPoints))
+                    .padding(.vertical, CGFloat(terminalSwitcherRowPaddingYPoints))
+                switcherRow(title: L.retry(), icon: .refreshOutline, current: false, enabled: true) {
+                    listAttempt += 1
+                }
+            } else if entries.isEmpty {
+                Text(L.noRetainedSessions())
+                    .font(.system(size: CGFloat(terminalSwitcherSectionFontSizePoints)))
+                    .foregroundStyle(T.text3)
+                    .padding(.horizontal, CGFloat(terminalSwitcherSectionPaddingXPoints))
+                    .padding(.vertical, CGFloat(terminalSwitcherSectionPaddingYPoints))
+            }
+            ForEach(entries, id: \.sessionTerminalKey) { entry in
+                let isCurrent = terminalSwitcherIsCurrent(
+                    entry: entry,
+                    currentSessionId: current?.sessionId,
+                    currentId: current?.id
+                )
+                switcherRow(
+                    title: terminalSwitcherTitle(entry),
+                    icon: .terminalTab,
+                    current: isCurrent,
+                    enabled: canSwitch,
+                    id: terminalSwitcherRowIdentifier(id: entry.id)
+                ) {
+                    if !isCurrent { openEntry(entry) }
+                    switcherOpen = false
+                }
+            }
+            Rectangle()
+                .fill(T.border)
+                .frame(height: CGFloat(terminalSwitcherSeparatorHeightPoints))
+                .padding(.horizontal, CGFloat(terminalSwitcherSeparatorMarginXPoints))
+                .padding(.vertical, CGFloat(terminalSwitcherSeparatorMarginYPoints))
+            if model.ops.contains("terminal.create") {
+                switcherRow(title: L.newTerminal(), icon: .plusOutline, current: false, enabled: canMutate) {
+                    createTerminal()
+                }
+            }
+            if let current, model.ops.contains("terminal.close") {
+                switcherRow(title: L.close(), icon: nil, current: false, enabled: canMutate) {
+                    closeCurrent(current)
+                }
+            }
+        }
+        .padding(CGFloat(terminalSwitcherMenuPaddingPoints))
+        .frame(
+            minWidth: CGFloat(terminalSwitcherMenuMinWidthPoints),
+            maxWidth: CGFloat(terminalSwitcherMenuMaxWidthPoints)
+        )
+        .fixedSize(horizontal: false, vertical: true)
+        .background(
+            T.surface,
+            in: RoundedRectangle(cornerRadius: CGFloat(terminalSwitcherMenuRadiusPoints), style: .continuous)
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(terminalSwitcherMenuIdentifier())
+        .modifier(PopoverCompactAdaptation())
+    }
+
+    private func switcherRow(
+        title: String,
+        icon: OfficialGlyph.Kind?,
+        current: Bool,
+        enabled: Bool,
+        id: String? = nil,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: CGFloat(terminalSwitcherRowGapPoints)) {
+                if let icon {
+                    OfficialGlyph(kind: icon, size: CGFloat(terminalSwitcherIconSizePoints), color: T.ink)
+                }
+                Text(title)
+                    .font(.system(size: CGFloat(terminalSwitcherRowFontSizePoints)))
+                    .foregroundStyle(T.ink)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if current {
+                    OfficialGlyph(
+                        kind: .checkOutline,
+                        size: CGFloat(terminalSwitcherIconSizePoints),
+                        color: T.ink
+                    )
+                }
+            }
+            .padding(.horizontal, CGFloat(terminalSwitcherRowPaddingXPoints))
+            .padding(.vertical, CGFloat(terminalSwitcherRowPaddingYPoints))
+            .frame(minHeight: CGFloat(terminalSwitcherRowMinHeightPoints), alignment: .center)
+            .background(current ? T.hoverBg : Color.clear, in: RoundedRectangle(cornerRadius: CGFloat(terminalSwitcherRowRadiusPoints)))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.4)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(current ? [.isSelected] : [])
+        .accessibilityIdentifier(id ?? title)
     }
 
     private func attach() {
@@ -290,10 +361,22 @@ struct TerminalPanel: View {
     }
 
     private func createTerminal() {
+        switcherOpen = false
         model.terminalExited = false
         requestedTerminalId = nil
         forceNew = true
         attempt += 1
+        listAttempt += 1
+    }
+
+    private func closeCurrent(_ current: TerminalMeta) {
+        switcherOpen = false
+        terminating = true
+        model.terminalExited = true
+        model.terminateTerminal(sessionId: current.sessionId, terminalId: current.id)
+        requestedTerminalId = nil
+        listAttempt += 1
+        terminating = false
     }
 }
 
