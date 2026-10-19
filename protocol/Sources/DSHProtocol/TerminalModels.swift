@@ -41,15 +41,27 @@ public struct TerminalSessionEntry: Sendable, Equatable, Identifiable {
     public var title: String?
     public var state: String?
     public var cwd: String?
+    /// Host `WebTerminalInfo.shell.name`. Plugin `terminal.list` forwards the
+    /// full info object; desktop tab chrome uses `info.title` (created as
+    /// `shell.name`) and never this field on its own.
+    public var shellName: String?
 
     public var sessionTerminalKey: String { "\(sessionId)\t\(id)" }
 
-    public init(sessionId: String, id: String, title: String? = nil, state: String? = nil, cwd: String? = nil) {
+    public init(
+        sessionId: String,
+        id: String,
+        title: String? = nil,
+        state: String? = nil,
+        cwd: String? = nil,
+        shellName: String? = nil
+    ) {
         self.sessionId = sessionId
         self.id = id
         self.title = title
         self.state = state
         self.cwd = cwd
+        self.shellName = shellName
     }
 
     public static func parse(sessionId: String, value: JSONValue) throws -> TerminalSessionEntry {
@@ -61,7 +73,8 @@ public struct TerminalSessionEntry: Sendable, Equatable, Identifiable {
             id: id,
             title: value["title"].str(),
             state: value["state"].str(),
-            cwd: value["cwd"].str()
+            cwd: value["cwd"].str(),
+            shellName: value["shell"]["name"].str()
         )
     }
 }

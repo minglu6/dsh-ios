@@ -156,6 +156,111 @@ final class TerminalTests: XCTestCase {
         XCTAssertEqual(terminalEmptyPaddingPoints, 24)
         XCTAssertEqual(terminalKeyGlyphSizePoints, 20)
         XCTAssertEqual(terminalMissingIdentityCode, "terminal/unavailable")
+        XCTAssertFalse(terminalCloseAsksConfirmation)
+        XCTAssertFalse(terminalSwitcherUsesSystemMenu)
+        XCTAssertFalse(terminalTitleFollowsOscCwdOrProcess)
+        XCTAssertEqual(terminalSwitcherStrokeWidthPoints, mentionMenuStrokeWidthPoints)
+        XCTAssertEqual(terminalSwitcherStrokeWidthPoints, 0.5)
+        XCTAssertEqual(terminalSwitcherStrokeHex(dark: false), inputTriggerMenuStrokeHex(dark: false))
+        XCTAssertEqual(terminalSwitcherStrokeHex(dark: true), inputTriggerMenuStrokeHex(dark: true))
+        XCTAssertEqual(terminalSwitcherStrokeHex(dark: false), 0x0A000000)
+        XCTAssertEqual(terminalSwitcherStrokeHex(dark: true), 0x0FFFFFFF)
+        XCTAssertEqual(terminalSwitcherShadowRadiusPoints, mentionMenuShadowRadiusPoints)
+        XCTAssertEqual(terminalSwitcherShadowYPoints, mentionMenuShadowYPoints)
+        XCTAssertEqual(terminalSwitcherShadowOpacity, mentionMenuShadowOpacity)
+        XCTAssertEqual(terminalSwitcherMenuPaddingPoints, 4)
+        XCTAssertEqual(terminalSwitcherMenuMinWidthPoints, 144)
+        XCTAssertEqual(terminalSwitcherMenuMaxWidthPoints, 360)
+        XCTAssertEqual(terminalSwitcherMenuRadiusPoints, 12)
+        XCTAssertEqual(terminalSwitcherRowMinHeightPoints, 34)
+        XCTAssertEqual(terminalSwitcherRowPaddingYPoints, 6)
+        XCTAssertEqual(terminalSwitcherRowPaddingXPoints, 8)
+        XCTAssertEqual(terminalSwitcherRowGapPoints, 6)
+        XCTAssertEqual(terminalSwitcherRowFontSizePoints, 13)
+        XCTAssertEqual(terminalSwitcherRowLineHeightPoints, 20)
+        XCTAssertEqual(terminalSwitcherRowRadiusPoints, 12)
+        XCTAssertEqual(terminalSwitcherSectionFontSizePoints, 11)
+        XCTAssertEqual(terminalSwitcherSectionLineHeightPoints, 15)
+        XCTAssertEqual(terminalSwitcherIconSizePoints, 14)
+        XCTAssertEqual(terminalTabIconSizePoints, 16)
+        XCTAssertEqual(terminalTabIconPromptPath, "M3 4L7 8L3 12")
+        XCTAssertEqual(terminalTabIconCursorPath, "M9 12H13")
+        XCTAssertEqual(terminalTabIconSymbol(), "official.terminalTab")
+        XCTAssertTrue(isForbiddenTerminalSwitcherSystemSymbol("terminal"))
+        XCTAssertTrue(isForbiddenTerminalSwitcherSystemSymbol("checkmark"))
+        XCTAssertTrue(isForbiddenTerminalSwitcherSystemSymbol("plus"))
+        XCTAssertTrue(isForbiddenTerminalSwitcherSystemSymbol("xmark"))
+        XCTAssertFalse(isForbiddenTerminalSwitcherSystemSymbol("official.terminalTab"))
+    }
+
+    func testSwitcherLabelsMatchDesktopTabTitleWithoutInventedIndex() throws {
+        let zshA = TerminalSessionEntry(sessionId: "s", id: "t1", title: "zsh", state: "running", cwd: "/Users/dev/dsh-ios")
+        let zshB = TerminalSessionEntry(sessionId: "s", id: "t2", title: "zsh", state: "running", cwd: "/tmp")
+        let bash = TerminalSessionEntry(sessionId: "s", id: "t3", title: "bash", shellName: "zsh")
+        let unnamed = TerminalSessionEntry(sessionId: "s", id: "t4", title: "  ", shellName: "fish")
+        let fallback = TerminalSessionEntry(sessionId: "s", id: "t5")
+        XCTAssertEqual(terminalSwitcherTitle(zshA), "zsh")
+        XCTAssertEqual(terminalSwitcherTitle(unnamed), "fish")
+        XCTAssertEqual(terminalSwitcherTitle(fallback), "Terminal")
+        XCTAssertEqual(terminalSwitcherTitle(title: nil, shellName: "zsh"), "zsh")
+        XCTAssertEqual(
+            terminalSwitcherLabels([zshA, zshB, bash]),
+            ["zsh", "zsh", "bash"],
+            "desktop TerminalTitle keeps shell.name; dockkit does not number duplicates"
+        )
+        XCTAssertTrue(terminalSwitcherIsCurrent(entry: zshA, currentSessionId: "s", currentId: "t1"))
+        XCTAssertFalse(terminalSwitcherIsCurrent(entry: zshB, currentSessionId: "s", currentId: "t1"))
+        let row = try TerminalSessionEntry.parse(
+            sessionId: "s",
+            value: .object([
+                "id": .string("host-1"),
+                "title": .string("zsh"),
+                "state": .string("running"),
+                "cwd": .string("/Users/dev/dsh-ios"),
+                "shell": .object([
+                    "path": .string("/bin/zsh"),
+                    "args": .array([]),
+                    "name": .string("zsh"),
+                ]),
+            ])
+        )
+        XCTAssertEqual(row.shellName, "zsh")
+        XCTAssertEqual(row.cwd, "/Users/dev/dsh-ios")
+        XCTAssertEqual(terminalSwitcherTitle(row), "zsh")
+        XCTAssertEqual(terminalSwitcherRowIdentifier(id: "t1"), "terminalSwitcher.row.t1")
+        XCTAssertEqual(terminalSwitcherMenuIdentifier(), "terminalSwitcherMenu")
+        XCTAssertEqual(terminalSwitcherButtonIdentifier(), "terminalSwitcherButton")
+    }
+
+    func testSwitcherTitleStaysShellNameUntilHostRename() {
+        XCTAssertFalse(
+            terminalTitleFollowsOscCwdOrProcess,
+            "desktop never writes info.title from OSC 0/2, cwd, or process"
+        )
+        let first = TerminalSessionEntry(
+            sessionId: "s", id: "a", title: "zsh", state: "running",
+            cwd: "/Users/dev/one", shellName: "zsh"
+        )
+        let second = TerminalSessionEntry(
+            sessionId: "s", id: "b", title: "zsh", state: "running",
+            cwd: "/tmp", shellName: "zsh"
+        )
+        XCTAssertEqual(
+            terminalSwitcherLabels([first, second]),
+            ["zsh", "zsh"],
+            "two default zsh sessions stay identical; only the Menu check distinguishes"
+        )
+        XCTAssertTrue(terminalSwitcherIsCurrent(entry: first, currentSessionId: "s", currentId: "a"))
+        XCTAssertFalse(terminalSwitcherIsCurrent(entry: second, currentSessionId: "s", currentId: "a"))
+        let renamed = TerminalSessionEntry(
+            sessionId: "s", id: "b", title: "build", state: "running",
+            cwd: "/tmp", shellName: "zsh"
+        )
+        XCTAssertEqual(
+            terminalSwitcherLabels([first, renamed]),
+            ["zsh", "build"],
+            "Host rename() is the only post-create title mutation; paint info.title when it arrives"
+        )
     }
 
     func testCloseFollowDropsMetaWhileDisconnectKeepsIt() {

@@ -324,6 +324,44 @@ extension AppModel {
         case "terminal":
             showDrawer = false
             push(.panel(.terminal))
+        case "terminalSwitcher":
+            showDrawer = false
+            ops.insert("terminal.close")
+            terminalAttachFrozen = true
+            terminalOpening = false
+            terminalFailure = nil
+            terminalMissing = false
+            terminalExited = false
+            terminal.write("switcher-shell-output")
+            terminalRevision = terminal.revision
+            let sessionId = chat?.sessionId ?? ""
+            uiTestTerminalEntries = [
+                TerminalSessionEntry(
+                    sessionId: sessionId,
+                    id: "term-a",
+                    title: "zsh",
+                    state: "running",
+                    cwd: "/Users/dev/dsh-ios",
+                    shellName: "zsh"
+                ),
+                TerminalSessionEntry(
+                    sessionId: sessionId,
+                    id: "term-b",
+                    title: "zsh",
+                    state: "running",
+                    cwd: "/tmp",
+                    shellName: "zsh"
+                ),
+            ]
+            terminalMeta = TerminalMeta(
+                sessionId: sessionId,
+                id: "term-a",
+                attachmentId: "attach-a",
+                title: "zsh",
+                state: "running",
+                cwd: "/Users/dev/dsh-ios"
+            )
+            push(.panel(.terminal))
         case "terminalUnavailable":
             showDrawer = false
             terminalAttachFrozen = true

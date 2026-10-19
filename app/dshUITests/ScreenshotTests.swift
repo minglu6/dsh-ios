@@ -12,6 +12,7 @@ final class ScreenshotTests: XCTestCase {
         "composerStop", "slash", "jobs", "builtinPlugins", "trajectoryDetail",
         "chatDock",
         "terminalUnavailable", "terminalMissing", "terminalDisconnected", "terminalExited",
+        "terminalSwitcher",
     ]
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool { false }
@@ -463,7 +464,8 @@ final class ScreenshotTests: XCTestCase {
             }
             if screen == "schedule" || screen == "terminal" || screen == "files"
                 || screen == "terminalUnavailable" || screen == "terminalMissing"
-                || screen == "terminalDisconnected" || screen == "terminalExited" {
+                || screen == "terminalDisconnected" || screen == "terminalExited"
+                || screen == "terminalSwitcher" {
                 XCTAssertFalse(app.images["chevron.left"].exists, "\(appearance) \(screen) still exposes SF chevron.left")
                 XCTAssertTrue(
                     app.descendants(matching: .any)["official.chevronLeft"].waitForExistence(timeout: 8),
@@ -529,6 +531,45 @@ final class ScreenshotTests: XCTestCase {
                     value.contains("preserved-shell-output"),
                     "\(appearance) terminalDisconnected lost the screen text (got \(value))"
                 )
+            }
+            if screen == "terminalSwitcher" {
+                let trigger = app.descendants(matching: .any)["terminalSwitcherButton"].firstMatch
+                XCTAssertTrue(trigger.waitForExistence(timeout: 8), "\(appearance) terminalSwitcher missing title trigger")
+                trigger.tap()
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["terminalSwitcherMenu"].waitForExistence(timeout: 8),
+                    "\(appearance) terminalSwitcher missing custom MenuSurface"
+                )
+                XCTAssertTrue(app.staticTexts["终端会话"].waitForExistence(timeout: 4), "\(appearance) terminalSwitcher missing 终端会话")
+                let first = app.descendants(matching: .any)["terminalSwitcher.row.term-a"].firstMatch
+                let second = app.descendants(matching: .any)["terminalSwitcher.row.term-b"].firstMatch
+                XCTAssertTrue(first.waitForExistence(timeout: 8), "\(appearance) terminalSwitcher missing first zsh row")
+                XCTAssertTrue(second.waitForExistence(timeout: 4), "\(appearance) terminalSwitcher missing second zsh row")
+                XCTAssertGreaterThanOrEqual(
+                    app.staticTexts.matching(NSPredicate(format: "label == %@", "zsh")).count,
+                    2,
+                    "\(appearance) terminalSwitcher does not list 2+ terminals"
+                )
+                XCTAssertTrue(first.isSelected, "\(appearance) terminalSwitcher current row is not marked selected")
+                XCTAssertFalse(second.isSelected, "\(appearance) terminalSwitcher marked the inactive zsh row")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.checkOutline"].exists,
+                    "\(appearance) terminalSwitcher missing current-item check"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.terminalTab"].exists,
+                    "\(appearance) terminalSwitcher missing desktop TerminalIcon"
+                )
+                XCTAssertTrue(app.buttons["新建终端"].exists, "\(appearance) terminalSwitcher missing 新建终端")
+                XCTAssertTrue(app.buttons["关闭"].exists, "\(appearance) terminalSwitcher missing 关闭")
+                XCTAssertFalse(
+                    app.staticTexts["关闭终端？"].exists || app.buttons["关闭终端？"].exists,
+                    "\(appearance) terminalSwitcher still shows 关闭终端？ confirmation"
+                )
+                XCTAssertFalse(app.images["terminal"].exists, "\(appearance) terminalSwitcher still exposes SF terminal")
+                XCTAssertFalse(app.images["checkmark"].exists, "\(appearance) terminalSwitcher still exposes SF checkmark")
+                XCTAssertFalse(app.images["plus"].exists, "\(appearance) terminalSwitcher still exposes SF plus")
+                XCTAssertFalse(app.images["xmark"].exists, "\(appearance) terminalSwitcher still exposes SF xmark")
             }
             if screen == "terminalExited" {
                 XCTAssertTrue(

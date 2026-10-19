@@ -26,6 +26,8 @@ struct OfficialGlyph: View {
         case queue
         case downloadOutline
         case terminalPrompt
+        /// Desktop `ui-sidebar-terminal` `TerminalIcon` (`client.js` 186-199).
+        case terminalTab
         case settingsOutline
         case newChat
         case searchOutline
@@ -105,6 +107,7 @@ struct OfficialGlyph: View {
             case .searchOutline: return "official.searchOutline"
             case .projectAdd: return "official.projectAdd"
             case .plusOutline: return "official.plusOutline"
+            case .terminalTab: return terminalTabIconSymbol()
             case .send: return "official.send"
             case .trajectoryClock: return "official.trajectoryClock"
             case .jobsChevron: return "official.jobsChevron"
@@ -198,7 +201,7 @@ struct OfficialGlyph: View {
                  .computer, .trashOutline, .queueOutline, .sendOutline, .dataOutline, .dataOutlineRegular,
                  .paperclipOutline, .paperPlaneOutline, .compactOutline, .permissionFullAccess,
                  .downloadOutline, .warningOutline, .warningTriangle, .playOutline, .pauseOutline,
-                 .contextInjection, .wrapFill, .nowrapFill, .ellipsis:
+                 .contextInjection, .wrapFill, .nowrapFill, .ellipsis, .terminalTab:
                 return false
             // plusOutline / send are decorative; ComposerView hosts own
             // official.plusOutline and official.send.
@@ -348,6 +351,17 @@ struct OfficialGlyph: View {
                 ctx.scaleBy(x: 16 / 36, y: 16 / 36)
                 ctx.stroke(Path(SVGPath.cgPath(Self.terminalPrompt)), with: .color(color), style: term)
                 ctx.stroke(Path(SVGPath.cgPath(Self.terminalCursor)), with: .color(color), style: term)
+            case .terminalTab:
+                ctx.stroke(
+                    Path(SVGPath.cgPath(terminalTabIconPromptPath)),
+                    with: .color(color),
+                    style: Self.regularStroke
+                )
+                ctx.stroke(
+                    Path(SVGPath.cgPath(terminalTabIconCursorPath)),
+                    with: .color(color),
+                    style: Self.regularStroke
+                )
             case .settingsOutline:
                 let medium = StrokeStyle(
                     lineWidth: CGFloat(sidebarSettingsTriggerIconStrokeWidth),
