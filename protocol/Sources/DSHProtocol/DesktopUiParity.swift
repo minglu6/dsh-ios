@@ -264,11 +264,15 @@ public let conversationHeaderTabUnderlineHeightPoints: Double = 2
 public let conversationHeaderTabUnderlineOverflowPoints: Double = 1
 public let conversationHeaderBorderWidthPoints: Double = 0.5
 
-/// XCUITest: the 30pt title row, not the 10pt header padding above it.
-public func conversationTitleRowIdentifier() -> String { "conversationTitleRow" }
+/// XCUITest: session title text in the 30pt `.titleRow`.
+public func conversationHeaderTitleIdentifier() -> String { "conversationHeaderTitle" }
 
-/// Tab label minY − title-row maxY equals `.tabs { margin-top: 10px }`.
-public var conversationHeaderTitleTabGapPoints: Double { conversationHeaderTabsMarginTopPoints }
+/// Title text is 14/20 centered in `.titleRow` min-height 30, then `.tabs`
+/// `margin-top: 10`. Visual gap from title maxY to tab minY is 5 + 10.
+public var conversationHeaderTitleTabGapPoints: Double {
+    (conversationHeaderTitleRowMinHeightPoints - conversationHeaderTitleLineHeightPoints) / 2
+        + conversationHeaderTabsMarginTopPoints
+}
 
 /// Host titles a session asynchronously after the first turn. Android
 /// `refreshTitles` reloads `sessions.list` on status, then again 4s after stop.

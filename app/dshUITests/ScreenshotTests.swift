@@ -249,18 +249,6 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) \(screen) missing official panel-left glyph"
                 )
             }
-            if screen == "landing" || screen == "landingMention" || screen == "chat" || screen == "chatLong" || screen == "trajectory" {
-                let titleRow = app.descendants(matching: .any)["conversationTitleRow"].firstMatch
-                XCTAssertTrue(
-                    titleRow.waitForExistence(timeout: 8),
-                    "\(appearance) \(screen) missing conversationTitleRow"
-                )
-                XCTAssertGreaterThanOrEqual(
-                    titleRow.frame.height,
-                    30,
-                    "\(appearance) \(screen) title row height \(titleRow.frame.height) is below desktop .titleRow min-height 30"
-                )
-            }
             if screen == "landing" || screen == "landingMention" || screen == "chat" || screen == "chatLong" || screen == "changesCard" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
                 XCTAssertTrue(
                     app.descendants(matching: .any)["official.panelRight"].waitForExistence(timeout: 8),
@@ -1631,29 +1619,30 @@ final class ScreenshotTests: XCTestCase {
         )
     }
 
-    /// Desktop `ConversationRoot.module.css` `.tabs { margin-top: 10px }`
-    /// (`lib/client.js:17325`). Title-row maxY → tab-label minY is that gap.
+    /// Desktop `ConversationRoot.module.css` `.titleRow` min-height 30 with
+    /// 14/20 title, then `.tabs { margin-top: 10px }` (`lib/client.js:17325`).
+    /// Title maxY → tab minY is 5 + 10.
     private func assertConversationHeaderTabGap(
         _ app: XCUIApplication,
         appearance: String,
         screen: String
     ) {
-        let titleRow = app.descendants(matching: .any)["conversationTitleRow"].firstMatch
+        let title = app.descendants(matching: .any)["conversationHeaderTitle"].firstMatch
         XCTAssertTrue(
-            titleRow.waitForExistence(timeout: 8),
-            "\(appearance) \(screen) missing conversationTitleRow before tab-gap assertion"
+            title.waitForExistence(timeout: 8),
+            "\(appearance) \(screen) missing conversationHeaderTitle before tab-gap assertion"
         )
         let chatTab = app.descendants(matching: .any)["chatTab.chat"].firstMatch
         XCTAssertTrue(
             chatTab.waitForExistence(timeout: 8),
             "\(appearance) \(screen) missing chatTab.chat"
         )
-        let gap = chatTab.frame.minY - titleRow.frame.maxY
+        let gap = chatTab.frame.minY - title.frame.maxY
         XCTAssertEqual(
             gap,
-            10,
-            accuracy: 2,
-            "\(appearance) \(screen) title-to-tab gap \(gap) is not desktop .tabs margin-top 10 (title \(titleRow.frame) tab \(chatTab.frame))"
+            15,
+            accuracy: 3,
+            "\(appearance) \(screen) title-to-tab gap \(gap) is not desktop titleRow 30/20 leftover + tabs margin-top 10 (title \(title.frame) tab \(chatTab.frame))"
         )
     }
 

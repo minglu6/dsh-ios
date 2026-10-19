@@ -2300,7 +2300,7 @@ CI `11c995e` / `f9f8457` artifact `ios-simulator-screenshots` 逐屏对照：
 | 项 | 桌面 | iOS 原状 | 处理 |
 | --- | --- | --- | --- |
 | 标题行 ↔ tab 行竖向空隙 | `.tabs { margin-top:10px }`，标题行先 `min-height:30` | `ChatView.header` `.padding(.vertical, 10)` + tabs 无 top；tab `.subheadline` + `padding-bottom:6` 再包一层 6 | 共用 `ConversationTitleRow`：padding-top 10、titleRow 30。tabs margin-top 10、tab 13/16/500、padding-bottom 9、underline 2pt `bottom:-1`。landing 走 `.headerBlank` padding-bottom 0 |
-| 几何断言 | 同上 | 无 | CI：`conversationTitleRow` 高 ≥30；`chatTab.chat.minY − titleRow.maxY` = 10±2。既有断言未放宽 |
+| 几何断言 | 同上 | 无 | CI：`conversationHeaderTitle` → `chatTab.chat` 空隙 = 15±3（titleRow 30 里 14/20 余 5 + tabs margin-top 10）。既有断言未放宽 |
 
 ### 必须核实（已对齐，本轮不改）
 

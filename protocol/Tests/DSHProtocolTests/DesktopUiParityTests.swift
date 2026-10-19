@@ -253,7 +253,8 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertEqual(conversationHeaderTabUnderlineHeightPoints, 2)
         XCTAssertEqual(conversationHeaderTabUnderlineOverflowPoints, 1)
         XCTAssertEqual(conversationHeaderBorderWidthPoints, 0.5)
-        XCTAssertEqual(conversationTitleRowIdentifier(), "conversationTitleRow")
+        XCTAssertEqual(conversationHeaderTitleIdentifier(), "conversationHeaderTitle")
+        XCTAssertEqual(conversationHeaderTitleTabGapPoints, 15)
         XCTAssertEqual(
             conversationHeaderPaddingTopPoints
                 + conversationHeaderTitleRowMinHeightPoints

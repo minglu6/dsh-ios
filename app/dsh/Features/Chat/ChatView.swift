@@ -212,6 +212,7 @@ struct ChatView: View {
                     .foregroundStyle(T.ink)
                     .lineLimit(1)
                     .frame(minHeight: CGFloat(conversationHeaderTitleLineHeightPoints), alignment: .center)
+                    .accessibilityIdentifier(conversationHeaderTitleIdentifier())
             }
         }
         .background(T.surface)
