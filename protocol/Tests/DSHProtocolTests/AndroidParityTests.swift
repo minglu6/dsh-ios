@@ -585,6 +585,8 @@ final class AndroidParityTests: XCTestCase {
         XCTAssertEqual(dswButtonRadiusMdPoints, 12)
         XCTAssertEqual(dswButtonDisabledOpacity, 0.4)
         XCTAssertEqual(dswButtonOutlineWidthPoints, 0.5)
+        XCTAssertEqual(dswAliasBorderL3LightHex, 0x1F000000)
+        XCTAssertEqual(dswAliasBorderL3DarkHex, 0x29FFFFFF)
         XCTAssertEqual(dswButtonMdHeightPoints, 36)
         XCTAssertEqual(dswButtonSmHeightPoints, 28)
         XCTAssertEqual(dswButtonSmFontSizePoints, 12)

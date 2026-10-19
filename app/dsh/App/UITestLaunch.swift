@@ -155,7 +155,7 @@ extension AppModel {
                 turn: 1,
                 step: 1
             )),
-            .text(Item.Text(key: "a1", text: "你好，我是 DeepSeek。", live: false, at: clock + 2_000, messageId: "m-assistant")),
+            .text(Item.Text(key: "a1", text: "你好，我是 DeepSeek。[README.md](README.md)", live: false, at: clock + 2_000, messageId: "m-assistant")),
         ]
         if UITestLaunch.extraChatForKeyboard {
             for i in 2...16 {
@@ -321,6 +321,29 @@ extension AppModel {
             terminalMeta = nil
             push(.panel(.terminal))
         case "files":
+            // Host `files.list` would overwrite the seeded tree. Keep the
+            // op off this screen only so other fixtures stay still.
+            ops.remove("files.list")
+            let filesCwd = "/Users/dev/dsh-ios"
+            if let index = sessions.firstIndex(where: { $0.sessionId == chat?.sessionId }) {
+                sessions[index].cwd = filesCwd
+            }
+            var tree = FileTreeState.root
+            fileTreeApplyListing(
+                &tree,
+                path: "",
+                entries: [
+                    WorkspaceFileEntry(name: "src", type: "directory"),
+                    WorkspaceFileEntry(name: "main.py", type: "file"),
+                    WorkspaceFileEntry(name: "app.go", type: "file"),
+                    WorkspaceFileEntry(name: "Content.swift", type: "file"),
+                    WorkspaceFileEntry(name: "package.json", type: "file"),
+                    WorkspaceFileEntry(name: "README.md", type: "file"),
+                    WorkspaceFileEntry(name: "docker.sock", type: "other"),
+                ],
+                truncated: false
+            )
+            fileTreeStates[fileTreeCacheKey(sessionId: chat?.sessionId, cwd: filesCwd)] = tree
             showDrawer = false
             push(.panel(.files))
         case "browser":

@@ -25,19 +25,38 @@ struct FileTypeIcon: View {
                 )
             } else if fileTypeHasTraditionalGlyph(kind) {
                 FileTypeGlyph(kind: kind, size: CGFloat(fileTreeFileIconSizePoints), fill: color)
+            } else if fileTypeHasCodeFileArtwork(kind) {
+                CodeFileArtworkIcon(kind: kind, size: CGFloat(fileTreeFileIconSizePoints))
             } else {
-                Image(systemName: fileTypeSymbol(kind))
-                    .foregroundStyle(color)
-                    .accessibilityHidden(true)
+                FileTypeGlyph(kind: "other", size: CGFloat(fileTreeFileIconSizePoints), fill: color)
             }
         }
         .frame(width: 20)
     }
 }
 
+/// Desktop `ui-primitives` `CodeFileIcon`: 20×20 official markup rasterized
+/// to a PDF vector asset at build time (text / clipPath / linearGradient /
+/// nested svg). Full-color: never re-tinted.
+struct CodeFileArtworkIcon: View {
+    let kind: String
+    var size: CGFloat = 16
+
+    var body: some View {
+        Image(fileTypeCodeFileAssetName(kind))
+            .renderingMode(.original)
+            .resizable()
+            .interpolation(.high)
+            .aspectRatio(contentMode: .fit)
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
+            .accessibilityIdentifier(fileTypeSymbol(kind))
+    }
+}
+
 /// Desktop `ui-primitives` `FileGlyph` 28×16 folded sheet + category mark.
 /// Marks are `--dsw-static-neutral-00`; fold is muted `#a2a4a6` for `other`
-/// else white at 70%. Language `CODE_FILE_ARTWORK` is not painted here.
+/// else white at 70%. Language `CODE_FILE_ARTWORK` is `CodeFileArtworkIcon`.
 struct FileTypeGlyph: View {
     let kind: String
     var size: CGFloat = 16

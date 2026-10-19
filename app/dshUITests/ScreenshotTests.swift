@@ -6,7 +6,7 @@ final class ScreenshotTests: XCTestCase {
     private let screens = [
         "landing", "drawer", "viewOptions", "sessionActions", "chat", "planMode", "mention",
         "models", "permission", "start", "browser", "inspector",
-        "settings", "settingsShell", "schedule", "terminal", "trajectory", "plugins", "connections",
+        "settings", "settingsShell", "schedule", "terminal", "files", "trajectory", "plugins", "connections",
         "composerStop", "slash", "jobs", "builtinPlugins", "trajectoryDetail",
         "chatDock",
         "terminalUnavailable", "terminalMissing", "terminalDisconnected", "terminalExited",
@@ -436,7 +436,7 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) permission picker looks like a full-screen sheet (\(picker) vs \(window))"
                 )
             }
-            if screen == "schedule" || screen == "terminal"
+            if screen == "schedule" || screen == "terminal" || screen == "files"
                 || screen == "terminalUnavailable" || screen == "terminalMissing"
                 || screen == "terminalDisconnected" || screen == "terminalExited" {
                 XCTAssertFalse(app.images["chevron.left"].exists, "\(appearance) \(screen) still exposes SF chevron.left")
@@ -693,7 +693,48 @@ final class ScreenshotTests: XCTestCase {
                     app.descendants(matching: .any)["official.browseOutline"].waitForExistence(timeout: 8),
                     "\(appearance) chat missing official read/browse tool glyph"
                 )
+                XCTAssertFalse(app.images["doc"].exists, "\(appearance) chat markdown fileChip still uses SF doc")
+                XCTAssertTrue(
+                    app.images["officialBrowseOutline"].exists
+                        || app.descendants(matching: .any)["officialBrowseOutline"].exists,
+                    "\(appearance) chat markdown fileChip missing official BrowseOutline asset"
+                )
                 assertOfficialMenuChrome(app, appearance: appearance, screen: screen)
+            }
+            if screen == "files" {
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.codeFile.python"].waitForExistence(timeout: 8),
+                    "\(appearance) files missing official python CodeFileIcon"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.codeFile.go"].exists,
+                    "\(appearance) files missing official go CodeFileIcon"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.codeFile.swift"].exists,
+                    "\(appearance) files missing official swift CodeFileIcon"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.codeFile.node"].exists,
+                    "\(appearance) files missing official node CodeFileIcon"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.fileMarkdown"].exists,
+                    "\(appearance) files missing official markdown FileGlyph"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.folderClose"].exists,
+                    "\(appearance) files missing official closed folder"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.warningOutline"].exists,
+                    "\(appearance) files missing official warning for non-file entries"
+                )
+                XCTAssertFalse(app.images["doc.fill"].exists, "\(appearance) files still exposes SF doc.fill")
+                XCTAssertFalse(app.images["doc"].exists, "\(appearance) files still exposes SF doc")
+                XCTAssertFalse(app.images["folder"].exists, "\(appearance) files still exposes SF folder")
+                XCTAssertTrue(app.staticTexts["main.py"].exists, "\(appearance) files missing seeded python row")
+                XCTAssertTrue(app.staticTexts["工作区文件"].waitForExistence(timeout: 8), "\(appearance) files missing 工作区文件 title")
             }
             if screen == "jobs" {
                 let trigger = app.descendants(matching: .any)["official.jobsChevron"]

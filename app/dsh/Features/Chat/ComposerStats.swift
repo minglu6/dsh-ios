@@ -394,7 +394,7 @@ private struct ComposerContextRing: View {
         let diameter = CGFloat(composerContextRingRadiusPoints) * 2
         ZStack {
             Circle()
-                .stroke(T.border, lineWidth: stroke)
+                .stroke(T.borderL3, lineWidth: stroke)
             Circle()
                 .trim(from: 0, to: CGFloat(min(100, max(0, percent))) / 100)
                 .stroke(

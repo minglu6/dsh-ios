@@ -1,7 +1,7 @@
 import SwiftUI
 import DSHProtocol
 
-/// Desktop `--dsw-alias-*` tokens from `@deepseek-ai/dsh-client-ui-theme` @ d743267 (0.2.1-alpha.2).
+/// Desktop `--dsw-alias-*` tokens from `@deepseek-ai/dsh-client-ui-theme@0.2.1-alpha.5`.
 struct DswColors {
     let bgBase: Color
     let bgLayer1: Color
@@ -11,6 +11,7 @@ struct DswColors {
     let bgMask1: Color
     let bgDocumentPreview: Color
     let borderL2: Color
+    let borderL3: Color
     let borderL4: Color
     let brandPrimaryNew: Color
     let buttonInfoFill: Color
@@ -54,6 +55,7 @@ struct DswColors {
         bgMask1: Color(hex: 0x3D000000),
         bgDocumentPreview: Color(hex: 0xFFEBEEF2),
         borderL2: Color(hex: 0x1A000000),
+        borderL3: Color(hex: dswAliasBorderL3LightHex),
         borderL4: Color(hex: 0x29000000),
         brandPrimaryNew: Color(hex: 0xFF4176E6),
         buttonInfoFill: Color(hex: 0xFF4176E6),
@@ -97,6 +99,7 @@ struct DswColors {
         bgMask1: Color(hex: 0x80000000),
         bgDocumentPreview: Color(hex: 0xFF151517),
         borderL2: Color(hex: 0x1FFFFFFF),
+        borderL3: Color(hex: dswAliasBorderL3DarkHex),
         borderL4: Color(hex: 0x33FFFFFF),
         brandPrimaryNew: Color(hex: 0xFF5686FE),
         buttonInfoFill: Color(hex: 0xFF7AAAFF),

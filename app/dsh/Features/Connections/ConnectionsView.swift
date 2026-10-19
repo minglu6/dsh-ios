@@ -270,7 +270,7 @@ struct ConnectionsView: View {
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: CGFloat(connectionsFieldRadiusPoints))
-                            .stroke(T.border, lineWidth: CGFloat(dswButtonOutlineWidthPoints))
+                            .stroke(T.borderStrong, lineWidth: CGFloat(dswButtonOutlineWidthPoints))
                     )
                     .padding(.horizontal, CGFloat(connectionsSheetContentPaddingPoints))
                     .padding(.top, 12)
@@ -283,7 +283,7 @@ struct ConnectionsView: View {
                         .foregroundStyle(T.ink)
                         .overlay(
                             RoundedRectangle(cornerRadius: CGFloat(dswButtonRadiusMdPoints))
-                                .stroke(T.border, lineWidth: CGFloat(dswButtonOutlineWidthPoints))
+                                .stroke(T.borderL3, lineWidth: CGFloat(dswButtonOutlineWidthPoints))
                         )
                     Button {
                         do {
@@ -723,7 +723,7 @@ private struct PairLinkSheet: View {
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: CGFloat(connectionsFieldRadiusPoints))
-                            .stroke(T.border, lineWidth: CGFloat(dswButtonOutlineWidthPoints))
+                            .stroke(T.borderStrong, lineWidth: CGFloat(dswButtonOutlineWidthPoints))
                     )
                     .accessibilityLabel(L.pairingLink())
                     .accessibilityIdentifier(connectionsPairingLinkFieldIdentifier())
@@ -765,7 +765,7 @@ private struct PairLinkSheet: View {
                         .foregroundStyle(T.ink)
                         .overlay(
                             RoundedRectangle(cornerRadius: CGFloat(dswButtonRadiusMdPoints))
-                                .stroke(T.border, lineWidth: CGFloat(dswButtonOutlineWidthPoints))
+                                .stroke(T.borderL3, lineWidth: CGFloat(dswButtonOutlineWidthPoints))
                         )
                 }
                 .buttonStyle(.plain)

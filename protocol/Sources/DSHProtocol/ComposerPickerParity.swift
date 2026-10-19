@@ -627,6 +627,15 @@ public func isForbiddenPermissionRiskSystemSymbol(_ name: String) -> Bool {
     name == "exclamationmark.triangle"
 }
 
+/// Desktop `RiskConfirmation.module.css` `.acknowledgement input`:
+/// 16×16, `margin: 3px 0 0`, `accent-color: var(--dsw-alias-button-primary-fill)`.
+/// `.acknowledgement` gap is 10. Primitives ship no checkbox SVG.
+public let permissionRiskCheckboxSizePoints: Double = 16
+public let permissionRiskCheckboxMarginTopPoints: Double = 3
+public let permissionRiskCheckboxGapPoints: Double = 10
+public func permissionRiskCheckboxOnSymbol() -> String { "permissionRiskCheckbox.on" }
+public func permissionRiskCheckboxOffSymbol() -> String { "permissionRiskCheckbox.off" }
+
 /// Desktop `IconWarningOutlineArtwork` Regular, 16×16 view box.
 public let iconWarningOutlineRingPath =
     "M8 14.5C11.5899 14.5 14.5 11.5899 14.5 8C14.5 4.41015 11.5899 1.5 8 1.5C4.41015 1.5 1.5 4.41015 1.5 8C1.5 11.5899 4.41015 14.5 8 14.5Z"

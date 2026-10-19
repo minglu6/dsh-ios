@@ -243,15 +243,24 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertEqual(fileTypeSymbol("other"), "official.fileOther")
         XCTAssertEqual(fileTypeSymbol("html"), "official.fileHtml")
         XCTAssertEqual(fileTypeSymbol("code"), "official.fileCode")
-        XCTAssertEqual(fileTypeSymbol("python"), "doc.fill")
-        XCTAssertEqual(fileTypeSymbol("xml"), "doc.fill")
-        XCTAssertEqual(fileTypeSymbol("flutter"), "doc.fill")
+        XCTAssertEqual(fileTypeSymbol("python"), "official.codeFile.python")
+        XCTAssertEqual(fileTypeSymbol("xml"), "official.codeFile.xml")
+        XCTAssertEqual(fileTypeSymbol("flutter"), "official.codeFile.flutter")
+        XCTAssertEqual(fileTypeSymbol("objective-c"), "official.codeFile.objective-c")
+        XCTAssertEqual(fileTypeCodeFileAssetName("python"), "codeFile_python")
+        XCTAssertEqual(fileTypeCodeFileAssetName("objective-c"), "codeFile_objective_c")
+        XCTAssertTrue(fileTypeHasCodeFileArtwork("python"))
+        XCTAssertTrue(fileTypeHasCodeFileArtwork("yaml"))
+        XCTAssertFalse(fileTypeHasCodeFileArtwork("markdown"))
         XCTAssertTrue(fileTypeHasTraditionalGlyph("markdown"))
         XCTAssertTrue(fileTypeHasTraditionalGlyph("other"))
         XCTAssertFalse(fileTypeHasTraditionalGlyph("python"))
+        XCTAssertEqual(fileTypeSymbol("unknown-kind"), "official.fileOther")
         XCTAssertTrue(isForbiddenTraditionalFileTypeSystemSymbol("doc.richtext"))
         XCTAssertTrue(isForbiddenTraditionalFileTypeSystemSymbol("exclamationmark.triangle"))
         XCTAssertFalse(isForbiddenTraditionalFileTypeSystemSymbol("official.fileMarkdown"))
+        XCTAssertTrue(isForbiddenCodeFileSystemSymbol("doc.fill"))
+        XCTAssertTrue(isForbiddenCodeFileSystemSymbol("doc"))
         XCTAssertTrue(fileGlyphBodyPath.hasPrefix("M8.48924 28H19.5108"))
         XCTAssertTrue(fileGlyphFoldPath.hasPrefix("M26.3909 7.37445"))
         XCTAssertEqual(fileGlyphMutedFoldHex, 0xFFA2A4A6)
@@ -284,6 +293,22 @@ final class WorkspaceTests: XCTestCase {
             let kind = classifyFileType(path)
             _ = fileTypeAccent(kind)
             _ = fileTypeSymbol(kind)
+        }
+        let codeKinds = [
+            "angular", "c", "clojure", "cmake", "cpp", "csharp", "css", "dart",
+            "docker", "elixir", "env", "erlang", "flutter", "git", "go", "graphql",
+            "haskell", "ini", "java", "javascript", "json", "kotlin", "lua",
+            "makefile", "node", "objective-c", "perl", "php", "powershell",
+            "protobuf", "python", "r", "react", "ruby", "rust", "scala", "shell",
+            "solidity", "sql", "svelte", "swift", "toml", "typescript", "vue",
+            "wasm", "xml", "yaml", "zig",
+        ]
+        XCTAssertEqual(codeKinds.count, 48)
+        for kind in codeKinds {
+            XCTAssertTrue(fileTypeHasCodeFileArtwork(kind), kind)
+            XCTAssertEqual(fileTypeSymbol(kind), "official.codeFile.\(kind)", kind)
+            XCTAssertFalse(fileTypeHasTraditionalGlyph(kind), kind)
+            XCTAssertTrue(fileTypeCodeFileAssetName(kind).hasPrefix("codeFile_"), kind)
         }
     }
 

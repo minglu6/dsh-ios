@@ -135,13 +135,14 @@ private struct MdBlockView: View {
                         }
                     }
                     .background(T.fill2)
+                    .overlay(alignment: .bottom) { T.borderL3.frame(height: 0.5) }
                     ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                        Divider()
                         HStack(spacing: 0) {
                             ForEach(Array(row.enumerated()), id: \.offset) { _, cell in
                                 wraps(cell).frame(minWidth: 72, alignment: .leading).padding(6)
                             }
                         }
+                        .overlay(alignment: .bottom) { T.border.frame(height: 0.5) }
                     }
                 }
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(T.border, lineWidth: 0.5))
@@ -202,6 +203,6 @@ private struct MdBlockView: View {
         attributed.link = url
         attributed.foregroundColor = T.link
         attributed.underlineStyle = NSUnderlineStyle()
-        return Text(Image(systemName: "doc")).foregroundColor(T.link) + Text(attributed)
+        return Text(Image(markdownFileChipAssetName)).foregroundColor(T.link) + Text(attributed)
     }
 }

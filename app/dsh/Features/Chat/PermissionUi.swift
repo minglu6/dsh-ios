@@ -38,9 +38,21 @@ struct PermissionRiskSheet: View {
                 .foregroundStyle(T.text2)
                 .lineSpacing(4)
             Button { if interactive { acknowledged.toggle() } } label: {
-                HStack(alignment: .top, spacing: 10) {
+                HStack(alignment: .top, spacing: CGFloat(permissionRiskCheckboxGapPoints)) {
                     Image(systemName: acknowledged ? "checkmark.square.fill" : "square")
-                        .foregroundStyle(acknowledged ? T.ink : T.text3)
+                        .font(.system(size: CGFloat(permissionRiskCheckboxSizePoints)))
+                        .foregroundStyle(acknowledged ? T.primaryButton : T.text3)
+                        .frame(
+                            width: CGFloat(permissionRiskCheckboxSizePoints),
+                            height: CGFloat(permissionRiskCheckboxSizePoints)
+                        )
+                        .padding(.top, CGFloat(permissionRiskCheckboxMarginTopPoints))
+                        .accessibilityHidden(true)
+                        .accessibilityIdentifier(
+                            acknowledged
+                                ? permissionRiskCheckboxOnSymbol()
+                                : permissionRiskCheckboxOffSymbol()
+                        )
                     Text(auto
                          ? permissionAutoConfirmAcknowledge(english: L.en)
                          : L.t("我已了解风险，并愿意继续", "I understand the risks and want to continue"))
@@ -53,7 +65,10 @@ struct PermissionRiskSheet: View {
             HStack(spacing: 10) {
                 Button(L.cancel(), action: onDismiss)
                     .frame(maxWidth: .infinity, minHeight: 50)
-                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 1))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: CGFloat(dswButtonRadiusMdPoints))
+                            .stroke(T.borderL3, lineWidth: CGFloat(dswButtonOutlineWidthPoints))
+                    )
                 Button(auto ? permissionAutoConfirmEnable(english: L.en) : L.t("启用完全权限", "Enable Full access")) {
                     if interactive && acknowledged {
                         submitted = true
