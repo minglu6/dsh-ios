@@ -47,6 +47,23 @@ public func terminalShouldAttachOnOnline(isOnline: Bool, exited: Bool) -> Bool {
     isOnline && !exited
 }
 
+/// Disconnect keeps `TerminalMeta` so the last screen stays a real `state.info`.
+/// `closeTerminalFollow` after an explicit close must drop meta (main behavior).
+public func terminalResetKeepsMeta(keepMeta: Bool) -> Bool {
+    keepMeta
+}
+
+/// Header chip / key bar are live only while the attachment is still running.
+public func terminalPanelIsRunning(
+    isOnline: Bool,
+    opening: Bool,
+    terminating: Bool,
+    exited: Bool,
+    state: String?
+) -> Bool {
+    isOnline && !opening && !terminating && !exited && state == "running"
+}
+
 /// Desktop: reconnect when `state.info` exists, otherwise retry
 /// (`client.terminal.js` 13353-13367). Disconnected uses reconnect.
 public func terminalRetryLabel(hasScreenInfo: Bool, disconnected: Bool, english: Bool) -> String {

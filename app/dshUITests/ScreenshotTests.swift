@@ -9,7 +9,7 @@ final class ScreenshotTests: XCTestCase {
         "settings", "settingsShell", "schedule", "terminal", "trajectory", "plugins", "connections",
         "composerStop", "slash", "jobs", "builtinPlugins", "trajectoryDetail",
         "chatDock",
-        "terminalUnavailable", "terminalMissing", "terminalDisconnected",
+        "terminalUnavailable", "terminalMissing", "terminalDisconnected", "terminalExited",
     ]
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool { false }
@@ -437,7 +437,8 @@ final class ScreenshotTests: XCTestCase {
                 )
             }
             if screen == "schedule" || screen == "terminal"
-                || screen == "terminalUnavailable" || screen == "terminalMissing" || screen == "terminalDisconnected" {
+                || screen == "terminalUnavailable" || screen == "terminalMissing"
+                || screen == "terminalDisconnected" || screen == "terminalExited" {
                 XCTAssertFalse(app.images["chevron.left"].exists, "\(appearance) \(screen) still exposes SF chevron.left")
                 XCTAssertTrue(
                     app.descendants(matching: .any)["official.chevronLeft"].waitForExistence(timeout: 8),
@@ -503,6 +504,30 @@ final class ScreenshotTests: XCTestCase {
                     value.contains("preserved-shell-output"),
                     "\(appearance) terminalDisconnected lost the screen text (got \(value))"
                 )
+            }
+            if screen == "terminalExited" {
+                XCTAssertTrue(
+                    app.staticTexts["已停止"].waitForExistence(timeout: 8),
+                    "\(appearance) terminalExited missing 已停止"
+                )
+                XCTAssertFalse(
+                    app.staticTexts["运行中"].exists,
+                    "\(appearance) terminalExited still shows 运行中"
+                )
+                XCTAssertTrue(
+                    app.staticTexts["终端已退出。可从菜单切换会话或新建终端。"].waitForExistence(timeout: 8),
+                    "\(appearance) terminalExited missing exit copy"
+                )
+                let keyBar = app.descendants(matching: .any)["terminalKeyBar"].firstMatch
+                XCTAssertTrue(keyBar.waitForExistence(timeout: 8), "\(appearance) terminalExited missing key bar")
+                let keys = keyBar.buttons.allElementsBoundByIndex
+                XCTAssertFalse(keys.isEmpty, "\(appearance) terminalExited key bar has no keys")
+                for key in keys {
+                    XCTAssertFalse(
+                        key.isEnabled,
+                        "\(appearance) terminalExited key still enabled: \(key.label)"
+                    )
+                }
             }
             if screen == "connections" {
                 assertConnectionsIsFullScreen(app, appearance: appearance)

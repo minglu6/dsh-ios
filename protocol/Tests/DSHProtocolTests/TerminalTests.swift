@@ -157,6 +157,27 @@ final class TerminalTests: XCTestCase {
         XCTAssertEqual(terminalKeyGlyphSizePoints, 20)
         XCTAssertEqual(terminalMissingIdentityCode, "terminal/unavailable")
     }
+
+    func testCloseFollowDropsMetaWhileDisconnectKeepsIt() {
+        XCTAssertTrue(terminalResetKeepsMeta(keepMeta: true))
+        XCTAssertFalse(terminalResetKeepsMeta(keepMeta: false))
+        XCTAssertTrue(
+            terminalPanelIsRunning(
+                isOnline: true, opening: false, terminating: false, exited: false, state: "running"
+            )
+        )
+        XCTAssertFalse(
+            terminalPanelIsRunning(
+                isOnline: true, opening: false, terminating: false, exited: true, state: "running"
+            ),
+            "explicit close must not stay running after closeTerminalFollow"
+        )
+        XCTAssertFalse(
+            terminalPanelIsRunning(
+                isOnline: true, opening: false, terminating: false, exited: false, state: nil
+            )
+        )
+    }
 }
 
 final class WorkspaceTests: XCTestCase {

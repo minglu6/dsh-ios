@@ -199,6 +199,7 @@ final class AppModel: ObservableObject {
     @Published var terminalOpening = false
     @Published var terminalFailure: String?
     @Published var terminalMissing = false
+    @Published var terminalExited = false
     var terminalAttachFrozen = false
     @Published var filePreview: FilePreviewRef?
     @Published var exportShare: ExportShare?
@@ -2110,7 +2111,7 @@ final class AppModel: ObservableObject {
             pendingAttaches = []
             followEpoch += 1
             detachFollow()
-            resetTerminalAttachment(keepScreen: true)
+            resetTerminalAttachment(keepScreen: true, keepMeta: true)
             resetCompletion()
             resetJobs(unfollow: false)
             ops = []
@@ -2836,6 +2837,7 @@ final class AppModel: ObservableObject {
         terminalOpening = true
         terminalFailure = nil
         terminalMissing = false
+        terminalExited = false
         terminalStray = [:]
         terminalMeta = nil
         terminalHostId = hostId
@@ -2977,14 +2979,16 @@ final class AppModel: ObservableObject {
         return entries
     }
 
-    private func resetTerminalAttachment(keepScreen: Bool) {
+    private func resetTerminalAttachment(keepScreen: Bool, keepMeta: Bool = false) {
         terminalOpenEpoch += 1
         terminalOpening = false
         terminalStray = [:]
         terminalReady.fail(CancellationError())
         terminalHostId = nil
-        if !keepScreen {
+        if !keepMeta {
             terminalMeta = nil
+        }
+        if !keepScreen {
             terminal.clear()
             terminalRevision = terminal.revision
         }

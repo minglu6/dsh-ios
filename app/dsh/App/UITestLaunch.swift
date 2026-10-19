@@ -309,6 +309,17 @@ extension AppModel {
                 cwd: "/Users/dev/dsh-ios"
             )
             push(.panel(.terminal))
+        case "terminalExited":
+            showDrawer = false
+            terminalAttachFrozen = true
+            terminalOpening = false
+            terminalFailure = nil
+            terminalMissing = false
+            terminalExited = true
+            terminal.write("closed-shell-output")
+            terminalRevision = terminal.revision
+            terminalMeta = nil
+            push(.panel(.terminal))
         case "files":
             showDrawer = false
             push(.panel(.files))

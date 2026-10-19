@@ -10,7 +10,6 @@ struct TerminalPanel: View {
     @State private var requestedTerminalId: String?
     @State private var exitTarget: TerminalMeta?
     @State private var terminating = false
-    @State private var exited = false
     @State private var entries: [TerminalSessionEntry] = []
     @State private var listing = false
     @State private var listError: String?
@@ -25,8 +24,15 @@ struct TerminalPanel: View {
 
     var body: some View {
         let current = model.terminalMeta.flatMap { $0.sessionId == ownerSessionId && !opening ? $0 : nil }
-        let running = model.isOnline && !opening && !terminating && current?.state == "running"
+        let running = terminalPanelIsRunning(
+            isOnline: model.isOnline,
+            opening: opening,
+            terminating: terminating,
+            exited: model.terminalExited,
+            state: current?.state
+        )
         let hasScreen = current != nil
+        let showScreen = hasScreen || model.terminalExited
         VStack(spacing: 0) {
             headerBar(current: current, running: running)
             if model.terminalMissing {
@@ -43,7 +49,7 @@ struct TerminalPanel: View {
                         .background(T.surface2)
                         .accessibilityIdentifier("terminalError")
                 }
-                if hasScreen {
+                if showScreen {
                     TerminalView(model: model, enabled: running, platform: model.terminalPlatform)
                 } else {
                     Spacer()
@@ -64,8 +70,8 @@ struct TerminalPanel: View {
                 exitTarget = nil
                 terminating = true
                 Task {
+                    model.terminalExited = true
                     model.terminateTerminal(sessionId: target.sessionId, terminalId: target.id)
-                    exited = true
                     requestedTerminalId = nil
                     listAttempt += 1
                     terminating = false
@@ -77,7 +83,7 @@ struct TerminalPanel: View {
         }
         .onChange(of: attempt) { _ in attach() }
         .onChange(of: model.isOnline) { online in
-            if terminalShouldAttachOnOnline(isOnline: online, exited: exited) {
+            if terminalShouldAttachOnOnline(isOnline: online, exited: model.terminalExited) {
                 attach()
             }
         }
@@ -167,7 +173,7 @@ struct TerminalPanel: View {
             Spacer()
             HStack(spacing: 5) {
                 Circle().fill(running ? T.ok : T.text3).frame(width: 6, height: 6)
-                Text(statusLabel).font(.system(size: 11)).foregroundStyle(T.text3)
+                Text(statusLabel(running: running)).font(.system(size: 11)).foregroundStyle(T.text3)
             }
         }
         .padding(.horizontal, 16)
@@ -177,12 +183,12 @@ struct TerminalPanel: View {
 
     @ViewBuilder
     private func statusLine(current: TerminalMeta?, hasScreen: Bool) -> some View {
-        let ended = current?.state == "closed" || current?.state == "exited" || exited
+        let ended = current?.state == "closed" || current?.state == "exited" || model.terminalExited
         let status: String? = {
             if !model.isOnline { return terminalDisconnectedCopy(english: L.en) }
             if opening { return terminalConnectingCopy(english: L.en) }
             if terminating { return L.terminalExitingEllipsis() }
-            if exited { return L.terminalExitedHint() }
+            if model.terminalExited { return L.terminalExitedHint() }
             if current?.state == "closed" || current?.state == "exited" { return L.terminalEnded() }
             return nil
         }()
@@ -251,11 +257,11 @@ struct TerminalPanel: View {
         .padding(CGFloat(terminalEmptyPaddingPoints))
     }
 
-    private var statusLabel: String {
+    private func statusLabel(running: Bool) -> String {
         if !model.isOnline { return L.terminalOffline() }
         if opening { return L.terminalConnecting() }
         if terminating { return L.terminalExiting() }
-        if model.terminalMeta?.state == "running" && !opening && !terminating { return L.terminalRunning() }
+        if running { return L.terminalRunning() }
         return L.terminalStopped()
     }
 
@@ -264,11 +270,11 @@ struct TerminalPanel: View {
     }
 
     private func attach() {
-        guard !exited else { return }
         if model.terminalAttachFrozen {
             opening = false
             return
         }
+        model.terminalExited = false
         opening = model.isOnline
         if model.isOnline {
             model.openTerminal(sessionId: ownerSessionId, forceNew: forceNew, terminalId: requestedTerminalId)
@@ -277,14 +283,14 @@ struct TerminalPanel: View {
     }
 
     private func openEntry(_ entry: TerminalSessionEntry) {
-        exited = false
+        model.terminalExited = false
         requestedTerminalId = entry.id
         ownerSessionId = entry.sessionId
         attempt += 1
     }
 
     private func createTerminal() {
-        exited = false
+        model.terminalExited = false
         requestedTerminalId = nil
         forceNew = true
         attempt += 1
