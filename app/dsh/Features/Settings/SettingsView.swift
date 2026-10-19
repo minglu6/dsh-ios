@@ -7,35 +7,48 @@ struct SettingsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            header(L.settings()) { model.pop() }
+            settingsShellHeader { model.pop() }
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    card {
-                        nav(L.generalNav(), official: .settingsOutlineRegular) { model.push(.general) }
+                settingsNavCard {
+                    nav(
+                        L.generalNav(),
+                        row: .general,
+                        official: .settingsOutlineRegular
+                    ) { model.push(.general) }
+                    nav(
+                        L.modelsNav(),
+                        row: .models,
+                        official: .dataOutline,
+                        divider: hasPresets || hasPluginSettings,
+                        enabled: model.isOnline
+                    ) { model.push(.models) }
+                    if hasPresets {
                         nav(
-                            L.modelsNav(),
-                            official: .dataOutline,
-                            divider: hasPresets || hasPluginSettings,
+                            L.agentPresets(),
+                            row: .presets,
+                            official: .agentPreset,
+                            divider: hasPluginSettings,
                             enabled: model.isOnline
-                        ) { model.push(.models) }
-                        if hasPresets {
-                            nav(
-                                L.agentPresets(),
-                                official: .agentPreset,
-                                divider: hasPluginSettings,
-                                enabled: model.isOnline
-                            ) { model.push(.presets) }
-                        }
-                        if hasPluginSettings {
-                            nav(L.builtinPluginsNav(), divider: false, enabled: model.isOnline) {
-                                model.push(.builtinPlugins)
-                            } icon: {
-                                PluginPinwheelIcon(size: 16, color: T.text2)
-                            }
+                        ) { model.push(.presets) }
+                    }
+                    if hasPluginSettings {
+                        nav(
+                            L.builtinPluginsNav(),
+                            row: .plugins,
+                            divider: false,
+                            enabled: model.isOnline
+                        ) {
+                            model.push(.builtinPlugins)
+                        } icon: {
+                            PluginPinwheelIcon(
+                                size: CGFloat(settingsNavIconSizePoints),
+                                color: T.text2
+                            )
                         }
                     }
                 }
-                .padding(.vertical, 12)
+                .padding(.top, CGFloat(settingsNavGapPoints))
+                .padding(.bottom, 12)
             }
             .background(T.bg)
         }
@@ -426,6 +439,32 @@ func header(_ title: String, back: @escaping () -> Void) -> some View {
     .background(T.surface)
 }
 
+/// Desktop `SettingsRoot` `.navTitle` 16/500/24. Phone keeps the back chevron
+/// (overlay close lives on the content pane). Identifier sits on a background
+/// fill so `navBack` stays addressable.
+func settingsShellHeader(back: @escaping () -> Void) -> some View {
+    HStack(spacing: CGFloat(settingsNavCellGapPoints)) {
+        Button(action: back) { OfficialGlyph(kind: .chevronLeft, size: 16, color: T.ink) }
+            .accessibilityElement(children: .contain)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityIdentifier("navBack")
+        Text(L.settings())
+            .font(.system(size: CGFloat(settingsNavTitleFontSizePoints), weight: .medium))
+            .frame(height: CGFloat(settingsNavTitleLineHeightPoints), alignment: .leading)
+            .foregroundStyle(T.ink)
+        Spacer(minLength: 0)
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 12)
+    .background {
+        Rectangle()
+            .fill(T.surface)
+            .accessibilityElement()
+            .accessibilityIdentifier(settingsShellHeaderIdentifier())
+            .allowsHitTesting(false)
+    }
+}
+
 func card<Content: View>(@ViewBuilder content: () -> Content) -> some View {
     VStack(spacing: 0) { content() }
         .background(T.settingsCard, in: RoundedRectangle(cornerRadius: 12))
@@ -433,21 +472,42 @@ func card<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         .padding(.horizontal, 16)
 }
 
+/// Phone wrap of the overlay left-nav list in desktop settings-card material
+/// (`--dsw-alias-settings-card-*` + `--dsw-radius-lg`). Identifier sits on the
+/// fill so nav row hits stay addressable.
+func settingsNavCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+    VStack(spacing: 0) { content() }
+        .background {
+            RoundedRectangle(cornerRadius: CGFloat(settingsCardRadiusPoints))
+                .fill(T.settingsCard)
+                .accessibilityElement()
+                .accessibilityIdentifier(settingsNavCardIdentifier())
+                .allowsHitTesting(false)
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: CGFloat(settingsCardRadiusPoints))
+                .stroke(T.settingsCardStroke, lineWidth: CGFloat(settingsCardStrokeWidthPoints))
+        )
+        .padding(.horizontal, 16)
+}
+
 func nav(
     _ title: String,
+    row: SettingsNavRowId,
     official: OfficialGlyph.Kind,
     value: String? = nil,
     divider: Bool = true,
     enabled: Bool = true,
     action: @escaping () -> Void
 ) -> some View {
-    nav(title, value: value, divider: divider, enabled: enabled, action: action) {
+    nav(title, row: row, value: value, divider: divider, enabled: enabled, action: action) {
         OfficialGlyph(kind: official, size: CGFloat(settingsNavIconSizePoints), color: T.text2)
     }
 }
 
 func nav<Icon: View>(
     _ title: String,
+    row: SettingsNavRowId,
     value: String? = nil,
     divider: Bool = true,
     enabled: Bool = true,
@@ -456,17 +516,36 @@ func nav<Icon: View>(
 ) -> some View {
     VStack(spacing: 0) {
         Button(action: action) {
-            HStack {
-                icon().foregroundStyle(T.text2)
-                Text(title).foregroundStyle(T.ink)
-                Spacer()
+            HStack(spacing: CGFloat(settingsNavCellGapPoints)) {
+                icon()
+                    .frame(
+                        width: CGFloat(settingsNavIconSizePoints),
+                        height: CGFloat(settingsNavIconSizePoints)
+                    )
+                    .foregroundStyle(T.text2)
+                Text(title)
+                    .font(.system(size: CGFloat(settingsNavCellFontSizePoints)))
+                    .frame(height: CGFloat(settingsNavCellLineHeightPoints), alignment: .leading)
+                    .foregroundStyle(T.ink)
+                Spacer(minLength: 0)
                 if let value, !value.isEmpty {
                     Text(value).font(.subheadline).foregroundStyle(T.text3).lineLimit(1)
                 }
                 OfficialGlyph(kind: .chevronRight, size: 12, color: T.text3)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.leading, CGFloat(settingsNavCellPaddingLeadingPoints))
+            .padding(.trailing, CGFloat(settingsNavCellPaddingTrailingPoints))
+            .padding(.top, CGFloat(settingsNavCellPaddingTopPoints))
+            .padding(.bottom, CGFloat(settingsNavCellPaddingBottomPoints))
+            .frame(minHeight: CGFloat(settingsNavCellHeightPoints), alignment: .center)
+            .contentShape(Rectangle())
+            .background {
+                Rectangle()
+                    .fill(T.settingsCard)
+                    .accessibilityElement()
+                    .accessibilityIdentifier(settingsNavRowIdentifier(row.rawValue))
+                    .allowsHitTesting(false)
+            }
             .opacity(enabled ? 1 : 0.5)
         }
         .buttonStyle(.plain)

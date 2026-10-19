@@ -932,6 +932,15 @@ final class ScreenshotTests: XCTestCase {
                     app.staticTexts["通用设置"].exists || app.buttons["通用设置"].exists,
                     "\(appearance) settingsShell missing 通用设置 row"
                 )
+                XCTAssertTrue(
+                    app.staticTexts["Agent 预设"].exists || app.buttons["Agent 预设"].exists,
+                    "\(appearance) settingsShell missing Agent 预设 row"
+                )
+                XCTAssertTrue(
+                    app.staticTexts["内置插件"].exists || app.buttons["内置插件"].exists,
+                    "\(appearance) settingsShell missing 内置插件 row"
+                )
+                try assertSettingsShellGeometry(app, appearance: appearance)
                 assertNoConnectionDiagnostics(app, appearance: appearance, screen: screen)
             }
             if screen == "chatDock" {
@@ -1295,6 +1304,77 @@ final class ScreenshotTests: XCTestCase {
         host.tap()
         assertConnectionsIsFullScreen(app, appearance: appearance)
         assertNoConnectionDiagnostics(app, appearance: appearance, screen: "connections")
+    }
+
+    private func unionAccessibilityFrame(_ app: XCUIApplication, identifier: String) -> CGRect {
+        let query = app.descendants(matching: .any).matching(identifier: identifier)
+        var frame = CGRect.null
+        for i in 0..<query.count {
+            frame = frame.union(query.element(boundBy: i).frame)
+        }
+        return frame
+    }
+
+    /// Desktop `SettingsRoot.module.css` `.nav` gap 18, `.navCell` height 40,
+    /// icon↔label gap 8. Phone header identifier is the full title bar so the
+    /// measured gap is bar → card (not title-glyph box → card).
+    private func assertSettingsShellGeometry(_ app: XCUIApplication, appearance: String) throws {
+        let header = app.descendants(matching: .any)["settingsShellHeader"].firstMatch
+        XCTAssertTrue(
+            header.waitForExistence(timeout: 8),
+            "\(appearance) settingsShell missing settingsShellHeader"
+        )
+        let card = app.descendants(matching: .any)["settingsNavCard"].firstMatch
+        XCTAssertTrue(
+            card.waitForExistence(timeout: 8),
+            "\(appearance) settingsShell missing settingsNavCard"
+        )
+        let gap = card.frame.minY - header.frame.maxY
+        XCTAssertEqual(
+            gap,
+            18,
+            accuracy: 2,
+            "\(appearance) settingsShell header-to-card gap \(gap) is not desktop .nav gap 18 (header \(header.frame) card \(card.frame))"
+        )
+        XCTAssertTrue(
+            app.descendants(matching: .any)["settingsNavRow.general"].waitForExistence(timeout: 8),
+            "\(appearance) settingsShell missing settingsNavRow.general"
+        )
+        let general = unionAccessibilityFrame(app, identifier: "settingsNavRow.general")
+        XCTAssertFalse(
+            general.isNull,
+            "\(appearance) settingsShell settingsNavRow.general frame is empty"
+        )
+        XCTAssertEqual(
+            general.height,
+            40,
+            accuracy: 2,
+            "\(appearance) settingsShell general row height \(general.height) is not desktop .navCell 40 (\(general))"
+        )
+        let models = unionAccessibilityFrame(app, identifier: "settingsNavRow.models")
+        XCTAssertFalse(models.isNull, "\(appearance) settingsShell missing settingsNavRow.models")
+        XCTAssertEqual(
+            models.height,
+            40,
+            accuracy: 2,
+            "\(appearance) settingsShell models row height \(models.height) is not desktop .navCell 40 (\(models))"
+        )
+        let icon = app.descendants(matching: .any)["official.settingsOutlineRegular"].firstMatch
+        XCTAssertTrue(icon.exists, "\(appearance) settingsShell missing general icon for gap")
+        let label = app.staticTexts["通用设置"].firstMatch
+        XCTAssertTrue(label.exists, "\(appearance) settingsShell missing 通用设置 label for gap")
+        let iconLabelGap = label.frame.minX - icon.frame.maxX
+        XCTAssertEqual(
+            iconLabelGap,
+            8,
+            accuracy: 2,
+            "\(appearance) settingsShell icon-label gap \(iconLabelGap) is not desktop .navCell gap 8 (icon \(icon.frame) label \(label.frame))"
+        )
+        XCTAssertGreaterThan(
+            header.frame.height,
+            24,
+            "\(appearance) settingsShell header height \(header.frame.height) collapsed under .navTitle line-height 24"
+        )
     }
 
     /// 「连接诊断」/ Copy diagnostic report must stay off every surface that
