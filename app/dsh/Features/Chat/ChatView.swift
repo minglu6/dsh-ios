@@ -272,9 +272,12 @@ struct ChatView: View {
                 .padding(.bottom, CGFloat(conversationHeaderTabPaddingBottomPoints))
                 .overlay(alignment: .bottom) {
                     if selected {
+                        // Desktop `bottom: -1px` needs a locked .header box to
+                        // not reflow when the keyboard rises. Header and tabs
+                        // stay siblings (b65811e); sit the 2pt rule on the
+                        // chip bottom above the l3 hairline.
                         T.businessPrimary
                             .frame(height: CGFloat(conversationHeaderTabUnderlineHeightPoints))
-                            .offset(y: CGFloat(conversationHeaderTabUnderlineOverflowPoints))
                             .allowsHitTesting(false)
                             .accessibilityHidden(true)
                     }
