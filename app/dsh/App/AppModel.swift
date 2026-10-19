@@ -219,6 +219,7 @@ final class AppModel: ObservableObject {
     @Published var archiveConfirm: ArchiveConfirmRequest?
     var uiTestFixture = false
     var uiTestFilePreviewText: String?
+    var uiTestChangesSummary: WorkspaceChangesSummary?
     var uiTestTerminalEntries: [TerminalSessionEntry] = []
 
     let terminal = AnsiTerminal()
@@ -1834,6 +1835,9 @@ final class AppModel: ObservableObject {
     }
 
     func fetchChangesSummary(sessionId: String, seq: Int64) async throws -> WorkspaceChangesSummary? {
+        if let seeded = uiTestChangesSummary {
+            return seeded
+        }
         let hasOp = ops.contains("workspaceChanges.summary")
         guard hasOp else {
             logChanges("skip fetch op missing session=\(sessionId) seq=\(seq)")

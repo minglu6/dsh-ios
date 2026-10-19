@@ -2257,6 +2257,21 @@ CI `10f4240` artifact `ios-simulator-screenshots` 逐屏对照 `ui-input-trigger
 | `/` 菜单 hug 内容、上限 400 | **本轮修** | `*-slash.png` 被 `minHeight: availableHeight` 拉满 transcript；桌面 card 不 stretch |
 | `@` 菜单 hug 内容、上限 400 | **本轮修** | `*-mention.png` / `landingMention` / `mentionFiltered` 空卡撑到 400pt cap |
 | Settings Toggle / 系统 Menu check / confirmationDialog | **skip** | Round 72 |
-| 变更卡单文件 `doc.text` | **GAP leftover** | 桌面 `FileTypeIcon`；本轮不修 |
+| 变更卡单文件 `doc.text` | **GAP leftover → Round 74** | 桌面 `FileTypeIcon`；#90 不修 |
 | Inspector SF viewfinder | **skip** | 无 artwork |
+
+## Round 74 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`；#90 合入后）
+
+基线 `main` `f9f8457`（#90 MenuView hug 400）。桌面是源。禁止自创颜色/图标/间距；无系统蓝 ActionSheet；不改 composer IME；不恢复「连接诊断」。Composer 统计行居中、权限 chip 只图标、用户气泡 hug、`@` 面板照桌面。
+
+CI `11c995e` / `f9f8457` artifact `ios-simulator-screenshots` 逐屏对照：
+
+| 项 | 判定 | 证据 |
+| --- | --- | --- |
+| `/` `@` MenuView hug / ≤400 | **PASS** | #90 `*-slash.png` / `mention` / `mentionFiltered` / `landingMention` |
+| 用户气泡 hug / 贴右 | **PASS** | #87 `*-chat.png` / `chatLong` / `mentionSent` |
+| 变更卡单文件 `FileTypeIcon` | **本轮修** | `ChangesSummaryCard` 单文件仍 SF `doc.text`；桌面 `UserContent` `.fileCard` `.fileIcon` 是 `FileTypeIcon` 28×28。CI 加 `changesCard` 屏：断言 `official.fileMarkdown`，禁 `doc.text` |
+| 变更卡多文件 `doc.on.doc` | **skip** | primitives / ui-workspace 无 stacked-docs artwork，不发明 |
+| Inspector viewfinder / 插件库存 magnifyingglass | **skip** | 无 artwork / 桌面无该搜索槽 |
+| Settings Toggle / 系统 Menu check | **skip** | Round 72 |
 
