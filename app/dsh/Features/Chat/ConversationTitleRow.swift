@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import DSHProtocol
 
 /// Desktop `ConversationRoot.module.css` `.titleRow` (min-height 30, header
@@ -36,14 +37,30 @@ struct ConversationTitleRow<Title: View>: View {
         }
         .frame(minHeight: CGFloat(conversationHeaderTitleRowMinHeightPoints), alignment: .center)
         .background {
-            Rectangle()
-                .fill(T.surface)
-                .accessibilityElement()
-                .accessibilityIdentifier(conversationTitleRowIdentifier())
-                .allowsHitTesting(false)
+            ConversationTitleRowBoundsHost()
         }
         .padding(.top, CGFloat(conversationHeaderPaddingTopPoints))
         .padding(.horizontal, CGFloat(conversationHeaderPaddingHorizontalPoints))
+    }
+}
+
+/// XCUI geometry leaf the same size as `.titleRow` (min-height 30). Clear
+/// UIKit view, hits disabled — same pattern as `PairingFieldBoundsHost`.
+private struct ConversationTitleRowBoundsHost: UIViewRepresentable {
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.backgroundColor = .clear
+        view.isUserInteractionEnabled = false
+        view.isAccessibilityElement = UITestLaunch.isEnabled
+        view.accessibilityIdentifier = conversationTitleRowIdentifier()
+        view.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        view.setContentHuggingPriority(.defaultLow, for: .vertical)
+        return view
+    }
+
+    func updateUIView(_ view: UIView, context: Context) {
+        view.isAccessibilityElement = UITestLaunch.isEnabled
+        view.accessibilityIdentifier = conversationTitleRowIdentifier()
     }
 }
 

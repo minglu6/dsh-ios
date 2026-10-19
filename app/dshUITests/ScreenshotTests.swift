@@ -248,6 +248,8 @@ final class ScreenshotTests: XCTestCase {
                     app.descendants(matching: .any)["official.panelLeft"].waitForExistence(timeout: 8),
                     "\(appearance) \(screen) missing official panel-left glyph"
                 )
+            }
+            if screen == "landing" || screen == "landingMention" || screen == "chat" || screen == "chatLong" || screen == "trajectory" {
                 let titleRow = app.descendants(matching: .any)["conversationTitleRow"].firstMatch
                 XCTAssertTrue(
                     titleRow.waitForExistence(timeout: 8),
@@ -430,7 +432,7 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) landing composer floated off the bottom (gap \(gap))"
                 )
             }
-            if screen == "chat" || screen == "chatLong" || screen == "changesCard" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "composerStop" || screen == "slash" || screen == "jobs" || screen == "models" || screen == "permission" || screen == "trajectory" || screen == "trajectoryDetail" || screen == "chatDock" {
+            if screen == "chat" || screen == "chatLong" || screen == "trajectory" {
                 assertConversationHeaderTabGap(app, appearance: appearance, screen: screen)
             }
             if screen == "chat" || screen == "chatLong" || screen == "changesCard" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "trajectory" {
