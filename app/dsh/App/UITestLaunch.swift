@@ -26,6 +26,17 @@ enum UITestLaunch {
     static var extraChatForKeyboard: Bool {
         ProcessInfo.processInfo.arguments.contains("-UITestKeyboard")
     }
+
+    /// Drive composer `setMarkedText` / `unmarkText` from XCUITest without a
+    /// software CJK keyboard on the simulator.
+    static var composerIme: Bool {
+        ProcessInfo.processInfo.arguments.contains("-UITestComposerIme")
+    }
+}
+
+extension Notification.Name {
+    static let dshComposerImeSetMarked = Notification.Name("dsh.composerIme.setMarked")
+    static let dshComposerImeUnmark = Notification.Name("dsh.composerIme.unmark")
 }
 
 extension AppModel {

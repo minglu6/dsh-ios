@@ -127,6 +127,7 @@ jobs:
             -derivedDataPath derived-ui \
             -only-testing:dshUITests/ScreenshotTests \
             -only-testing:dshUITests/KeyboardDismissalTests \
+            -only-testing:dshUITests/ComposerImeTests \
             -resultBundlePath derived-ui/dsh-screenshots.xcresult \
             CODE_SIGN_IDENTITY=- \
             DEVELOPMENT_TEAM= \
