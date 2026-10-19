@@ -172,6 +172,7 @@ struct RootView: View {
             .padding(.top, CGFloat(conversationHeaderPaddingTopPoints))
             .padding(.horizontal, CGFloat(conversationHeaderPaddingHorizontalPoints))
             .background(T.surface)
+            .ignoresSafeArea(.keyboard)
             ZStack(alignment: .bottom) {
                 VStack(spacing: 0) {
                     landingHeadlineRow

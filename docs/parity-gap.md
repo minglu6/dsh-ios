@@ -2313,5 +2313,5 @@ landing 侧栏 toggle / 鲸 +「探索未至之境」/ composer 贴底 / 统计�
 | 项 | 桌面 | iOS 原状 | 处理 |
 | --- | --- | --- | --- |
 | 设置根页卡四角 | `--dsw-radius-lg` 16；卡外是 `--dsw-alias-bg-base` `#151517` / `#FFFFFF` | 行 `Rectangle` 填色未裁到圆角，四角圆外仍是 settings-card `#2C2C2E` | `settingsNavCard` fill / 行 / stroke 共用同一个 `RoundedRectangle`，`.clipShape`。CI 对四角圆外像素断言 = 页底（light + dark） |
-| models `typeText("保留草稿")` | — | #92 wrapper / 屏宽 cap / PhoneColumn 叠 workaround | 布局回到 `b65811e` 兄弟 header/tabs + picker `open = false`。只叠 titleRow 30 + tabs padding-top 10。fixture 关 UIKit 动画（2f3e446 关掉后 mentionChip IME 的 setMarked 查不到）。`sizeThatFits` 遇非有限 proposal 用 bounds，不用屏宽。无 wrapper / maxWidth / probe。不放宽 typeText / IME / 滚动收键盘 |
+| models `typeText("保留草稿")` | — | #92 wrapper / 屏宽 cap / PhoneColumn 叠 workaround | 布局回到 `b65811e` 兄弟 header/tabs。titleRow 30 叠在原 header 上，10pt 空隙用回 b65811e 的 `padding.vertical`（不另给 tabs 加 top，避免键盘时兄弟重排）。header/tabs `.ignoresSafeArea(.keyboard)`。`sizeThatFits` 保持 b65811e（5db6736 把非有限宽收成 1 后 mentionChip IME 丢 setMarked）。fixture 关动画；picker 无动画关闭。无 wrapper / maxWidth / probe。不放宽 typeText / IME / 滚动收键盘 |
 

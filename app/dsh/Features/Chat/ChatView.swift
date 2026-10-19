@@ -235,9 +235,10 @@ struct ChatView: View {
         }
         .frame(minHeight: CGFloat(conversationHeaderTitleRowMinHeightPoints),
                maxHeight: CGFloat(conversationHeaderTitleRowMinHeightPoints))
-        .padding(.top, CGFloat(conversationHeaderPaddingTopPoints))
         .padding(.horizontal, CGFloat(conversationHeaderPaddingHorizontalPoints))
+        .padding(.vertical, CGFloat(conversationHeaderPaddingTopPoints))
         .background(T.surface)
+        .ignoresSafeArea(.keyboard)
     }
 
     private var tabs: some View {
@@ -251,11 +252,11 @@ struct ChatView: View {
                 JobsAction(model: model, sessionId: sessionId)
             }
         }
-        .padding(.top, CGFloat(conversationHeaderTabsMarginTopPoints))
         .padding(.horizontal, 14)
         .padding(.bottom, 6)
         .background(T.surface)
         .overlay(alignment: .bottom) { T.borderL3.frame(height: 0.5) }
+        .ignoresSafeArea(.keyboard)
     }
 
     private func tabChip(_ index: Int, _ title: String) -> some View {
@@ -2046,16 +2047,7 @@ private struct ComposerTextView: UIViewRepresentable {
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: ComposerUITextView, context: Context) -> CGSize? {
-        let proposed = proposal.width ?? uiView.bounds.width
-        let boundsWidth = uiView.bounds.width
-        let width: CGFloat
-        if proposed.isFinite, proposed >= 1 {
-            width = proposed
-        } else if boundsWidth.isFinite, boundsWidth >= 1 {
-            width = boundsWidth
-        } else {
-            width = 1
-        }
+        let width = max(proposal.width ?? uiView.bounds.width, 1)
         let wasScroll = uiView.isScrollEnabled
         uiView.isScrollEnabled = false
         let content = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
