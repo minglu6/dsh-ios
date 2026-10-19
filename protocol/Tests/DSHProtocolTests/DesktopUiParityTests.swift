@@ -12,6 +12,24 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertFalse(MessageActionPolicy.userRow.contains(.branch))
     }
 
+    func testUserMessageBubbleMatchesDesktopMessageItem() {
+        XCTAssertEqual(chatContentWidthPoints, 748)
+        XCTAssertEqual(userMessageStackMaxWidthFactor, 0.702)
+        XCTAssertEqual(userMessageStackMaxWidthFraction, 0.82)
+        XCTAssertEqual(userMessageStackAbsoluteMaxWidthPoints, 748 * 0.702)
+        XCTAssertEqual(userMessageStackMaxWidth(columnWidth: 390), 390 * 0.82)
+        XCTAssertEqual(userMessageStackMaxWidth(columnWidth: 800), 748 * 0.702)
+        XCTAssertEqual(userMessageBubblePaddingVerticalPoints, 10)
+        XCTAssertEqual(userMessageBubblePaddingHorizontalPoints, 16)
+        XCTAssertEqual(userMessageBubbleRadiusPoints, dswRadiusXlPoints)
+        XCTAssertEqual(userMessageBubbleRadiusPoints, 20)
+        XCTAssertEqual(userMessageRowGapPoints, 6)
+        XCTAssertEqual(userMessageStackGapPoints, 8)
+        XCTAssertTrue(userMessageBubbleAlignsTrailing)
+        XCTAssertTrue(userMessageBubbleTextAlignsLeading)
+        XCTAssertEqual(userMessageBubbleIdentifier(), "userMessageBubble")
+    }
+
     func testMessageBranchChromeMatchesTurnTail() {
         XCTAssertNil(messageBranchChrome(canFork: false, turnEndSeq: 5))
         XCTAssertNil(messageBranchChrome(canFork: false, turnEndSeq: nil))

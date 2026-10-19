@@ -253,14 +253,13 @@ struct UserMentionText: View {
     var pending = false
 
     var body: some View {
-        MentionWrap(alignment: .trailing, spacing: 0, lineSpacing: 2) {
+        MentionWrap(alignment: .leading, spacing: 0, lineSpacing: 2) {
             ForEach(Array(mentionRuns(text).enumerated()), id: \.offset) { _, run in
                 switch run {
                 case .text(let value):
                     Text(value)
                         .font(LocalFonts.text())
                         .foregroundStyle(color.opacity(pending ? 0.6 : 1))
-                        .fixedSize()
                 case .chip(let ref):
                     MentionChipLabel(ref: ref, composer: false)
                 }
@@ -374,52 +373,59 @@ private struct FlowLayout: Layout {
     var lineSpacing: CGFloat
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let maxWidth = proposal.width ?? .infinity
-        var x: CGFloat = 0
-        var y: CGFloat = 0
-        var lineHeight: CGFloat = 0
-        var width: CGFloat = 0
-        for view in subviews {
-            let size = view.sizeThatFits(.unspecified)
-            if x > 0 && x + size.width > maxWidth {
-                y += lineHeight + lineSpacing
-                x = 0
-                lineHeight = 0
-            }
-            lineHeight = max(lineHeight, size.height)
-            x += size.width + spacing
-            width = max(width, x)
-        }
-        return CGSize(width: maxWidth.isFinite ? maxWidth : width, height: y + lineHeight)
+        arrange(subviews: subviews, maxWidth: resolvedMaxWidth(proposal.width), origin: .zero, placing: false)
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        var x = bounds.minX
-        var y = bounds.minY
+        _ = arrange(subviews: subviews, maxWidth: bounds.width, origin: bounds.origin, placing: true)
+    }
+
+    /// Hug used width. Returning the proposed max width here is what made
+    /// short user bubbles stretch to the trailing edge after #83 swapped
+    /// `Text` for mention-run `FlowLayout`.
+    private func arrange(
+        subviews: Subviews,
+        maxWidth: CGFloat,
+        origin: CGPoint,
+        placing: Bool
+    ) -> CGSize {
+        var x: CGFloat = 0
+        var y: CGFloat = 0
         var lineHeight: CGFloat = 0
         var line: [(LayoutSubview, CGSize)] = []
+        var usedWidth: CGFloat = 0
+
         func flush() {
             guard !line.isEmpty else { return }
             let lineWidth = line.reduce(0) { $0 + $1.1.width } + CGFloat(max(line.count - 1, 0)) * spacing
-            var originX = bounds.minX
-            if alignment == .trailing {
-                originX = bounds.maxX - lineWidth
-            } else if alignment == .center {
-                originX = bounds.minX + (bounds.width - lineWidth) / 2
+            var originX = origin.x
+            if maxWidth.isFinite {
+                if alignment == .trailing {
+                    originX = origin.x + maxWidth - lineWidth
+                } else if alignment == .center {
+                    originX = origin.x + (maxWidth - lineWidth) / 2
+                }
             }
-            var placed = originX
-            for (view, size) in line {
-                view.place(at: CGPoint(x: placed, y: y + (lineHeight - size.height) / 2), proposal: ProposedViewSize(size))
-                placed += size.width + spacing
+            if placing {
+                var placed = originX
+                for (view, size) in line {
+                    view.place(
+                        at: CGPoint(x: placed, y: origin.y + y + (lineHeight - size.height) / 2),
+                        proposal: ProposedViewSize(size)
+                    )
+                    placed += size.width + spacing
+                }
             }
+            usedWidth = max(usedWidth, lineWidth)
             line.removeAll()
         }
+
         for view in subviews {
-            let size = view.sizeThatFits(.unspecified)
-            if x > bounds.minX && x + size.width > bounds.maxX {
+            let size = fittedSize(view, maxWidth: maxWidth)
+            if x > 0 && maxWidth.isFinite && x + size.width > maxWidth {
                 flush()
                 y += lineHeight + lineSpacing
-                x = bounds.minX
+                x = 0
                 lineHeight = 0
             }
             line.append((view, size))
@@ -427,6 +433,21 @@ private struct FlowLayout: Layout {
             x += size.width + spacing
         }
         flush()
+        return CGSize(width: usedWidth, height: y + lineHeight)
+    }
+
+    private func resolvedMaxWidth(_ proposed: CGFloat?) -> CGFloat {
+        if let proposed, proposed > 0, proposed.isFinite { return proposed }
+        return .infinity
+    }
+
+    private func fittedSize(_ view: LayoutSubview, maxWidth: CGFloat) -> CGSize {
+        let ideal = view.sizeThatFits(.unspecified)
+        if maxWidth.isFinite, ideal.width > maxWidth || !ideal.width.isFinite {
+            let wrapped = view.sizeThatFits(ProposedViewSize(width: maxWidth, height: nil))
+            return CGSize(width: min(wrapped.width, maxWidth), height: wrapped.height)
+        }
+        return ideal
     }
 }
 

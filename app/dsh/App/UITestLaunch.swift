@@ -32,6 +32,11 @@ enum UITestLaunch {
     static var composerIme: Bool {
         ProcessInfo.processInfo.arguments.contains("-UITestComposerIme")
     }
+
+    /// Multi-line CJK used by `chatLong` screenshots. Must wrap inside the
+    /// desktop `.userStack` max-width instead of stretching full bleed.
+    static let longUserMessage =
+        "这是一条很长的用户消息，用来确认气泡会在桌面 max-width 内换行，而不是从左侧一直撑到右缘。第二句继续写，避免单行把布局测成未换行。"
 }
 
 extension Notification.Name {
@@ -166,7 +171,13 @@ extension AppModel {
                 turn: 1,
                 step: 1
             )),
-            .text(Item.Text(key: "a1", text: "你好，我是 DeepSeek。[README.md](README.md)", live: false, at: clock + 2_000, messageId: "m-assistant")),
+            .text(Item.Text(
+                key: "a1",
+                text: "你好，我是 DeepSeek。[README.md](README.md)\n\n- 第一项\n- 第二项",
+                live: false,
+                at: clock + 2_000,
+                messageId: "m-assistant"
+            )),
         ]
         if UITestLaunch.extraChatForKeyboard {
             for i in 2...16 {
@@ -233,9 +244,20 @@ extension AppModel {
             // Desktop workspace-row overflow (`IconEllipsisOutline`). Off other
             // screens so `*-chat.png` / files / connections stay still.
             ops.formUnion(["workspace.rename", "workspace.delete"])
-        case "chat", "trajectory", "trajectoryDetail", "planMode", "mention", "mentionFiltered", "mentionChip", "mentionSent", "turnTrigger":
+        case "chat", "chatLong", "trajectory", "trajectoryDetail", "planMode", "mention", "mentionFiltered", "mentionChip", "mentionSent", "turnTrigger":
             seedUITestJobs()
             if screen == "turnTrigger" { seedUITestTurnTrigger() }
+            if screen == "chatLong" {
+                guard var state = chat else {
+                    fatalError("UITestLaunch chatLong requires a chat session")
+                }
+                guard case .user(var user) = state.items.first else {
+                    fatalError("UITestLaunch chatLong requires the fixture user row")
+                }
+                user.text = UITestLaunch.longUserMessage
+                state.items[0] = .user(user)
+                chat = state
+            }
             if screen == "planMode" {
                 chat?.planMode = true
                 composerText = ""

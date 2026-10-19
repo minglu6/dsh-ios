@@ -4,7 +4,7 @@ import XCTest
 /// screens parent / CI compare to desktop `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`.
 final class ScreenshotTests: XCTestCase {
     private let screens = [
-        "landing", "drawer", "viewOptions", "sessionActions", "chat", "planMode", "mention",
+        "landing", "drawer", "viewOptions", "sessionActions", "chat", "chatLong", "planMode", "mention",
         "landingMention", "mentionFiltered", "mentionChip", "mentionSent",
         "turnTrigger", "filePreview",
         "models", "permission", "start", "startLanding", "browser", "inspector",
@@ -233,7 +233,7 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertGreaterThanOrEqual(settingsFrame.height, 44, "\(appearance) settings hit shorter than 44pt")
                 XCTAssertGreaterThanOrEqual(hostFrame.height, 44, "\(appearance) host hit shorter than 44pt")
             }
-            if screen == "landing" || screen == "landingMention" || screen == "chat" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
+            if screen == "landing" || screen == "landingMention" || screen == "chat" || screen == "chatLong" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
                 XCTAssertFalse(app.images["sidebar.left"].exists, "\(appearance) \(screen) still exposes SF sidebar.left")
                 XCTAssertFalse(app.images["sidebar.right"].exists, "\(appearance) \(screen) still exposes SF sidebar.right")
                 XCTAssertTrue(
@@ -241,7 +241,7 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) \(screen) missing official panel-left glyph"
                 )
             }
-            if screen == "landing" || screen == "landingMention" || screen == "chat" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
+            if screen == "landing" || screen == "landingMention" || screen == "chat" || screen == "chatLong" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
                 XCTAssertTrue(
                     app.descendants(matching: .any)["official.panelRight"].waitForExistence(timeout: 8),
                     "\(appearance) \(screen) missing official panel-right glyph"
@@ -269,7 +269,7 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) landing panelRight is not on the right"
                 )
             }
-            if screen == "landing" || screen == "landingMention" || screen == "chat" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" {
+            if screen == "landing" || screen == "landingMention" || screen == "chat" || screen == "chatLong" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" {
                 XCTAssertFalse(app.images["plus"].exists, "\(appearance) \(screen) still exposes SF plus")
                 XCTAssertTrue(
                     app.descendants(matching: .any)["official.plusOutline"].waitForExistence(timeout: 8),
@@ -297,7 +297,7 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) \(screen) still exposes a user-bubble copy control"
                 )
             }
-            if screen == "chat" {
+            if screen == "chat" || screen == "chatLong" {
                 // Fixture: one user bubble + one assistant reply. Only the
                 // assistant MessageIconActions row may carry copy.
                 let copyButtons = app.buttons.matching(
@@ -306,23 +306,23 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertLessThanOrEqual(
                     copyButtons,
                     1,
-                    "\(appearance) chat exposes \(copyButtons) copy buttons (user bubble copy is back)"
+                    "\(appearance) \(screen) exposes \(copyButtons) copy buttons (user bubble copy is back)"
                 )
-                XCTAssertFalse(app.images["gauge.with.dots.needle.67percent"].exists, "\(appearance) chat still exposes SF gauge")
-                XCTAssertFalse(app.images["cylinder"].exists, "\(appearance) chat still exposes SF cylinder")
+                XCTAssertFalse(app.images["gauge.with.dots.needle.67percent"].exists, "\(appearance) \(screen) still exposes SF gauge")
+                XCTAssertFalse(app.images["cylinder"].exists, "\(appearance) \(screen) still exposes SF cylinder")
                 XCTAssertTrue(
                     app.descendants(matching: .any)["official.gaugeOutline"].waitForExistence(timeout: 8),
-                    "\(appearance) chat missing official activity gauge glyph"
+                    "\(appearance) \(screen) missing official activity gauge glyph"
                 )
                 XCTAssertTrue(
                     app.descendants(matching: .any)["official.databaseOutline"].waitForExistence(timeout: 8),
-                    "\(appearance) chat missing official usage database glyph"
+                    "\(appearance) \(screen) missing official usage database glyph"
                 )
                 XCTAssertTrue(
                     app.staticTexts["缓存命中 69%"].waitForExistence(timeout: 8),
-                    "\(appearance) chat missing cache-hit pill copy"
+                    "\(appearance) \(screen) missing cache-hit pill copy"
                 )
-                XCTAssertFalse(app.staticTexts["缓存命中中 69%"].exists, "\(appearance) chat has extra 中 in cache-hit copy")
+                XCTAssertFalse(app.staticTexts["缓存命中中 69%"].exists, "\(appearance) \(screen) has extra 中 in cache-hit copy")
             }
             if screen == "plugins" {
                 XCTAssertFalse(app.images["chevron.left"].exists, "\(appearance) plugins still exposes SF chevron.left")
@@ -411,7 +411,7 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) landing composer floated off the bottom (gap \(gap))"
                 )
             }
-            if screen == "chat" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "trajectory" {
+            if screen == "chat" || screen == "chatLong" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "trajectory" {
                 XCTAssertFalse(app.images["clock"].exists, "\(appearance) \(screen) still exposes SF clock on jobs chip")
                 XCTAssertFalse(app.images["clock.fill"].exists, "\(appearance) \(screen) still exposes SF clock.fill on jobs chip")
                 XCTAssertTrue(
@@ -688,8 +688,8 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) trajectory missing 14px desktop InformationIcon"
                 )
             }
-            if screen == "chat" {
-                XCTAssertFalse(app.images["hand.thumbsup"].exists, "\(appearance) chat still exposes SF thumbsup")
+            if screen == "chat" || screen == "chatLong" {
+                XCTAssertFalse(app.images["hand.thumbsup"].exists, "\(appearance) \(screen) still exposes SF thumbsup")
                 XCTAssertFalse(app.images["hand.thumbsup.fill"].exists, "\(appearance) chat still exposes SF thumbsup.fill")
                 XCTAssertFalse(app.images["hand.thumbsdown"].exists, "\(appearance) chat still exposes SF thumbsdown")
                 XCTAssertTrue(
@@ -723,6 +723,25 @@ final class ScreenshotTests: XCTestCase {
                     app.descendants(matching: .any)["official.markdownFileChip"].waitForExistence(timeout: 8),
                     "\(appearance) chat markdown fileChip missing official BrowseOutline asset"
                 )
+                XCTAssertTrue(
+                    app.staticTexts["第一项"].waitForExistence(timeout: 8),
+                    "\(appearance) \(screen) missing markdown list item 第一项"
+                )
+                XCTAssertTrue(
+                    app.staticTexts["第二项"].exists,
+                    "\(appearance) \(screen) missing markdown list item 第二项"
+                )
+                if screen == "chat" {
+                    try assertUserBubbleHugsContent(
+                        app,
+                        appearance: appearance,
+                        screen: screen,
+                        maxScreenFraction: 0.45
+                    )
+                }
+                if screen == "chatLong" {
+                    try assertUserBubbleWrapsLongMessage(app, appearance: appearance)
+                }
                 assertOfficialMenuChrome(app, appearance: appearance, screen: screen)
             }
             if screen == "files" {
@@ -1106,6 +1125,12 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertFalse(
                     app.staticTexts["@[你好](dsh-session:s-hello)"].exists,
                     "\(appearance) mentionSent still shows raw session markdown"
+                )
+                try assertUserBubbleHugsContent(
+                    app,
+                    appearance: appearance,
+                    screen: screen,
+                    maxScreenFraction: 0.82
                 )
             }
             let shot = XCUIScreen.main.screenshot()
@@ -1630,6 +1655,64 @@ final class ScreenshotTests: XCTestCase {
         attachment.name = "\(appearance.lowercased())-\(name)"
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+
+    private func assertUserBubbleHugsContent(
+        _ app: XCUIApplication,
+        appearance: String,
+        screen: String,
+        maxScreenFraction: CGFloat
+    ) throws {
+        let bubble = app.descendants(matching: .any)["userMessageBubble"].firstMatch
+        XCTAssertTrue(
+            bubble.waitForExistence(timeout: 8),
+            "\(appearance) \(screen) missing userMessageBubble"
+        )
+        let window = app.windows.firstMatch.frame
+        XCTAssertLessThan(
+            bubble.frame.width,
+            window.width * maxScreenFraction,
+            "\(appearance) \(screen) user bubble width \(bubble.frame.width) is not hugging content (window \(window.width))"
+        )
+        XCTAssertGreaterThan(
+            bubble.frame.minX,
+            window.maxX - window.width * maxScreenFraction - 40,
+            "\(appearance) \(screen) user bubble is not trailing-aligned (\(bubble.frame) vs \(window))"
+        )
+        XCTAssertLessThan(
+            window.maxX - bubble.frame.maxX,
+            40,
+            "\(appearance) \(screen) user bubble is not near the trailing edge (\(bubble.frame) vs \(window))"
+        )
+    }
+
+    private func assertUserBubbleWrapsLongMessage(_ app: XCUIApplication, appearance: String) throws {
+        let bubble = app.descendants(matching: .any)["userMessageBubble"].firstMatch
+        XCTAssertTrue(
+            bubble.waitForExistence(timeout: 8),
+            "\(appearance) chatLong missing userMessageBubble"
+        )
+        let window = app.windows.firstMatch.frame
+        XCTAssertGreaterThan(
+            bubble.frame.width,
+            window.width * 0.5,
+            "\(appearance) chatLong bubble \(bubble.frame.width) did not use the desktop max width"
+        )
+        XCTAssertLessThanOrEqual(
+            bubble.frame.width,
+            window.width * 0.85,
+            "\(appearance) chatLong bubble \(bubble.frame.width) stretched past the desktop 82% cap"
+        )
+        XCTAssertGreaterThan(
+            bubble.frame.height,
+            44,
+            "\(appearance) chatLong bubble \(bubble.frame.height) did not wrap into multiple lines"
+        )
+        XCTAssertGreaterThan(
+            bubble.frame.minX,
+            window.minX + 24,
+            "\(appearance) chatLong bubble is not trailing-capped (\(bubble.frame) vs \(window))"
+        )
     }
 
     private func screenshotRoot() throws -> URL {

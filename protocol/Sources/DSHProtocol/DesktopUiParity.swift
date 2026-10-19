@@ -25,6 +25,42 @@ public enum MessageActionPolicy {
 /// User bubbles never grow a permanent copy button (desktop has none).
 public let userMessageShowsPersistentCopy = false
 
+/// Desktop `ui-chat` `ChatView.module.css` `.column` `--dsh-chat-content-width`
+/// default in `UserMessageNodeView` / `MessageItem.module.css` `.userStack`.
+public let chatContentWidthPoints: Double = 748
+
+/// Desktop `MessageItem.module.css` `.userStack`
+/// `max-width: min(calc(var(--dsh-chat-content-width,748px) * .702), 82%)`.
+public let userMessageStackMaxWidthFactor: Double = 0.702
+public let userMessageStackMaxWidthFraction: Double = 0.82
+
+public var userMessageStackAbsoluteMaxWidthPoints: Double {
+    chatContentWidthPoints * userMessageStackMaxWidthFactor
+}
+
+public func userMessageStackMaxWidth(columnWidth: Double) -> Double {
+    min(userMessageStackAbsoluteMaxWidthPoints, columnWidth * userMessageStackMaxWidthFraction)
+}
+
+/// Desktop `MessageItem.module.css` `.bubble` `padding: 10px 16px`.
+public let userMessageBubblePaddingVerticalPoints: Double = 10
+public let userMessageBubblePaddingHorizontalPoints: Double = 16
+
+/// Desktop `MessageItem.module.css` `.bubble` `border-radius: var(--dsw-radius-xl)`.
+public var userMessageBubbleRadiusPoints: Double { dswRadiusXlPoints }
+
+/// Desktop `MessageItem.module.css` `.userRow` `align-items: flex-end; gap: 6px`.
+public let userMessageRowGapPoints: Double = 6
+public let userMessageBubbleAlignsTrailing = true
+
+/// Desktop `MessageItem.module.css` `.userStack` `gap: 8px`.
+public let userMessageStackGapPoints: Double = 8
+
+/// Desktop `user-text.module.css` runs flow start-aligned inside the hugging bubble.
+public let userMessageBubbleTextAlignsLeading = true
+
+public func userMessageBubbleIdentifier() -> String { "userMessageBubble" }
+
 /// Desktop `TurnTailNodeView` branch control. `onBranch` is omitted when
 /// `session/fork` / `sessions.fork` is not allowed. The icon stays visible but
 /// inert when the turn has no closing `endSeq` (desktop `branchUnavailable`,

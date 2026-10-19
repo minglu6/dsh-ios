@@ -28,6 +28,7 @@ final class MentionPolicyTests: XCTestCase {
         XCTAssertEqual(mentionComposerChipRadiusPoints, 6)
         XCTAssertEqual(mentionMenuIdentifier(), "mentionMenu")
         XCTAssertEqual(mentionChipIdentifier(.session), "mentionChip.session")
+        XCTAssertEqual(userMessageBubbleIdentifier(), "userMessageBubble")
         XCTAssertEqual(mentionReferenceOfficialSymbol(.session), "official.queueOutline")
         XCTAssertEqual(mentionReferenceOfficialSymbol(.file), "official.browseOutline")
         XCTAssertEqual(mentionReferenceOfficialSymbol(.directory), "official.folderClose")
@@ -134,6 +135,10 @@ final class MentionPolicyTests: XCTestCase {
         XCTAssertEqual(fileReferenceToken("src/app.swift", directory: false), "@src/app.swift")
         XCTAssertEqual(fileReferenceToken("my file.swift", directory: false), "@\"my file.swift\"")
         XCTAssertEqual(fileReferenceToken("docs", directory: true), "@docs/")
+        XCTAssertEqual(
+            composerReferences("@[你好](dsh-session:s-hello) @README.md").map(\.kind),
+            [.session, .file]
+        )
     }
 
     func testProjectionHidesCanonicalTokensAndKeepsLiveQueryEditable() {
