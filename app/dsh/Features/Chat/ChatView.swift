@@ -3,6 +3,14 @@ import UIKit
 import UniformTypeIdentifiers
 import DSHProtocol
 
+func conversationHeaderTitleFont() -> Font {
+    .system(size: CGFloat(conversationHeaderTitleFontSizePoints), weight: .medium)
+}
+
+func conversationHeaderTabFont() -> Font {
+    .system(size: CGFloat(conversationHeaderTabFontSizePoints), weight: .medium)
+}
+
 struct ChatView: View {
     @ObservedObject var model: AppModel
     @Environment(\.scenePhase) private var scenePhase
@@ -33,6 +41,7 @@ struct ChatView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
+            tabs
             if tab == 0 {
                 chatTab
             } else if model.showCodeWorkView {
@@ -40,7 +49,6 @@ struct ChatView: View {
             }
         }
         .background(T.bg.ignoresSafeArea())
-        .frame(maxWidth: phoneColumnMaxWidth)
         .onChange(of: inspectorNav.picking) { picking in
             if !picking, inspectorNav.sessionId == model.chat?.sessionId {
                 if case .panel(.inspector) = model.currentRoute { return }
@@ -168,73 +176,89 @@ struct ChatView: View {
     }
 
     private var header: some View {
-        VStack(spacing: CGFloat(conversationHeaderTabsMarginTopPoints)) {
-            ConversationTitleRow(
-                onOpenDrawer: { model.showDrawer = true },
-                onOpenStart: {
-                    if case .panel(.start) = model.currentRoute { return }
-                    model.push(.panel(.start))
-                },
-                startDisabled: firstPromptBlocksComposerActions(model.firstPrompt)
-            ) {
-                if conversationHeaderShowsCrumbs(headerCrumbs) {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 4) {
-                            ForEach(Array(headerCrumbs.enumerated()), id: \.element.sessionId) { index, crumb in
-                                if index > 0 {
-                                    Text("/")
-                                        .font(conversationHeaderTitleFont())
-                                        .foregroundStyle(T.text3)
-                                }
-                                if crumb.current {
+        HStack(spacing: CGFloat(conversationHeaderTitleClusterGapPoints)) {
+            Button {
+                Keyboard.dismiss()
+                model.showDrawer = true
+            } label: {
+                OfficialGlyph(kind: .panelLeft, size: 16, color: T.ink)
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityIdentifier("openDrawer")
+            if conversationHeaderShowsCrumbs(headerCrumbs) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 4) {
+                        ForEach(Array(headerCrumbs.enumerated()), id: \.element.sessionId) { index, crumb in
+                            if index > 0 {
+                                Text("/")
+                                    .font(conversationHeaderTitleFont())
+                                    .foregroundStyle(T.text3)
+                            }
+                            if crumb.current {
+                                Text(crumb.title)
+                                    .font(conversationHeaderTitleFont())
+                                    .foregroundStyle(crumb.subagent ? T.text2 : T.ink)
+                                    .lineLimit(1)
+                            } else {
+                                Button {
+                                    model.openSession(crumb.sessionId)
+                                } label: {
                                     Text(crumb.title)
                                         .font(conversationHeaderTitleFont())
-                                        .foregroundStyle(crumb.subagent ? T.text2 : T.ink)
+                                        .foregroundStyle(T.text2)
                                         .lineLimit(1)
-                                } else {
-                                    Button {
-                                        model.openSession(crumb.sessionId)
-                                    } label: {
-                                        Text(crumb.title)
-                                            .font(conversationHeaderTitleFont())
-                                            .foregroundStyle(T.text2)
-                                            .lineLimit(1)
-                                    }
-                                    .buttonStyle(.plain)
                                 }
+                                .buttonStyle(.plain)
                             }
                         }
                     }
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel(sessionHierarchyAria(english: L.en))
-                } else {
-                    Text(headerTitle)
-                        .font(conversationHeaderTitleFont())
-                        .foregroundStyle(T.ink)
-                        .lineLimit(1)
-                        .frame(
-                            minHeight: CGFloat(conversationHeaderTitleLineHeightPoints),
-                            maxHeight: CGFloat(conversationHeaderTitleLineHeightPoints),
-                            alignment: .center
-                        )
-                        .accessibilityIdentifier(conversationHeaderTitleIdentifier())
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(sessionHierarchyAria(english: L.en))
+            } else {
+                Text(headerTitle)
+                    .font(conversationHeaderTitleFont())
+                    .foregroundStyle(T.ink)
+                    .lineLimit(1)
+                    .accessibilityIdentifier(conversationHeaderTitleIdentifier())
             }
-            tabs
+            Spacer()
+            Button {
+                Keyboard.dismiss()
+                if case .panel(.start) = model.currentRoute { return }
+                model.push(.panel(.start))
+            } label: {
+                OfficialGlyph(kind: .panelRight, size: 16, color: T.ink)
+            }
+            .disabled(firstPromptBlocksComposerActions(model.firstPrompt))
+            .accessibilityLabel(L.startPanel())
+            .accessibilityElement(children: .contain)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityIdentifier("openStartPanel")
         }
-        .modifier(ConversationHeaderBox(blank: false))
+        .frame(minHeight: CGFloat(conversationHeaderTitleRowMinHeightPoints))
+        .padding(.top, CGFloat(conversationHeaderPaddingTopPoints))
+        .padding(.horizontal, CGFloat(conversationHeaderPaddingHorizontalPoints))
+        .background(T.surface)
     }
 
     private var tabs: some View {
-        HStack(alignment: .top, spacing: CGFloat(conversationHeaderTabGapPoints)) {
+        HStack(spacing: CGFloat(conversationHeaderTabGapPoints)) {
             tabChip(0, L.chatTab())
             if model.showCodeWorkView {
                 tabChip(1, TrajL.viewTrajectory)
             }
-            Spacer(minLength: 0)
+            Spacer()
             if let sessionId = model.chat?.sessionId {
                 JobsAction(model: model, sessionId: sessionId)
             }
+        }
+        .padding(.top, CGFloat(conversationHeaderTabsMarginTopPoints))
+        .padding(.horizontal, CGFloat(conversationHeaderPaddingHorizontalPoints))
+        .background(T.surface)
+        .overlay(alignment: .bottom) {
+            T.borderL3.frame(height: CGFloat(conversationHeaderBorderWidthPoints))
         }
     }
 
@@ -1772,7 +1796,6 @@ struct ComposerView: View {
                     onChord: { model.submitComposer(gesture: .chord) }
                 )
                     .fixedSize(horizontal: false, vertical: true)
-                    .modifier(PhoneColumnChild())
                     .onAppear { syncMentions() }
                     .onChange(of: model.composerText) { _ in syncMentions() }
                     .onChange(of: model.composerCursor) { _ in syncMentions() }
@@ -1920,7 +1943,6 @@ struct ComposerView: View {
                 .background(T.fill2, in: RoundedRectangle(cornerRadius: 6))
             }
         }
-        .frame(maxWidth: phoneColumnMaxWidth)
     }
 
     @ViewBuilder
@@ -1952,55 +1974,6 @@ struct ComposerView: View {
         } else if model.mentionQuery != nil {
             model.mentionQuery = nil
         }
-    }
-}
-
-/// UITextView measure width. An unbounded / non-finite proposal is not a
-/// size — use the view's last laid-out bounds. PhoneColumnChild already
-/// refuses to propose or place infinity.
-private func composerMeasureWidth(proposal: ProposedViewSize, bounds: CGRect) -> CGFloat {
-    if let proposed = proposal.width, proposed.isFinite {
-        return max(proposed, 1)
-    }
-    return max(bounds.width, 1)
-}
-
-/// Popover + keyboard remasure can hand the composer an infinite proposal
-/// or place it at `{inf, inf}`. Cap the child to the phone column and place
-/// it on a finite origin so `composerInput` keeps a real frame.
-private struct PhoneColumnChild: ViewModifier {
-    func body(content: Content) -> some View {
-        PhoneColumnChildLayout {
-            content
-        }
-    }
-}
-
-private struct PhoneColumnChildLayout: Layout {
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        guard let child = subviews.first else { return .zero }
-        let width = clampedWidth(proposal.width)
-        let size = child.sizeThatFits(ProposedViewSize(width: width, height: proposal.height))
-        let height = (size.height.isFinite && size.height > 0) ? size.height : 1
-        return CGSize(width: clampedWidth(size.width), height: height)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        guard let child = subviews.first else { return }
-        if !bounds.origin.x.isFinite || !bounds.origin.y.isFinite || !bounds.size.width.isFinite || !bounds.size.height.isFinite {
-            preconditionFailure("composer column received a non-finite frame \(bounds)")
-        }
-        child.place(
-            at: bounds.origin,
-            proposal: ProposedViewSize(width: clampedWidth(bounds.width), height: bounds.height)
-        )
-    }
-
-    private func clampedWidth(_ value: CGFloat?) -> CGFloat {
-        if let value, value.isFinite, value > 0 {
-            return min(value, phoneColumnMaxWidth)
-        }
-        return phoneColumnMaxWidth
     }
 }
 
@@ -2085,7 +2058,7 @@ private struct ComposerTextView: UIViewRepresentable {
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: ComposerUITextView, context: Context) -> CGSize? {
-        let width = composerMeasureWidth(proposal: proposal, bounds: uiView.bounds)
+        let width = max(proposal.width ?? uiView.bounds.width, 1)
         let wasScroll = uiView.isScrollEnabled
         uiView.isScrollEnabled = false
         let content = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
