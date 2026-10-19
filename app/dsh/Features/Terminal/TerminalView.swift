@@ -6,7 +6,7 @@ struct TerminalView: View {
     @ObservedObject var model: AppModel
     var enabled: Bool
     var platform: String?
-    @FocusState private var inputFocused: Bool
+    @State private var inputFocused = false
     @State private var ime = terminalImeAnchor
     @State private var pendingPaste: String?
     @State private var selectionGrid: TerminalGrid?
@@ -23,17 +23,11 @@ struct TerminalView: View {
             shortcuts
             Divider()
             ZStack(alignment: .topLeading) {
-                TextField("", text: $ime)
-                    .focused($inputFocused)
-                    .textInputAutocapitalization(.never)
-                    .disableAutocorrection(true)
-                    .keyboardType(.asciiCapable)
-                    .submitLabel(.return)
-                    .frame(width: 1, height: 1)
-                    .opacity(0.01)
-                    .accessibilityLabel(L.terminalKeyboardInput())
-                    .disabled(!enabled || selecting)
-                    .onChange(of: ime) { next in
+                TerminalImeField(
+                    text: $ime,
+                    focused: $inputFocused,
+                    enabled: enabled && !selecting,
+                    onCommitted: { next in
                         guard enabled, !selecting else { return }
                         let input = terminalCommittedInput(next)
                         if input.count > 1, input.contains("\r") {
@@ -43,6 +37,10 @@ struct TerminalView: View {
                         }
                         ime = terminalImeAnchor
                     }
+                )
+                    .frame(width: 1, height: 1)
+                    .opacity(0.01)
+                    .accessibilityLabel(L.terminalKeyboardInput())
                 TerminalCanvas(
                     terminal: model.terminal,
                     revision: model.terminalRevision,

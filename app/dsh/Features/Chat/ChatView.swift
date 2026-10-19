@@ -1855,6 +1855,23 @@ struct ComposerView: View {
                 .allowsHitTesting(false)
             }
         }
+        .overlay(alignment: .topTrailing) {
+            if UITestLaunch.composerIme {
+                HStack(spacing: 4) {
+                    Button("setMarked") {
+                        NotificationCenter.default.post(name: .dshComposerImeSetMarked, object: nil)
+                    }
+                    .accessibilityIdentifier("composerIme.setMarked")
+                    Button("unmark") {
+                        NotificationCenter.default.post(name: .dshComposerImeUnmark, object: nil)
+                    }
+                    .accessibilityIdentifier("composerIme.unmark")
+                }
+                .font(.system(size: 12))
+                .padding(6)
+                .background(T.fill2, in: RoundedRectangle(cornerRadius: 6))
+            }
+        }
     }
 
     @ViewBuilder
@@ -1949,10 +1966,11 @@ private struct ComposerTextView: UIViewRepresentable {
         view.lockFirstResponder = interceptKeys && !resignKeyboard
         view.interceptArrows = interceptKeys
         view.accessibilityIdentifier = "composerInput"
-        if view.markedTextRange == nil {
+        if ImeComposition.shouldRewriteText(isMarked: view.markedTextRange != nil) {
             context.coordinator.render(view)
         }
         context.coordinator.applyPlaceholder(view)
+        context.coordinator.refreshImeProbe(view)
         if resignKeyboard {
             if view.isFirstResponder { view.forceResign() }
         } else if focusToken != context.coordinator.focusToken {
@@ -1987,9 +2005,10 @@ private struct ComposerTextView: UIViewRepresentable {
         var projection = mentionProjection("", cursor: 0)
         var applying = false
         weak var textView: ComposerUITextView?
-        /// Token is registered on main; deinit only removes it from NotificationCenter.
-        nonisolated(unsafe) private var dismissObserver: NSObjectProtocol?
+        /// Tokens are registered on main; deinit only removes them from NotificationCenter.
+        nonisolated(unsafe) private var observers: [NSObjectProtocol] = []
         private var chipImages: [String: UIImage] = [:]
+        private var imeProbe: UILabel?
 
         init(_ parent: ComposerTextView) {
             self.parent = parent
@@ -1997,42 +2016,61 @@ private struct ComposerTextView: UIViewRepresentable {
 
         func startObserving(_ view: ComposerUITextView) {
             textView = view
-            guard dismissObserver == nil else { return }
-            dismissObserver = NotificationCenter.default.addObserver(
+            guard observers.isEmpty else { return }
+            observers.append(NotificationCenter.default.addObserver(
                 forName: Keyboard.dismissNotification,
                 object: nil,
                 queue: .main
             ) { [weak view] _ in
                 view?.forceResign()
-            }
+            })
+            observers.append(NotificationCenter.default.addObserver(
+                forName: .dshComposerImeSetMarked,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                DispatchQueue.main.async { self?.applyTestMarkedText() }
+            })
+            observers.append(NotificationCenter.default.addObserver(
+                forName: .dshComposerImeUnmark,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                DispatchQueue.main.async { self?.applyTestUnmark() }
+            })
+            installImeProbe(on: view)
         }
 
         func stopObserving() {
-            if let dismissObserver {
-                NotificationCenter.default.removeObserver(dismissObserver)
+            for observer in observers {
+                NotificationCenter.default.removeObserver(observer)
             }
-            dismissObserver = nil
+            observers.removeAll()
+            imeProbe?.removeFromSuperview()
+            imeProbe = nil
             textView = nil
         }
 
         deinit {
-            if let dismissObserver {
-                NotificationCenter.default.removeObserver(dismissObserver)
+            for observer in observers {
+                NotificationCenter.default.removeObserver(observer)
             }
         }
 
         func applyPlaceholder(_ view: UITextView) {
             placeholder?.text = parent.placeholder
-            placeholder?.isHidden = !parent.text.isEmpty
+            placeholder?.isHidden = !view.text.isEmpty
         }
 
         func render(_ view: UITextView, force: Bool = false) {
+            if !ImeComposition.shouldRewriteText(isMarked: view.markedTextRange != nil) {
+                fatalError("composer render rewrites attributedText while IME marked text is active")
+            }
             let next = mentionProjection(parent.text, cursor: parent.cursor, previous: projection)
             if !force,
                !applying,
                projection.original == next.original,
-               projection.display == next.display,
-               view.markedTextRange == nil {
+               projection.display == next.display {
                 return
             }
             applying = true
@@ -2045,9 +2083,13 @@ private struct ComposerTextView: UIViewRepresentable {
             }
             applying = false
             applyPlaceholder(view)
+            refreshImeProbe(view)
         }
 
         func applySelection(_ view: UITextView, original: Int) {
+            if !ImeComposition.shouldRewriteText(isMarked: view.markedTextRange != nil) {
+                fatalError("composer must not rewrite selectedRange while IME marked text is active")
+            }
             let viewOffset = mentionViewOffset(original: original, projection: projection)
             let utf16 = mentionCharsToUtf16(view.attributedText?.string ?? "", viewOffset)
             let length = (view.attributedText?.string as NSString?)?.length ?? 0
@@ -2058,6 +2100,9 @@ private struct ComposerTextView: UIViewRepresentable {
         }
 
         func commit(text: String, cursor: Int, selectionStart: Int) {
+            if let view = textView, !ImeComposition.shouldRewriteText(isMarked: view.markedTextRange != nil) {
+                fatalError("composer commit rewrites text while IME marked text is active")
+            }
             applying = true
             parent.text = text
             parent.cursor = cursor
@@ -2069,9 +2114,9 @@ private struct ComposerTextView: UIViewRepresentable {
 
         func textViewDidChange(_ textView: UITextView) {
             if applying { return }
-            if textView.markedTextRange != nil {
-                parent.text = mentionReconstructOriginal(viewText: textView.text, projection: projection)
+            if !ImeComposition.shouldRewriteText(isMarked: textView.markedTextRange != nil) {
                 applyPlaceholder(textView)
+                refreshImeProbe(textView)
                 return
             }
             let reconstructed = mentionReconstructOriginal(viewText: textView.text, projection: projection)
@@ -2092,7 +2137,7 @@ private struct ComposerTextView: UIViewRepresentable {
         }
 
         func textViewDidChangeSelection(_ textView: UITextView) {
-            if applying || textView.markedTextRange != nil { return }
+            if applying || !ImeComposition.shouldRewriteText(isMarked: textView.markedTextRange != nil) { return }
             let viewCaret = mentionUtf16ToChars(textView.text, textView.selectedRange.location)
             let original = mentionOriginalOffset(view: viewCaret, projection: projection)
             if parent.cursor != original {
@@ -2101,7 +2146,13 @@ private struct ComposerTextView: UIViewRepresentable {
         }
 
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
-            if textView.markedTextRange != nil { return true }
+            if ImeComposition.shouldLetSystemApplyReplacement(
+                isMarked: textView.markedTextRange != nil,
+                replacement: text,
+                interceptReturn: parent.interceptKeys
+            ) {
+                return true
+            }
             if parent.interceptKeys && text == "\n" {
                 parent.onReturn()
                 return false
@@ -2139,6 +2190,58 @@ private struct ComposerTextView: UIViewRepresentable {
             )
             commit(text: normalized.text, cursor: normalized.cursor, selectionStart: normalized.selectionStart)
             return false
+        }
+
+        func refreshImeProbe(_ view: UITextView) {
+            guard let probe = imeProbe else { return }
+            if let range = view.markedTextRange, let marked = view.text(in: range) {
+                probe.accessibilityIdentifier = "composerIme.marked"
+                probe.accessibilityValue = marked
+                probe.text = marked
+                probe.isAccessibilityElement = true
+            } else {
+                probe.accessibilityIdentifier = "composerIme.idle"
+                probe.accessibilityValue = parent.text
+                probe.text = parent.text
+                probe.isAccessibilityElement = true
+            }
+        }
+
+        private func installImeProbe(on view: ComposerUITextView) {
+            guard UITestLaunch.composerIme, imeProbe == nil else { return }
+            let probe = UILabel()
+            probe.translatesAutoresizingMaskIntoConstraints = false
+            probe.font = .systemFont(ofSize: 1)
+            probe.textColor = .clear
+            probe.isAccessibilityElement = true
+            probe.accessibilityIdentifier = "composerIme.idle"
+            view.addSubview(probe)
+            NSLayoutConstraint.activate([
+                probe.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                probe.topAnchor.constraint(equalTo: view.topAnchor),
+                probe.widthAnchor.constraint(equalToConstant: 1),
+                probe.heightAnchor.constraint(equalToConstant: 1),
+            ])
+            imeProbe = probe
+            refreshImeProbe(view)
+        }
+
+        private func applyTestMarkedText() {
+            guard UITestLaunch.composerIme, let view = textView else { return }
+            _ = view.becomeFirstResponder()
+            view.setMarkedText("nihao", selectedRange: NSRange(location: 5, length: 0))
+            applyPlaceholder(view)
+            refreshImeProbe(view)
+        }
+
+        private func applyTestUnmark() {
+            guard UITestLaunch.composerIme, let view = textView else { return }
+            view.unmarkText()
+            if ImeComposition.shouldParseMentions(isMarked: view.markedTextRange != nil) {
+                textViewDidChange(view)
+            }
+            applyPlaceholder(view)
+            refreshImeProbe(view)
         }
     }
 }
