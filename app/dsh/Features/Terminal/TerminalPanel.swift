@@ -316,6 +316,10 @@ struct TerminalPanel: View {
         id: String? = nil,
         action: @escaping () -> Void
     ) -> some View {
+        // iOS 18 does not expose a Button that is itself a `.contain`
+        // accessibility container, so the row id lives on a plain HStack
+        // wrapper (same pattern as `MentionChip`).
+        HStack(spacing: 0) {
         Button(action: action) {
             HStack(spacing: CGFloat(terminalSwitcherRowGapPoints)) {
                 if let icon {
@@ -343,8 +347,10 @@ struct TerminalPanel: View {
         .buttonStyle(.plain)
         .disabled(!enabled)
         .opacity(enabled ? 1 : 0.4)
-        .accessibilityElement(children: .contain)
         .accessibilityLabel(title)
+        .accessibilityAddTraits(current ? [.isSelected] : [])
+        }
+        .accessibilityElement(children: .contain)
         .accessibilityAddTraits(current ? [.isSelected] : [])
         .accessibilityIdentifier(id ?? title)
     }
