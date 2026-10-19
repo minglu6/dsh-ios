@@ -690,16 +690,67 @@ public func jobsPopoverWidth(screenWidth: Double) -> Double {
 /// Desktop statistics row uses `tok`, not `tokens`.
 public let composerStatisticsTokenUnit = "tok"
 
-/// User decision 2026-10-19: explicit exception to desktop `StatsPills`
-/// start alignment. Phone centers the statistics pills under the composer.
-/// Icons, type, color, inter-item spacing, vertical position, popovers, and
-/// show/hide rules stay as on desktop.
+/// Desktop `@deepseek-ai/dsh-client-ui-conversation@0.2.1-alpha.5`
+/// `InputBar.module.css` `.dock` (`lib/client.js:18703`):
+/// `justify-content:center;align-items:center;gap:12px;max-width:100%;padding-top:4px;display:flex`.
+/// Activity / Usage inject `conversation.composer.dock`; ContextMeter is the
+/// sibling after them (`InputBar` `lib/client.js:19161-19167`).
 public let composerStatisticsRowCentersUnderComposer = true
+public let composerStatisticsRowGapPoints: Double = 12
+public let composerStatisticsRowPaddingTopPoints: Double = 4
+/// `.root { padding: 0 var(--dsh-composer-side-clearance) 4px }`.
+public let composerStatisticsRowPaddingBottomPoints: Double = 4
+/// Phone composer card gutter (`ComposerView` horizontal 14) — same content
+/// box the dock shares with the card on desktop InputBar `.root`.
+public let composerStatisticsRowPaddingHorizontalPoints: Double = 14
 /// XCUITest: content-sized pills row, not the expanding `maxWidth` frame.
 public func composerStatisticsRowIdentifier() -> String { "composerStats" }
 /// Chat page composer card. Landing already uses `landingComposer`.
 public func chatComposerIdentifier() -> String { "chatComposer" }
 public let composerStatisticsRowCenterTolerancePoints: Double = 1
+
+/// Desktop `ui-chat` `StatsPills.module.css` `.pill` (`lib/client.js:7373`):
+/// `gap:6px;padding:1px 8px;border-radius:var(--dsw-radius-sm)` (theme `8px`);
+/// `font-size:calc(var(--dsh-content-font-size-secondary,13px) - 1px)` → 12;
+/// `line-height:calc(20px + var(--dsh-content-font-delta-secondary,0px))`;
+/// `color:var(--dsw-alias-label-tertiary)`; expanded/hover uses
+/// `interactive-bg-hover` + `label-secondary`.
+public let composerStatisticsPillIconGapPoints: Double = 6
+public let composerStatisticsPillPaddingVerticalPoints: Double = 1
+public let composerStatisticsPillPaddingHorizontalPoints: Double = 8
+public let composerStatisticsPillRadiusPoints: Double = 8
+public let composerStatisticsPillFontSizePoints: Double = 12
+public let composerStatisticsPillLineHeightPoints: Double = 20
+
+/// Desktop `ui-conversation` `ContextMeter.module.css` `.trigger`
+/// (`lib/client.js:18454`): `font-size:var(--dsh-content-font-size-secondary,13px)`;
+/// `gap:6px;padding:1px 8px`. Fill stroke is `label-tertiary`, not primary.
+public let composerContextMeterFontSizePoints: Double = 13
+public let composerContextMeterIconGapPoints: Double = 6
+public let composerContextRingFillUsesTertiary = true
+
+/// Desktop `stat-dialog.module.css` `.panel` (`ui-chat` `lib/client.js:6814`):
+/// `padding:16px;min-width:min(300px,100vw - 24px);max-width:min(440px,100vw - 24px)`.
+public let composerStatDialogPaddingPoints: Double = 16
+public let composerStatDialogMinWidthPoints: Double = 300
+public let composerStatDialogMaxWidthPoints: Double = 440
+public let composerStatDialogViewportInsetPoints: Double = 24
+
+public func composerStatDialogMinWidth(screenWidth: Double) -> Double {
+    min(composerStatDialogMinWidthPoints, screenWidth - composerStatDialogViewportInsetPoints)
+}
+
+public func composerStatDialogMaxWidth(screenWidth: Double) -> Double {
+    min(composerStatDialogMaxWidthPoints, screenWidth - composerStatDialogViewportInsetPoints)
+}
+
+/// Desktop `ContextMeter.module.css` `.panel`: `padding:12px;width:min(264px,100vw - 24px)`.
+public let composerContextPanelPaddingPoints: Double = 12
+public let composerContextPanelWidthPoints: Double = 264
+
+public func composerContextPanelWidth(screenWidth: Double) -> Double {
+    min(composerContextPanelWidthPoints, screenWidth - composerStatDialogViewportInsetPoints)
+}
 
 /// Desktop usage chip opens an anchored popover, not a full-screen sheet.
 public let composerSessionUsageIsPopover = true

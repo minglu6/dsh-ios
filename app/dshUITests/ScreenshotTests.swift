@@ -1480,9 +1480,9 @@ final class ScreenshotTests: XCTestCase {
         )
     }
 
-    /// User decision 2026-10-19: the statistics pills sit under the composer
-    /// and must share its horizontal center. Measure the first/last pill so a
-    /// full-width `maxWidth` container cannot satisfy a left-aligned row.
+    /// Desktop `InputBar.module.css` `.dock { justify-content: center }`.
+    /// Measure the first/last pill so a full-width `maxWidth` container cannot
+    /// satisfy a start-aligned row.
     private func assertComposerStatsCentered(
         _ app: XCUIApplication,
         appearance: String,

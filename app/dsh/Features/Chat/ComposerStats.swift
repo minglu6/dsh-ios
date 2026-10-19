@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import DSHProtocol
 
 private enum StatisticsDialog { case activity, usage, context }
@@ -39,18 +40,23 @@ struct ComposerStats: View {
         guard let activity else { return false }
         return activity.llmMs > 0 || activity.toolMs > 0 || activity.ttftSteps > 0 || speed != nil
     }
+    private var screenWidth: Double { UIScreen.main.bounds.width }
+    private var statDialogMinWidth: CGFloat { CGFloat(composerStatDialogMinWidth(screenWidth: screenWidth)) }
+    private var statDialogMaxWidth: CGFloat { CGFloat(composerStatDialogMaxWidth(screenWidth: screenWidth)) }
+    private var contextPanelWidth: CGFloat { CGFloat(composerContextPanelWidth(screenWidth: screenWidth)) }
 
     var body: some View {
         if activityText == nil && usageText == nil && context == nil {
             EmptyView()
         } else {
-            HStack(spacing: 12) { pills }
+            HStack(alignment: .center, spacing: CGFloat(composerStatisticsRowGapPoints)) { pills }
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier(composerStatisticsRowIdentifier())
             .frame(maxWidth: .infinity, alignment: .center)
             .lineLimit(1)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 2)
+            .padding(.horizontal, CGFloat(composerStatisticsRowPaddingHorizontalPoints))
+            .padding(.top, CGFloat(composerStatisticsRowPaddingTopPoints))
+            .padding(.bottom, CGFloat(composerStatisticsRowPaddingBottomPoints))
         }
     }
 
@@ -115,11 +121,25 @@ struct ComposerStats: View {
         @ViewBuilder content: @escaping () -> Content
     ) -> some View {
         Button(action: action) {
-            HStack(spacing: 4) {
-                OfficialGlyph(kind: icon, size: CGFloat(composerStatisticsIconSizePoints), color: T.text3)
-                Text(text).font(.caption).foregroundStyle(T.text3).lineLimit(1)
+            HStack(spacing: CGFloat(composerStatisticsPillIconGapPoints)) {
+                OfficialGlyph(
+                    kind: icon,
+                    size: CGFloat(composerStatisticsIconSizePoints),
+                    color: open.wrappedValue ? T.text2 : T.text3
+                )
+                Text(text)
+                    .font(.system(size: CGFloat(composerStatisticsPillFontSizePoints)))
+                    .monospacedDigit()
+                    .foregroundStyle(open.wrappedValue ? T.text2 : T.text3)
+                    .lineLimit(1)
             }
-            .padding(.vertical, 5)
+            .frame(minHeight: CGFloat(composerStatisticsPillLineHeightPoints))
+            .padding(.vertical, CGFloat(composerStatisticsPillPaddingVerticalPoints))
+            .padding(.horizontal, CGFloat(composerStatisticsPillPaddingHorizontalPoints))
+            .background(
+                open.wrappedValue ? T.hoverBg : Color.clear,
+                in: RoundedRectangle(cornerRadius: CGFloat(composerStatisticsPillRadiusPoints), style: .continuous)
+            )
         }
         .buttonStyle(.plain)
         .disabled(!clickable)
@@ -150,19 +170,30 @@ struct ComposerStats: View {
                 }
             }
         }
-        .padding(16)
-        .frame(minWidth: 240, maxWidth: 320)
+        .padding(CGFloat(composerStatDialogPaddingPoints))
+        .frame(minWidth: statDialogMinWidth, maxWidth: statDialogMaxWidth)
         .modifier(PopoverCompactAdaptation())
     }
 
     private func contextMeter(_ context: ComposerContext) -> some View {
         let reading = "\(context.percent)%"
+        let ink = contextOpen ? T.text2 : T.text3
         return Button { toggle(.context) } label: {
-            HStack(spacing: 4) {
-                ComposerContextRing(percent: context.percent)
-                Text(reading).font(.caption).foregroundStyle(T.text3).lineLimit(1)
+            HStack(spacing: CGFloat(composerContextMeterIconGapPoints)) {
+                ComposerContextRing(percent: context.percent, fill: ink)
+                Text(reading)
+                    .font(.system(size: CGFloat(composerContextMeterFontSizePoints)))
+                    .monospacedDigit()
+                    .foregroundStyle(ink)
+                    .lineLimit(1)
             }
-            .padding(.vertical, 5)
+            .frame(minHeight: CGFloat(composerStatisticsPillLineHeightPoints))
+            .padding(.vertical, CGFloat(composerStatisticsPillPaddingVerticalPoints))
+            .padding(.horizontal, CGFloat(composerStatisticsPillPaddingHorizontalPoints))
+            .background(
+                contextOpen ? T.hoverBg : Color.clear,
+                in: RoundedRectangle(cornerRadius: CGFloat(composerStatisticsPillRadiusPoints), style: .continuous)
+            )
         }
         .buttonStyle(.plain)
         .accessibilityLabel(composerContextAria(percent: reading, english: L.en))
@@ -181,17 +212,17 @@ struct ComposerStats: View {
         return VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 if !headline.before.isEmpty {
-                    Text(headline.before).font(.subheadline.weight(.medium)).foregroundStyle(T.ink)
+                    Text(headline.before).font(.subheadline).foregroundStyle(T.text3)
                 }
                 Text(reading).font(.subheadline.weight(.medium)).monospacedDigit().foregroundStyle(T.ink)
                 if !headline.after.isEmpty {
-                    Text(headline.after).font(.subheadline.weight(.medium)).foregroundStyle(T.ink)
+                    Text(headline.after).font(.subheadline).foregroundStyle(T.text3)
                 }
                 Spacer(minLength: 12)
                 Text("~\(statisticsTokens(context.usedTokens)) / \(statisticsTokens(context.contextWindow))")
                     .font(.subheadline.weight(.medium))
                     .monospacedDigit()
-                    .foregroundStyle(T.text2)
+                    .foregroundStyle(T.ink)
             }
             .accessibilityLabel(composerContextUsed(english: L.en))
             contextBar(context.percent)
@@ -213,8 +244,8 @@ struct ComposerStats: View {
                 )
             }
         }
-        .padding(16)
-        .frame(minWidth: 240, maxWidth: 320)
+        .padding(CGFloat(composerContextPanelPaddingPoints))
+        .frame(width: contextPanelWidth)
         .modifier(PopoverCompactAdaptation())
     }
 
@@ -247,8 +278,8 @@ struct ComposerStats: View {
                 composerSessionUsageTokenValue(exact: statisticsExact(usage.outputTokens))
             )
         }
-        .padding(16)
-        .frame(minWidth: 240, maxWidth: 320)
+        .padding(CGFloat(composerStatDialogPaddingPoints))
+        .frame(minWidth: statDialogMinWidth, maxWidth: statDialogMaxWidth)
         .modifier(PopoverCompactAdaptation())
     }
 
@@ -387,8 +418,10 @@ private struct UsagePopoverHeader: View {
 }
 
 /// Desktop `ContextMeter` 14px ring (`r=5.5`, 2px stroke, start at 12 o'clock).
+/// Fill is `--dsw-alias-label-tertiary` (`ContextMeter.module.css` `.fill`).
 private struct ComposerContextRing: View {
     let percent: Int
+    var fill: Color = T.text3
 
     var body: some View {
         let size = CGFloat(composerContextRingSizePoints)
@@ -400,7 +433,7 @@ private struct ComposerContextRing: View {
             Circle()
                 .trim(from: 0, to: CGFloat(min(100, max(0, percent))) / 100)
                 .stroke(
-                    T.ink,
+                    fill,
                     style: StrokeStyle(
                         lineWidth: stroke,
                         lineCap: composerContextRingFillLineCapRound ? .round : .butt
