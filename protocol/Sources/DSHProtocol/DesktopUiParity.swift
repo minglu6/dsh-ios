@@ -1018,6 +1018,71 @@ public func turnTriggerProvider(_ sourceJson: String?) -> String? {
     return parsed["provider"].str()
 }
 
+/// Desktop `ui-chat` `TurnTriggerNodeView` `TRIGGER_ICONS` size 14.
+/// Never SF `target` / `person.crop.circle` / `bolt.horizontal` / …
+public func turnTriggerOfficialSymbol(_ icon: TurnTriggerIcon) -> String {
+    switch icon {
+    case .request: return "official.contextInjection"
+    case .goal: return "official.goalOutline"
+    case .agent: return "official.paperPlaneOutline"
+    case .team, .subagent: return "official.agentPreset"
+    case .github: return "official.branchOutline"
+    case .webhook: return "official.globeOutline"
+    case .schedule: return "official.clockOutline"
+    case .job: return "official.queueOutline"
+    case .plugin: return "official.cordisPlugin"
+    }
+}
+
+public func isForbiddenTurnTriggerSystemSymbol(_ name: String) -> Bool {
+    name == "target"
+        || name == "person.crop.circle"
+        || name == "arrow.triangle.branch"
+        || name == "globe"
+        || name == "clock"
+        || name == "clock.arrow.circlepath"
+        || name == "puzzlepiece.extension"
+        || name == "bolt.horizontal"
+}
+
+/// Desktop `--dsw-radius-xl` (`ui-theme` `base.css`).
+public let dswRadiusXlPoints: Double = 20
+
+/// Desktop `TurnTriggerNodeView.module.css` + `TRIGGER_ICONS` / chevron Regular.
+public let turnTriggerIconSizePoints: Double = 14
+public let turnTriggerChevronSizePoints: Double = 12
+public let turnTriggerHeaderGapPoints: Double = 10
+public let turnTriggerHeaderPaddingHorizontalPoints: Double = 16
+public let turnTriggerHeaderPaddingVerticalPoints: Double = 12
+public let turnTriggerTitleFontSizePoints: Double = 14
+public let turnTriggerTimeFontSizePoints: Double = 12
+public let turnTriggerBodyPaddingLeadingPoints: Double = 40
+public let turnTriggerBodyPaddingBottomPoints: Double = 12
+public let turnTriggerRadiusPoints: Double = dswRadiusXlPoints
+public let turnTriggerBorderWidthPoints: Double = 0.5
+
+/// Desktop `--dsw-alias-border-l1` (`ui-theme` light `#0000000a` / dark `#ffffff0f`).
+public let dswAliasBorderL1LightHex: UInt32 = 0x0A000000
+public let dswAliasBorderL1DarkHex: UInt32 = 0x0FFFFFFF
+public func dswAliasBorderL1Hex(dark: Bool) -> UInt32 {
+    dark ? dswAliasBorderL1DarkHex : dswAliasBorderL1LightHex
+}
+
+/// Desktop `--dsw-alias-turn-trigger-bg`: light markdown-code-block `#F9FAFB`,
+/// dark interactive-bg-hover `#14FFFFFF`.
+public let turnTriggerBackgroundLightHex: UInt32 = 0xFFF9FAFB
+public let turnTriggerBackgroundDarkHex: UInt32 = 0x14FFFFFF
+public func turnTriggerBackgroundHex(dark: Bool) -> UInt32 {
+    dark ? turnTriggerBackgroundDarkHex : turnTriggerBackgroundLightHex
+}
+
+/// Desktop `ui-primitives` `IconContextInjectionOutlineArtwork` Regular.
+public let iconContextInjectionFramePath =
+    "M5 2.5H3.5C3.23478 2.5 2.98043 2.60536 2.79289 2.79289C2.60536 2.98043 2.5 3.23478 2.5 3.5V13.5C2.5 13.7652 2.60536 14.0196 2.79289 14.2071C2.98043 14.3946 3.23478 14.5 3.5 14.5H12.5C12.7652 14.5 13.0196 14.3946 13.2071 14.2071C13.3946 14.0196 13.5 13.7652 13.5 13.5V3.5C13.5 3.23478 13.3946 2.98043 13.2071 2.79289C13.0196 2.60536 12.7652 2.5 12.5 2.5H11"
+public let iconContextInjectionStemPath = "M8 0.5V7.5"
+public let iconContextInjectionArrowPath = "M5.5 5L8 7.5L10.5 5"
+public let iconContextInjectionBarPath = "M5.5 11H10.5"
+
 /// Slash catalog cache is per session (and never shared with a subagent).
 public func skillCatalogScopeKey(sessionId: String?, subagent: Bool) -> String {
     if subagent { return "subagent:\(sessionId ?? "")" }

@@ -1088,6 +1088,25 @@ public func pluginAddCreatePluginMissing(english: Bool) -> String {
 
 public let pluginAddMenuUsesMenuSurface = true
 
+/// Desktop `ui-plugin-manager` `AddPluginMenu` / inventory disclosure use
+/// `IconChevronDownOutlineRegular`. Never SF `chevron.down`.
+public func pluginAddChevronSymbol() -> String { menuChevronDownSymbol() }
+public func pluginInventoryChevronSymbol() -> String { menuChevronDownSymbol() }
+public func isForbiddenPluginChromeSystemSymbol(_ name: String) -> Bool {
+    name == "chevron.down"
+}
+
+/// Desktop models / agent-preset add rows use `IconPlusOutlineMedium`.
+/// Preset header retry is `IconRefreshOutlineRegular`; view config is
+/// `IconBrowseOutlineRegular`.
+public func modelsAddProviderSymbol() -> String { composerAddSymbol() }
+public func presetAddSymbol() -> String { composerAddSymbol() }
+public func presetRefreshSymbol() -> String { "official.refreshOutline" }
+public func presetBrowseSymbol() -> String { "official.browseOutline" }
+public func isForbiddenPresetChromeSystemSymbol(_ name: String) -> Bool {
+    name == "plus" || name == "arrow.clockwise" || name == "doc.text.magnifyingglass"
+}
+
 // MARK: - CompactionItem (desktop ui-chat CompactionItem)
 
 /// Desktop `message.compaction` / `message.compaction.commandTitle`.

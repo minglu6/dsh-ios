@@ -87,9 +87,14 @@ struct FilePreviewView: View {
             }
             if kind == .text, mode != .preview {
                 Button { wrap.toggle() } label: {
-                    Image(systemName: wrap ? "text.justify.leading" : "text.alignleft")
-                        .foregroundStyle(T.text2)
+                    OfficialGlyph(
+                        kind: wrap ? .nowrapFill : .wrapFill,
+                        size: CGFloat(documentPreviewWrapIconSizePoints),
+                        color: T.text2
+                    )
                 }
+                .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(.isButton)
                 .accessibilityLabel(wrap ? L.unwrapLines() : L.wrapLines())
             }
             Button { generation += 1 } label: {
@@ -160,8 +165,14 @@ struct FilePreviewView: View {
                                     copied = false
                                 }
                             } label: {
-                                Image(systemName: copied ? "checkmark" : "square.on.square").foregroundStyle(T.text2)
+                                OfficialGlyph(
+                                    kind: copied ? .checkOutline : .copyOutline,
+                                    size: CGFloat(documentPreviewWrapIconSizePoints),
+                                    color: T.text2
+                                )
                             }
+                            .accessibilityElement(children: .contain)
+                            .accessibilityAddTraits(.isButton)
                             .accessibilityLabel(copied ? L.copied() : L.copy())
                         }
                         .padding(.horizontal, 16)
@@ -189,6 +200,11 @@ struct FilePreviewView: View {
         loading = true
         error = nil
         copied = false
+        if let seeded = model.uiTestFilePreviewText, kind == .text {
+            text = seeded
+            loading = false
+            return
+        }
         do {
             switch kind {
             case .image, .pdf:
@@ -432,7 +448,7 @@ private struct OfficeFontWarning: View {
                         Text(L.t("缺失的字体", "Missing fonts")).font(.system(size: 14, weight: .semibold)).foregroundStyle(T.ink)
                         Spacer()
                         Button { expanded = false } label: {
-                            Image(systemName: "xmark").foregroundStyle(T.text2)
+                            OfficialGlyph(kind: .closeOutline, size: 14, color: T.text2)
                         }
                         .accessibilityLabel(L.t("关闭字体详情", "Close font details"))
                     }

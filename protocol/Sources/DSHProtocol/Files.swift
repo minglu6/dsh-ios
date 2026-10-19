@@ -345,6 +345,39 @@ public func isForbiddenFilesToolbarSystemSymbol(_ name: String) -> Bool {
     name == "pause" || name == "play.fill" || name == "play" || name == "arrow.clockwise"
 }
 
+/// Desktop `ui-sidebar-documentpreview` wrap toggle:
+/// wrapped → `IconNowrapFillRegular`, unwrapped → `IconWrapFillRegular` (16).
+/// Copy is `IconCopyOutlineRegular`; copied state is `IconCheckOutlineRegular`.
+/// Missing-font dismiss is `IconCloseOutlineRegular`.
+public let documentPreviewWrapIconSizePoints: Double = 16
+public func documentPreviewWrapSymbol(wrapped: Bool) -> String {
+    wrapped ? "official.nowrapFill" : "official.wrapFill"
+}
+public func documentPreviewCopySymbol(copied: Bool) -> String {
+    copied ? menuCheckSymbol() : messageCopySymbol()
+}
+public func documentPreviewCloseSymbol() -> String { browserCloseSymbol() }
+
+public func isForbiddenDocumentPreviewSystemSymbol(_ name: String) -> Bool {
+    name == "text.justify.leading"
+        || name == "text.alignleft"
+        || name == "square.on.square"
+        || name == "checkmark"
+        || name == "xmark"
+}
+
+/// Desktop `IconNowrapFillArtwork`.
+public let iconNowrapRailLeftPath = "M2 15H1V1H2V15Z"
+public let iconNowrapArrowPath =
+    "M12.3535 7.64645C12.5487 7.84171 12.5487 8.15829 12.3535 8.35355L9.85352 10.8535L9.14648 10.1465L10.793 8.5H3.5V7.5H10.793L9.14648 5.85352L9.85352 5.14648L12.3535 7.64645Z"
+public let iconNowrapRailRightPath = "M15 15H14V1H15V15Z"
+
+/// Desktop `IconWrapFillArtwork`.
+public let iconWrapCurvePath =
+    "M10.9999 8C10.9999 6.89543 10.1046 6 9 6H4.5V5H9C10.6568 5 11.9999 6.34315 11.9999 8C11.9999 9.65685 10.6568 11 9 11H6.20703L6.85351 11.6465L6.14648 12.3535L4.64652 10.8536C4.45126 10.6583 4.45126 10.3417 4.64652 10.1464L6.14648 8.64648L6.85351 9.35352L6.20703 10H9C10.1046 10 10.9999 9.10457 10.9999 8Z"
+public let iconWrapRailLeftPath = "M2 15H1V1H2V15Z"
+public let iconWrapRailRightPath = "M15 15H14V1H15V15Z"
+
 /// Desktop `IconPlayOutlineArtwork` Regular. Ring matches the 16×16 warning circle.
 public let iconPlayOutlineTrianglePath =
     "M10.3329 7.91346C10.3996 7.95195 10.3996 8.04818 10.3329 8.08667L6.78304 10.1362C6.71638 10.1747 6.63304 10.1266 6.63304 10.0496L6.63304 5.95055C6.63304 5.87357 6.71638 5.82546 6.78304 5.86395L10.3329 7.91346Z"

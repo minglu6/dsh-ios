@@ -254,6 +254,21 @@ public func workspaceGroupFolderIconIdentifier(_ workspaceId: String) -> String 
     "workspaceIcon.\(workspaceId)"
 }
 
+/// Desktop `ui-primitives` `IconEllipsisOutlineArtwork` (session / workspace overflow).
+/// Phone workspace-row menu must reuse it; never SF `ellipsis`.
+public func workspaceOverflowSymbol() -> String { "official.ellipsis" }
+public func isForbiddenWorkspaceOverflowSymbol(_ name: String) -> Bool {
+    name == "ellipsis"
+}
+
+/// Desktop `IconEllipsisOutlineArtwork` fill dots (weight-independent).
+public let iconEllipsisDotAPath =
+    "M3 9C3.55228 9 4 8.55228 4 8C4 7.44772 3.55228 7 3 7C2.44772 7 2 7.44772 2 8C2 8.55228 2.44772 9 3 9Z"
+public let iconEllipsisDotBPath =
+    "M8 9C8.55228 9 9 8.55228 9 8C9 7.44772 8.55228 7 8 7C7.44772 7 7 7.44772 7 8C7 8.55228 7.44772 9 8 9Z"
+public let iconEllipsisDotCPath =
+    "M13 9C13.5523 9 14 8.55228 14 8C14 7.44772 13.5523 7 13 7C12.4477 7 12 7.44772 12 8C12 8.55228 12.4477 9 13 9Z"
+
 /// Desktop `IconFolderOpenArtwork` fill paths (opacity 0.16 shade + two fills).
 public let workspaceFolderOpenFillShadePath =
     "M2.55912 7.93683C2.67584 7.49906 3.0723 7.19446 3.52536 7.19446H13.6491C14.3061 7.19446 14.7846 7.81725 14.6153 8.45209L13.4411 12.856C13.3244 13.2938 12.9279 13.5984 12.4748 13.5984H2.35113C1.69411 13.5984 1.21562 12.9756 1.38489 12.3407L2.55912 7.93683Z"

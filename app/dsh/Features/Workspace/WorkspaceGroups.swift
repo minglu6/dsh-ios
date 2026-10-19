@@ -214,11 +214,19 @@ struct WorkspaceGroupHeader: View {
                                 Button(L.deleteWorkspace(), role: .destructive) { remove = true }
                             }
                         } label: {
-                            Image(systemName: "ellipsis").font(.system(size: 14)).foregroundStyle(model.isOnline ? T.text2 : T.caption)
-                                .frame(width: 48, height: 48)
+                            OfficialGlyph(
+                                kind: .ellipsis,
+                                size: 14,
+                                color: model.isOnline ? T.text2 : T.caption
+                            )
+                            .frame(width: 48, height: 48)
+                            .contentShape(Rectangle())
                         }
                         .disabled(!model.isOnline)
+                        .accessibilityElement(children: .contain)
+                        .accessibilityAddTraits(.isButton)
                         .accessibilityLabel(L.moreActions())
+                        .accessibilityIdentifier("workspaceOverflow")
                     }
                     Button {
                         model.createAndOpenSession(workspaceId: workspace.workspaceId)

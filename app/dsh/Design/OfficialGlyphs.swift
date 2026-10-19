@@ -90,6 +90,9 @@ struct OfficialGlyph: View {
         case warningTriangle
         case playOutline
         case pauseOutline
+        case contextInjection
+        case wrapFill
+        case nowrapFill
 
         var accessibilityIdentifier: String {
             switch self {
@@ -172,6 +175,10 @@ struct OfficialGlyph: View {
             case .warningTriangle: return documentPreviewWarningSymbol()
             case .playOutline: return filesAutoRefreshSymbol(enabled: false)
             case .pauseOutline: return filesAutoRefreshSymbol(enabled: true)
+            case .contextInjection: return turnTriggerOfficialSymbol(.request)
+            case .wrapFill: return documentPreviewWrapSymbol(wrapped: false)
+            case .nowrapFill: return documentPreviewWrapSymbol(wrapped: true)
+            case .ellipsis: return workspaceOverflowSymbol()
             case .permission: return "official.glyph"
             default: return "official.glyph"
             }
@@ -190,7 +197,8 @@ struct OfficialGlyph: View {
                  .questionOutline, .usersOutline, .checklistOutline, .goalOutline, .cordisPlugin, .stopFill,
                  .computer, .trashOutline, .queueOutline, .sendOutline, .dataOutline, .dataOutlineRegular,
                  .paperclipOutline, .paperPlaneOutline, .compactOutline, .permissionFullAccess,
-                 .downloadOutline, .warningOutline, .warningTriangle, .playOutline, .pauseOutline:
+                 .downloadOutline, .warningOutline, .warningTriangle, .playOutline, .pauseOutline,
+                 .contextInjection, .wrapFill, .nowrapFill, .ellipsis:
                 return false
             // plusOutline / send are decorative; ComposerView hosts own
             // official.plusOutline and official.send.
@@ -269,9 +277,9 @@ struct OfficialGlyph: View {
                 ctx.stroke(Path(SVGPath.cgPath(Self.archiveBox)), with: .color(color), style: stroke)
                 ctx.stroke(Path(SVGPath.cgPath(Self.archiveSlot)), with: .color(color), style: stroke)
             case .ellipsis:
-                ctx.fill(Path(SVGPath.cgPath(Self.ellipsisA)), with: .color(color))
-                ctx.fill(Path(SVGPath.cgPath(Self.ellipsisB)), with: .color(color))
-                ctx.fill(Path(SVGPath.cgPath(Self.ellipsisC)), with: .color(color))
+                ctx.fill(Path(SVGPath.cgPath(iconEllipsisDotAPath)), with: .color(color))
+                ctx.fill(Path(SVGPath.cgPath(iconEllipsisDotBPath)), with: .color(color))
+                ctx.fill(Path(SVGPath.cgPath(iconEllipsisDotCPath)), with: .color(color))
             case .slidersTwo:
                 ctx.stroke(Path(SVGPath.cgPath(Self.slidersA)), with: .color(color), style: stroke)
                 ctx.stroke(Path(SVGPath.cgPath(Self.slidersB)), with: .color(color), style: stroke)
@@ -700,6 +708,19 @@ struct OfficialGlyph: View {
                 ctx.stroke(Path(SVGPath.cgPath(iconWarningOutlineRingPath)), with: .color(color), style: Self.regularStroke)
                 ctx.stroke(Path(SVGPath.cgPath(iconPauseOutlineLeftPath)), with: .color(color), style: Self.regularStroke)
                 ctx.stroke(Path(SVGPath.cgPath(iconPauseOutlineRightPath)), with: .color(color), style: Self.regularStroke)
+            case .contextInjection:
+                ctx.stroke(Path(SVGPath.cgPath(iconContextInjectionFramePath)), with: .color(color), style: Self.regularStroke)
+                ctx.stroke(Path(SVGPath.cgPath(iconContextInjectionStemPath)), with: .color(color), style: Self.regularStroke)
+                ctx.stroke(Path(SVGPath.cgPath(iconContextInjectionArrowPath)), with: .color(color), style: Self.regularStroke)
+                ctx.stroke(Path(SVGPath.cgPath(iconContextInjectionBarPath)), with: .color(color), style: Self.regularStroke)
+            case .wrapFill:
+                ctx.fill(Path(SVGPath.cgPath(iconWrapCurvePath)), with: .color(color))
+                ctx.fill(Path(SVGPath.cgPath(iconWrapRailLeftPath)), with: .color(color))
+                ctx.fill(Path(SVGPath.cgPath(iconWrapRailRightPath)), with: .color(color))
+            case .nowrapFill:
+                ctx.fill(Path(SVGPath.cgPath(iconNowrapRailLeftPath)), with: .color(color))
+                ctx.fill(Path(SVGPath.cgPath(iconNowrapArrowPath)), with: .color(color))
+                ctx.fill(Path(SVGPath.cgPath(iconNowrapRailRightPath)), with: .color(color))
             }
         }
         .frame(width: canvasWidth, height: canvasHeight)
@@ -791,9 +812,6 @@ struct OfficialGlyph: View {
     private static let archiveLid = "M13.5 2.5H2.5C1.94772 2.5 1.5 2.94772 1.5 3.5V4.5C1.5 5.05228 1.94772 5.5 2.5 5.5H13.5C14.0523 5.5 14.5 5.05228 14.5 4.5V3.5C14.5 2.94772 14.0523 2.5 13.5 2.5Z"
     private static let archiveBox = "M2.5 5.5V13.5C2.5 13.7652 2.60536 14.0196 2.79289 14.2071C2.98043 14.3946 3.23478 14.5 3.5 14.5H12.5C12.7652 14.5 13.0196 14.3946 13.2071 14.2071C13.3946 14.0196 13.5 13.7652 13.5 13.5V5.5"
     private static let archiveSlot = "M6.5 9.5H9.5"
-    private static let ellipsisA = "M3 9C3.55228 9 4 8.55228 4 8C4 7.44772 3.55228 7 3 7C2.44772 7 2 7.44772 2 8C2 8.55228 2.44772 9 3 9Z"
-    private static let ellipsisB = "M8 9C8.55228 9 9 8.55228 9 8C9 7.44772 8.55228 7 8 7C7.44772 7 7 7.44772 7 8C7 8.55228 7.44772 9 8 9Z"
-    private static let ellipsisC = "M13 9C13.5523 9 14 8.55228 14 8C14 7.44772 13.5523 7 13 7C12.4477 7 12 7.44772 12 8C12 8.55228 12.4477 9 13 9Z"
     private static let slidersA = "M2.3 5H8.15M12.05 5H13.7"
     private static let slidersB = "M2.3 11H3.95M7.85 11H13.7"
     private static let workspaceTreeBody = "M14 12.05c0 .8-.65 1.45-1.46 1.45H3.46C2.65 13.5 2 12.85 2 12.05v-8.1c0-.8.65-1.45 1.46-1.45h2.4c.49 0 .94.24 1.21.65l.5.73c.27.4.73.65 1.21.65h3.76c.8 0 1.46.65 1.46 1.45v6.02Z"
@@ -853,6 +871,21 @@ struct OfficialGlyph: View {
         case .plugin: return .cordisPlugin
         case .agent: return .agentPreset
         case .branch: return .branchOutline
+        }
+    }
+
+    /// Desktop `ui-chat` `TurnTriggerNodeView` `TRIGGER_ICONS`.
+    static func turnTrigger(_ icon: TurnTriggerIcon) -> Kind {
+        switch icon {
+        case .request: return .contextInjection
+        case .goal: return .goalOutline
+        case .agent: return .paperPlaneOutline
+        case .team, .subagent: return .agentPreset
+        case .github: return .branchOutline
+        case .webhook: return .globe
+        case .schedule: return .clockOutline
+        case .job: return .queueOutline
+        case .plugin: return .cordisPlugin
         }
     }
 

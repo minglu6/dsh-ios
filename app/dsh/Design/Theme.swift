@@ -59,8 +59,14 @@ enum T {
     static var fill2: Color { colors.bgModulePlatform }
     static var drawer: Color { colors.specificSidebarFill }
     static var border: Color { colors.borderL2 }
+    /// Desktop `--dsw-alias-border-l1` (`TurnTriggerNodeView` hairline).
+    static var borderL1: Color { colors.borderL1 }
     /// Desktop `--dsw-alias-border-l3` (`Button.outline`, files header, ContextMeter track).
     static var borderL3: Color { colors.borderL3 }
+    /// Desktop `--dsw-alias-turn-trigger-bg`.
+    static var turnTriggerBg: Color {
+        Color(hex: turnTriggerBackgroundHex(dark: ThemeStateHolder.shared.dark))
+    }
     static var warnBorder: Color { colors.stateWarnSecondary }
     static var warnTint: Color { colors.stateWarnTertiary }
     static var warnText: Color { colors.stateWarnLabel }

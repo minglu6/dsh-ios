@@ -5,6 +5,7 @@ import XCTest
 final class ScreenshotTests: XCTestCase {
     private let screens = [
         "landing", "drawer", "viewOptions", "sessionActions", "chat", "planMode", "mention",
+        "turnTrigger", "filePreview",
         "models", "permission", "start", "browser", "inspector",
         "settings", "settingsShell", "schedule", "terminal", "files", "trajectory", "plugins", "connections",
         "composerStop", "slash", "jobs", "builtinPlugins", "trajectoryDetail",
@@ -157,6 +158,11 @@ final class ScreenshotTests: XCTestCase {
                     app.images["chevron.right"].exists,
                     "\(appearance) drawer invented a workspace expand chevron; hover-chevron swap is skip"
                 )
+                XCTAssertFalse(app.images["ellipsis"].exists, "\(appearance) drawer still exposes SF ellipsis")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.ellipsis"].waitForExistence(timeout: 8),
+                    "\(appearance) drawer missing official workspace overflow ellipsis"
+                )
             }
             if screen == "drawer" {
                 XCTAssertFalse(app.images["gearshape"].exists, "\(appearance) drawer still exposes SF gearshape")
@@ -213,7 +219,7 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertGreaterThanOrEqual(settingsFrame.height, 44, "\(appearance) settings hit shorter than 44pt")
                 XCTAssertGreaterThanOrEqual(hostFrame.height, 44, "\(appearance) host hit shorter than 44pt")
             }
-            if screen == "landing" || screen == "chat" || screen == "planMode" || screen == "mention" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
+            if screen == "landing" || screen == "chat" || screen == "planMode" || screen == "mention" || screen == "turnTrigger" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
                 XCTAssertFalse(app.images["sidebar.left"].exists, "\(appearance) \(screen) still exposes SF sidebar.left")
                 XCTAssertFalse(app.images["sidebar.right"].exists, "\(appearance) \(screen) still exposes SF sidebar.right")
                 XCTAssertTrue(
@@ -221,7 +227,7 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) \(screen) missing official panel-left glyph"
                 )
             }
-            if screen == "landing" || screen == "chat" || screen == "planMode" || screen == "mention" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
+            if screen == "landing" || screen == "chat" || screen == "planMode" || screen == "mention" || screen == "turnTrigger" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
                 XCTAssertTrue(
                     app.descendants(matching: .any)["official.panelRight"].waitForExistence(timeout: 8),
                     "\(appearance) \(screen) missing official panel-right glyph"
@@ -314,6 +320,11 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertTrue(info.waitForExistence(timeout: 15), "\(appearance) plugins missing (i)")
                 XCTAssertFalse(app.images["info.circle"].exists, "\(appearance) plugins still exposes SF info.circle")
                 XCTAssertFalse(app.images["arrow.clockwise"].exists, "\(appearance) plugins still exposes SF arrow.clockwise")
+                XCTAssertFalse(app.images["chevron.down"].exists, "\(appearance) plugins still exposes SF chevron.down")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.chevronDown"].waitForExistence(timeout: 8),
+                    "\(appearance) plugins missing official add-menu chevron"
+                )
                 XCTAssertTrue(
                     app.descendants(matching: .any)["official.infoOutline"].waitForExistence(timeout: 8),
                     "\(appearance) plugins missing official info glyph"
@@ -386,7 +397,7 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) landing composer floated off the bottom (gap \(gap))"
                 )
             }
-            if screen == "chat" || screen == "planMode" || screen == "mention" || screen == "trajectory" {
+            if screen == "chat" || screen == "planMode" || screen == "mention" || screen == "turnTrigger" || screen == "trajectory" {
                 XCTAssertFalse(app.images["clock"].exists, "\(appearance) \(screen) still exposes SF clock on jobs chip")
                 XCTAssertFalse(app.images["clock.fill"].exists, "\(appearance) \(screen) still exposes SF clock.fill on jobs chip")
                 XCTAssertTrue(
@@ -964,6 +975,38 @@ final class ScreenshotTests: XCTestCase {
                         || app.staticTexts["描述你的任务以生成计划"].exists,
                     "\(appearance) planMode placeholder is not desktop plan copy (got \(placeholder.label))"
                 )
+            }
+            if screen == "turnTrigger" {
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["turnTrigger"].waitForExistence(timeout: 8),
+                    "\(appearance) turnTrigger row missing"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.contextInjection"].waitForExistence(timeout: 8),
+                    "\(appearance) turnTrigger missing IconContextInjectionOutline"
+                )
+                XCTAssertTrue(
+                    app.staticTexts["收到执行请求"].waitForExistence(timeout: 8),
+                    "\(appearance) turnTrigger missing desktop message.trigger.request"
+                )
+                XCTAssertFalse(app.images["bolt.horizontal"].exists, "\(appearance) turnTrigger still uses SF bolt.horizontal")
+                XCTAssertFalse(app.images["clock.arrow.circlepath"].exists, "\(appearance) turnTrigger still uses SF clock.arrow.circlepath")
+                XCTAssertFalse(app.images["person.crop.circle"].exists, "\(appearance) turnTrigger still uses SF person.crop.circle")
+                XCTAssertFalse(app.images["target"].exists, "\(appearance) turnTrigger still uses SF target")
+            }
+            if screen == "filePreview" {
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.wrapFill"].waitForExistence(timeout: 8),
+                    "\(appearance) filePreview missing official wrapFill"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.copyOutline"].exists,
+                    "\(appearance) filePreview missing official copyOutline"
+                )
+                XCTAssertFalse(app.images["text.alignleft"].exists, "\(appearance) filePreview still uses SF text.alignleft")
+                XCTAssertFalse(app.images["text.justify.leading"].exists, "\(appearance) filePreview still uses SF text.justify.leading")
+                XCTAssertFalse(app.images["square.on.square"].exists, "\(appearance) filePreview still uses SF square.on.square")
+                XCTAssertTrue(app.staticTexts["main.py"].waitForExistence(timeout: 8), "\(appearance) filePreview missing main.py")
             }
             if screen == "mention" {
                 XCTAssertTrue(

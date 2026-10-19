@@ -97,7 +97,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R67 | `/` 菜单行官方 SVG（paperclip / paperPlane / compact / data Regular / permission FullAccess / download / goal / plan） | done (#77) |
 | R68 | 计划 chip / 提及气泡 / 传统 FileGlyph / 反馈 ✓ / 风险圈叹号 / 目录 chevron 官方 SVG；CI `planMode` + `mention` | done (#78) |
 | R69 | 终端不可用/断线/缺失态对齐 `ui-sidebar-terminal`；landing 顶栏补右侧栏按钮对齐 `ui-sidebar-right` | done (#79) |
-| R70 | `CODE_FILE_ARTWORK` 官方语言图标 PDF；outline/l3 token；markdown fileChip 官方 BrowseOutline；风险 checkbox CSS | this PR |
+| R70 | `CODE_FILE_ARTWORK` 官方语言图标 PDF；outline/l3 token；markdown fileChip 官方 BrowseOutline；风险 checkbox CSS | done (#80) |
+| R71 | 触发行 TRIGGER_ICONS / 工作区 overflow ellipsis / 插件 add chevron / 文档预览 wrap·copy / 预设与模型 plus | this PR |
 
 ---
 
@@ -2105,6 +2106,98 @@ locale / 组件 API **无增量**。**只报告，不升级基线。**
 | `@deepseek-ai/dsh-client-ui-chat` | **0.2.1-alpha.5** | 0.2.1-rc.2 | 0.1.2-alpha.2 |
 | `@deepseek-ai/dsh-client-ui-conversation` | **0.2.1-alpha.5** | 0.2.1-rc.2 | 0.0.1-rc.1 |
 | `@deepseek-ai/dsh-client-ui-sidebar-files` | **0.2.1-alpha.5** | 0.2.1-rc.2 | 0.1.5-alpha.1 |
+
+alpha.5 之后**没有新的 alpha**。rc.2 仍是 `next`，本轮不升级基线。UI 基线维持 `0.2.1-alpha.5`。
+
+## Round 71 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`；Android 仅参考）
+
+基线 `main` `62a305d`（#80 Round 70：CODE_FILE 官方语言图标、outline l3、fileChip BrowseOutline）。桌面是源。禁止自创颜色/图标/间距；无系统蓝；无 ActionSheet；文案「远程主机」。
+
+### 必须核实（已对齐，本轮不改）
+
+| 项 | 判定 |
+| --- | --- |
+| landing「探索未至之境」+ whale | **PASS** |
+| Composer 贴底 | **PASS** |
+| landing 顶栏左 `panelLeft` 右 `panelRight`（#79） | **PASS** |
+| 终端三态（#79） | **PASS** |
+| 抽屉设置 vs 绿点+主机名独立热区 ≥16pt | **PASS** |
+| 远程主机整页；开抽屉 / 进设置 / 进远程主机收键盘 | **PASS** |
+| 权限 chip 只图标 + #68 菜单 | **PASS** |
+| #69–#80 既有官方 SVG 与 CI 断言（planMode / mention / `/` 菜单 / PairLinkSheet / CODE_FILE） | **PASS**（断言未放宽、未删） |
+| `/` 菜单全量不显示数量；聊天顶栏无分享；用户消息下无常驻复制 | **PASS** |
+
+### 本轮修
+
+| 项 | 桌面源码依据 | 处理 |
+| --- | --- | --- |
+| 触发行 SF `bolt.horizontal` / `clock.arrow.circlepath` / `person.crop.circle` | `ui-chat` `TurnTriggerNodeView` `TRIGGER_ICONS` size 14：request=`IconContextInjectionOutlineRegular`、goal=`IconGoalOutlineRegular`、agent=`IconPaperPlaneOutlineRegular`、team/subagent=`IconAgentPresetOutlineRegular`、github=`IconBranchOutlineRegular`、webhook=`IconGlobeOutlineRegular`、schedule=`IconClockOutlineRegular`、job=`IconQueueOutlineRegular`、plugin=`IconCordisPluginOutlineRegular`。CSS：`border .5px l1`、`radius-xl` 20、`turn-trigger-bg`（light markdown-code-block `#F9FAFB` / dark interactive-bg-hover `#14FFFFFF`）、header gap 10 / pad 12×16、chevron Regular 12 | 抽出 `IconContextInjectionOutline` path；其余复用已提取 glyph。卡面改官方 token。CI 加 `turnTrigger` 屏：断言 `official.contextInjection` +「收到执行请求」，禁 SF |
+| 工作区行 SF `ellipsis` | `ui-primitives` `IconEllipsisOutlineArtwork`（会话行 overflow 已用同一套）。Round 70 误记「无独立 ellipsis artwork」 | 工作区菜单换成 `OfficialGlyph.ellipsis`。CI `drawer` 断言 `official.ellipsis`、禁 `ellipsis` |
+| 插件添加 split SF `chevron.down` | `ui-plugin-manager` `AddPluginMenu` `IconChevronDownOutlineRegular`。库存分组/行披露同官方 chevron | `PluginAddMenu` + inventory 披露换成官方 chevronDown。CI `plugins` 断言 `official.chevronDown`、禁 `chevron.down` |
+| 文档预览 wrap / copy / close SF | `ui-sidebar-documentpreview` wrap：`IconWrapFillRegular` / `IconNowrapFillRegular` 16；copy=`IconCopyOutlineRegular`；缺字体关闭=`IconCloseOutlineRegular` | 抽出 wrap/nowrap fill path。CI 加 `filePreview` 屏：断言 `official.wrapFill` / `copyOutline`，禁 `text.alignleft` / `square.on.square` |
+| 模型添加 / 预设 refresh·plus·browse SF | 桌面 add 行 `IconPlusOutlineMedium`；预设头 `IconRefreshOutlineRegular`；查看配置 `IconBrowseOutlineRegular` | 换成已提取 official plus/refresh/browse。protocol 锁符号；CI 无独立 presets 屏，记入待办 |
+
+### 查过但本轮不提取
+
+| 项 | 查过 | 结论 |
+| --- | --- | --- |
+| 变更卡 `doc.on.doc` | `ui-chat` / `ui-workspace` 无叠层 artwork | **skip 不发明**（#80） |
+| 风险 checkbox 勾选图形 | `RiskConfirmation` 原生 `<input type="checkbox">` | **skip**（#80 只搬 CSS） |
+| `IconSearch` 插件库存搜索槽 | `ui-plugin-manager` 无该槽 | **skip**（手机过滤便利，保留 SF magnifyingglass） |
+
+### 有意 skip（桌面源码依据）
+
+| 项 | 判定 | 依据 |
+| --- | --- | --- |
+| turnNavigation / toBottom FAB / ask.review / hover chevron | **skip** | 桌面 `ui-conversation` 触屏无 hover 轮次条 / 回底 FAB。`ask.review` 是 hover「查看回答」 |
+| Account/shortcuts / CompatibilityBanner / 审批通知 | **skip** | 桌面专属 / hide / 禁止发明 |
+| 插件列表搜索框 SF magnifyingglass | **skip** | 桌面 `ui-plugin-manager` 无搜索槽 |
+| stop-state InputBar | **已对齐** | #69 `official.stopRect`；`composerStop` 屏已锁。非本轮缺口 |
+| 扫码 QR / Inspector viewfinder | **skip** | primitives 无 QR / viewfinder artwork |
+| 终端与 Todo `ProgressView` | **skip** | primitives 无 loading artwork |
+| 管理 sheet 删除无确认 | **skip** | Android 立即 `removeProfile`；桌面 pocket 无这张 sheet / 无 delete Modal |
+| 手机终端快捷键条 | **平台** | 桌面无此条；#79 已换官方 keyboard/check |
+| 通用设置 Toggle / 语言 Picker | **skip** | 非系统蓝 ActionSheet |
+
+### 逐屏核对（light+dark）剩余 SF / 系统控件
+
+| 屏 | 判定 | 剩余 SF / 系统控件 | 处理结论 |
+| --- | --- | --- | --- |
+| landing | **PASS** | 无计划 chip | 标题/鲸/Composer 贴底；顶栏 panelLeft+panelRight |
+| chat | **PASS** | waking 触发行不在本屏 | 无分享、无用户常驻复制；fileChip 官方 BrowseOutline |
+| turnTrigger | **本轮修** | — | 官方 ContextInjection + 桌面卡面 token |
+| planMode / mention | **PASS** | — | #78 官方 plan / 提及 |
+| chatDock | **PASS** | Todo `in_progress` `ProgressView` | 有意 skip |
+| drawer | **本轮修** | — | 工作区 overflow 官方 ellipsis |
+| jobs | **PASS** | 列表 `ProgressView` | loading skip |
+| trajectory / trajectoryDetail | **PASS** | 空态 `ProgressView` | KIND_ICON 官方 SVG |
+| inspector | **skip** | viewfinder / 类型过滤 | primitives 无 artwork |
+| browser | **PASS** | WK 线性 `ProgressView` | 无 primitives 进度条 |
+| terminal / 三态 | **PASS** | 中间 `ProgressView`；退出确认既有 | #79 不回归 |
+| files | **PASS** | — | #80 CODE_FILE |
+| filePreview | **本轮修** | 模式 Menu 系统 check | wrap/copy 官方 fill/outline |
+| settings | **PASS** | Toggle / 语言 `Picker` | 有意 skip |
+| settingsShell | **PASS** | — | 模型 `IconDataOutlineMedium` |
+| plugins | **本轮修** | — | add split 官方 chevronDown |
+| builtinPlugins | **skip / PASS** | 列表搜索框 magnifyingglass | 桌面无该槽；行 chevron 已官方 |
+| models / permission | **PASS** | — | 官方 chevron/check |
+| slash | **PASS** | loading `ProgressView` | #77 行图标 |
+| schedule / sessionActions / viewOptions / start / composerStop | **PASS** | schedule `Picker`/`ProgressView` | 既有官方 SVG |
+| connections / pairingLink / nearby / manage | **PASS** | 扫码 `qrcode.viewfinder`；管理删除无确认 | QR skip；#76 版式 |
+
+### npm dist-tag（只报告，不 bump 基线）
+
+`npm view`（2026-10-19）：
+
+| 包 | alpha | next | latest |
+| --- | --- | --- | --- |
+| `@deepseek-ai/dsh-client-ui-primitives` | **0.2.1-alpha.5** | 0.2.1-rc.2 | 0.0.1-rc.1 |
+| `@deepseek-ai/dsh-client-ui-theme` | **0.2.1-alpha.5** | 0.2.1-rc.2 | 0.0.1-rc.1 |
+| `@deepseek-ai/dsh-client-ui-chat` | **0.2.1-alpha.5** | 0.2.1-rc.2 | 0.1.2-alpha.2 |
+| `@deepseek-ai/dsh-client-ui-conversation` | **0.2.1-alpha.5** | 0.2.1-rc.2 | 0.0.1-rc.1 |
+| `@deepseek-ai/dsh-client-ui-sidebar-files` | **0.2.1-alpha.5** | 0.2.1-rc.2 | 0.1.5-alpha.1 |
+| `@deepseek-ai/dsh-client-ui-plugin-manager` | **0.2.1-alpha.5** | 0.2.1-rc.2 | 0.1.6-alpha.2 |
+| `@deepseek-ai/dsh-client-ui-sidebar-documentpreview` | **0.2.1-alpha.5** | 0.2.1-rc.2 | 0.1.5-alpha.2 |
 
 alpha.5 之后**没有新的 alpha**。rc.2 仍是 `next`，本轮不升级基线。UI 基线维持 `0.2.1-alpha.5`。
 

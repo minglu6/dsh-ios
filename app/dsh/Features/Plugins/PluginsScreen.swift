@@ -42,6 +42,12 @@ struct PluginsScreen: View {
 
     private var locked: Bool { busy || loading || installing || checking || installRequest != nil }
 
+    /// Host `managementAvailable` after `plugins.list`. UITest fixture has no
+    /// Host; advertise the add split when `plugins.install` is seeded.
+    private var showsPluginAddMenu: Bool {
+        managementAvailable || (model.uiTestFixture && model.ops.contains("plugins.install"))
+    }
+
     private var list: some View {
         VStack(spacing: 0) {
             pluginsHeader(selected.map { pluginTitle($0, english: L.en) } ?? L.pluginsNav())
@@ -191,7 +197,7 @@ struct PluginsScreen: View {
             .buttonStyle(.plain)
             .accessibilityLabel(L.refresh())
             .disabled(!model.isOnline || locked)
-            if selected == nil && ((managementAvailable && model.ops.contains("plugins.install")) || installRequest != nil) {
+            if selected == nil && ((showsPluginAddMenu && model.ops.contains("plugins.install")) || installRequest != nil) {
                 PluginAddMenu(
                     enabled: installRequest != nil || (model.isOnline && !locked),
                     creatorEnabled: creatorState == "ready" && creatorPresent && model.ops.contains("sessions.create"),
@@ -707,10 +713,15 @@ private struct PluginAddMenu: View {
                 onOpen()
                 if pluginAddMenuUsesMenuSurface { expanded.toggle() }
             } label: {
-                Image(systemName: "chevron.down").font(.system(size: 12)).foregroundStyle(T.ink).frame(width: 32, height: 32)
+                OfficialGlyph(kind: .chevronDown, size: 12, color: T.ink)
+                    .frame(width: 32, height: 32)
+                    .contentShape(Rectangle())
             }
             .disabled(!enabled)
+            .accessibilityElement(children: .contain)
+            .accessibilityAddTraits(.isButton)
             .accessibilityLabel(pluginAddChooseMethod(english: L.en))
+            .accessibilityIdentifier(pluginAddChevronSymbol())
             .popover(isPresented: $expanded, arrowEdge: .top) {
                 VStack(alignment: .leading, spacing: 0) {
                     addRow(

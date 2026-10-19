@@ -208,8 +208,12 @@ extension AppModel {
             firstPrompt = nil
         case "drawer", "viewOptions", "sessionActions":
             showDrawer = true
-        case "chat", "trajectory", "trajectoryDetail", "planMode", "mention":
+            // Desktop workspace-row overflow (`IconEllipsisOutline`). Off other
+            // screens so `*-chat.png` / files / connections stay still.
+            ops.formUnion(["workspace.rename", "workspace.delete"])
+        case "chat", "trajectory", "trajectoryDetail", "planMode", "mention", "turnTrigger":
             seedUITestJobs()
+            if screen == "turnTrigger" { seedUITestTurnTrigger() }
             if screen == "planMode" {
                 chat?.planMode = true
                 composerText = ""
@@ -265,6 +269,7 @@ extension AppModel {
             showDrawer = false
             push(.settings)
         case "plugins":
+            ops.insert("plugins.install")
             showDrawer = false
             push(.panel(.plugins))
         case "schedule":
@@ -320,6 +325,17 @@ extension AppModel {
             terminalRevision = terminal.revision
             terminalMeta = nil
             push(.panel(.terminal))
+        case "filePreview":
+            ops.remove("files.list")
+            codeWordWrap = false
+            let filesCwd = "/Users/dev/dsh-ios"
+            if let index = sessions.firstIndex(where: { $0.sessionId == chat?.sessionId }) {
+                sessions[index].cwd = filesCwd
+            }
+            uiTestFilePreviewText = "print(\"hello\")\n"
+            filePreview = FilePreviewRef(sessionId: chat?.sessionId ?? "", path: "main.py")
+            showDrawer = false
+            push(.panel(.files))
         case "files":
             // Host `files.list` would overwrite the seeded tree. Keep the
             // op off this screen only so other fixtures stay still.
@@ -415,6 +431,33 @@ extension AppModel {
     /// trajectory screenshots lock the official chevron (not SF `clock`).
     /// Do not advertise `jobs.list`: that starts `retainJobsWatch`, which
     /// clears the snapshot and then has no Host client to refill it.
+    /// Desktop `TurnTriggerNodeView` default icon is `IconContextInjectionOutline`.
+    /// Kept off `chat` so `*-chat.png` stays stable.
+    fileprivate func seedUITestTurnTrigger() {
+        guard var state = chat else {
+            fatalError("UITestLaunch turnTrigger requires a chat session")
+        }
+        let at = state.items.compactMap { item -> Int64? in
+            switch item {
+            case .user(let user): return user.at
+            case .text(let text): return text.at
+            default: return nil
+            }
+        }.min() ?? Int64(Date().timeIntervalSince1970 * 1000)
+        state.items.insert(
+            .context(Item.Context(
+                key: "trig-request",
+                text: "open-step claimed",
+                sourceKind: "execution-request",
+                at: at - 1_000,
+                messageId: "m-trigger",
+                waking: true
+            )),
+            at: 0
+        )
+        chat = state
+    }
+
     fileprivate func seedUITestJobs() {
         jobs = [
             JobRow(
