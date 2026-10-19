@@ -137,6 +137,7 @@ final class TerminalTests: XCTestCase {
         XCTAssertEqual(terminalFailureCopy(message: "follow is not a function", english: false), "终端错误：follow is not a function")
         XCTAssertEqual(terminalFailureCopy(message: "boom", english: true), "Terminal error: boom")
         XCTAssertEqual(terminalMissingCopy(english: false), "此终端已不存在，请新建终端。")
+        XCTAssertEqual(terminalMissingCopy(english: true), "This terminal no longer exists. Open a new terminal.")
         XCTAssertEqual(terminalRetryLabel(hasScreenInfo: true, disconnected: false, english: false), "重新连接")
         XCTAssertEqual(terminalRetryLabel(hasScreenInfo: false, disconnected: true, english: false), "重新连接")
         XCTAssertEqual(terminalRetryLabel(hasScreenInfo: false, disconnected: false, english: false), "重试")

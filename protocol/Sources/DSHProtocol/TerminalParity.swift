@@ -69,7 +69,7 @@ public func terminalFailureCopy(message: String, english: Bool) -> String {
 }
 
 public func terminalMissingCopy(english: Bool) -> String {
-    english ? "This terminal no longer exists. Create a new one." : "此终端已不存在，请新建终端。"
+    english ? "This terminal no longer exists. Open a new terminal." : "此终端已不存在，请新建终端。"
 }
 
 public func terminalExitedCopy(code: String, english: Bool) -> String {
