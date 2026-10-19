@@ -824,12 +824,14 @@ final class CommandMenuHost: ObservableObject {
     @Published var enterRequest = 0
     @Published var moveRequest = 0
     @Published var moveDirection = 0
+    @Published var tabRequest = 0
 
     func requestEnter() { enterRequest += 1 }
     func requestMove(_ direction: Int) {
         moveDirection = direction
         moveRequest += 1
     }
+    func requestTab() { tabRequest += 1 }
 }
 
 struct CommandMenuOverlay: View {

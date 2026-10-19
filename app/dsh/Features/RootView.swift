@@ -9,6 +9,7 @@ struct RootView: View {
     @ObservedObject private var model = AppModel.shared
     @ObservedObject private var theme = ThemeStateHolder.shared
     @State private var slashMenu = SlashMenuState()
+    @State private var mentionMenu = MentionMenuState()
     @StateObject private var commandHost = CommandMenuHost()
     @State private var showModels = false
     @State private var permissionMenuOpen = false
@@ -138,7 +139,11 @@ struct RootView: View {
     }
 
     private var landingSlashTrigger: ComposerTrigger? { slashMenuTrigger(model.composerText) }
+    private var landingMentionTrigger: ComposerTrigger? {
+        mentionMenuTrigger(model.composerText, cursor: model.composerCursor)
+    }
     private var landingCommandMenuVisible: Bool { slashMenu.isVisible(trigger: landingSlashTrigger) }
+    private var landingMentionMenuVisible: Bool { mentionMenu.isVisible(trigger: landingMentionTrigger) }
 
     private var emptyChat: some View {
         VStack(spacing: 0) {
@@ -188,6 +193,14 @@ struct RootView: View {
                         .padding(.bottom, landingComposerHeight + 4)
                         .frame(width: geo.size.width, height: geo.size.height, alignment: .bottom)
                     }
+                } else if landingMentionMenuVisible {
+                    GeometryReader { geo in
+                        landingMentionMenuLayer(
+                            availableHeight: max(0, geo.size.height - landingComposerHeight - 8)
+                        )
+                        .padding(.bottom, landingComposerHeight + CGFloat(mentionMenuGapAboveComposerPoints))
+                        .frame(width: geo.size.width, height: geo.size.height, alignment: .bottom)
+                    }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -196,6 +209,14 @@ struct RootView: View {
         .background(T.bg)
         .onChange(of: model.composerText) { _ in
             slashMenu.track(trigger: landingSlashTrigger)
+            mentionMenu.track(trigger: landingMentionTrigger)
+        }
+        .onChange(of: model.composerCursor) { _ in
+            mentionMenu.track(trigger: landingMentionTrigger)
+        }
+        .onAppear {
+            slashMenu.track(trigger: landingSlashTrigger)
+            mentionMenu.track(trigger: landingMentionTrigger)
         }
         .sheet(isPresented: $showWorkspacePicker) {
             WorkspaceDirectorySheet(model: model, onDismiss: { showWorkspacePicker = false })
@@ -245,7 +266,7 @@ struct RootView: View {
     private var landingComposer: some View {
         ComposerView(
             model: model,
-            interceptKeys: landingCommandMenuVisible && riskPermission == nil,
+            interceptKeys: (landingCommandMenuVisible || landingMentionMenuVisible) && riskPermission == nil,
             resignKeyboard: (permissionRiskDismissesKeyboard && riskPermission != nil)
                 || (openingSessionDrawerResignsComposer && model.showDrawer),
             focusToken: composerFocus,
@@ -260,7 +281,7 @@ struct RootView: View {
             modelMenuOpen: $showModels,
             permissionMenuOpen: $permissionMenuOpen,
             onSend: {
-                if landingCommandMenuVisible {
+                if landingCommandMenuVisible || landingMentionMenuVisible {
                     commandHost.requestEnter()
                     return
                 }
@@ -268,7 +289,14 @@ struct RootView: View {
             },
             onCommandReturn: { commandHost.requestEnter() },
             onCommandMove: { commandHost.requestMove($0) },
-            onCommandEscape: { slashMenu.dismiss(trigger: landingSlashTrigger) }
+            onCommandEscape: {
+                if landingCommandMenuVisible {
+                    slashMenu.dismiss(trigger: landingSlashTrigger)
+                } else if landingMentionMenuVisible {
+                    mentionMenu.dismiss(trigger: landingMentionTrigger)
+                }
+            },
+            onCommandTab: { commandHost.requestTab() }
         )
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("landingComposer")
@@ -299,6 +327,38 @@ struct RootView: View {
             onSelectPermission: { applyLandingPermission($0) }
         )
         .padding(.horizontal, 14)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+    }
+
+    private func landingMentionMenuLayer(availableHeight: CGFloat) -> some View {
+        ZStack(alignment: .bottom) {
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    mentionMenu.dismiss(trigger: landingMentionTrigger)
+                    Keyboard.dismiss()
+                }
+            MentionMenuOverlay(
+                model: model,
+                host: commandHost,
+                query: landingMentionTrigger?.query ?? "",
+                quoted: landingMentionTrigger?.quoted == true,
+                availableHeight: availableHeight,
+                onPick: { row in
+                    model.insertMention(row.mention)
+                    mentionMenu.closeAfterPick(trigger: landingMentionTrigger)
+                },
+                onDrill: { token in
+                    model.insertMention(token, appendSpace: false, drilled: true)
+                    if let trigger = mentionMenuTrigger(model.composerText, cursor: model.composerCursor) {
+                        model.mentionQuery = trigger.query
+                        model.fetchMentions(query: trigger.query, quoted: trigger.quoted)
+                    }
+                },
+                onDismiss: { mentionMenu.dismiss(trigger: landingMentionTrigger) }
+            )
+            .padding(.horizontal, 14)
+        }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
     }
 

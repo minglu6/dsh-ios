@@ -17,6 +17,7 @@ struct ChatView: View {
     @State private var permissionMenuOpen = false
     @State private var riskPermission: String?
     @State private var slashMenu = SlashMenuState()
+    @State private var mentionMenu = MentionMenuState()
     @StateObject private var commandHost = CommandMenuHost()
     @State private var composerFocus = 0
     @State private var showGoal = false
@@ -81,6 +82,10 @@ struct ChatView: View {
         }
         .onChange(of: model.composerText) { _ in
             slashMenu.track(trigger: slashTrigger)
+            mentionMenu.track(trigger: mentionTrigger)
+        }
+        .onChange(of: model.composerCursor) { _ in
+            mentionMenu.track(trigger: mentionTrigger)
         }
         .sheet(isPresented: $showGoal) {
             GoalSheet(model: model) { showGoal = false }
@@ -129,6 +134,8 @@ struct ChatView: View {
             case "trajectory", "trajectoryDetail": tab = 1
             case "slash":
                 slashMenu.track(trigger: slashMenuTrigger(model.composerText))
+            case "mention", "mentionFiltered":
+                mentionMenu.track(trigger: mentionMenuTrigger(model.composerText, cursor: model.composerCursor))
             default: break
             }
         }
@@ -277,8 +284,16 @@ struct ChatView: View {
 
     private var slashTrigger: ComposerTrigger? { slashMenuTrigger(model.composerText) }
 
+    private var mentionTrigger: ComposerTrigger? {
+        mentionMenuTrigger(model.composerText, cursor: model.composerCursor)
+    }
+
     private var commandMenuVisible: Bool {
         !firstPromptBlocksComposerActions(model.firstPrompt) && slashMenu.isVisible(trigger: slashTrigger)
+    }
+
+    private var mentionMenuVisible: Bool {
+        !firstPromptBlocksComposerActions(model.firstPrompt) && mentionMenu.isVisible(trigger: mentionTrigger)
     }
 
     private var chatTab: some View {
@@ -292,6 +307,8 @@ struct ChatView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     if commandMenuVisible {
                         commandMenuLayer(maxHeight: max(0, geo.size.height - 8))
+                    } else if mentionMenuVisible {
+                        mentionMenuLayer(maxHeight: max(0, geo.size.height - 8))
                     }
                 }
             }
@@ -330,6 +347,44 @@ struct ChatView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    private func mentionMenuLayer(maxHeight: CGFloat) -> some View {
+        ZStack(alignment: .bottom) {
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    dismissMentionMenu()
+                    Keyboard.dismiss()
+                }
+            mentionMenuPanel(maxHeight: maxHeight)
+                .padding(.horizontal, 14)
+                .padding(.bottom, CGFloat(mentionMenuGapAboveComposerPoints))
+                .frame(height: maxHeight, alignment: .bottom)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func mentionMenuPanel(maxHeight: CGFloat) -> some View {
+        MentionMenuOverlay(
+            model: model,
+            host: commandHost,
+            query: mentionTrigger?.query ?? "",
+            quoted: mentionTrigger?.quoted == true,
+            availableHeight: maxHeight,
+            onPick: { row in
+                model.insertMention(row.mention)
+                mentionMenu.closeAfterPick(trigger: mentionTrigger)
+            },
+            onDrill: { token in
+                model.insertMention(token, appendSpace: false, drilled: true)
+                if let trigger = mentionMenuTrigger(model.composerText, cursor: model.composerCursor) {
+                    model.mentionQuery = trigger.query
+                    model.fetchMentions(query: trigger.query, quoted: trigger.quoted)
+                }
+            },
+            onDismiss: { dismissMentionMenu() }
+        )
+    }
+
     private func commandMenu(maxHeight: CGFloat) -> some View {
         CommandMenuOverlay(
             model: model,
@@ -363,9 +418,21 @@ struct ChatView: View {
         slashMenu.dismiss(trigger: slashTrigger)
     }
 
+    private func dismissMentionMenu() {
+        mentionMenu.dismiss(trigger: mentionTrigger)
+    }
+
+    private func dismissOpenComposerMenu() {
+        if commandMenuVisible {
+            dismissCommandMenu()
+        } else if mentionMenuVisible {
+            dismissMentionMenu()
+        }
+    }
+
     private func submitCommandMenuOrSend() {
         if firstPromptBlocksComposerActions(model.firstPrompt) { return }
-        if commandMenuVisible {
+        if commandMenuVisible || mentionMenuVisible {
             commandHost.requestEnter()
             return
         }
@@ -558,7 +625,7 @@ struct ChatView: View {
     private var composer: some View {
         ComposerView(
             model: model,
-            interceptKeys: commandMenuVisible && riskPermission == nil,
+            interceptKeys: (commandMenuVisible || mentionMenuVisible) && riskPermission == nil,
             resignKeyboard: (permissionRiskDismissesKeyboard && riskPermission != nil)
                 || (openingSessionDrawerResignsComposer && model.showDrawer),
             focusToken: composerFocus,
@@ -581,7 +648,8 @@ struct ChatView: View {
             onSend: { submitCommandMenuOrSend() },
             onCommandReturn: { commandHost.requestEnter() },
             onCommandMove: { commandHost.requestMove($0) },
-            onCommandEscape: { dismissCommandMenu() }
+            onCommandEscape: { dismissOpenComposerMenu() },
+            onCommandTab: { commandHost.requestTab() }
         )
     }
 }
@@ -1315,9 +1383,7 @@ struct MessageRow: View {
                 if !user.text.isEmpty {
                     HStack {
                         Spacer(minLength: 48)
-                        Text(user.text)
-                            .font(LocalFonts.text())
-                            .foregroundStyle(T.ink.opacity(user.pending ? 0.6 : 1))
+                        UserMentionText(text: user.text, color: T.ink, pending: user.pending)
                             .padding(12)
                             .background(T.bubble, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
@@ -1593,12 +1659,11 @@ struct ComposerView: View {
     var onCommandReturn: () -> Void = {}
     var onCommandMove: (Int) -> Void = { _ in }
     var onCommandEscape: () -> Void = {}
+    var onCommandTab: () -> Void = {}
 
-    private var trigger: ComposerTrigger? {
-        composerTrigger(model.composerText, cursor: model.composerText.count)
+    private var references: [ComposerReference] {
+        mentionProjection(model.composerText, cursor: model.composerCursor).references.map(\.reference)
     }
-
-    private var references: [ComposerReference] { composerReferences(model.composerText) }
     private var filesReady: Bool {
         model.pendingAttaches.allSatisfy { $0.status != .uploading && $0.status != .failed && $0.status != .pending }
     }
@@ -1622,10 +1687,8 @@ struct ComposerView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            mentionPanel
             VStack(alignment: .leading, spacing: CGFloat(composerInnerSpacingPoints)) {
                 if hasPending { attachList }
-                if !references.isEmpty { mentionChips }
                 if let hint = claimedComposerHint(
                     text: model.composerText,
                     catalog: model.commandEntries,
@@ -1639,6 +1702,7 @@ struct ComposerView: View {
                 }
                 ComposerTextView(
                     text: $model.composerText,
+                    cursor: $model.composerCursor,
                     placeholder: composerPlaceholderText(
                         kind: composerPlaceholderKind(
                             parentOffline: model.isParentOffline,
@@ -1657,17 +1721,19 @@ struct ComposerView: View {
                     onReturn: onCommandReturn,
                     onMove: onCommandMove,
                     onEscape: onCommandEscape,
+                    onTab: onCommandTab,
                     onChord: { model.submitComposer(gesture: .chord) }
                 )
                     .fixedSize(horizontal: false, vertical: true)
-                    .onChange(of: model.composerText) { value in
-                        if let trigger = composerTrigger(value, cursor: value.count) {
-                            if trigger.kind == Character("@") {
-                                model.mentionQuery = trigger.query
-                                model.fetchMentions(query: trigger.query)
-                            }
-                        } else {
-                            model.mentionQuery = nil
+                    .onAppear { syncMentions() }
+                    .onChange(of: model.composerText) { _ in syncMentions() }
+                    .onChange(of: model.composerCursor) { _ in syncMentions() }
+                    .overlay(alignment: .topLeading) {
+                        ForEach(Array(references.enumerated()), id: \.offset) { _, ref in
+                            MentionChipLabel(ref: ref, composer: true)
+                                .frame(width: 1, height: 1)
+                                .opacity(0.01)
+                                .allowsHitTesting(false)
                         }
                     }
                 HStack(spacing: 8) {
@@ -1810,109 +1876,25 @@ struct ComposerView: View {
         }
     }
 
-    @ViewBuilder
-    private var mentionChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                ForEach(Array(references.enumerated()), id: \.offset) { _, ref in
-                    HStack(spacing: 4) {
-                        mentionLeading(ref.kind)
-                            .frame(width: CGFloat(mentionChipIconSizePoints), height: CGFloat(mentionChipIconSizePoints))
-                        Text(ref.label).font(.caption)
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .foregroundStyle(T.ink)
-                    .background(T.fill2, in: Capsule())
-                    .overlay(Capsule().stroke(T.border, lineWidth: 0.5))
-                }
+    private func syncMentions() {
+        if let trigger = mentionMenuTrigger(model.composerText, cursor: model.composerCursor) {
+            let same = model.mentionQuery == trigger.query
+            model.mentionQuery = trigger.query
+            if !same {
+                model.fetchMentions(query: trigger.query, quoted: trigger.quoted)
             }
+        } else if model.mentionQuery != nil {
+            model.mentionQuery = nil
         }
-    }
-
-    @ViewBuilder
-    private var mentionPanel: some View {
-        if trigger?.kind == Character("@"), !(model.fileMentions.isEmpty && model.sessionMentions.isEmpty) {
-            VStack(alignment: .leading, spacing: 0) {
-                Text(L.filesAndFolders()).font(.caption).foregroundStyle(T.text3).padding(.horizontal, 8).padding(.top, 6)
-                ForEach(model.fileMentions.prefix(8)) { file in
-                    let directory = file.kind == "directory" || file.kind == "folder"
-                    if let token = fileReferenceToken(file.path, directory: directory, preserveQuote: trigger?.quoted == true) {
-                        Button {
-                            insert(token)
-                        } label: {
-                            HStack {
-                                mentionFileLeading(directory: directory)
-                                Text(mentionFileRowLabel(file.path, directory: directory)).foregroundStyle(T.ink)
-                                Spacer()
-                                Text(file.path).font(.caption).foregroundStyle(T.text3).lineLimit(1)
-                            }
-                            .padding(8)
-                        }
-                        .accessibilityElement(children: .contain)
-                    }
-                }
-                if trigger?.quoted != true && !model.sessionMentions.isEmpty {
-                    Text(L.t("对话", "Sessions")).font(.caption).foregroundStyle(T.text3).padding(.horizontal, 8).padding(.top, 6)
-                    ForEach(model.sessionMentions.prefix(8)) { session in
-                        Button {
-                            insert(session.mention)
-                        } label: {
-                            HStack {
-                                OfficialGlyph(
-                                    kind: .queueOutline,
-                                    size: CGFloat(mentionMenuIconSizePoints),
-                                    color: T.text3
-                                )
-                                Text(session.title ?? session.mention).foregroundStyle(T.ink)
-                                Spacer()
-                            }
-                            .padding(8)
-                        }
-                        .accessibilityElement(children: .contain)
-                    }
-                }
-            }
-            .background(T.settingsCard)
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 0.5))
-            .padding(.horizontal, 14)
-        }
-    }
-
-    @ViewBuilder
-    private func mentionLeading(_ kind: ComposerReferenceKind) -> some View {
-        let size = CGFloat(mentionChipIconSizePoints)
-        switch kind {
-        case .directory:
-            OfficialGlyph(kind: .folderClose, size: size, color: T.ink)
-        case .session:
-            OfficialGlyph(kind: .queueOutline, size: size, color: T.ink)
-        case .file:
-            OfficialGlyph(kind: .browseOutline, size: size, color: T.ink)
-        }
-    }
-
-    @ViewBuilder
-    private func mentionFileLeading(directory: Bool) -> some View {
-        let size = CGFloat(mentionMenuIconSizePoints)
-        if directory {
-            OfficialGlyph(kind: .folderClose, size: size, color: T.text3)
-        } else {
-            OfficialGlyph(kind: .browseOutline, size: size, color: T.text3)
-        }
-    }
-
-    private func insert(_ token: String) {
-        let next = replaceComposerToken(model.composerText, cursor: model.composerText.count, token: token)
-        model.composerText = next.text
-        model.mentionQuery = nil
     }
 }
 
-/// Composer field that keeps first responder while the slash menu is open so
-/// the keyboard stays up; Return / arrows / Escape are routed to the menu.
+/// Composer field that keeps first responder while the slash / mention menu
+/// is open so the keyboard stays up; Return / arrows / Escape / Tab are
+/// routed to the menu. Committed `@` tokens render as desktop chips.
 private struct ComposerTextView: UIViewRepresentable {
     @Binding var text: String
+    @Binding var cursor: Int
     var placeholder: String
     var interceptKeys: Bool
     var resignKeyboard: Bool = false
@@ -1921,6 +1903,7 @@ private struct ComposerTextView: UIViewRepresentable {
     var onReturn: () -> Void
     var onMove: (Int) -> Void
     var onEscape: () -> Void
+    var onTab: () -> Void = {}
     var onChord: () -> Void = {}
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
@@ -1937,7 +1920,6 @@ private struct ComposerTextView: UIViewRepresentable {
         view.setContentCompressionResistancePriority(.required, for: .vertical)
         view.isScrollEnabled = false
         view.adjustsFontForContentSizeCategory = true
-        view.text = text
         view.accessibilityIdentifier = "composerInput"
         context.coordinator.startObserving(view)
         let placeholder = UILabel()
@@ -1954,7 +1936,7 @@ private struct ComposerTextView: UIViewRepresentable {
             placeholder.topAnchor.constraint(equalTo: view.topAnchor),
         ])
         context.coordinator.placeholder = placeholder
-        context.coordinator.applyPlaceholder(view)
+        context.coordinator.render(view)
         return view
     }
 
@@ -1962,12 +1944,13 @@ private struct ComposerTextView: UIViewRepresentable {
         context.coordinator.parent = self
         view.onMove = onMove
         view.onEscape = onEscape
+        view.onTab = onTab
         view.onChord = onChord
         view.lockFirstResponder = interceptKeys && !resignKeyboard
         view.interceptArrows = interceptKeys
         view.accessibilityIdentifier = "composerInput"
-        if view.text != text && view.markedTextRange == nil {
-            view.text = text
+        if view.markedTextRange == nil {
+            context.coordinator.render(view)
         }
         context.coordinator.applyPlaceholder(view)
         if resignKeyboard {
@@ -1996,12 +1979,17 @@ private struct ComposerTextView: UIViewRepresentable {
         return CGSize(width: width, height: CGFloat(height))
     }
 
+    @MainActor
     final class Coordinator: NSObject, UITextViewDelegate {
         var parent: ComposerTextView
         var placeholder: UILabel?
         var focusToken = 0
+        var projection = mentionProjection("", cursor: 0)
+        var applying = false
         weak var textView: ComposerUITextView?
-        private var dismissObserver: NSObjectProtocol?
+        /// Token is registered on main; deinit only removes it from NotificationCenter.
+        nonisolated(unsafe) private var dismissObserver: NSObjectProtocol?
+        private var chipImages: [String: UIImage] = [:]
 
         init(_ parent: ComposerTextView) {
             self.parent = parent
@@ -2014,8 +2002,8 @@ private struct ComposerTextView: UIViewRepresentable {
                 forName: Keyboard.dismissNotification,
                 object: nil,
                 queue: .main
-            ) { [weak self] _ in
-                self?.textView?.forceResign()
+            ) { [weak view] _ in
+                view?.forceResign()
             }
         }
 
@@ -2027,16 +2015,89 @@ private struct ComposerTextView: UIViewRepresentable {
             textView = nil
         }
 
-        deinit { stopObserving() }
+        deinit {
+            if let dismissObserver {
+                NotificationCenter.default.removeObserver(dismissObserver)
+            }
+        }
 
         func applyPlaceholder(_ view: UITextView) {
             placeholder?.text = parent.placeholder
-            placeholder?.isHidden = !view.text.isEmpty
+            placeholder?.isHidden = !parent.text.isEmpty
+        }
+
+        func render(_ view: UITextView, force: Bool = false) {
+            let next = mentionProjection(parent.text, cursor: parent.cursor, previous: projection)
+            if !force,
+               !applying,
+               projection.original == next.original,
+               projection.display == next.display,
+               view.markedTextRange == nil {
+                return
+            }
+            applying = true
+            projection = next
+            let selected = view.isFirstResponder
+            view.attributedText = mentionComposerAttributed(next, font: view.font ?? .preferredFont(forTextStyle: .body), images: &chipImages)
+            applySelection(view, original: parent.cursor)
+            if selected && !view.isFirstResponder {
+                view.becomeFirstResponder()
+            }
+            applying = false
+            applyPlaceholder(view)
+        }
+
+        func applySelection(_ view: UITextView, original: Int) {
+            let viewOffset = mentionViewOffset(original: original, projection: projection)
+            let utf16 = mentionCharsToUtf16(view.attributedText?.string ?? "", viewOffset)
+            let length = (view.attributedText?.string as NSString?)?.length ?? 0
+            let clamped = min(max(utf16, 0), length)
+            if view.selectedRange.location != clamped || view.selectedRange.length != 0 {
+                view.selectedRange = NSRange(location: clamped, length: 0)
+            }
+        }
+
+        func commit(text: String, cursor: Int, selectionStart: Int) {
+            applying = true
+            parent.text = text
+            parent.cursor = cursor
+            applying = false
+            if let view = textView {
+                render(view, force: true)
+            }
         }
 
         func textViewDidChange(_ textView: UITextView) {
-            parent.text = textView.text
-            applyPlaceholder(textView)
+            if applying { return }
+            if textView.markedTextRange != nil {
+                parent.text = mentionReconstructOriginal(viewText: textView.text, projection: projection)
+                applyPlaceholder(textView)
+                return
+            }
+            let reconstructed = mentionReconstructOriginal(viewText: textView.text, projection: projection)
+            let caret = mentionOriginalOffset(
+                view: mentionUtf16ToChars(textView.text, textView.selectedRange.location),
+                projection: mentionProjection(reconstructed, cursor: reconstructed.count, previous: projection)
+            )
+            let normalized = mentionNormalizeEdit(
+                beforeText: parent.text,
+                beforeCursor: parent.cursor,
+                beforeSelectionStart: parent.cursor,
+                afterText: reconstructed,
+                afterCursor: caret,
+                afterSelectionStart: caret,
+                projection: projection
+            )
+            commit(text: normalized.text, cursor: normalized.cursor, selectionStart: normalized.selectionStart)
+        }
+
+        func textViewDidChangeSelection(_ textView: UITextView) {
+            if applying || textView.markedTextRange != nil { return }
+            let viewCaret = mentionUtf16ToChars(textView.text, textView.selectedRange.location)
+            let original = mentionOriginalOffset(view: viewCaret, projection: projection)
+            if parent.cursor != original {
+                parent.cursor = original
+            }
         }
 
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
@@ -2045,7 +2106,39 @@ private struct ComposerTextView: UIViewRepresentable {
                 parent.onReturn()
                 return false
             }
-            return true
+            let viewStart = mentionUtf16ToChars(textView.text, range.location)
+            let viewEnd = mentionUtf16ToChars(textView.text, range.location + range.length)
+            let start = mentionOriginalOffset(view: viewStart, projection: projection)
+            let end = mentionOriginalOffset(view: viewEnd, projection: projection)
+            if text.isEmpty && range.length > 0 {
+                if let edited = mentionKeyEdit(
+                    text: parent.text,
+                    cursor: end,
+                    selectionStart: start == end ? end : start,
+                    projection: projection,
+                    backspace: start == end,
+                    deleteForward: false,
+                    moveLeft: false,
+                    moveRight: false,
+                    shift: false
+                ) {
+                    commit(text: edited.text, cursor: edited.cursor, selectionStart: edited.selectionStart)
+                    return false
+                }
+            }
+            let after = mentionSubstring(parent.text, 0, start) + text + mentionSubstring(parent.text, end, parent.text.count)
+            let afterCursor = start + text.count
+            let normalized = mentionNormalizeEdit(
+                beforeText: parent.text,
+                beforeCursor: parent.cursor,
+                beforeSelectionStart: start == end ? parent.cursor : start,
+                afterText: after,
+                afterCursor: afterCursor,
+                afterSelectionStart: afterCursor,
+                projection: projection
+            )
+            commit(text: normalized.text, cursor: normalized.cursor, selectionStart: normalized.selectionStart)
+            return false
         }
     }
 }
@@ -2053,6 +2146,7 @@ private struct ComposerTextView: UIViewRepresentable {
 private final class ComposerUITextView: UITextView {
     var onMove: ((Int) -> Void)?
     var onEscape: (() -> Void)?
+    var onTab: (() -> Void)?
     var onChord: (() -> Void)?
     var lockFirstResponder = false
     var interceptArrows = false
@@ -2101,6 +2195,9 @@ private final class ComposerUITextView: UITextView {
                 case .keyboardEscape:
                     onEscape?()
                     return
+                case .keyboardTab:
+                    onTab?()
+                    return
                 default:
                     break
                 }
@@ -2108,6 +2205,110 @@ private final class ComposerUITextView: UITextView {
         }
         super.pressesBegan(presses, with: event)
     }
+}
+
+@MainActor
+private func mentionComposerAttributed(
+    _ projection: MentionProjection,
+    font: UIFont,
+    images: inout [String: UIImage]
+) -> NSAttributedString {
+    let body: [NSAttributedString.Key: Any] = [
+        .font: font,
+        .foregroundColor: UIColor.label,
+    ]
+    let result = NSMutableAttributedString()
+    var copied = 0
+    for span in projection.references {
+        if span.reference.start > copied {
+            result.append(NSAttributedString(string: mentionSubstring(projection.original, copied, span.reference.start), attributes: body))
+        }
+        let image = mentionComposerChipImage(span.reference, cache: &images)
+        let attachment = NSTextAttachment()
+        attachment.image = image
+        let height = image.size.height
+        let offset = (font.capHeight - height) / 2
+        attachment.bounds = CGRect(x: 0, y: offset, width: image.size.width, height: height)
+        result.append(NSAttributedString(attachment: attachment))
+        copied = span.reference.end
+    }
+    if copied < projection.original.count {
+        result.append(NSAttributedString(string: mentionSubstring(projection.original, copied, projection.original.count), attributes: body))
+    }
+    return result
+}
+
+@MainActor
+private func mentionComposerChipImage(_ ref: ComposerReference, cache: inout [String: UIImage]) -> UIImage {
+    if let cached = cache[ref.canonical] { return cached }
+    let renderer = ImageRenderer(content: MentionChipLabel(ref: ref, composer: true))
+    renderer.scale = UIScreen.main.scale
+    guard let image = renderer.uiImage else {
+        fatalError("mention chip ImageRenderer failed for \(ref.canonical)")
+    }
+    cache[ref.canonical] = image
+    return image
+}
+
+/// View storage is attachment (1) per committed chip + live/plain runs.
+private func mentionViewOffset(original: Int, projection: MentionProjection) -> Int {
+    var view = 0
+    var copied = 0
+    for span in projection.references {
+        let ref = span.reference
+        if original <= ref.start {
+            return view + (original - copied)
+        }
+        if original < ref.end {
+            return original - ref.start < ref.end - original ? view + (ref.start - copied) : view + (ref.start - copied) + 1
+        }
+        view += (ref.start - copied) + 1
+        copied = ref.end
+    }
+    return view + (original - copied)
+}
+
+private func mentionOriginalOffset(view: Int, projection: MentionProjection) -> Int {
+    var remaining = view
+    var copied = 0
+    for span in projection.references {
+        let ref = span.reference
+        let before = ref.start - copied
+        if remaining <= before {
+            return copied + remaining
+        }
+        remaining -= before
+        if remaining == 0 { return ref.start }
+        remaining -= 1
+        copied = ref.end
+        if remaining <= 0 { return ref.end }
+    }
+    return min(copied + remaining, projection.original.count)
+}
+
+private func mentionReconstructOriginal(viewText: String, projection: MentionProjection) -> String {
+    var result = ""
+    var chip = 0
+    for character in viewText {
+        if character == "\u{FFFC}", chip < projection.references.count {
+            result += projection.references[chip].reference.canonical
+            chip += 1
+        } else {
+            result.append(character)
+        }
+    }
+    return result
+}
+
+private func mentionUtf16ToChars(_ text: String, _ utf16: Int) -> Int {
+    let idx = String.Index(utf16Offset: min(max(utf16, 0), text.utf16.count), in: text)
+    return text.distance(from: text.startIndex, to: idx)
+}
+
+private func mentionCharsToUtf16(_ text: String, _ chars: Int) -> Int {
+    if chars <= 0 { return 0 }
+    let idx = text.index(text.startIndex, offsetBy: min(chars, text.count))
+    return idx.utf16Offset(in: text)
 }
 
 private struct ImageBubble: View {
