@@ -79,7 +79,11 @@ struct ModelChipMenu: View {
                 pending: pending,
                 enabled: enabled,
                 onReload: onReload,
-                onDismiss: { open = false },
+                onDismiss: {
+                    var transaction = Transaction()
+                    transaction.animation = nil
+                    withTransaction(transaction) { open = false }
+                },
                 onPick: onPick
             )
             .frame(
@@ -90,6 +94,7 @@ struct ModelChipMenu: View {
             .frame(maxHeight: CGFloat(modelPickerMenuMaxHeightPoints), alignment: .top)
             .modifier(PopoverCompactAdaptation())
         }
+        .animation(nil, value: open)
     }
 }
 
