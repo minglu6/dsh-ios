@@ -1,3 +1,5 @@
+import CoreGraphics
+import UIKit
 import XCTest
 
 /// Boots the app against `AppModel.installUITestFixture` and captures the
@@ -1378,6 +1380,94 @@ final class ScreenshotTests: XCTestCase {
             24,
             "\(appearance) settingsShell header height \(header.frame.height) collapsed under .navTitle line-height 24"
         )
+        try assertSettingsNavCardCornersMatchPage(app, appearance: appearance, card: card)
+    }
+
+    /// Bounding-box corners sit outside `--dsw-radius-lg` 16. Those pixels
+    /// must be page `--dsw-alias-bg-base` (21,21,23 dark / 255,255,255 light),
+    /// not unclipped settings-card fill (44,44,46 dark).
+    private func assertSettingsNavCardCornersMatchPage(
+        _ app: XCUIApplication,
+        appearance: String,
+        card: XCUIElement
+    ) throws {
+        let shot = XCUIScreen.main.screenshot()
+        let pagePoint = CGPoint(x: card.frame.midX, y: card.frame.minY - 8)
+        XCTAssertGreaterThan(
+            pagePoint.y,
+            0,
+            "\(appearance) settingsShell card is flush with the top; cannot sample page above the curve"
+        )
+        let page = try screenshotPixel(shot, at: pagePoint)
+        let expected = appearance == "Dark"
+            ? (r: 21, g: 21, b: 23)
+            : (r: 255, g: 255, b: 255)
+        XCTAssertLessThanOrEqual(
+            abs(page.r - expected.r), 12,
+            "\(appearance) settingsShell page sample at \(pagePoint) r=\(page.r) is not desktop bg-base \(expected)"
+        )
+        XCTAssertLessThanOrEqual(
+            abs(page.g - expected.g), 12,
+            "\(appearance) settingsShell page sample at \(pagePoint) g=\(page.g) is not desktop bg-base \(expected)"
+        )
+        XCTAssertLessThanOrEqual(
+            abs(page.b - expected.b), 12,
+            "\(appearance) settingsShell page sample at \(pagePoint) b=\(page.b) is not desktop bg-base \(expected)"
+        )
+        let inset: CGFloat = 1
+        let corners = [
+            CGPoint(x: card.frame.minX + inset, y: card.frame.minY + inset),
+            CGPoint(x: card.frame.maxX - inset, y: card.frame.minY + inset),
+            CGPoint(x: card.frame.minX + inset, y: card.frame.maxY - inset),
+            CGPoint(x: card.frame.maxX - inset, y: card.frame.maxY - inset),
+        ]
+        for corner in corners {
+            let pixel = try screenshotPixel(shot, at: corner)
+            XCTAssertLessThanOrEqual(
+                abs(pixel.r - page.r), 10,
+                "\(appearance) settingsShell corner \(corner) r=\(pixel.r) is not page \(page) — card fill is not clipped to radius-lg 16"
+            )
+            XCTAssertLessThanOrEqual(
+                abs(pixel.g - page.g), 10,
+                "\(appearance) settingsShell corner \(corner) g=\(pixel.g) is not page \(page) — card fill is not clipped to radius-lg 16"
+            )
+            XCTAssertLessThanOrEqual(
+                abs(pixel.b - page.b), 10,
+                "\(appearance) settingsShell corner \(corner) b=\(pixel.b) is not page \(page) — card fill is not clipped to radius-lg 16"
+            )
+        }
+    }
+
+    private func screenshotPixel(_ screenshot: XCUIScreenshot, at point: CGPoint) throws -> (r: Int, g: Int, b: Int) {
+        let image = screenshot.image
+        guard let cgImage = image.cgImage else {
+            throw ScreenshotPixelError.missingImage
+        }
+        let x = Int((point.x * image.scale).rounded())
+        let y = Int((point.y * image.scale).rounded())
+        guard x >= 0, y >= 0, x < cgImage.width, y < cgImage.height else {
+            throw ScreenshotPixelError.outOfBounds(point: point, size: CGSize(width: cgImage.width, height: cgImage.height))
+        }
+        guard let crop = cgImage.cropping(to: CGRect(x: x, y: y, width: 1, height: 1)) else {
+            throw ScreenshotPixelError.outOfBounds(point: point, size: CGSize(width: cgImage.width, height: cgImage.height))
+        }
+        var pixel = [UInt8](repeating: 0, count: 4)
+        guard let space = CGColorSpace(name: CGColorSpace.sRGB) else {
+            throw ScreenshotPixelError.missingColorSpace
+        }
+        guard let ctx = CGContext(
+            data: &pixel,
+            width: 1,
+            height: 1,
+            bitsPerComponent: 8,
+            bytesPerRow: 4,
+            space: space,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else {
+            throw ScreenshotPixelError.missingContext
+        }
+        ctx.draw(crop, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+        return (Int(pixel[0]), Int(pixel[1]), Int(pixel[2]))
     }
 
     /// 「连接诊断」/ Copy diagnostic report must stay off every surface that
@@ -2018,5 +2108,25 @@ private enum ScreenshotExportError: Error, CustomStringConvertible {
 
     var description: String {
         "DSH_SCREENSHOT_DIR is missing; pass TEST_RUNNER_DSH_SCREENSHOT_DIR to xcodebuild"
+    }
+}
+
+private enum ScreenshotPixelError: Error, CustomStringConvertible {
+    case missingImage
+    case missingColorSpace
+    case missingContext
+    case outOfBounds(point: CGPoint, size: CGSize)
+
+    var description: String {
+        switch self {
+        case .missingImage:
+            return "screenshot has no CGImage"
+        case .missingColorSpace:
+            return "sRGB color space is unavailable"
+        case .missingContext:
+            return "cannot create a 1×1 pixel context"
+        case .outOfBounds(let point, let size):
+            return "pixel \(point) is outside screenshot \(size)"
+        }
     }
 }

@@ -1770,7 +1770,6 @@ struct ComposerView: View {
                     onTab: onCommandTab,
                     onChord: { model.submitComposer(gesture: .chord) }
                 )
-                    .frame(minWidth: 0)
                     .fixedSize(horizontal: false, vertical: true)
                     .onAppear { syncMentions() }
                     .onChange(of: model.composerText) { _ in syncMentions() }
@@ -1953,14 +1952,14 @@ struct ComposerView: View {
     }
 }
 
-/// XCUITest saw `composerInput` at `{{inf, inf},{0,0}}` after the model
-/// picker dismissed — an unbounded SwiftUI width proposal. Measure against
-/// a finite width so the UITextView keeps a real frame.
-private func finiteComposerMeasureWidth(proposal: ProposedViewSize, bounds: CGRect) -> CGFloat {
-    let screen = UIScreen.main.bounds.width
-    let raw = proposal.width ?? bounds.width
-    let finite = (raw.isFinite && raw >= 1) ? raw : screen
-    return min(max(finite, 1), max(screen, 1))
+/// UITextView measure width. An unbounded / non-finite proposal is not a
+/// size — use the view's last laid-out bounds, the same as b65811e. Do not
+/// invent `UIScreen` width; that hid an infinite ideal width on the header.
+private func composerMeasureWidth(proposal: ProposedViewSize, bounds: CGRect) -> CGFloat {
+    if let proposed = proposal.width, proposed.isFinite {
+        return max(proposed, 1)
+    }
+    return max(bounds.width, 1)
 }
 
 /// Composer field that keeps first responder while the slash / mention menu
@@ -2044,7 +2043,7 @@ private struct ComposerTextView: UIViewRepresentable {
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: ComposerUITextView, context: Context) -> CGSize? {
-        let width = finiteComposerMeasureWidth(proposal: proposal, bounds: uiView.bounds)
+        let width = composerMeasureWidth(proposal: proposal, bounds: uiView.bounds)
         let wasScroll = uiView.isScrollEnabled
         uiView.isScrollEnabled = false
         let content = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))

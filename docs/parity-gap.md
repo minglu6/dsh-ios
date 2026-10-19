@@ -2306,3 +2306,12 @@ CI `11c995e` / `f9f8457` artifact `ios-simulator-screenshots` 逐屏对照：
 
 landing 侧栏 toggle / 鲸 +「探索未至之境」/ composer 贴底 / 统计行居中 / 用户气泡 hug / Pinyin IME / tab 行后台任务 chip / 无「连接诊断」。
 
+## #92 / #93 leftover（`a162ce8`）
+
+桌面仍是 `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`。不改 titleRow 30 / tabs margin-top 10 / 15pt 字到 tab，不改 settings 18 / 40 / radius-lg 16。
+
+| 项 | 桌面 | iOS 原状 | 处理 |
+| --- | --- | --- | --- |
+| 设置根页卡四角 | `--dsw-radius-lg` 16；卡外是 `--dsw-alias-bg-base` `#151517` / `#FFFFFF` | 行 `Rectangle` 填色未裁到圆角，四角圆外仍是 settings-card `#2C2C2E` | `settingsNavCard` fill / 行 / stroke 共用同一个 `RoundedRectangle`，`.clipShape`。CI 对四角圆外像素断言 = 页底（light + dark） |
+| models `typeText("保留草稿")` | — | #92 `ConversationHeaderBox` `maxWidth: .infinity` 把 chat 列理想宽报到无穷；菜单关掉后 `composerInput` `{{inf, inf},{0,0}}`。`1ac2fd4` 用屏宽 cap `sizeThatFits` 是补丁，仍会 flake | 去掉 header 的无穷理想宽（跟 `b65811e` 一样靠 Spacer 吃 offered width）。`sizeThatFits` 非有限提案用已布局 bounds，不用 `UIScreen`。不放宽 typeText / 几何 / IME / 滚动收键盘 |
+

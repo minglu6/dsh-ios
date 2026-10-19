@@ -66,9 +66,12 @@ struct ConversationHeaderBox: ViewModifier {
                 .bottom,
                 CGFloat(blank ? conversationHeaderBlankPaddingBottomPoints : 0)
             )
+            // Hug the offered width. `maxWidth: .infinity` advertises an
+            // infinite ideal width; after the model popover dismisses, the
+            // chat VStack remeasures unbounded and composerInput lands at
+            // `{{inf, inf},{0,0}}`. Title row / tabs already have Spacers,
+            // same as b65811e.
             .frame(
-                minWidth: 0,
-                maxWidth: .infinity,
                 minHeight: blank ? 0 : CGFloat(conversationHeaderMinHeightPoints),
                 alignment: .top
             )

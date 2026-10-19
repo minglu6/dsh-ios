@@ -48,7 +48,7 @@ struct DswColors {
     let specificSidebarNavItemActiveAccent: Color
 
     static let light = DswColors(
-        bgBase: Color(hex: 0xFFFFFFFF),
+        bgBase: Color(hex: dswAliasBgBaseLightHex),
         bgLayer1: Color(hex: 0xFFFFFFFF),
         bgLayer2: Color(hex: 0xFFFFFFFF),
         bgLayer3: Color(hex: 0xFFFFFFFF),
@@ -74,7 +74,7 @@ struct DswColors {
         labelTertiary: Color(hex: 0xFF81858C),
         link: Color(hex: 0xFF4176E6),
         markdownCodeBlock: Color(hex: 0xFFF9FAFB),
-        settingsCardFill: Color(hex: 0xFFFFFFFF),
+        settingsCardFill: Color(hex: dswAliasSettingsCardFillLightHex),
         settingsCardStroke: Color(hex: 0x29000000),
         stateBusinessPrimary: Color(hex: 0xFF4176E6),
         stateBusinessTertiary: Color(hex: 0xFFE4EDFD),
@@ -93,7 +93,7 @@ struct DswColors {
     )
 
     static let dark = DswColors(
-        bgBase: Color(hex: 0xFF151517),
+        bgBase: Color(hex: dswAliasBgBaseDarkHex),
         bgLayer1: Color(hex: 0xFF232324),
         bgLayer2: Color(hex: 0xFF2C2C2E),
         bgLayer3: Color(hex: 0xFF353638),
@@ -119,7 +119,7 @@ struct DswColors {
         labelTertiary: Color(hex: 0xFFADB2B8),
         link: Color(hex: 0xFF7AAAFF),
         markdownCodeBlock: Color(hex: 0xFF1B1B1C),
-        settingsCardFill: Color(hex: 0xFF2C2C2E),
+        settingsCardFill: Color(hex: dswAliasSettingsCardFillDarkHex),
         settingsCardStroke: Color(hex: 0x33FFFFFF),
         stateBusinessPrimary: Color(hex: 0xFF7AAAFF),
         stateBusinessTertiary: Color(hex: 0xFF34415B),

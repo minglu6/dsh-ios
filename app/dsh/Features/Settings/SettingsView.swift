@@ -474,19 +474,22 @@ func card<Content: View>(@ViewBuilder content: () -> Content) -> some View {
 
 /// Phone wrap of the overlay left-nav list in desktop settings-card material
 /// (`--dsw-alias-settings-card-*` + `--dsw-radius-lg`). Identifier sits on the
-/// fill so nav row hits stay addressable.
+/// fill so nav row hits stay addressable. Fill, row rects, and stroke share
+/// one `--dsw-radius-lg` shape — an unclipped `Rectangle` fill paints the
+/// four corners outside the curve with card colour.
 func settingsNavCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-    VStack(spacing: 0) { content() }
+    let shape = RoundedRectangle(cornerRadius: CGFloat(settingsCardRadiusPoints))
+    return VStack(spacing: 0) { content() }
         .background {
-            RoundedRectangle(cornerRadius: CGFloat(settingsCardRadiusPoints))
+            shape
                 .fill(T.settingsCard)
                 .accessibilityElement()
                 .accessibilityIdentifier(settingsNavCardIdentifier())
                 .allowsHitTesting(false)
         }
+        .clipShape(shape)
         .overlay(
-            RoundedRectangle(cornerRadius: CGFloat(settingsCardRadiusPoints))
-                .stroke(T.settingsCardStroke, lineWidth: CGFloat(settingsCardStrokeWidthPoints))
+            shape.stroke(T.settingsCardStroke, lineWidth: CGFloat(settingsCardStrokeWidthPoints))
         )
         .padding(.horizontal, 16)
 }

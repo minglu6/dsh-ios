@@ -36,6 +36,25 @@ public var settingsCardRadiusPoints: Double { dswRadiusLgPoints }
 /// Desktop models `.rowCard` / iOS existing settings stroke: `.5px`.
 public let settingsCardStrokeWidthPoints: Double = 0.5
 
+/// Desktop `ui-theme` `base.css` `--dsw-alias-bg-base` / settings page fill.
+public let dswAliasBgBaseLightHex: UInt32 = 0xFFFFFFFF
+public let dswAliasBgBaseDarkHex: UInt32 = 0xFF151517
+/// Desktop `ui-theme` `base.css` `--dsw-alias-settings-card` fill.
+public let dswAliasSettingsCardFillLightHex: UInt32 = 0xFFFFFFFF
+public let dswAliasSettingsCardFillDarkHex: UInt32 = 0xFF2C2C2E
+
+public func dswAliasBgBaseHex(dark: Bool) -> UInt32 {
+    dark ? dswAliasBgBaseDarkHex : dswAliasBgBaseLightHex
+}
+
+public func dswAliasSettingsCardFillHex(dark: Bool) -> UInt32 {
+    dark ? dswAliasSettingsCardFillDarkHex : dswAliasSettingsCardFillLightHex
+}
+
+public func dswHexRed(_ hex: UInt32) -> Int { Int((hex >> 16) & 0xFF) }
+public func dswHexGreen(_ hex: UInt32) -> Int { Int((hex >> 8) & 0xFF) }
+public func dswHexBlue(_ hex: UInt32) -> Int { Int(hex & 0xFF) }
+
 public func settingsShellHeaderIdentifier() -> String { "settingsShellHeader" }
 public func settingsNavCardIdentifier() -> String { "settingsNavCard" }
 public func settingsNavRowIdentifier(_ id: String) -> String { "settingsNavRow.\(id)" }
