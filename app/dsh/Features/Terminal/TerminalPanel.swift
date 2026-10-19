@@ -10,7 +10,7 @@ struct TerminalPanel: View {
     @State private var requestedTerminalId: String?
     @State private var switcherOpen = false
     @State private var terminating = false
-    @State private var entries: [TerminalSessionEntry] = []
+    @State private var entries: [TerminalSessionEntry]
     @State private var listing = false
     @State private var listError: String?
     @State private var listAttempt = 0
@@ -20,6 +20,11 @@ struct TerminalPanel: View {
         let sessionId = model.chat?.sessionId ?? ""
         let owner = model.activeId.flatMap { TerminalStore.panelOwner(hostId: $0, contextSessionId: sessionId) } ?? sessionId
         _ownerSessionId = State(initialValue: owner)
+        _entries = State(initialValue: model.uiTestFixture ? model.uiTestTerminalEntries : [])
+    }
+
+    private var displayedEntries: [TerminalSessionEntry] {
+        model.uiTestFixture ? model.uiTestTerminalEntries : entries
     }
 
     var body: some View {
@@ -67,7 +72,12 @@ struct TerminalPanel: View {
                 attach()
             }
         }
-        .onAppear { attach() }
+        .onAppear {
+            if model.uiTestFixture {
+                entries = model.uiTestTerminalEntries
+            }
+            attach()
+        }
         .onDisappear { model.closeTerminalFollow() }
         .task(id: "\(listAttempt)-\(model.isOnline)-\(ownerSessionId)") {
             if model.uiTestFixture {
@@ -244,14 +254,14 @@ struct TerminalPanel: View {
                 switcherRow(title: L.retry(), icon: .refreshOutline, current: false, enabled: true) {
                     listAttempt += 1
                 }
-            } else if entries.isEmpty {
+            } else if displayedEntries.isEmpty {
                 Text(L.noRetainedSessions())
                     .font(.system(size: CGFloat(terminalSwitcherSectionFontSizePoints)))
                     .foregroundStyle(T.text3)
                     .padding(.horizontal, CGFloat(terminalSwitcherSectionPaddingXPoints))
                     .padding(.vertical, CGFloat(terminalSwitcherSectionPaddingYPoints))
             }
-            ForEach(entries, id: \.sessionTerminalKey) { entry in
+            ForEach(displayedEntries, id: \.sessionTerminalKey) { entry in
                 let isCurrent = terminalSwitcherIsCurrent(
                     entry: entry,
                     currentSessionId: current?.sessionId,
@@ -320,35 +330,35 @@ struct TerminalPanel: View {
         // accessibility container, so the row id lives on a plain HStack
         // wrapper (same pattern as `MentionChip`).
         HStack(spacing: 0) {
-        Button(action: action) {
-            HStack(spacing: CGFloat(terminalSwitcherRowGapPoints)) {
-                if let icon {
-                    OfficialGlyph(kind: icon, size: CGFloat(terminalSwitcherIconSizePoints), color: T.ink)
+            Button(action: action) {
+                HStack(spacing: CGFloat(terminalSwitcherRowGapPoints)) {
+                    if let icon {
+                        OfficialGlyph(kind: icon, size: CGFloat(terminalSwitcherIconSizePoints), color: T.ink)
+                    }
+                    Text(title)
+                        .font(.system(size: CGFloat(terminalSwitcherRowFontSizePoints)))
+                        .foregroundStyle(T.ink)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if current {
+                        OfficialGlyph(
+                            kind: .checkOutline,
+                            size: CGFloat(terminalSwitcherIconSizePoints),
+                            color: T.ink
+                        )
+                    }
                 }
-                Text(title)
-                    .font(.system(size: CGFloat(terminalSwitcherRowFontSizePoints)))
-                    .foregroundStyle(T.ink)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                if current {
-                    OfficialGlyph(
-                        kind: .checkOutline,
-                        size: CGFloat(terminalSwitcherIconSizePoints),
-                        color: T.ink
-                    )
-                }
+                .padding(.horizontal, CGFloat(terminalSwitcherRowPaddingXPoints))
+                .padding(.vertical, CGFloat(terminalSwitcherRowPaddingYPoints))
+                .frame(minHeight: CGFloat(terminalSwitcherRowMinHeightPoints), alignment: .center)
+                .background(current ? T.hoverBg : Color.clear, in: RoundedRectangle(cornerRadius: CGFloat(terminalSwitcherRowRadiusPoints)))
+                .contentShape(Rectangle())
             }
-            .padding(.horizontal, CGFloat(terminalSwitcherRowPaddingXPoints))
-            .padding(.vertical, CGFloat(terminalSwitcherRowPaddingYPoints))
-            .frame(minHeight: CGFloat(terminalSwitcherRowMinHeightPoints), alignment: .center)
-            .background(current ? T.hoverBg : Color.clear, in: RoundedRectangle(cornerRadius: CGFloat(terminalSwitcherRowRadiusPoints)))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .disabled(!enabled)
-        .opacity(enabled ? 1 : 0.4)
-        .accessibilityLabel(title)
-        .accessibilityAddTraits(current ? [.isSelected] : [])
+            .buttonStyle(.plain)
+            .disabled(!enabled)
+            .opacity(enabled ? 1 : 0.4)
+            .accessibilityLabel(title)
+            .accessibilityAddTraits(current ? [.isSelected] : [])
         }
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(current ? [.isSelected] : [])
