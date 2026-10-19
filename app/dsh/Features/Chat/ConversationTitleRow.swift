@@ -67,6 +67,8 @@ struct ConversationHeaderBox: ViewModifier {
                 CGFloat(blank ? conversationHeaderBlankPaddingBottomPoints : 0)
             )
             .frame(
+                minWidth: 0,
+                maxWidth: .infinity,
                 minHeight: blank ? 0 : CGFloat(conversationHeaderMinHeightPoints),
                 alignment: .top
             )
