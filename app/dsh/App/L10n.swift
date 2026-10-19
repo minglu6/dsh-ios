@@ -161,11 +161,6 @@ enum L {
     static func followSystem() -> String { en ? "System" : "跟随系统" }
     static func currentVersion() -> String { en ? "Current version" : "当前版本" }
 
-    static func diagnostics() -> String { en ? "Connection diagnostics" : "连接诊断" }
-    static func diagnosticsCopy() -> String { en ? "Copy diagnostic report" : "复制诊断报告" }
-    static func diagnosticsCopied() -> String { en ? "Copied" : "已复制" }
-    static func diagnosticsChecking() -> String { en ? "Checking…" : "正在检查…" }
-    static func diagnosticsUnavailable() -> String { en ? "Diagnostics unavailable" : "诊断服务暂不可用" }
     static func nearbyDevices() -> String { en ? "Nearby devices" : "附近设备" }
     static func connections() -> String { connectionsPageTitle(english: en) }
     static func scanQr() -> String { connectionsActionTitle(.scan, english: en) }

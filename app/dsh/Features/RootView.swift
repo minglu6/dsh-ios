@@ -85,10 +85,6 @@ struct RootView: View {
                 ConnectionsView(model: model)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .zIndex(1)
-            case .diagnostics:
-                ConnectionsView(model: model)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .zIndex(1)
             case .settings:
                 SettingsView(model: model)
             case .general:

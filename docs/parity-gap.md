@@ -246,7 +246,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | 「移动端」 group / 代码自动换行 | Android still has these (audit S2/S5) | wrap is local; no extra mobile group copied | **present** | — |
 | Version only on General | audit S3 | General only | **present** | — |
 | Account / shortcuts / open config file | desktop-local | — | **hide** | — |
-| Phone connection + 复制诊断报告 | connections | 抽屉脚（计算机名 + 状态），Settings 无「手机连接」分组。页面 chrome 对齐 Android `ConnectionsScreen`（#43） | **present** | **R13** / **R27** |
+| Phone connection | connections | 抽屉脚（计算机名 + 状态），Settings 无「手机连接」分组。页面 chrome 对齐 Android `ConnectionsScreen`（#43）。用户决定不暴露「连接诊断」/ 复制诊断报告 | **present** | **R13** / **R27** |
 | LAN / NSD discovery | `_dshpocket._tcp` protocol=1 + 64-hex instanceId | same TXT gate; unpaired filter; address bind | **partial** → **present** | **G** |
 | Paired-device online poll | TCP probe, 10s, max 2 | same policy (`PairedDeviceStatusPolicy`) | **missing** → **present** | **G** |
 | Reconnect restore gate | `ConnectionRestorePolicy` Offline/Connecting only | same; `NWPathMonitor` wakes the loop | **partial** → **present** | **G** |
@@ -645,7 +645,7 @@ Merged as `#43` / `e55a2de`. Phone is the controller — this page twins Android
 | 操作行 | 配对/附近之后一张卡：扫码 / 输入地址 | `ConnActionRow` 全宽 icon+title+chevron | 不再是顶栏并排黑 chip |
 | 已配对行 | `ConnDeviceRow` + `connectionsStatusLine` | `buildConnStatusLine` / `ConnDeviceRow` | 8pt 状态点、名、`在线 · Tailscale · 当前`、`host:port`、非当前「切换」、管理 chevron。点行开管理，Switch 才连接 |
 | Host 文案 | `nameHint` / `pairTimeout` | 既有 iOS copy | 用户可见 Host 称呼仍是「远程主机」 |
-| Overflow | 仅「复制诊断报告」 | Android 另有 `NEARBY_WIFI_DEVICES` | iOS Local Network 由 `NWBrowser` 系统提示，无对等 request API |
+| Overflow | 无。用户决定去掉「连接诊断」/「复制诊断报告」，空 ⋯ 一并删除 | Android 另有 `NEARBY_WIFI_DEVICES` + 复制诊断报告 | iOS Local Network 由 `NWBrowser` 系统提示，无对等 request API |
 
 ## Round 28 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*` alpha=`0.2.1-alpha.5` / next=`0.2.1-rc.1`）
 
