@@ -104,10 +104,33 @@ public func terminalKeyCopyLabel(platform: String?) -> String {
 
 /// Desktop `ui-sidebar-terminal` `TerminalTitle` (`client.js` TerminalTitle):
 /// `state?.info?.title ?? state?.title ?? tab.title`. Create writes
-/// `title: shell.name` (`api-terminal-controller` `index.js` spawn). Duplicate
-/// shells keep the same string — dockkit chips do not append an index, cwd, or
-/// process. `cwd` / `shell` stay on `WebTerminalInfo` but are not painted on
-/// the chip or the primitives `Menu` selected row.
+/// `title: shell.name` (`api-terminal-controller` `index.js` spawn 997-1006).
+/// Duplicate shells keep the same string — dockkit chips do not append an
+/// index, cwd, or process. `cwd` / `shell` stay on `WebTerminalInfo` but are
+/// not painted on the chip or the primitives `Menu` selected row.
+///
+/// Host never updates `info.title` after create from OSC 0/2, cwd, or the
+/// foreground process. `BrowserTerminal.output` (`types/terminal.js` 228-235)
+/// writes `@xterm/headless` only to serialize the screen, then broadcasts
+/// `{type:output}`; it does not call `rename`. `consume` (208-226) patches
+/// `state` / `exitCode` / `error` only. The sole post-create title mutation
+/// is `rename(title)` (`types/terminal.js` 160-167, JSDoc “validated user
+/// title”; controller `index.js` 898-901). Client `TerminalScreen`
+/// (`client.terminal.js` 13425-13427) subscribes `xterm.onData` only —
+/// bundled xterm OSC 0 `setTitle` / `onTitleChange` (3131, 3771-3772,
+/// 12815-12816) is never wired to Host. `WebTerminalInfo.cwd` is “Initial
+/// working directory; shell directory changes do not update this field”
+/// (`types.d.ts` 46-47). There is no process field. Plugin `extra-ops.js`
+/// exposes list/create/write/resize/close/follow (384-422), not
+/// `terminal.rename` or a title event.
+///
+/// Two default zsh sessions therefore stay identical 「zsh」 on desktop
+/// chips and Menu; only `.tabActive` / the Menu check distinguishes them.
+/// iOS must not invent an OSC / cwd / process label. If Host later sends a
+/// renamed `info.title` on `list` / `state` / `snapshot`, paint that string
+/// (`AppModel.applyTerminalFrame`).
+public let terminalTitleFollowsOscCwdOrProcess = false
+
 public func terminalSwitcherTitle(title: String?, shellName: String?) -> String {
     let named = title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     if !named.isEmpty { return named }

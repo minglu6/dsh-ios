@@ -158,6 +158,7 @@ final class TerminalTests: XCTestCase {
         XCTAssertEqual(terminalMissingIdentityCode, "terminal/unavailable")
         XCTAssertFalse(terminalCloseAsksConfirmation)
         XCTAssertFalse(terminalSwitcherUsesSystemMenu)
+        XCTAssertFalse(terminalTitleFollowsOscCwdOrProcess)
         XCTAssertEqual(terminalSwitcherMenuPaddingPoints, 4)
         XCTAssertEqual(terminalSwitcherMenuMinWidthPoints, 144)
         XCTAssertEqual(terminalSwitcherMenuMaxWidthPoints, 360)
@@ -220,6 +221,37 @@ final class TerminalTests: XCTestCase {
         XCTAssertEqual(terminalSwitcherRowIdentifier(id: "t1"), "terminalSwitcher.row.t1")
         XCTAssertEqual(terminalSwitcherMenuIdentifier(), "terminalSwitcherMenu")
         XCTAssertEqual(terminalSwitcherButtonIdentifier(), "terminalSwitcherButton")
+    }
+
+    func testSwitcherTitleStaysShellNameUntilHostRename() {
+        XCTAssertFalse(
+            terminalTitleFollowsOscCwdOrProcess,
+            "desktop never writes info.title from OSC 0/2, cwd, or process"
+        )
+        let first = TerminalSessionEntry(
+            sessionId: "s", id: "a", title: "zsh", state: "running",
+            cwd: "/Users/dev/one", shellName: "zsh"
+        )
+        let second = TerminalSessionEntry(
+            sessionId: "s", id: "b", title: "zsh", state: "running",
+            cwd: "/tmp", shellName: "zsh"
+        )
+        XCTAssertEqual(
+            terminalSwitcherLabels([first, second]),
+            ["zsh", "zsh"],
+            "two default zsh sessions stay identical; only the Menu check distinguishes"
+        )
+        XCTAssertTrue(terminalSwitcherIsCurrent(entry: first, currentSessionId: "s", currentId: "a"))
+        XCTAssertFalse(terminalSwitcherIsCurrent(entry: second, currentSessionId: "s", currentId: "a"))
+        let renamed = TerminalSessionEntry(
+            sessionId: "s", id: "b", title: "build", state: "running",
+            cwd: "/tmp", shellName: "zsh"
+        )
+        XCTAssertEqual(
+            terminalSwitcherLabels([first, renamed]),
+            ["zsh", "build"],
+            "Host rename() is the only post-create title mutation; paint info.title when it arrives"
+        )
     }
 
     func testCloseFollowDropsMetaWhileDisconnectKeepsIt() {
