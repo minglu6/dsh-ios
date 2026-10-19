@@ -81,9 +81,21 @@ public let mentionMenuShadowRadiusPoints: Double = 8
 public let mentionMenuShadowYPoints: Double = 4
 public let mentionMenuShadowOpacity: Double = 0.12
 
-/// Desktop `MenuView.module.css` `.menu` elevation stroke `0` + MenuSurface
-/// `--dsw-elevation-stroke-color`; Android `BorderStroke(0.5.dp, T.Border)`.
+/// Desktop `ui-input-trigger@0.2.1-alpha.5` `MenuView.module.css` `.menu`
+/// and `ui-primitives` `Menu.module.css` `.list` (15-17):
+/// `--dsw-elevation-stroke-color: var(--dsw-alias-border-l1)` and `border: 0`;
+/// the 0.5px hairline lives in `--dsw-elevation-prominent` (`ui-theme`
+/// `client.js` 1425: `--dsw-elevation-stroke: 0 0 0 .5px …`). iOS draws that
+/// hairline as an overlay stroke (same width as Android `BorderStroke`).
+/// Color is **l1**, not settings-card l4 / divider l2. Shared by mention,
+/// slash (#84) and the terminal session switcher.
 public let mentionMenuStrokeWidthPoints: Double = 0.5
+
+/// Desktop Menu / MenuView elevation stroke. Same helper #84 adds for
+/// mention / slash; terminal switcher reuses it.
+public func inputTriggerMenuStrokeHex(dark: Bool) -> UInt32 {
+    dswAliasBorderL1Hex(dark: dark)
+}
 
 /// Desktop conversation `ReferenceChip.module.css` `.chip` `max-width: 240px;
 /// gap: 3px` plus `composer-editor.module.css` `.reference` `padding: 0 4px`

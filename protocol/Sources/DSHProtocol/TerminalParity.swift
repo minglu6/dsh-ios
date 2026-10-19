@@ -168,6 +168,19 @@ public let terminalSwitcherMenuMinWidthPoints: Double = 144
 public let terminalSwitcherMenuMaxWidthPoints: Double = 360
 /// `MenuSurface.module.css` `.surface` `--dsw-radius-lg` (same 12 as mention).
 public let terminalSwitcherMenuRadiusPoints: Double = 12
+/// Desktop `ui-primitives` `Menu.module.css` `.list` 15-17:
+/// `border: 0; --dsw-elevation-stroke-color: var(--dsw-alias-border-l1);
+/// box-shadow: var(--dsw-elevation-prominent)`. Hairline width and color are
+/// the same tokens #84 applies to mention / slash (`mentionMenuStrokeWidthPoints`
+/// + `inputTriggerMenuStrokeHex`). Shadow mapping is the existing
+/// `--dsw-elevation-prominent` Android 8.dp pair already used by mention.
+public let terminalSwitcherStrokeWidthPoints: Double = mentionMenuStrokeWidthPoints
+public func terminalSwitcherStrokeHex(dark: Bool) -> UInt32 {
+    inputTriggerMenuStrokeHex(dark: dark)
+}
+public let terminalSwitcherShadowRadiusPoints: Double = mentionMenuShadowRadiusPoints
+public let terminalSwitcherShadowYPoints: Double = mentionMenuShadowYPoints
+public let terminalSwitcherShadowOpacity: Double = mentionMenuShadowOpacity
 /// `.item` `min-height: 34px; padding: 6px 8px; gap: 6px; font-size: 13px;
 /// line-height: 20px; border-radius: var(--dsw-radius-md)`.
 public let terminalSwitcherRowMinHeightPoints: Double = 34

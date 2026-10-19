@@ -294,6 +294,15 @@ struct TerminalPanel: View {
             T.surface,
             in: RoundedRectangle(cornerRadius: CGFloat(terminalSwitcherMenuRadiusPoints), style: .continuous)
         )
+        .overlay(
+            RoundedRectangle(cornerRadius: CGFloat(terminalSwitcherMenuRadiusPoints), style: .continuous)
+                .stroke(T.borderL1, lineWidth: CGFloat(terminalSwitcherStrokeWidthPoints))
+        )
+        .shadow(
+            color: Color.black.opacity(terminalSwitcherShadowOpacity),
+            radius: CGFloat(terminalSwitcherShadowRadiusPoints),
+            y: CGFloat(terminalSwitcherShadowYPoints)
+        )
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(terminalSwitcherMenuIdentifier())
         .modifier(PopoverCompactAdaptation())
