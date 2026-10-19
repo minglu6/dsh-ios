@@ -1418,22 +1418,26 @@ struct MessageRow: View {
                             }
                         }
                         if !user.text.isEmpty {
-                            // Wrap so `userMessageBubble` does not replace `userMentionText`
-                            // on iOS 18 XCUITest (same HStack contain as terminalSwitcher).
-                            HStack(spacing: 0) {
-                                UserMentionText(text: user.text, color: T.ink, pending: user.pending)
-                                    .padding(.vertical, CGFloat(userMessageBubblePaddingVerticalPoints))
-                                    .padding(.horizontal, CGFloat(userMessageBubblePaddingHorizontalPoints))
-                                    .background(
-                                        T.bubble,
-                                        in: RoundedRectangle(
-                                            cornerRadius: CGFloat(userMessageBubbleRadiusPoints),
-                                            style: .continuous
-                                        )
+                            UserMentionText(text: user.text, color: T.ink, pending: user.pending)
+                                .padding(.vertical, CGFloat(userMessageBubblePaddingVerticalPoints))
+                                .padding(.horizontal, CGFloat(userMessageBubblePaddingHorizontalPoints))
+                                .background(
+                                    T.bubble,
+                                    in: RoundedRectangle(
+                                        cornerRadius: CGFloat(userMessageBubbleRadiusPoints),
+                                        style: .continuous
                                     )
-                            }
-                            .accessibilityElement(children: .contain)
-                            .accessibilityIdentifier(userMessageBubbleIdentifier())
+                                )
+                                // iOS 18 XCUITest drops nested identifiers when the
+                                // wrapping view also has one, even with `.contain`
+                                // or an extra HStack. Overlay is a sibling with the
+                                // same hugging bubble frame.
+                                .overlay {
+                                    Color.clear
+                                        .accessibilityElement()
+                                        .accessibilityIdentifier(userMessageBubbleIdentifier())
+                                        .allowsHitTesting(false)
+                                }
                         }
                         if let summary = referenceSummaryText(labels: user.referenceLabels, english: L.en) {
                             Text(summary)
