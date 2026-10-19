@@ -1979,6 +1979,7 @@ private struct ComposerTextView: UIViewRepresentable {
         return CGSize(width: width, height: CGFloat(height))
     }
 
+    @MainActor
     final class Coordinator: NSObject, UITextViewDelegate {
         var parent: ComposerTextView
         var placeholder: UILabel?
@@ -2201,6 +2202,7 @@ private final class ComposerUITextView: UITextView {
     }
 }
 
+@MainActor
 private func mentionComposerAttributed(
     _ projection: MentionProjection,
     font: UIFont,
@@ -2231,6 +2233,7 @@ private func mentionComposerAttributed(
     return result
 }
 
+@MainActor
 private func mentionComposerChipImage(_ ref: ComposerReference, cache: inout [String: UIImage]) -> UIImage {
     if let cached = cache[ref.canonical] { return cached }
     let renderer = ImageRenderer(content: MentionChipLabel(ref: ref, composer: true))
