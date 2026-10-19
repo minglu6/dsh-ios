@@ -251,6 +251,7 @@ struct ChatView: View {
                             .frame(height: CGFloat(conversationHeaderTabUnderlineHeightPoints))
                             .offset(y: CGFloat(conversationHeaderTabUnderlineOverflowPoints))
                             .allowsHitTesting(false)
+                            .accessibilityHidden(true)
                     }
                 }
         }
