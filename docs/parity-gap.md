@@ -2313,5 +2313,5 @@ landing 侧栏 toggle / 鲸 +「探索未至之境」/ composer 贴底 / 统计�
 | 项 | 桌面 | iOS 原状 | 处理 |
 | --- | --- | --- | --- |
 | 设置根页卡四角 | `--dsw-radius-lg` 16；卡外是 `--dsw-alias-bg-base` `#151517` / `#FFFFFF` | 行 `Rectangle` 填色未裁到圆角，四角圆外仍是 settings-card `#2C2C2E` | `settingsNavCard` fill / 行 / stroke 共用同一个 `RoundedRectangle`，`.clipShape`。CI 对四角圆外像素断言 = 页底（light + dark） |
-| models `typeText("保留草稿")` | — | #92 wrapper / 屏宽 cap 叠 workaround | 布局回到 `b65811e` 兄弟 header/tabs。只叠 titleRow 30 + tabs padding-top 10。tab chip 仍用 b65811e 画法（#92 的 13/16/offset 会逼出 wrapper）。fixture 关 UIKit 动画；picker 无动画关闭。无 maxWidth / probe。不放宽 typeText / IME / 滚动收键盘 |
+| models `typeText("保留草稿")` | — | #92 wrapper / 屏宽 cap / 全局关动画叠 workaround | 布局回到 `b65811e` 兄弟 header/tabs。只叠 titleRow `minHeight` 30 + tabs padding-top 10。tab chip 仍用 b65811e 画法。picker 无动画关闭。不关 UIKit 动画（3434cfe 上 typeText 后 `Wait for idle` 60s 收不到 idle）。无 wrapper / maxWidth / probe。不放宽 typeText / IME / 滚动收键盘 |
 

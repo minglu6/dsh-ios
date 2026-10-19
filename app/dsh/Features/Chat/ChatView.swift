@@ -233,10 +233,7 @@ struct ChatView: View {
             .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier("openStartPanel")
         }
-        .frame(
-            minHeight: CGFloat(conversationHeaderTitleRowMinHeightPoints),
-            maxHeight: CGFloat(conversationHeaderTitleRowMinHeightPoints)
-        )
+        .frame(minHeight: CGFloat(conversationHeaderTitleRowMinHeightPoints))
         .padding(.top, CGFloat(conversationHeaderPaddingTopPoints))
         .padding(.horizontal, CGFloat(conversationHeaderPaddingHorizontalPoints))
         .background(T.surface)
