@@ -1987,7 +1987,8 @@ private struct ComposerTextView: UIViewRepresentable {
         var projection = mentionProjection("", cursor: 0)
         var applying = false
         weak var textView: ComposerUITextView?
-        private var dismissObserver: NSObjectProtocol?
+        /// Token is registered on main; deinit only removes it from NotificationCenter.
+        nonisolated(unsafe) private var dismissObserver: NSObjectProtocol?
         private var chipImages: [String: UIImage] = [:]
 
         init(_ parent: ComposerTextView) {
@@ -2001,8 +2002,8 @@ private struct ComposerTextView: UIViewRepresentable {
                 forName: Keyboard.dismissNotification,
                 object: nil,
                 queue: .main
-            ) { [weak self] _ in
-                self?.textView?.forceResign()
+            ) { [weak view] _ in
+                view?.forceResign()
             }
         }
 
@@ -2014,7 +2015,11 @@ private struct ComposerTextView: UIViewRepresentable {
             textView = nil
         }
 
-        deinit { stopObserving() }
+        deinit {
+            if let dismissObserver {
+                NotificationCenter.default.removeObserver(dismissObserver)
+            }
+        }
 
         func applyPlaceholder(_ view: UITextView) {
             placeholder?.text = parent.placeholder
