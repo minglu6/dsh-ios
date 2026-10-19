@@ -1418,18 +1418,22 @@ struct MessageRow: View {
                             }
                         }
                         if !user.text.isEmpty {
-                            UserMentionText(text: user.text, color: T.ink, pending: user.pending)
-                                .padding(.vertical, CGFloat(userMessageBubblePaddingVerticalPoints))
-                                .padding(.horizontal, CGFloat(userMessageBubblePaddingHorizontalPoints))
-                                .background(
-                                    T.bubble,
-                                    in: RoundedRectangle(
-                                        cornerRadius: CGFloat(userMessageBubbleRadiusPoints),
-                                        style: .continuous
+                            // Wrap so `userMessageBubble` does not replace `userMentionText`
+                            // on iOS 18 XCUITest (same HStack contain as terminalSwitcher).
+                            HStack(spacing: 0) {
+                                UserMentionText(text: user.text, color: T.ink, pending: user.pending)
+                                    .padding(.vertical, CGFloat(userMessageBubblePaddingVerticalPoints))
+                                    .padding(.horizontal, CGFloat(userMessageBubblePaddingHorizontalPoints))
+                                    .background(
+                                        T.bubble,
+                                        in: RoundedRectangle(
+                                            cornerRadius: CGFloat(userMessageBubbleRadiusPoints),
+                                            style: .continuous
+                                        )
                                     )
-                                )
-                                .accessibilityElement(children: .contain)
-                                .accessibilityIdentifier(userMessageBubbleIdentifier())
+                            }
+                            .accessibilityElement(children: .contain)
+                            .accessibilityIdentifier(userMessageBubbleIdentifier())
                         }
                         if let summary = referenceSummaryText(labels: user.referenceLabels, english: L.en) {
                             Text(summary)
