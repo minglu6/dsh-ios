@@ -1366,6 +1366,39 @@ private struct ToolCard: View {
     }
 }
 
+/// Desktop `.userStack` `max-width: min(calc(var(--dsh-chat-content-width,748px) * .702), 82%)`.
+/// Reports the child's hugging width so short CJK bubbles do not stretch.
+private struct UserMessageStackCap<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        UserMessageStackCapLayout {
+            content
+        }
+    }
+}
+
+private struct UserMessageStackCapLayout: Layout {
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let child = subviews.first else { return .zero }
+        let maxW = capWidth(proposal.width)
+        let size = child.sizeThatFits(ProposedViewSize(width: maxW, height: proposal.height))
+        return CGSize(width: min(size.width, maxW), height: size.height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard let child = subviews.first else { return }
+        child.place(at: bounds.origin, proposal: ProposedViewSize(bounds.size))
+    }
+
+    private func capWidth(_ proposed: CGFloat?) -> CGFloat {
+        if let proposed, proposed > 0, proposed.isFinite {
+            return CGFloat(userMessageStackMaxWidth(columnWidth: Double(proposed)))
+        }
+        return CGFloat(userMessageStackAbsoluteMaxWidthPoints)
+    }
+}
+
 struct MessageRow: View {
     let item: Item
     @ObservedObject var model: AppModel
@@ -1376,36 +1409,51 @@ struct MessageRow: View {
     var body: some View {
         switch item {
         case .user(let user):
-            VStack(alignment: .trailing, spacing: 0) {
-                if let sessionId = model.chat?.sessionId, !user.imageRefs.isEmpty {
-                    ForEach(Array(user.imageRefs.enumerated()), id: \.offset) { _, ref in
-                        ImageBubble(sessionId: sessionId, ref: ref)
+            VStack(alignment: .trailing, spacing: CGFloat(userMessageRowGapPoints)) {
+                UserMessageStackCap {
+                    VStack(alignment: .trailing, spacing: CGFloat(userMessageStackGapPoints)) {
+                        if let sessionId = model.chat?.sessionId, !user.imageRefs.isEmpty {
+                            ForEach(Array(user.imageRefs.enumerated()), id: \.offset) { _, ref in
+                                ImageBubble(sessionId: sessionId, ref: ref)
+                            }
+                        }
+                        if !user.text.isEmpty {
+                            UserMentionText(text: user.text, color: T.ink, pending: user.pending)
+                                .padding(.vertical, CGFloat(userMessageBubblePaddingVerticalPoints))
+                                .padding(.horizontal, CGFloat(userMessageBubblePaddingHorizontalPoints))
+                                .background(
+                                    T.bubble,
+                                    in: RoundedRectangle(
+                                        cornerRadius: CGFloat(userMessageBubbleRadiusPoints),
+                                        style: .continuous
+                                    )
+                                )
+                                // iOS 18 XCUITest drops nested identifiers when the
+                                // wrapping view also has one, even with `.contain`
+                                // or an extra HStack. Overlay is a sibling with the
+                                // same hugging bubble frame.
+                                .overlay {
+                                    Color.clear
+                                        .accessibilityElement()
+                                        .accessibilityIdentifier(userMessageBubbleIdentifier())
+                                        .allowsHitTesting(false)
+                                }
+                        }
+                        if let summary = referenceSummaryText(labels: user.referenceLabels, english: L.en) {
+                            Text(summary)
+                                .font(.system(size: 13))
+                                .foregroundStyle(T.text3)
+                                .multilineTextAlignment(.trailing)
+                        }
                     }
-                }
-                if !user.text.isEmpty {
-                    HStack {
-                        Spacer(minLength: 48)
-                        UserMentionText(text: user.text, color: T.ink, pending: user.pending)
-                            .padding(12)
-                            .background(T.bubble, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    }
-                }
-                if let summary = referenceSummaryText(labels: user.referenceLabels, english: L.en) {
-                    HStack {
-                        Spacer(minLength: 48)
-                        Text(summary)
-                            .font(.system(size: 13))
-                            .foregroundStyle(T.text3)
-                            .multilineTextAlignment(.trailing)
-                    }
-                    .padding(.top, 8)
                 }
                 MessageActions(
                     text: user.text,
                     timeMs: user.at,
                     clock: .end,
                     trailing: true,
-                    showsCopy: userMessageShowsPersistentCopy
+                    showsCopy: userMessageShowsPersistentCopy,
+                    topPadding: 0
                 )
             }
         case .text(let text):
@@ -1519,6 +1567,7 @@ private struct MessageActions: View {
     var usageAction: (() -> TurnUsageAction)? = nil
     var trailing = false
     var showsCopy = true
+    var topPadding: CGFloat = 4
     @State private var copied = false
 
     var body: some View {
@@ -1578,7 +1627,7 @@ private struct MessageActions: View {
         }
         .frame(height: 48)
         .frame(maxWidth: .infinity, alignment: (trailing || clock == .start) ? .trailing : .leading)
-        .padding(.top, 4)
+        .padding(.top, topPadding)
     }
 
     private func iconButton(

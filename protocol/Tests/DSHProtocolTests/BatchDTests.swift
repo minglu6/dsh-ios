@@ -400,6 +400,11 @@ final class MarkdownAndChatProcessTests: XCTestCase {
         XCTAssertNil(parseFileLink("https://example.com/a.md"))
         let code = parseMarkdown("```swift\nlet x = 1\n```")
         XCTAssertTrue(code.contains { if case .code(let language, _, let incomplete) = $0 { return language == "swift" && !incomplete }; return false })
+        let chatList = parseMarkdown("你好，我是 DeepSeek。[README.md](README.md)\n\n- 第一项\n- 第二项")
+        XCTAssertTrue(chatList.contains { block in
+            if case .bulletList(let items, _) = block { return items.count == 2 }
+            return false
+        })
     }
 
     func testFoldGroupsToolsAndReasoningIntoProcess() {
