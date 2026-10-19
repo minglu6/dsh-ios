@@ -233,7 +233,8 @@ struct ChatView: View {
             .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier("openStartPanel")
         }
-        .frame(minHeight: CGFloat(conversationHeaderTitleRowMinHeightPoints))
+        .frame(minHeight: CGFloat(conversationHeaderTitleRowMinHeightPoints),
+               maxHeight: CGFloat(conversationHeaderTitleRowMinHeightPoints))
         .padding(.top, CGFloat(conversationHeaderPaddingTopPoints))
         .padding(.horizontal, CGFloat(conversationHeaderPaddingHorizontalPoints))
         .background(T.surface)
@@ -2045,7 +2046,16 @@ private struct ComposerTextView: UIViewRepresentable {
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: ComposerUITextView, context: Context) -> CGSize? {
-        let width = max(proposal.width ?? uiView.bounds.width, 1)
+        let proposed = proposal.width ?? uiView.bounds.width
+        let boundsWidth = uiView.bounds.width
+        let width: CGFloat
+        if proposed.isFinite, proposed >= 1 {
+            width = proposed
+        } else if boundsWidth.isFinite, boundsWidth >= 1 {
+            width = boundsWidth
+        } else {
+            width = 1
+        }
         let wasScroll = uiView.isScrollEnabled
         uiView.isScrollEnabled = false
         let content = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
