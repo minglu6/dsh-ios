@@ -700,8 +700,11 @@ public let composerStatisticsRowGapPoints: Double = 12
 public let composerStatisticsRowPaddingTopPoints: Double = 4
 /// `.root { padding: 0 var(--dsh-composer-side-clearance) 4px }`.
 public let composerStatisticsRowPaddingBottomPoints: Double = 4
-/// Phone composer card gutter (`ComposerView` horizontal 14) — same content
-/// box the dock shares with the card on desktop InputBar `.root`.
+/// Desktop `.dock` has no inline padding. InputBar `.root` wraps card + dock
+/// with `--dsh-composer-side-clearance` (`Conversation.module.css`
+/// `lib/client.js:17325`: `.body` 16px / `.embeddedBody` 8px). iOS
+/// `ComposerView` already uses 14pt as that gutter; the dock uses the same
+/// 14 so it shares the card's content box. Not a user exception.
 public let composerStatisticsRowPaddingHorizontalPoints: Double = 14
 /// XCUITest: content-sized pills row, not the expanding `maxWidth` frame.
 public func composerStatisticsRowIdentifier() -> String { "composerStats" }
@@ -719,6 +722,8 @@ public let composerStatisticsPillIconGapPoints: Double = 6
 public let composerStatisticsPillPaddingVerticalPoints: Double = 1
 public let composerStatisticsPillPaddingHorizontalPoints: Double = 8
 public let composerStatisticsPillRadiusPoints: Double = 8
+/// CSS `border-radius` is circular-arc, not iOS continuous squircle.
+public let composerStatisticsPillCornerIsCircular = true
 public let composerStatisticsPillFontSizePoints: Double = 12
 public let composerStatisticsPillLineHeightPoints: Double = 20
 
@@ -730,8 +735,18 @@ public let composerContextMeterIconGapPoints: Double = 6
 public let composerContextRingFillUsesTertiary = true
 
 /// Desktop `stat-dialog.module.css` `.panel` (`ui-chat` `lib/client.js:6814`):
-/// `padding:16px;min-width:min(300px,100vw - 24px);max-width:min(440px,100vw - 24px)`.
+/// `padding:16px;font-size:12px;line-height:18px;`
+/// `min-width:min(300px,100vw - 24px);max-width:min(440px,100vw - 24px)`.
+/// `.details { color: label-tertiary; gap: 6px 16px }`
+/// `.details dd { color: label-secondary }`.
 public let composerStatDialogPaddingPoints: Double = 16
+public let composerStatDialogFontSizePoints: Double = 12
+public let composerStatDialogLineHeightPoints: Double = 18
+public let composerStatDialogDetailsRowGapPoints: Double = 6
+public let composerStatDialogDetailsColumnGapPoints: Double = 16
+public let composerStatDialogTitleGapPoints: Double = 16
+public let composerStatDialogTitleMarginBottomPoints: Double = 8
+public let composerStatDialogTitleRuleMarginBottomPoints: Double = 10
 public let composerStatDialogMinWidthPoints: Double = 300
 public let composerStatDialogMaxWidthPoints: Double = 440
 public let composerStatDialogViewportInsetPoints: Double = 24
@@ -744,9 +759,26 @@ public func composerStatDialogMaxWidth(screenWidth: Double) -> Double {
     min(composerStatDialogMaxWidthPoints, screenWidth - composerStatDialogViewportInsetPoints)
 }
 
-/// Desktop `ContextMeter.module.css` `.panel`: `padding:12px;width:min(264px,100vw - 24px)`.
+/// Desktop `ContextMeter.module.css` `.panel` (`lib/client.js:18454`):
+/// `padding:12px;font-size:12px;line-height:20px;width:min(264px,100vw - 24px)`.
+/// `.header { gap: 6px }`; `.bar { margin: 10px 0 12px; gap: 1px; height: 4px; radius 999 }`;
+/// `.rows { margin: 6px 0 0 }`;
+/// `.row { gap: 12px; padding: 2px 0 }`; `.swatch { 8×8, radius 2px, margin-right 6px }`.
 public let composerContextPanelPaddingPoints: Double = 12
+public let composerContextPanelFontSizePoints: Double = 12
+public let composerContextPanelLineHeightPoints: Double = 20
 public let composerContextPanelWidthPoints: Double = 264
+public let composerContextPanelHeaderGapPoints: Double = 6
+public let composerContextBarMarginTopPoints: Double = 10
+public let composerContextBarMarginBottomPoints: Double = 12
+public let composerContextBarHeightPoints: Double = 4
+public let composerContextBarSegmentGapPoints: Double = 1
+public let composerContextRowsMarginTopPoints: Double = 6
+public let composerContextRowPaddingVerticalPoints: Double = 2
+public let composerContextRowGapPoints: Double = 12
+public let composerContextSwatchSizePoints: Double = 8
+public let composerContextSwatchRadiusPoints: Double = 2
+public let composerContextSwatchGapPoints: Double = 6
 
 public func composerContextPanelWidth(screenWidth: Double) -> Double {
     min(composerContextPanelWidthPoints, screenWidth - composerStatDialogViewportInsetPoints)

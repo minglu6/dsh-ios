@@ -138,7 +138,7 @@ struct ComposerStats: View {
             .padding(.horizontal, CGFloat(composerStatisticsPillPaddingHorizontalPoints))
             .background(
                 open.wrappedValue ? T.hoverBg : Color.clear,
-                in: RoundedRectangle(cornerRadius: CGFloat(composerStatisticsPillRadiusPoints), style: .continuous)
+                in: RoundedRectangle(cornerRadius: CGFloat(composerStatisticsPillRadiusPoints), style: .circular)
             )
         }
         .buttonStyle(.plain)
@@ -150,26 +150,36 @@ struct ComposerStats: View {
 
     @ViewBuilder
     private var activityPopover: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 0) {
             UsagePopoverHeader(
                 icon: .gaugeOutline,
-                title: composerActivityTitle(english: L.en)
+                title: composerActivityTitle(english: L.en),
+                titleFont: .system(
+                    size: CGFloat(composerStatDialogFontSizePoints),
+                    weight: .medium
+                ),
+                afterTitle: composerStatDialogTitleMarginBottomPoints,
+                afterRule: composerStatDialogTitleRuleMarginBottomPoints,
+                titleGap: composerStatDialogTitleGapPoints
             )
-            if let activity {
-                if activity.llmMs > 0 {
-                    detail(composerActivityLlmTime(english: L.en), statisticsDuration(activity.llmMs))
-                }
-                if activity.toolMs > 0 {
-                    detail(composerActivityToolTime(english: L.en), statisticsDuration(activity.toolMs))
-                }
-                if let ttft = activity.meanTtftMs {
-                    detail(composerActivityTtft(english: L.en), statisticsDuration(ttft))
-                }
-                if let speed {
-                    detail(composerActivitySpeed(english: L.en), speed)
+            VStack(alignment: .leading, spacing: CGFloat(composerStatDialogDetailsRowGapPoints)) {
+                if let activity {
+                    if activity.llmMs > 0 {
+                        statDialogRow(composerActivityLlmTime(english: L.en), statisticsDuration(activity.llmMs))
+                    }
+                    if activity.toolMs > 0 {
+                        statDialogRow(composerActivityToolTime(english: L.en), statisticsDuration(activity.toolMs))
+                    }
+                    if let ttft = activity.meanTtftMs {
+                        statDialogRow(composerActivityTtft(english: L.en), statisticsDuration(ttft))
+                    }
+                    if let speed {
+                        statDialogRow(composerActivitySpeed(english: L.en), speed)
+                    }
                 }
             }
         }
+        .font(.system(size: CGFloat(composerStatDialogFontSizePoints)))
         .padding(CGFloat(composerStatDialogPaddingPoints))
         .frame(minWidth: statDialogMinWidth, maxWidth: statDialogMaxWidth)
         .modifier(PopoverCompactAdaptation())
@@ -192,7 +202,7 @@ struct ComposerStats: View {
             .padding(.horizontal, CGFloat(composerStatisticsPillPaddingHorizontalPoints))
             .background(
                 contextOpen ? T.hoverBg : Color.clear,
-                in: RoundedRectangle(cornerRadius: CGFloat(composerStatisticsPillRadiusPoints), style: .continuous)
+                in: RoundedRectangle(cornerRadius: CGFloat(composerStatisticsPillRadiusPoints), style: .circular)
             )
         }
         .buttonStyle(.plain)
@@ -209,41 +219,48 @@ struct ComposerStats: View {
     private func contextPopover(_ context: ComposerContext) -> some View {
         let headline = composerContextHeadline(english: L.en)
         let reading = "\(context.percent)%"
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
+        let panelFont = Font.system(size: CGFloat(composerContextPanelFontSizePoints))
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .center, spacing: CGFloat(composerContextPanelHeaderGapPoints)) {
                 if !headline.before.isEmpty {
-                    Text(headline.before).font(.subheadline).foregroundStyle(T.text3)
+                    Text(headline.before).font(panelFont).foregroundStyle(T.text3)
                 }
-                Text(reading).font(.subheadline.weight(.medium)).monospacedDigit().foregroundStyle(T.ink)
+                Text(reading).font(panelFont.weight(.medium)).monospacedDigit().foregroundStyle(T.ink)
                 if !headline.after.isEmpty {
-                    Text(headline.after).font(.subheadline).foregroundStyle(T.text3)
+                    Text(headline.after).font(panelFont).foregroundStyle(T.text3)
                 }
-                Spacer(minLength: 12)
+                Spacer(minLength: 0)
                 Text("~\(statisticsTokens(context.usedTokens)) / \(statisticsTokens(context.contextWindow))")
-                    .font(.subheadline.weight(.medium))
+                    .font(panelFont.weight(.medium))
                     .monospacedDigit()
                     .foregroundStyle(T.ink)
             }
             .accessibilityLabel(composerContextUsed(english: L.en))
             contextBar(context.percent)
+                .padding(.top, CGFloat(composerContextBarMarginTopPoints))
+                .padding(.bottom, CGFloat(composerContextBarMarginBottomPoints))
             if let breakdown = metrics.contextBreakdown {
-                detail(
-                    composerContextBreakdownLabel(.system, english: L.en),
-                    "~\(statisticsTokens(breakdown.systemTokens))",
-                    statisticsContextColors[0]
-                )
-                detail(
-                    composerContextBreakdownLabel(.tools, english: L.en),
-                    "~\(statisticsTokens(breakdown.toolsTokens))",
-                    statisticsContextColors[1]
-                )
-                detail(
-                    composerContextBreakdownLabel(.messages, english: L.en),
-                    "~\(statisticsTokens(breakdown.messageTokens))",
-                    statisticsContextColors[2]
-                )
+                VStack(spacing: 0) {
+                    contextMeterRow(
+                        composerContextBreakdownLabel(.system, english: L.en),
+                        "~\(statisticsTokens(breakdown.systemTokens))",
+                        statisticsContextColors[0]
+                    )
+                    contextMeterRow(
+                        composerContextBreakdownLabel(.tools, english: L.en),
+                        "~\(statisticsTokens(breakdown.toolsTokens))",
+                        statisticsContextColors[1]
+                    )
+                    contextMeterRow(
+                        composerContextBreakdownLabel(.messages, english: L.en),
+                        "~\(statisticsTokens(breakdown.messageTokens))",
+                        statisticsContextColors[2]
+                    )
+                }
+                .padding(.top, CGFloat(composerContextRowsMarginTopPoints))
             }
         }
+        .font(panelFont)
         .padding(CGFloat(composerContextPanelPaddingPoints))
         .frame(width: contextPanelWidth)
         .modifier(PopoverCompactAdaptation())
@@ -251,46 +268,75 @@ struct ComposerStats: View {
 
     /// Desktop session usage chip: anchored above, icon + title left, total right.
     private func sessionUsagePopover(_ usage: ComposerTokenUsage) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 0) {
             UsagePopoverHeader(
                 title: composerSessionUsageTitle(english: L.en),
-                value: composerSessionUsageTitleValue(exactTotal: statisticsExact(usage.totalTokens))
+                value: composerSessionUsageTitleValue(exactTotal: statisticsExact(usage.totalTokens)),
+                titleFont: .system(
+                    size: CGFloat(composerStatDialogFontSizePoints),
+                    weight: .medium
+                ),
+                afterTitle: composerStatDialogTitleMarginBottomPoints,
+                afterRule: composerStatDialogTitleRuleMarginBottomPoints,
+                titleGap: composerStatDialogTitleGapPoints
             )
-            if let hit = usage.cacheHitPercent {
-                detail(composerSessionUsageRowLabel(.cacheHit, english: L.en), "\(hit)%")
-            }
-            detail(
-                composerSessionUsageRowLabel(.uncachedInput, english: L.en),
-                composerSessionUsageTokenValue(exact: statisticsExact(usage.uncachedInputTokens))
-            )
-            detail(
-                composerSessionUsageRowLabel(.cacheRead, english: L.en),
-                composerSessionUsageTokenValue(exact: statisticsExact(usage.cacheReadTokens))
-            )
-            if usage.cacheWriteTokens != 0 {
-                detail(
-                    composerSessionUsageRowLabel(.cacheWrite, english: L.en),
-                    composerSessionUsageTokenValue(exact: statisticsExact(usage.cacheWriteTokens))
+            VStack(alignment: .leading, spacing: CGFloat(composerStatDialogDetailsRowGapPoints)) {
+                if let hit = usage.cacheHitPercent {
+                    statDialogRow(composerSessionUsageRowLabel(.cacheHit, english: L.en), "\(hit)%")
+                }
+                statDialogRow(
+                    composerSessionUsageRowLabel(.uncachedInput, english: L.en),
+                    composerSessionUsageTokenValue(exact: statisticsExact(usage.uncachedInputTokens))
+                )
+                statDialogRow(
+                    composerSessionUsageRowLabel(.cacheRead, english: L.en),
+                    composerSessionUsageTokenValue(exact: statisticsExact(usage.cacheReadTokens))
+                )
+                if usage.cacheWriteTokens != 0 {
+                    statDialogRow(
+                        composerSessionUsageRowLabel(.cacheWrite, english: L.en),
+                        composerSessionUsageTokenValue(exact: statisticsExact(usage.cacheWriteTokens))
+                    )
+                }
+                statDialogRow(
+                    composerSessionUsageRowLabel(.output, english: L.en),
+                    composerSessionUsageTokenValue(exact: statisticsExact(usage.outputTokens))
                 )
             }
-            detail(
-                composerSessionUsageRowLabel(.output, english: L.en),
-                composerSessionUsageTokenValue(exact: statisticsExact(usage.outputTokens))
-            )
         }
+        .font(.system(size: CGFloat(composerStatDialogFontSizePoints)))
         .padding(CGFloat(composerStatDialogPaddingPoints))
         .frame(minWidth: statDialogMinWidth, maxWidth: statDialogMaxWidth)
         .modifier(PopoverCompactAdaptation())
     }
 
-    private func detail(_ label: String, _ value: String, _ swatch: Color? = nil) -> some View {
-        HStack {
-            if let swatch { RoundedRectangle(cornerRadius: 1).fill(swatch).frame(width: 8, height: 8) }
-            Text(label).foregroundStyle(T.text2)
-            Spacer()
-            Text(value).foregroundStyle(T.ink)
+    /// Desktop `stat-dialog` `.details dt` tertiary / `dd` secondary, `gap: 6px 16px`.
+    private func statDialogRow(_ label: String, _ value: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: CGFloat(composerStatDialogDetailsColumnGapPoints)) {
+            Text(label).foregroundStyle(T.text3)
+            Spacer(minLength: 0)
+            Text(value).foregroundStyle(T.text2).monospacedDigit().multilineTextAlignment(.trailing)
         }
-        .font(.subheadline)
+        .font(.system(size: CGFloat(composerStatDialogFontSizePoints)))
+    }
+
+    /// Desktop `ContextMeter` `.row dt` secondary / `dd` primary.
+    private func contextMeterRow(_ label: String, _ value: String, _ swatch: Color) -> some View {
+        HStack(alignment: .center, spacing: CGFloat(composerContextRowGapPoints)) {
+            HStack(spacing: CGFloat(composerContextSwatchGapPoints)) {
+                RoundedRectangle(cornerRadius: CGFloat(composerContextSwatchRadiusPoints), style: .circular)
+                    .fill(swatch)
+                    .frame(
+                        width: CGFloat(composerContextSwatchSizePoints),
+                        height: CGFloat(composerContextSwatchSizePoints)
+                    )
+                Text(label).foregroundStyle(T.text2)
+            }
+            Spacer(minLength: 0)
+            Text(value).foregroundStyle(T.ink).monospacedDigit()
+        }
+        .font(.system(size: CGFloat(composerContextPanelFontSizePoints)))
+        .padding(.vertical, CGFloat(composerContextRowPaddingVerticalPoints))
     }
 
     private func contextBar(_ percent: Int) -> some View {
@@ -302,7 +348,7 @@ struct ComposerStats: View {
                     if let breakdown = metrics.contextBreakdown {
                         let total = breakdown.systemTokens + breakdown.toolsTokens + breakdown.messageTokens
                         if total > 0 {
-                            HStack(spacing: 0) {
+                            HStack(spacing: CGFloat(composerContextBarSegmentGapPoints)) {
                                 ForEach(Array([breakdown.systemTokens, breakdown.toolsTokens, breakdown.messageTokens].enumerated()), id: \.offset) { index, tokens in
                                     statisticsContextColors[index].frame(width: width * CGFloat(tokens / total))
                                 }
@@ -316,7 +362,8 @@ struct ComposerStats: View {
                 }
             }
         }
-        .frame(height: 4)
+        .frame(height: CGFloat(composerContextBarHeightPoints))
+        .clipShape(Capsule())
     }
 }
 
@@ -344,7 +391,11 @@ struct TurnUsageAction: View {
             VStack(alignment: .leading, spacing: 10) {
                 UsagePopoverHeader(
                     title: composerTurnUsageTitle(english: L.en),
-                    value: composerSessionUsageTitleValue(exactTotal: statisticsExact(usage.totalTokens))
+                    value: composerSessionUsageTitleValue(exactTotal: statisticsExact(usage.totalTokens)),
+                    titleFont: .subheadline.weight(.medium),
+                    afterTitle: 8,
+                    afterRule: 0,
+                    titleGap: 16
                 )
                 if let routes = usage.routes, !routes.isEmpty {
                     row(composerTurnUsageModelLabel(english: L.en), routes.map { "\($0.provider)/\($0.model)" }.joined(separator: ", "))
@@ -401,18 +452,24 @@ private struct UsagePopoverHeader: View {
     var icon: OfficialGlyph.Kind = .databaseOutline
     let title: String
     var value: String? = nil
+    let titleFont: Font
+    let afterTitle: Double
+    let afterRule: Double
+    let titleGap: Double
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center, spacing: 6) {
                 OfficialGlyph(kind: icon, size: CGFloat(composerStatisticsIconSizePoints), color: T.ink)
-                Text(title).font(.subheadline.weight(.medium)).foregroundStyle(T.ink)
-                Spacer(minLength: 16)
+                Text(title).font(titleFont).foregroundStyle(T.ink)
+                Spacer(minLength: CGFloat(titleGap))
                 if let value {
-                    Text(value).font(.subheadline.weight(.medium)).monospacedDigit().foregroundStyle(T.ink)
+                    Text(value).font(titleFont).monospacedDigit().foregroundStyle(T.ink)
                 }
             }
+            .padding(.bottom, CGFloat(afterTitle))
             Divider()
+                .padding(.bottom, CGFloat(afterRule))
         }
     }
 }
