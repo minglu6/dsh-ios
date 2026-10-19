@@ -2277,5 +2277,5 @@ CI `11c995e` / `f9f8457` artifact `ios-simulator-screenshots` 逐屏对照：
 
 ## #92 / #93 leftover（`2a39d41` + 设置卡裁切）
 
-#92 改过的文件整份回到 `2a39d41`（main CI 39267388424 attempt 2 全绿）。设置卡 `#94` 裁切保留。header 只改数值：title row `minHeight` 30；到 tabs 的空隙沿用已有 `padding.vertical` 10（桌面 `.tabs { margin-top: 10px }`）。不加 identifier / 几何 probe / `ignoresSafeArea` / 动画开关 / `sizeThatFits` 改动。
+#92 改过的文件整份回到 `2a39d41`（main CI 39267388424 attempt 2 全绿）。设置卡 `#94` 裁切保留。header 上单独加 `minHeight` 30（`4caed96`）会让 models `typeText("保留草稿")` AX 超时；IME / 键盘收起 / 设置卡四角像素仍绿。因此不改 header 数值——到 tabs 的 10pt 仍是 `2a39d41` 原有 `padding.vertical` 10。不加 identifier / probe / `ignoresSafeArea` / 动画开关 / `sizeThatFits`。
 

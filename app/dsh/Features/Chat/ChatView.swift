@@ -228,7 +228,6 @@ struct ChatView: View {
             .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier("openStartPanel")
         }
-        .frame(minHeight: 30)
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
         .background(T.surface)
