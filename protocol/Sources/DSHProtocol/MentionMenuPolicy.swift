@@ -81,9 +81,22 @@ public let mentionMenuShadowRadiusPoints: Double = 8
 public let mentionMenuShadowYPoints: Double = 4
 public let mentionMenuShadowOpacity: Double = 0.12
 
-/// Desktop `MenuView.module.css` `.menu` elevation stroke `0` + MenuSurface
-/// `--dsw-elevation-stroke-color`; Android `BorderStroke(0.5.dp, T.Border)`.
+/// Desktop `ui-input-trigger@0.2.1-alpha.5` `MenuView.module.css` `.menu`
+/// `--dsw-elevation-stroke-color: var(--dsw-alias-border-l1)` and `border: 0`;
+/// the 0.5px hairline lives in `--dsw-elevation-prominent`. iOS draws that
+/// hairline as an overlay stroke (same width as Android `BorderStroke`).
+/// Color is **l1**, not settings-card l4 / divider l2.
 public let mentionMenuStrokeWidthPoints: Double = 0.5
+
+/// Desktop MenuView elevation stroke + `.crumbs` `border-bottom` hairline.
+public func inputTriggerMenuStrokeHex(dark: Bool) -> UInt32 {
+    dswAliasBorderL1Hex(dark: dark)
+}
+
+/// Desktop `._3e4SsG_crumbs { border-bottom: .5px solid var(--dsw-alias-border-l1) }`.
+public func mentionMenuCrumbStrokeHex(dark: Bool) -> UInt32 {
+    dswAliasBorderL1Hex(dark: dark)
+}
 
 /// Desktop conversation `ReferenceChip.module.css` `.chip` `max-width: 240px;
 /// gap: 3px` plus `composer-editor.module.css` `.reference` `padding: 0 4px`
