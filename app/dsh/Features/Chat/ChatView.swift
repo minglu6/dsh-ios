@@ -31,15 +31,13 @@ struct ChatView: View {
     }
 
     var body: some View {
-        Group {
+        VStack(spacing: 0) {
+            header
             if tab == 0 {
                 chatTab
             } else if model.showCodeWorkView {
                 TrajectoryView(model: model)
             }
-        }
-        .safeAreaInset(edge: .top, spacing: 0) {
-            header
         }
         .background(T.bg.ignoresSafeArea())
         .onChange(of: inspectorNav.picking) { picking in
