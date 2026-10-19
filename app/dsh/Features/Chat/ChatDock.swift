@@ -963,7 +963,7 @@ struct CommandMenuOverlay: View {
         }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(T.settingsCard)
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 0.5))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.borderL1, lineWidth: 0.5))
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("slashMenu")
