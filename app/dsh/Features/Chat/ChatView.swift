@@ -40,6 +40,7 @@ struct ChatView: View {
             }
         }
         .background(T.bg.ignoresSafeArea())
+        .frame(maxWidth: phoneColumnMaxWidth)
         .onChange(of: inspectorNav.picking) { picking in
             if !picking, inspectorNav.sessionId == model.chat?.sessionId {
                 if case .panel(.inspector) = model.currentRoute { return }
@@ -1771,6 +1772,7 @@ struct ComposerView: View {
                     onChord: { model.submitComposer(gesture: .chord) }
                 )
                     .fixedSize(horizontal: false, vertical: true)
+                    .modifier(PhoneColumnChild())
                     .onAppear { syncMentions() }
                     .onChange(of: model.composerText) { _ in syncMentions() }
                     .onChange(of: model.composerCursor) { _ in syncMentions() }
@@ -1918,6 +1920,7 @@ struct ComposerView: View {
                 .background(T.fill2, in: RoundedRectangle(cornerRadius: 6))
             }
         }
+        .frame(maxWidth: phoneColumnMaxWidth)
     }
 
     @ViewBuilder
@@ -1953,13 +1956,52 @@ struct ComposerView: View {
 }
 
 /// UITextView measure width. An unbounded / non-finite proposal is not a
-/// size — use the view's last laid-out bounds, the same as b65811e. Do not
-/// invent `UIScreen` width; that hid an infinite ideal width on the header.
+/// size — use the view's last laid-out bounds. PhoneColumnChild already
+/// refuses to propose or place infinity.
 private func composerMeasureWidth(proposal: ProposedViewSize, bounds: CGRect) -> CGFloat {
     if let proposed = proposal.width, proposed.isFinite {
         return max(proposed, 1)
     }
     return max(bounds.width, 1)
+}
+
+/// Popover + keyboard remasure can hand the composer an infinite proposal
+/// or place it at `{inf, inf}`. Cap the child to the phone column and place
+/// it on a finite origin so `composerInput` keeps a real frame.
+private struct PhoneColumnChild: ViewModifier {
+    func body(content: Content) -> some View {
+        PhoneColumnChildLayout {
+            content
+        }
+    }
+}
+
+private struct PhoneColumnChildLayout: Layout {
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let child = subviews.first else { return .zero }
+        let width = clampedWidth(proposal.width)
+        let size = child.sizeThatFits(ProposedViewSize(width: width, height: proposal.height))
+        let height = (size.height.isFinite && size.height > 0) ? size.height : 1
+        return CGSize(width: clampedWidth(size.width), height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard let child = subviews.first else { return }
+        if !bounds.origin.x.isFinite || !bounds.origin.y.isFinite || !bounds.size.width.isFinite || !bounds.size.height.isFinite {
+            preconditionFailure("composer column received a non-finite frame \(bounds)")
+        }
+        child.place(
+            at: bounds.origin,
+            proposal: ProposedViewSize(width: clampedWidth(bounds.width), height: bounds.height)
+        )
+    }
+
+    private func clampedWidth(_ value: CGFloat?) -> CGFloat {
+        if let value, value.isFinite, value > 0 {
+            return min(value, phoneColumnMaxWidth)
+        }
+        return phoneColumnMaxWidth
+    }
 }
 
 /// Composer field that keeps first responder while the slash / mention menu

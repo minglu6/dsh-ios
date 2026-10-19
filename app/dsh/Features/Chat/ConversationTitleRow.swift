@@ -1,5 +1,15 @@
 import SwiftUI
+import UIKit
 import DSHProtocol
+
+/// Full-screen phone column. `maxWidth: .infinity` is not a width — it is an
+/// unbounded ideal size. After a model popover remasure the chat VStack kept
+/// that infinity and `composerInput` landed at `{{inf, inf},{0,0}}`.
+var phoneColumnMaxWidth: CGFloat {
+    let width = UIScreen.main.bounds.width
+    precondition(width.isFinite && width > 0, "phone column width must be the screen")
+    return width
+}
 
 /// Desktop `ConversationRoot.module.css` `.titleRow` `{ min-height:30px }`
 /// inside `.header` padding. Shared by landing (`headerBlank`, no tabs) and
@@ -66,12 +76,10 @@ struct ConversationHeaderBox: ViewModifier {
                 .bottom,
                 CGFloat(blank ? conversationHeaderBlankPaddingBottomPoints : 0)
             )
-            // Hug the offered width. `maxWidth: .infinity` advertises an
-            // infinite ideal width; after the model popover dismisses, the
-            // chat VStack remeasures unbounded and composerInput lands at
-            // `{{inf, inf},{0,0}}`. Title row / tabs already have Spacers,
-            // same as b65811e.
+            // Cap at the screen — never `.infinity`. Title/tabs Spacers still
+            // eat the offered width (b65811e). Spacing tokens unchanged.
             .frame(
+                maxWidth: phoneColumnMaxWidth,
                 minHeight: blank ? 0 : CGFloat(conversationHeaderMinHeightPoints),
                 alignment: .top
             )

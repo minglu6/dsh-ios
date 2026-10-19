@@ -2313,5 +2313,5 @@ landing 侧栏 toggle / 鲸 +「探索未至之境」/ composer 贴底 / 统计�
 | 项 | 桌面 | iOS 原状 | 处理 |
 | --- | --- | --- | --- |
 | 设置根页卡四角 | `--dsw-radius-lg` 16；卡外是 `--dsw-alias-bg-base` `#151517` / `#FFFFFF` | 行 `Rectangle` 填色未裁到圆角，四角圆外仍是 settings-card `#2C2C2E` | `settingsNavCard` fill / 行 / stroke 共用同一个 `RoundedRectangle`，`.clipShape`。CI 对四角圆外像素断言 = 页底（light + dark） |
-| models `typeText("保留草稿")` | — | #92 `ConversationHeaderBox` `maxWidth: .infinity` 把 chat 列理想宽报到无穷；菜单关掉后 `composerInput` `{{inf, inf},{0,0}}`。`1ac2fd4` 用屏宽 cap `sizeThatFits` 是补丁，仍会 flake | 去掉 header 的无穷理想宽（跟 `b65811e` 一样靠 Spacer 吃 offered width）。`sizeThatFits` 非有限提案用已布局 bounds，不用 `UIScreen`。不放宽 typeText / 几何 / IME / 滚动收键盘 |
+| models `typeText("保留草稿")` | — | #92 `ConversationHeaderBox` `maxWidth: .infinity` 把 chat 列理想宽报到无穷；菜单关掉后 `composerInput` `{{inf, inf},{0,0}}`。`1ac2fd4` 用屏宽 cap `sizeThatFits` 是补丁，仍会 flake | header / chat / landing 列 `maxWidth` 用屏幕有限宽，不用 `.infinity`。`PhoneColumnChild` 拒绝把 UITextView 放到非有限 origin。`sizeThatFits` 非有限提案用已布局 bounds。不放宽 typeText / 几何 / IME / 滚动收键盘 |
 

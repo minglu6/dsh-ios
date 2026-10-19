@@ -187,6 +187,7 @@ struct RootView: View {
             .onPreferenceChange(LandingComposerHeightKey.self) { landingComposerHeight = $0 }
         }
         .background(T.bg)
+        .frame(maxWidth: phoneColumnMaxWidth)
         .onChange(of: model.composerText) { _ in
             slashMenu.track(trigger: landingSlashTrigger)
             mentionMenu.track(trigger: landingMentionTrigger)
