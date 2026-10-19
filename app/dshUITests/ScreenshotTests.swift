@@ -104,6 +104,12 @@ final class ScreenshotTests: XCTestCase {
                     app.descendants(matching: .any)["start.会话数据诊断"].waitForExistence(timeout: 8),
                     "\(appearance) startLanding missing 会话数据诊断"
                 )
+                XCTAssertFalse(
+                    app.descendants(matching: .any)["start.连接诊断"].exists
+                        || app.staticTexts["连接诊断"].exists
+                        || app.buttons["连接诊断"].exists,
+                    "\(appearance) startLanding still exposes 连接诊断"
+                )
             }
             if screen == "browser" {
                 try assertHostSurfaceFullScreen(app, id: "browserPanel", appearance: appearance)
@@ -233,6 +239,7 @@ final class ScreenshotTests: XCTestCase {
                 )
                 XCTAssertGreaterThanOrEqual(settingsFrame.height, 44, "\(appearance) settings hit shorter than 44pt")
                 XCTAssertGreaterThanOrEqual(hostFrame.height, 44, "\(appearance) host hit shorter than 44pt")
+                assertNoConnectionDiagnostics(app, appearance: appearance, screen: screen)
             }
             if screen == "landing" || screen == "landingMention" || screen == "chat" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
                 XCTAssertFalse(app.images["sidebar.left"].exists, "\(appearance) \(screen) still exposes SF sidebar.left")
@@ -694,6 +701,11 @@ final class ScreenshotTests: XCTestCase {
                     20,
                     "\(appearance) nearby/actions gap \(actionsGap) is not the 12pt Card stack"
                 )
+                assertNoConnectionDiagnostics(app, appearance: appearance, screen: screen)
+                XCTAssertFalse(
+                    app.descendants(matching: .any)["official.ellipsis"].exists,
+                    "\(appearance) connections still exposes overflow ellipsis for 连接诊断"
+                )
             }
             if screen == "trajectory" {
                 XCTAssertTrue(
@@ -877,6 +889,7 @@ final class ScreenshotTests: XCTestCase {
                     app.staticTexts["通用设置"].exists || app.buttons["通用设置"].exists,
                     "\(appearance) settingsShell missing 通用设置 row"
                 )
+                assertNoConnectionDiagnostics(app, appearance: appearance, screen: screen)
             }
             if screen == "chatDock" {
                 XCTAssertTrue(
@@ -949,6 +962,7 @@ final class ScreenshotTests: XCTestCase {
                 )
                 XCTAssertFalse(app.staticTexts["访问模式"].exists, "\(appearance) settings still presents Access-mode sheet")
                 XCTAssertFalse(app.staticTexts["默认权限"].exists, "\(appearance) settings still presents Default-permission sheet")
+                assertNoConnectionDiagnostics(app, appearance: appearance, screen: screen)
                 app.descendants(matching: .any)["settingsPermissionSelect"].firstMatch.tap()
                 XCTAssertTrue(
                     app.descendants(matching: .any)["settingsPermissionMenu"].waitForExistence(timeout: 8),
@@ -1210,6 +1224,18 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertTrue(host.waitForExistence(timeout: 8), "\(appearance) host hit missing after reopen")
         host.tap()
         assertConnectionsIsFullScreen(app, appearance: appearance)
+        assertNoConnectionDiagnostics(app, appearance: appearance, screen: "connections")
+    }
+
+    /// 「连接诊断」/ Copy diagnostic report must stay off every surface that
+    /// used to host it. 「会话数据诊断」is a different feature.
+    private func assertNoConnectionDiagnostics(_ app: XCUIApplication, appearance: String, screen: String) {
+        for label in ["连接诊断", "复制诊断报告", "Connection diagnostics", "Copy diagnostic report"] {
+            XCTAssertFalse(
+                app.staticTexts[label].exists || app.buttons[label].exists || app.menuItems[label].exists,
+                "\(appearance) \(screen) still exposes \(label)"
+            )
+        }
     }
 
     /// Drawer footer Host entry must replace the window with `ConnectionsView`,

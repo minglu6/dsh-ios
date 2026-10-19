@@ -103,6 +103,18 @@ public func connectionsPageTitle(english: Bool) -> String {
     english ? "Remote host" : "远程主机"
 }
 
+/// User decision: iOS does not expose connection diagnostics
+/// (「连接诊断」/ Copy diagnostic report). Android overflow still has
+/// 「复制诊断报告」; that row is not a desktop-parity surface.
+public let connectionsOverflowIncludesDiagnostics = false
+
+/// Titles that must not appear on Phone connection / Settings / drawer.
+public func connectionDiagnosticsForbiddenTitles(english: Bool) -> [String] {
+    english
+        ? ["Connection diagnostics", "Copy diagnostic report"]
+        : ["连接诊断", "复制诊断报告"]
+}
+
 /// Android `ConnectionsScreen` action-card order after 9aa43c4 / 33b97b2:
 /// 扫码 → 配对链接 → 输入地址.
 public enum ConnectionsAction: String, Equatable, Sendable, CaseIterable {
