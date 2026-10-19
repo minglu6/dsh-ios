@@ -2275,7 +2275,11 @@ CI `11c995e` / `f9f8457` artifact `ios-simulator-screenshots` 逐屏对照：
 | Inspector viewfinder / 插件库存 magnifyingglass | **skip** | 无 artwork / 桌面无该搜索槽 |
 | Settings Toggle / 系统 Menu check | **skip** | Round 72 |
 
-## #92 / #93 leftover（`2a39d41` + 设置卡裁切）
+## #94 leftover — title-to-tab 15pt
 
-#92 改过的文件整份回到 `2a39d41`（main CI 39267388424 attempt 2 全绿）。设置卡 `#94` 裁切保留。header 上单独加 `minHeight` 30（`4caed96`）会让 models `typeText("保留草稿")` AX 超时；IME / 键盘收起 / 设置卡四角像素仍绿。因此不改 header 数值——到 tabs 的 10pt 仍是 `2a39d41` 原有 `padding.vertical` 10。不加 identifier / probe / `ignoresSafeArea` / 动画开关 / `sizeThatFits`。
+#94 squash `3765a44`：#92 文件回到 `2a39d41`，设置卡裁切保留。header 间距当时没改——`4caed96` 只加 `minHeight` 30 就会让 models `typeText("保留草稿")` AX 超时。
+
+根因（`4caed96` `*-models.png`）：model picker 叠在 composer 上（占位字从菜单后露出）。`modelChip` / `modelReleaseBadge` 在菜单开着时就在树上，等它们存在并不等于 popover 已关。title row 加高 8pt 把 chip（以及锚在它上面的菜单）往下推，盖住输入框，tap/`typeText` 跟拆除抢 AX（`{{inf, inf},{0,0}}` / Timed out while evaluating UI query）。
+
+修：Flash 点完先 `modelPicker.waitForNonExistence(8)`（和其他 wait 同一预算，不是 skip/retry/放宽），再断言 composer 有限可点，然后 `typeText`。header 只加回桌面 `.titleRow` min-height 30；`.tabs` margin-top 10 仍是原 `padding.vertical` 10。`conversationHeaderTitle` + `chatTab.chat` 断言 title-text→tabs 15±3。不加 wrapper / maxWidth / probe / `ignoresSafeArea` / 动画开关 / `sizeThatFits`。
 

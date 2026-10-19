@@ -420,6 +420,9 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) landing composer floated off the bottom (gap \(gap))"
                 )
             }
+            if screen == "chat" || screen == "chatLong" || screen == "trajectory" {
+                assertConversationHeaderTabGap(app, appearance: appearance, screen: screen)
+            }
             if screen == "chat" || screen == "chatLong" || screen == "changesCard" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "trajectory" {
                 XCTAssertFalse(app.images["clock"].exists, "\(appearance) \(screen) still exposes SF clock on jobs chip")
                 XCTAssertFalse(app.images["clock.fill"].exists, "\(appearance) \(screen) still exposes SF clock.fill on jobs chip")
@@ -1871,6 +1874,20 @@ final class ScreenshotTests: XCTestCase {
             app.staticTexts[flash].firstMatch.tap()
         }
 
+        // 4caed96 `*-models.png`: the picker sits on top of the composer
+        // (placeholder peeks from behind the menu). `modelChip` and
+        // `modelReleaseBadge` stay in the tree while the popover is open,
+        // so waiting on them does not mean the menu has dismissed.
+        // `minHeight: 30` on the title row lowers the chip — and the
+        // popover with it — over the composer, so tap/typeText races AX
+        // (`{{inf, inf},{0,0}}` / "Timed out while evaluating UI query").
+        // Same 8s budget as every other wait here; not a retry or skip.
+        let picker = app.descendants(matching: .any)["modelPicker"].firstMatch
+        XCTAssertTrue(
+            picker.waitForNonExistence(timeout: 8),
+            "\(appearance) model picker still covering composer after Flash pick"
+        )
+
         XCTAssertTrue(
             badge.waitForExistence(timeout: 8),
             "\(appearance) composer chip missing modelReleaseBadge after picking Flash"
@@ -1888,6 +1905,17 @@ final class ScreenshotTests: XCTestCase {
 
         let input = app.textViews["composerInput"]
         XCTAssertTrue(input.waitForExistence(timeout: 8), "\(appearance) composer input missing")
+        let inputFrame = input.frame
+        XCTAssertTrue(
+            inputFrame.minX.isFinite && inputFrame.minY.isFinite
+                && inputFrame.width.isFinite && inputFrame.height.isFinite
+                && inputFrame.width > 1 && inputFrame.height > 1,
+            "\(appearance) composer input frame is not hittable (\(inputFrame))"
+        )
+        XCTAssertTrue(
+            input.isHittable,
+            "\(appearance) composer input is not hittable after picker dismiss (\(inputFrame))"
+        )
         input.tap()
         input.typeText("保留草稿")
         let transcript = app.descendants(matching: .any)["chatTranscript"]
@@ -1928,6 +1956,33 @@ final class ScreenshotTests: XCTestCase {
             "\(appearance) model chip accessible name is not Pro after switching (got \(chip.label))"
         )
         XCTAssertFalse(chip.label.contains("1017"), "\(appearance) Pro chip still exposes 1017")
+    }
+
+    /// Desktop `ConversationRoot.module.css` `.titleRow` min-height 30 with
+    /// 14/20 title, then `.tabs { margin-top: 10px }`. Title maxY → tab minY
+    /// is (30-20)/2 + 10 = 15. Uses the existing title/tab identifiers.
+    private func assertConversationHeaderTabGap(
+        _ app: XCUIApplication,
+        appearance: String,
+        screen: String
+    ) {
+        let title = app.descendants(matching: .any)["conversationHeaderTitle"].firstMatch
+        XCTAssertTrue(
+            title.waitForExistence(timeout: 8),
+            "\(appearance) \(screen) missing conversationHeaderTitle before tab-gap assertion"
+        )
+        let chatTab = app.descendants(matching: .any)["chatTab.chat"].firstMatch
+        XCTAssertTrue(
+            chatTab.waitForExistence(timeout: 8),
+            "\(appearance) \(screen) missing chatTab.chat"
+        )
+        let gap = chatTab.frame.minY - title.frame.maxY
+        XCTAssertEqual(
+            gap,
+            15,
+            accuracy: 3,
+            "\(appearance) \(screen) title-to-tab gap \(gap) is not desktop titleRow 30/20 leftover + tabs margin-top 10 (title \(title.frame) tab \(chatTab.frame))"
+        )
     }
 
     private func assertOfficialMenuChrome(_ app: XCUIApplication, appearance: String, screen: String) {

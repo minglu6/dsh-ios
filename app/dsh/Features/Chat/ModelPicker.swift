@@ -266,6 +266,7 @@ struct ModelPicker: View {
             }
         }
         .padding(CGFloat(permissionMenuPaddingPoints))
+        .accessibilityIdentifier("modelPicker")
         .onChange(of: enabled) { value in
             if !value { submitting = nil }
         }

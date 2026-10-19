@@ -213,6 +213,7 @@ struct ChatView: View {
                     .font(.headline)
                     .foregroundStyle(T.ink)
                     .lineLimit(1)
+                    .accessibilityIdentifier("conversationHeaderTitle")
             }
             Spacer()
             Button {
@@ -228,6 +229,11 @@ struct ChatView: View {
             .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier("openStartPanel")
         }
+        // Desktop ConversationRoot.module.css `.titleRow { min-height: 30px }`
+        // then `.tabs { margin-top: 10px }`. The 10pt tab gap is the existing
+        // padding.vertical; minHeight 30 is the leftover above/below the
+        // 14/20 title so title-text → tabs is 15.
+        .frame(minHeight: 30)
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
         .background(T.surface)
