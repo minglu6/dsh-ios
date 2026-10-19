@@ -1275,7 +1275,9 @@ public func isForbiddenLandingFishSymbol(_ name: String) -> Bool {
     name == "fish" || name == "fish.fill" || name == "fish.circle"
 }
 
-/// Space above the composer (already keyboard-avoided) minus a hairline margin.
+/// Overlay slot above the composer (already keyboard-avoided) minus a hairline
+/// margin. This is the *slot*, not the card: never stretch `MenuView` to fill
+/// it (`inputTriggerMenuCardMaxHeight` caps the card at 400pt and hugs rows).
 /// Never invent a floor taller than the remaining viewport — that is what
 /// squeezed the slash list into a 3-page scroller under the iOS keyboard.
 public func commandMenuAvailableHeight(containerHeight: Double, margin: Double = 8) -> Double {

@@ -1037,6 +1037,13 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertFalse(app.images["square.and.arrow.down"].exists, "\(appearance) slash still uses SF download")
                 XCTAssertTrue(app.staticTexts["权限"].waitForExistence(timeout: 8), "\(appearance) slash missing 权限")
                 assertOfficialMenuChrome(app, appearance: appearance, screen: screen)
+                try assertInputTriggerMenuHugsContent(
+                    app,
+                    identifier: "slashMenu",
+                    appearance: appearance,
+                    screen: screen,
+                    maxWindowFraction: 0.55
+                )
             }
             if screen == "models" {
                 assertOfficialMenuChrome(app, appearance: appearance, screen: screen)
@@ -1102,6 +1109,13 @@ final class ScreenshotTests: XCTestCase {
                     app.descendants(matching: .any)["mentionMenu"].waitForExistence(timeout: 8),
                     "\(appearance) \(screen) missing desktop mentionMenu"
                 )
+                try assertInputTriggerMenuHugsContent(
+                    app,
+                    identifier: "mentionMenu",
+                    appearance: appearance,
+                    screen: screen,
+                    maxWindowFraction: 0.42
+                )
                 XCTAssertTrue(
                     app.staticTexts["文件与文件夹"].waitForExistence(timeout: 8),
                     "\(appearance) \(screen) missing desktop Files & folders header"
@@ -1129,6 +1143,13 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertTrue(
                     app.descendants(matching: .any)["mentionMenu"].waitForExistence(timeout: 8),
                     "\(appearance) mentionFiltered missing desktop mentionMenu"
+                )
+                try assertInputTriggerMenuHugsContent(
+                    app,
+                    identifier: "mentionMenu",
+                    appearance: appearance,
+                    screen: screen,
+                    maxWindowFraction: 0.32
                 )
                 XCTAssertTrue(
                     app.staticTexts["README.md"].waitForExistence(timeout: 8),
@@ -1759,6 +1780,36 @@ final class ScreenshotTests: XCTestCase {
         attachment.name = "\(appearance.lowercased())-\(name)"
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+
+    private func assertInputTriggerMenuHugsContent(
+        _ app: XCUIApplication,
+        identifier: String,
+        appearance: String,
+        screen: String,
+        maxWindowFraction: CGFloat
+    ) throws {
+        let menu = app.descendants(matching: .any)[identifier].firstMatch
+        XCTAssertTrue(
+            menu.waitForExistence(timeout: 8),
+            "\(appearance) \(screen) missing \(identifier)"
+        )
+        let window = app.windows.firstMatch.frame
+        XCTAssertGreaterThan(
+            menu.frame.height,
+            40,
+            "\(appearance) \(screen) \(identifier) collapsed (\(menu.frame) vs \(window))"
+        )
+        XCTAssertLessThan(
+            menu.frame.height,
+            window.height * maxWindowFraction,
+            "\(appearance) \(screen) \(identifier) stretched to fill leftover height (\(menu.frame) vs \(window))"
+        )
+        XCTAssertLessThanOrEqual(
+            menu.frame.height,
+            424,
+            "\(appearance) \(screen) \(identifier) exceeded desktop MenuView max-height 400 (\(menu.frame))"
+        )
     }
 
     private func assertUserBubbleHugsContent(

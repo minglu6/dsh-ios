@@ -35,16 +35,12 @@ struct MentionMenuOverlay: View {
         model.mentionLoading && rows.isEmpty
     }
 
+    private var cardMaxHeight: CGFloat {
+        CGFloat(inputTriggerMenuCardMaxHeight(availableHeight: Double(availableHeight)))
+    }
+
     var body: some View {
         menuCard
-            .frame(
-                maxWidth: .infinity,
-                maxHeight: min(
-                    availableHeight > 0 ? availableHeight : CGFloat(mentionMenuMaxHeightPoints),
-                    CGFloat(mentionMenuMaxHeightPoints)
-                ),
-                alignment: .bottom
-            )
             .onAppear { highlight = mentionDefaultHighlight(rowCount: rows.count) }
             .onChange(of: query) { _ in highlight = mentionDefaultHighlight(rowCount: rows.count) }
             .onChange(of: rows.count) { _ in
@@ -74,22 +70,29 @@ struct MentionMenuOverlay: View {
     }
 
     private var menuCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if !crumbs.isEmpty { crumbBar }
-            if showSkeleton {
-                skeleton
-            } else {
-                rowList
+        ScrollViewReader { proxy in
+            MenuViewViewport(maxHeight: cardMaxHeight) {
+                VStack(alignment: .leading, spacing: 0) {
+                    if !crumbs.isEmpty { crumbBar }
+                    if showSkeleton {
+                        skeleton
+                    } else {
+                        rowList
+                    }
+                }
+                .padding(CGFloat(mentionMenuPaddingPoints))
+            }
+            .onChange(of: highlight) { value in
+                if let value { proxy.scrollTo(value, anchor: .center) }
             }
         }
-        .padding(CGFloat(mentionMenuPaddingPoints))
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .background(T.settingsCard)
         .overlay(
-            RoundedRectangle(cornerRadius: CGFloat(mentionMenuSurfaceRadiusPoints), style: .continuous)
+            RoundedRectangle(cornerRadius: CGFloat(mentionMenuSurfaceRadiusPoints), style: .circular)
                 .stroke(T.borderL1, lineWidth: CGFloat(mentionMenuStrokeWidthPoints))
         )
-        .clipShape(RoundedRectangle(cornerRadius: CGFloat(mentionMenuSurfaceRadiusPoints), style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: CGFloat(mentionMenuSurfaceRadiusPoints), style: .circular))
         .shadow(
             color: Color.black.opacity(mentionMenuShadowOpacity),
             radius: CGFloat(mentionMenuShadowRadiusPoints),
@@ -150,25 +153,18 @@ struct MentionMenuOverlay: View {
     }
 
     private var rowList: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
-                        if index == 0 || rows[index - 1].section != row.section {
-                            Text(mentionSectionTitle(row.section, english: L.en))
-                                .font(.system(size: CGFloat(mentionMenuSectionTitleFontSizePoints), weight: .medium))
-                                .foregroundStyle(T.text3)
-                                .padding(.top, index == 0 ? CGFloat(mentionMenuSectionTitlePaddingTopPoints) : CGFloat(mentionMenuSectionTitlePaddingTopPoints + mentionMenuSectionTitleGapPoints))
-                                .padding(.bottom, CGFloat(mentionMenuSectionTitlePaddingBottomPoints))
-                                .padding(.horizontal, CGFloat(mentionMenuSectionTitlePaddingHorizontalPoints))
-                                .frame(minHeight: CGFloat(mentionMenuSectionTitleMinHeightPoints), alignment: .leading)
-                        }
-                        rowButton(row, index: index)
-                    }
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
+                if index == 0 || rows[index - 1].section != row.section {
+                    Text(mentionSectionTitle(row.section, english: L.en))
+                        .font(.system(size: CGFloat(mentionMenuSectionTitleFontSizePoints), weight: .medium))
+                        .foregroundStyle(T.text3)
+                        .padding(.top, index == 0 ? CGFloat(mentionMenuSectionTitlePaddingTopPoints) : CGFloat(mentionMenuSectionTitlePaddingTopPoints + mentionMenuSectionTitleGapPoints))
+                        .padding(.bottom, CGFloat(mentionMenuSectionTitlePaddingBottomPoints))
+                        .padding(.horizontal, CGFloat(mentionMenuSectionTitlePaddingHorizontalPoints))
+                        .frame(minHeight: CGFloat(mentionMenuSectionTitleMinHeightPoints), alignment: .leading)
                 }
-            }
-            .onChange(of: highlight) { value in
-                if let value { proxy.scrollTo(value, anchor: .center) }
+                rowButton(row, index: index)
             }
         }
     }
