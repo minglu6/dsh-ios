@@ -323,6 +323,7 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) chat missing cache-hit pill copy"
                 )
                 XCTAssertFalse(app.staticTexts["缓存命中中 69%"].exists, "\(appearance) chat has extra 中 in cache-hit copy")
+                assertComposerStatsCentered(app, appearance: appearance, composerId: "chatComposer")
             }
             if screen == "plugins" {
                 XCTAssertFalse(app.images["chevron.left"].exists, "\(appearance) plugins still exposes SF chevron.left")
@@ -1476,6 +1477,42 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertTrue(
             waitUntil(timeout: 4) { self.pairingLinkFieldValue(element) == value },
             "pairing-link field was \(pairingLinkFieldValue(element)), expected \(value)"
+        )
+    }
+
+    /// User decision 2026-10-19: the statistics pills sit under the composer
+    /// and must share its horizontal center. Measure the first/last pill so a
+    /// full-width `maxWidth` container cannot satisfy a left-aligned row.
+    private func assertComposerStatsCentered(
+        _ app: XCUIApplication,
+        appearance: String,
+        composerId: String
+    ) {
+        let composer = app.descendants(matching: .any)[composerId].firstMatch
+        XCTAssertTrue(
+            composer.waitForExistence(timeout: 8),
+            "\(appearance) missing \(composerId)"
+        )
+        let stats = app.descendants(matching: .any)["composerStats"].firstMatch
+        XCTAssertTrue(
+            stats.waitForExistence(timeout: 8),
+            "\(appearance) missing composerStats under \(composerId)"
+        )
+        let leading = app.descendants(matching: .any)["official.gaugeOutline"].firstMatch
+        let trailing = app.descendants(matching: .any).matching(
+            NSPredicate(format: "label == %@", "上下文已用 2%")
+        ).firstMatch
+        XCTAssertTrue(leading.exists, "\(appearance) composerStats missing leading gauge")
+        XCTAssertTrue(
+            trailing.waitForExistence(timeout: 8),
+            "\(appearance) composerStats missing context meter"
+        )
+        let rowMidX = (leading.frame.minX + trailing.frame.maxX) / 2
+        XCTAssertEqual(
+            rowMidX,
+            composer.frame.midX,
+            accuracy: 1,
+            "\(appearance) composerStats midX \(rowMidX) is not centered on \(composerId) midX \(composer.frame.midX) (pills \(leading.frame.minX)–\(trailing.frame.maxX) vs composer \(composer.frame))"
         )
     }
 

@@ -45,7 +45,9 @@ struct ComposerStats: View {
             EmptyView()
         } else {
             HStack(spacing: 12) { pills }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier(composerStatisticsRowIdentifier())
+            .frame(maxWidth: .infinity, alignment: .center)
             .lineLimit(1)
             .padding(.horizontal, 14)
             .padding(.vertical, 2)

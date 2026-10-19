@@ -690,6 +690,17 @@ public func jobsPopoverWidth(screenWidth: Double) -> Double {
 /// Desktop statistics row uses `tok`, not `tokens`.
 public let composerStatisticsTokenUnit = "tok"
 
+/// User decision 2026-10-19: explicit exception to desktop `StatsPills`
+/// start alignment. Phone centers the statistics pills under the composer.
+/// Icons, type, color, inter-item spacing, vertical position, popovers, and
+/// show/hide rules stay as on desktop.
+public let composerStatisticsRowCentersUnderComposer = true
+/// XCUITest: content-sized pills row, not the expanding `maxWidth` frame.
+public func composerStatisticsRowIdentifier() -> String { "composerStats" }
+/// Chat page composer card. Landing already uses `landingComposer`.
+public func chatComposerIdentifier() -> String { "chatComposer" }
+public let composerStatisticsRowCenterTolerancePoints: Double = 1
+
 /// Desktop usage chip opens an anchored popover, not a full-screen sheet.
 public let composerSessionUsageIsPopover = true
 /// Desktop `useStatDialog` (`side: 'top'`) places the panel above the chip.
