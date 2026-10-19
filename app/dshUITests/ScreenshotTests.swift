@@ -6,7 +6,7 @@ final class ScreenshotTests: XCTestCase {
     private let screens = [
         "landing", "drawer", "viewOptions", "sessionActions", "chat", "planMode", "mention",
         "turnTrigger", "filePreview",
-        "models", "permission", "start", "browser", "inspector",
+        "models", "permission", "start", "startLanding", "browser", "inspector",
         "settings", "settingsShell", "schedule", "terminal", "files", "trajectory", "plugins", "connections",
         "composerStop", "slash", "jobs", "builtinPlugins", "trajectoryDetail",
         "chatDock",
@@ -89,6 +89,19 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) start left a large blank above the Guide cards (\(files.frame) vs \(panel.frame))"
                 )
                 assertOfficialMenuChrome(app, appearance: appearance, screen: screen)
+            }
+            if screen == "startLanding" {
+                let open = app.descendants(matching: .any)["openStartPanel"]
+                XCTAssertTrue(
+                    open.waitForExistence(timeout: 8),
+                    "\(appearance) startLanding missing openStartPanel"
+                )
+                open.firstMatch.tap()
+                try assertHostSurfaceFullScreen(app, id: "startPanel", appearance: appearance)
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["start.会话数据诊断"].waitForExistence(timeout: 8),
+                    "\(appearance) startLanding missing 会话数据诊断"
+                )
             }
             if screen == "browser" {
                 try assertHostSurfaceFullScreen(app, id: "browserPanel", appearance: appearance)
@@ -1051,11 +1064,13 @@ final class ScreenshotTests: XCTestCase {
                 )
                 XCTAssertFalse(app.images["checkmark"].exists, "\(appearance) slash still uses SF checkmark")
             }
-            if screen == "start" || screen == "browser" || screen == "inspector" {
+            if screen == "start" || screen == "startLanding" || screen == "browser" || screen == "inspector" {
                 let back = app.buttons["navBack"]
                 XCTAssertTrue(back.waitForExistence(timeout: 4), "\(appearance) \(screen) back gone before tap")
                 back.tap()
-                let surfaceId = screen == "start" ? "startPanel" : (screen == "browser" ? "browserPanel" : "sessionInspector")
+                let surfaceId = (screen == "start" || screen == "startLanding")
+                    ? "startPanel"
+                    : (screen == "browser" ? "browserPanel" : "sessionInspector")
                 XCTAssertFalse(
                     app.descendants(matching: .any)[surfaceId].waitForExistence(timeout: 4),
                     "\(appearance) \(screen) did not dismiss after back"

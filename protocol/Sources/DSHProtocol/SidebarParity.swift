@@ -1,4 +1,6 @@
 /// Desktop `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5` sidebar inventory.
+/// Session inspector is an optional-bundle Guide card
+/// (`@deepseek-ai/dsh-experimental-session-inspector@0.2.1-alpha.5`, order 60).
 ///
 /// Right column (`ui-sidebar-right` + tab providers in `dsh-web-app` `cordis.patch.yml`):
 /// the header corner button expands a dock whose default page is the Guide.
@@ -29,7 +31,9 @@ public struct DesktopSidebarEntry: Equatable, Sendable {
 }
 
 public enum DesktopSidebarInventory {
-    /// Desktop right-sidebar Guide cards, in `order`.
+    /// Official desktop right-sidebar Guide cards, in `order` (10/20/30).
+    /// Desktop also shows session inspector as an optional-bundle Guide card
+    /// (`session-inspector-log` order 60); see `desktopGuideIncludesSessionInspector`.
     public static let rightGuideCards: [(id: String, order: Int, zh: String, en: String, zhHint: String, enHint: String)] = [
         ("workspace", 10, "工作区文件", "Workspace files", "浏览会话工作区的文件", "Browse files in this session's workspace"),
         ("new", 20, "新建终端", "New terminal", "在会话工作区运行命令", "Run commands in the Session workspace"),
@@ -51,7 +55,7 @@ public enum DesktopSidebarInventory {
             official: false,
             zh: "会话数据诊断",
             en: "Session diagnostics",
-            packageId: "android SessionInspectorPanel / iOS SessionInspectorPanel"
+            packageId: "@deepseek-ai/dsh-experimental-session-inspector"
         ),
     ]
 
@@ -60,7 +64,14 @@ public enum DesktopSidebarInventory {
     }
 
     public static var desktopGuideIncludesBrowser: Bool { true }
-    public static var desktopGuideIncludesSessionInspector: Bool { false }
+    /// Desktop shows it as an optional-bundle Guide card (session-inspector order 60).
+    /// `@deepseek-ai/dsh-experimental-session-inspector@0.2.1-alpha.5`
+    /// `client.js:4133-4143` registers `kind: "session-inspector-log"` with
+    /// `guide: [{ id: "open", order: 60, title: t("tab.title"), description: t("tab.description") }]`.
+    /// zh `client.js:19-20`: 「会话数据诊断」 / 「在侧边栏分析当前会话原始日志和聊天分组数据」.
+    /// `ui-sidebar-right` `guide()` (`client.js:4538`) and `GuideBody` (`:507-535`)
+    /// render every registered type; they are not filtered by session state.
+    public static var desktopGuideIncludesSessionInspector: Bool { true }
 }
 
 public enum ViewOptionsSection: String, Equatable, Sendable, CaseIterable {

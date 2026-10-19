@@ -10,7 +10,7 @@ final class SidebarParityTests: XCTestCase {
     }
 
     func testSessionInspectorIsNotADesktopGuideCard() {
-        XCTAssertFalse(DesktopSidebarInventory.desktopGuideIncludesSessionInspector)
+        XCTAssertTrue(DesktopSidebarInventory.desktopGuideIncludesSessionInspector)
         let inspector = DesktopSidebarInventory.entries.first { $0.surface == .rightSessionInspector }
         XCTAssertEqual(inspector?.official, false)
         XCTAssertEqual(inspector?.zh, "会话数据诊断")

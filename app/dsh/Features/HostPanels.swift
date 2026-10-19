@@ -46,7 +46,7 @@ struct HostPanelView: View {
                     onFiles: { openWorkspaceSurface(.files) },
                     onTerminal: { openWorkspaceSurface(.terminal) },
                     onBrowser: { model.push(.panel(.browser)) },
-                    onInspector: { model.push(.panel(.inspector)) },
+                    onInspector: { openWorkspaceSurface(.inspector) },
                     onDismiss: { model.pop() }
                 )
             case .settings:
@@ -83,7 +83,7 @@ struct HostPanelView: View {
     }
 
     /// Desktop new-session page is a blank session. The iOS landing is
-    /// session-less, so Files / Terminal first create that session.
+    /// session-less, so Files / Terminal / Inspector first create that session.
     private func openWorkspaceSurface(_ panel: DrawerPanel) {
         if model.chat != nil {
             model.push(.panel(panel))
@@ -111,9 +111,10 @@ struct HostPanelView: View {
 
 }
 
-/// Desktop Start / Guide: files + terminal + browser (order 10/20/30).
-/// Session inspector is not a desktop Guide card; it is appended on the phone
-/// so the Android diagnostics surface has a visible entry.
+/// Desktop Start / Guide: files + terminal + browser (order 10/20/30) plus
+/// the optional-bundle session-inspector card (`session-inspector-log` order 60).
+/// Desktop shows it as an optional-bundle Guide card; iOS always lists it
+/// (no host capability flag), matching Android `RightPanel`.
 struct StartPanel: View {
     @ObservedObject var model: AppModel
     var onFiles: () -> Void
@@ -132,7 +133,7 @@ struct StartPanel: View {
                             files: model.canShowFiles,
                             terminal: model.canShowTerminal,
                             browser: true,
-                            inspector: model.chat?.sessionId != nil
+                            inspector: true
                         ),
                         id: \.self
                     ) { entry in
@@ -170,7 +171,7 @@ struct StartPanel: View {
                         case .sessionInspector:
                             guideEntry(
                                 L.sessionInspector(),
-                                L.sessionInspector(),
+                                L.sessionInspectorHint(),
                                 .slidersTwo,
                                 tint: T.ink,
                                 shortcut: StartPanelPolicy.shortcut(entry),

@@ -67,6 +67,11 @@ enum L {
     static func downloadSessionLog() -> String { downloadSessionLogLabel(english: en) }
     static func pairingCode() -> String { pairingCodeFieldLabel(english: en) }
     static func sessionInspector() -> String { en ? "Session diagnostics" : "会话数据诊断" }
+    static func sessionInspectorHint() -> String {
+        en
+            ? "Analyze raw logs and grouped chat messages for the current session in the sidebar."
+            : "在侧边栏分析当前会话原始日志和聊天分组数据"
+    }
     static func browser() -> String { en ? "Browser" : "浏览器" }
     static func browserHint() -> String { en ? "Browse web pages" : "浏览网页" }
     static func groupByLabel() -> String { ViewOptionsMenuPolicy.title(.groupBy, english: en) }

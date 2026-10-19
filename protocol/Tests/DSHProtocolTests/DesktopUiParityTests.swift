@@ -69,9 +69,13 @@ final class DesktopUiParityTests: XCTestCase {
             [.newTerminal]
         )
         XCTAssertTrue(StartPanelPolicy.entries(files: false, terminal: false, browser: false, inspector: false).isEmpty)
+        XCTAssertEqual(
+            StartPanelPolicy.entries(files: true, terminal: true, browser: true, inspector: true).last,
+            .sessionInspector
+        )
         XCTAssertTrue(StartPanelPolicy.includesBrowser)
         XCTAssertTrue(StartPanelPolicy.includesSessionInspector)
-        XCTAssertFalse(StartPanelPolicy.desktopGuideIncludesSessionInspector)
+        XCTAssertTrue(StartPanelPolicy.desktopGuideIncludesSessionInspector)
         XCTAssertEqual(DesktopSidebarInventory.rightGuideCards.map(\.id), ["workspace", "new", "browser"])
         XCTAssertEqual(StartPanelPolicy.desktopShortcut(.workspaceFiles), "⌘P")
         XCTAssertNil(StartPanelPolicy.desktopShortcut(.newTerminal))
@@ -201,7 +205,7 @@ final class DesktopUiParityTests: XCTestCase {
 
     func testDesktopGuideHasBrowserButNotSessionInspector() {
         XCTAssertTrue(DesktopSidebarInventory.desktopGuideIncludesBrowser)
-        XCTAssertFalse(DesktopSidebarInventory.desktopGuideIncludesSessionInspector)
+        XCTAssertTrue(DesktopSidebarInventory.desktopGuideIncludesSessionInspector)
         XCTAssertEqual(ViewOptionsMenuPolicy.label(.groupWorkspace, english: true), "WorkSpace")
         XCTAssertEqual(ViewOptionsMenuPolicy.label(.groupFlat, english: false), "单列表")
         XCTAssertEqual(SchedulePagePolicy.headerNewLabel(english: false), "新建")
