@@ -76,7 +76,7 @@ final class MentionPolicyTests: XCTestCase {
             ]))!,
         ]
         let listed = [
-            SessionSummary(sessionId: "child", title: "Child", origin: "subagent", parentSessionId: "current"),
+            SessionSummary(sessionId: "child", title: "Child", parentSessionId: "current", origin: "subagent"),
             SessionSummary(sessionId: "other", title: "Design", cwd: "/tmp/other"),
         ]
         let rows = mentionRows(
@@ -90,7 +90,7 @@ final class MentionPolicyTests: XCTestCase {
             now: 0,
             english: false
         )
-        XCTAssertEqual(rows.map(\.section), [.files, .subagents, .sessions])
+        XCTAssertEqual(rows.map(\.section), [MentionSection.files, .subagents, .sessions])
         XCTAssertEqual(rows.map(\.title), ["README.md", "Child", "Design"])
         XCTAssertEqual(
             mentionRows(
@@ -104,7 +104,7 @@ final class MentionPolicyTests: XCTestCase {
                 now: 0,
                 english: false
             ).map(\.section),
-            [.files]
+            [MentionSection.files]
         )
     }
 
