@@ -538,11 +538,18 @@ func nav<Icon: View>(
             .padding(.top, CGFloat(settingsNavCellPaddingTopPoints))
             .padding(.bottom, CGFloat(settingsNavCellPaddingBottomPoints))
             .frame(minHeight: CGFloat(settingsNavCellHeightPoints), alignment: .center)
+            .contentShape(Rectangle())
+            .background {
+                Rectangle()
+                    .fill(T.settingsCard)
+                    .accessibilityElement()
+                    .accessibilityIdentifier(settingsNavRowIdentifier(row.rawValue))
+                    .allowsHitTesting(false)
+            }
             .opacity(enabled ? 1 : 0.5)
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .contain)
-        .accessibilityIdentifier(settingsNavRowIdentifier(row.rawValue))
         .disabled(!enabled)
         if divider { Divider().padding(.leading, 16) }
     }

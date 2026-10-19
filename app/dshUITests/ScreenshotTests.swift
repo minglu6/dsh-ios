@@ -1306,6 +1306,15 @@ final class ScreenshotTests: XCTestCase {
         assertNoConnectionDiagnostics(app, appearance: appearance, screen: "connections")
     }
 
+    private func unionAccessibilityFrame(_ app: XCUIApplication, identifier: String) -> CGRect {
+        let query = app.descendants(matching: .any).matching(identifier: identifier)
+        var frame = CGRect.null
+        for i in 0..<query.count {
+            frame = frame.union(query.element(boundBy: i).frame)
+        }
+        return frame
+    }
+
     /// Desktop `SettingsRoot.module.css` `.nav` gap 18, `.navCell` height 40,
     /// icon↔label gap 8. Phone header identifier is the full title bar so the
     /// measured gap is bar → card (not title-glyph box → card).
@@ -1327,24 +1336,28 @@ final class ScreenshotTests: XCTestCase {
             accuracy: 2,
             "\(appearance) settingsShell header-to-card gap \(gap) is not desktop .nav gap 18 (header \(header.frame) card \(card.frame))"
         )
-        let general = app.descendants(matching: .any)["settingsNavRow.general"].firstMatch
         XCTAssertTrue(
-            general.waitForExistence(timeout: 8),
+            app.descendants(matching: .any)["settingsNavRow.general"].waitForExistence(timeout: 8),
             "\(appearance) settingsShell missing settingsNavRow.general"
         )
-        XCTAssertEqual(
-            general.frame.height,
-            40,
-            accuracy: 2,
-            "\(appearance) settingsShell general row height \(general.frame.height) is not desktop .navCell 40"
+        let general = unionAccessibilityFrame(app, identifier: "settingsNavRow.general")
+        XCTAssertFalse(
+            general.isNull,
+            "\(appearance) settingsShell settingsNavRow.general frame is empty"
         )
-        let models = app.descendants(matching: .any)["settingsNavRow.models"].firstMatch
-        XCTAssertTrue(models.exists, "\(appearance) settingsShell missing settingsNavRow.models")
         XCTAssertEqual(
-            models.frame.height,
+            general.height,
             40,
             accuracy: 2,
-            "\(appearance) settingsShell models row height \(models.frame.height) is not desktop .navCell 40"
+            "\(appearance) settingsShell general row height \(general.height) is not desktop .navCell 40 (\(general))"
+        )
+        let models = unionAccessibilityFrame(app, identifier: "settingsNavRow.models")
+        XCTAssertFalse(models.isNull, "\(appearance) settingsShell missing settingsNavRow.models")
+        XCTAssertEqual(
+            models.height,
+            40,
+            accuracy: 2,
+            "\(appearance) settingsShell models row height \(models.height) is not desktop .navCell 40 (\(models))"
         )
         let icon = app.descendants(matching: .any)["official.settingsOutlineRegular"].firstMatch
         XCTAssertTrue(icon.exists, "\(appearance) settingsShell missing general icon for gap")
