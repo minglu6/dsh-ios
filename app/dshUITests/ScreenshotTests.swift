@@ -12,6 +12,7 @@ final class ScreenshotTests: XCTestCase {
         "composerStop", "slash", "jobs", "builtinPlugins", "trajectoryDetail",
         "chatDock",
         "terminalUnavailable", "terminalMissing", "terminalDisconnected", "terminalExited",
+        "terminalSwitcher",
     ]
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool { false }
@@ -102,6 +103,12 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertTrue(
                     app.descendants(matching: .any)["start.会话数据诊断"].waitForExistence(timeout: 8),
                     "\(appearance) startLanding missing 会话数据诊断"
+                )
+                XCTAssertFalse(
+                    app.descendants(matching: .any)["start.连接诊断"].exists
+                        || app.staticTexts["连接诊断"].exists
+                        || app.buttons["连接诊断"].exists,
+                    "\(appearance) startLanding still exposes 连接诊断"
                 )
             }
             if screen == "browser" {
@@ -232,6 +239,7 @@ final class ScreenshotTests: XCTestCase {
                 )
                 XCTAssertGreaterThanOrEqual(settingsFrame.height, 44, "\(appearance) settings hit shorter than 44pt")
                 XCTAssertGreaterThanOrEqual(hostFrame.height, 44, "\(appearance) host hit shorter than 44pt")
+                assertNoConnectionDiagnostics(app, appearance: appearance, screen: screen)
             }
             if screen == "landing" || screen == "landingMention" || screen == "chat" || screen == "chatLong" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
                 XCTAssertFalse(app.images["sidebar.left"].exists, "\(appearance) \(screen) still exposes SF sidebar.left")
@@ -323,6 +331,7 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) \(screen) missing cache-hit pill copy"
                 )
                 XCTAssertFalse(app.staticTexts["缓存命中中 69%"].exists, "\(appearance) \(screen) has extra 中 in cache-hit copy")
+                assertComposerStatsCentered(app, appearance: appearance, composerId: "chatComposer")
             }
             if screen == "plugins" {
                 XCTAssertFalse(app.images["chevron.left"].exists, "\(appearance) plugins still exposes SF chevron.left")
@@ -463,7 +472,8 @@ final class ScreenshotTests: XCTestCase {
             }
             if screen == "schedule" || screen == "terminal" || screen == "files"
                 || screen == "terminalUnavailable" || screen == "terminalMissing"
-                || screen == "terminalDisconnected" || screen == "terminalExited" {
+                || screen == "terminalDisconnected" || screen == "terminalExited"
+                || screen == "terminalSwitcher" {
                 XCTAssertFalse(app.images["chevron.left"].exists, "\(appearance) \(screen) still exposes SF chevron.left")
                 XCTAssertTrue(
                     app.descendants(matching: .any)["official.chevronLeft"].waitForExistence(timeout: 8),
@@ -529,6 +539,45 @@ final class ScreenshotTests: XCTestCase {
                     value.contains("preserved-shell-output"),
                     "\(appearance) terminalDisconnected lost the screen text (got \(value))"
                 )
+            }
+            if screen == "terminalSwitcher" {
+                let trigger = app.descendants(matching: .any)["terminalSwitcherButton"].firstMatch
+                XCTAssertTrue(trigger.waitForExistence(timeout: 8), "\(appearance) terminalSwitcher missing title trigger")
+                trigger.tap()
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["terminalSwitcherMenu"].waitForExistence(timeout: 8),
+                    "\(appearance) terminalSwitcher missing custom MenuSurface"
+                )
+                XCTAssertTrue(app.staticTexts["终端会话"].waitForExistence(timeout: 4), "\(appearance) terminalSwitcher missing 终端会话")
+                let first = app.descendants(matching: .any)["terminalSwitcher.row.term-a"].firstMatch
+                let second = app.descendants(matching: .any)["terminalSwitcher.row.term-b"].firstMatch
+                XCTAssertTrue(first.waitForExistence(timeout: 8), "\(appearance) terminalSwitcher missing first zsh row")
+                XCTAssertTrue(second.waitForExistence(timeout: 4), "\(appearance) terminalSwitcher missing second zsh row")
+                XCTAssertGreaterThanOrEqual(
+                    app.staticTexts.matching(NSPredicate(format: "label == %@", "zsh")).count,
+                    2,
+                    "\(appearance) terminalSwitcher does not list 2+ terminals"
+                )
+                XCTAssertTrue(first.isSelected, "\(appearance) terminalSwitcher current row is not marked selected")
+                XCTAssertFalse(second.isSelected, "\(appearance) terminalSwitcher marked the inactive zsh row")
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.checkOutline"].exists,
+                    "\(appearance) terminalSwitcher missing current-item check"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.terminalTab"].exists,
+                    "\(appearance) terminalSwitcher missing desktop TerminalIcon"
+                )
+                XCTAssertTrue(app.buttons["新建终端"].exists, "\(appearance) terminalSwitcher missing 新建终端")
+                XCTAssertTrue(app.buttons["关闭"].exists, "\(appearance) terminalSwitcher missing 关闭")
+                XCTAssertFalse(
+                    app.staticTexts["关闭终端？"].exists || app.buttons["关闭终端？"].exists,
+                    "\(appearance) terminalSwitcher still shows 关闭终端？ confirmation"
+                )
+                XCTAssertFalse(app.images["terminal"].exists, "\(appearance) terminalSwitcher still exposes SF terminal")
+                XCTAssertFalse(app.images["checkmark"].exists, "\(appearance) terminalSwitcher still exposes SF checkmark")
+                XCTAssertFalse(app.images["plus"].exists, "\(appearance) terminalSwitcher still exposes SF plus")
+                XCTAssertFalse(app.images["xmark"].exists, "\(appearance) terminalSwitcher still exposes SF xmark")
             }
             if screen == "terminalExited" {
                 XCTAssertTrue(
@@ -652,6 +701,11 @@ final class ScreenshotTests: XCTestCase {
                     actionsGap,
                     20,
                     "\(appearance) nearby/actions gap \(actionsGap) is not the 12pt Card stack"
+                )
+                assertNoConnectionDiagnostics(app, appearance: appearance, screen: screen)
+                XCTAssertFalse(
+                    app.descendants(matching: .any)["official.ellipsis"].exists,
+                    "\(appearance) connections still exposes overflow ellipsis for 连接诊断"
                 )
             }
             if screen == "trajectory" {
@@ -855,6 +909,7 @@ final class ScreenshotTests: XCTestCase {
                     app.staticTexts["通用设置"].exists || app.buttons["通用设置"].exists,
                     "\(appearance) settingsShell missing 通用设置 row"
                 )
+                assertNoConnectionDiagnostics(app, appearance: appearance, screen: screen)
             }
             if screen == "chatDock" {
                 XCTAssertTrue(
@@ -927,6 +982,7 @@ final class ScreenshotTests: XCTestCase {
                 )
                 XCTAssertFalse(app.staticTexts["访问模式"].exists, "\(appearance) settings still presents Access-mode sheet")
                 XCTAssertFalse(app.staticTexts["默认权限"].exists, "\(appearance) settings still presents Default-permission sheet")
+                assertNoConnectionDiagnostics(app, appearance: appearance, screen: screen)
                 app.descendants(matching: .any)["settingsPermissionSelect"].firstMatch.tap()
                 XCTAssertTrue(
                     app.descendants(matching: .any)["settingsPermissionMenu"].waitForExistence(timeout: 8),
@@ -1194,6 +1250,18 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertTrue(host.waitForExistence(timeout: 8), "\(appearance) host hit missing after reopen")
         host.tap()
         assertConnectionsIsFullScreen(app, appearance: appearance)
+        assertNoConnectionDiagnostics(app, appearance: appearance, screen: "connections")
+    }
+
+    /// 「连接诊断」/ Copy diagnostic report must stay off every surface that
+    /// used to host it. 「会话数据诊断」is a different feature.
+    private func assertNoConnectionDiagnostics(_ app: XCUIApplication, appearance: String, screen: String) {
+        for label in ["连接诊断", "复制诊断报告", "Connection diagnostics", "Copy diagnostic report"] {
+            XCTAssertFalse(
+                app.staticTexts[label].exists || app.buttons[label].exists || app.menuItems[label].exists,
+                "\(appearance) \(screen) still exposes \(label)"
+            )
+        }
     }
 
     /// Drawer footer Host entry must replace the window with `ConnectionsView`,
@@ -1501,6 +1569,42 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertTrue(
             waitUntil(timeout: 4) { self.pairingLinkFieldValue(element) == value },
             "pairing-link field was \(pairingLinkFieldValue(element)), expected \(value)"
+        )
+    }
+
+    /// Desktop `InputBar.module.css` `.dock { justify-content: center }`.
+    /// Measure the first/last pill so a full-width `maxWidth` container cannot
+    /// satisfy a start-aligned row.
+    private func assertComposerStatsCentered(
+        _ app: XCUIApplication,
+        appearance: String,
+        composerId: String
+    ) {
+        let composer = app.descendants(matching: .any)[composerId].firstMatch
+        XCTAssertTrue(
+            composer.waitForExistence(timeout: 8),
+            "\(appearance) missing \(composerId)"
+        )
+        let stats = app.descendants(matching: .any)["composerStats"].firstMatch
+        XCTAssertTrue(
+            stats.waitForExistence(timeout: 8),
+            "\(appearance) missing composerStats under \(composerId)"
+        )
+        let leading = app.descendants(matching: .any)["official.gaugeOutline"].firstMatch
+        let trailing = app.descendants(matching: .any).matching(
+            NSPredicate(format: "label == %@", "上下文已用 2%")
+        ).firstMatch
+        XCTAssertTrue(leading.exists, "\(appearance) composerStats missing leading gauge")
+        XCTAssertTrue(
+            trailing.waitForExistence(timeout: 8),
+            "\(appearance) composerStats missing context meter"
+        )
+        let rowMidX = (leading.frame.minX + trailing.frame.maxX) / 2
+        XCTAssertEqual(
+            rowMidX,
+            composer.frame.midX,
+            accuracy: 1,
+            "\(appearance) composerStats midX \(rowMidX) is not centered on \(composerId) midX \(composer.frame.midX) (pills \(leading.frame.minX)–\(trailing.frame.maxX) vs composer \(composer.frame))"
         )
     }
 

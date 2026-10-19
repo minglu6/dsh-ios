@@ -651,6 +651,8 @@ struct ChatView: View {
             onCommandEscape: { dismissOpenComposerMenu() },
             onCommandTab: { commandHost.requestTab() }
         )
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(chatComposerIdentifier())
     }
 }
 

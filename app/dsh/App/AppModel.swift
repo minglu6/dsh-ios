@@ -92,7 +92,6 @@ enum AppRoute: Equatable {
     case models
     case builtinPlugins
     case presets
-    case diagnostics
     case panel(DrawerPanel)
 }
 
@@ -220,6 +219,7 @@ final class AppModel: ObservableObject {
     @Published var archiveConfirm: ArchiveConfirmRequest?
     var uiTestFixture = false
     var uiTestFilePreviewText: String?
+    var uiTestTerminalEntries: [TerminalSessionEntry] = []
 
     let terminal = AnsiTerminal()
     let hostSettings = HostSettings()
@@ -1680,24 +1680,6 @@ final class AppModel: ObservableObject {
 
     var defaultPermission: String {
         hostSettings.value(.permission)?.str() ?? "workspace-write"
-    }
-
-    func copyDiagnostics() async -> String? {
-        guard let profile = activeProfile, !profile.needsRepair else { return nil }
-        guard let url = URL(string: "http://\(profile.host):\(profile.port)/diagnostics") else { return nil }
-        do {
-            let (data, response) = try await URLSession.shared.data(from: url)
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-                throw PocketError(code: "diagnostics", message: L.diagnosticsUnavailable())
-            }
-            let text = String(data: data, encoding: .utf8) ?? ""
-            UIPasteboard.general.string = text
-            presentToast(L.diagnosticsCopied())
-            return text
-        } catch {
-            emit(error.localizedDescription)
-            return nil
-        }
     }
 
     func handleIncomingURL(_ url: URL) {

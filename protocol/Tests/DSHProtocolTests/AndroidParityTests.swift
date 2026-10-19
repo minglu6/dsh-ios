@@ -524,6 +524,14 @@ final class AndroidParityTests: XCTestCase {
         XCTAssertEqual(connectionsPageTitle(english: true), "Remote host")
         XCTAssertNotEqual(connectionsPageTitle(english: false), "连接")
         XCTAssertNotEqual(connectionsPageTitle(english: false), "手机连接")
+        XCTAssertFalse(connectionsOverflowIncludesDiagnostics)
+        XCTAssertEqual(connectionDiagnosticsForbiddenTitles(english: false), ["连接诊断", "复制诊断报告"])
+        XCTAssertEqual(
+            connectionDiagnosticsForbiddenTitles(english: true),
+            ["Connection diagnostics", "Copy diagnostic report"]
+        )
+        XCTAssertFalse(connectionDiagnosticsForbiddenTitles(english: false).contains("会话数据诊断"))
+        XCTAssertFalse(connectionDiagnosticsForbiddenTitles(english: true).contains("Session diagnostics"))
     }
 
     func testConnectionsPairingLinkMatchesAndroid9aa43c4() {

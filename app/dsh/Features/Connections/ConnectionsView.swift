@@ -154,14 +154,6 @@ struct ConnectionsView: View {
                 .foregroundStyle(T.ink)
                 .accessibilityIdentifier("connectionsTitle")
             Spacer()
-            Menu {
-                // Android overflow also offers NEARBY_WIFI_DEVICES; iOS Local Network
-                // is system-prompted by NWBrowser — no equivalent request API.
-                Button(L.diagnosticsCopy()) { Task { _ = await model.copyDiagnostics() } }
-            } label: {
-                OfficialGlyph(kind: .ellipsis, size: 16, color: T.ink).padding(8)
-            }
-            .accessibilityLabel(L.moreActions())
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
