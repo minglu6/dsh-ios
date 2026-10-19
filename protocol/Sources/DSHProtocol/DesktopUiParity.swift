@@ -109,10 +109,11 @@ private func incrementDecimalDigits(_ digits: String) -> String {
 }
 
 /// Desktop right-hand Start / Guide cards from `ui-sidebar-files` /
-/// `ui-sidebar-terminal` / `ui-sidebar-browser` (`order` 10 / 20 / 30).
-/// Session inspector is **not** a desktop Guide card; the phone still exposes
-/// the Android `SessionInspectorPanel` after the official three because the
-/// user asked for a visible entry (locale: 会话数据诊断 / Session diagnostics).
+/// `ui-sidebar-terminal` / `ui-sidebar-browser` (`order` 10 / 20 / 30), plus
+/// optional `@deepseek-ai/dsh-experimental-session-inspector@0.2.1-alpha.5`
+/// (`session-inspector-log` guide order 60). Desktop shows it as an
+/// optional-bundle Guide card; `ui-sidebar-right` `guide()` does not filter
+/// by session (locale: 会话数据诊断 / Session diagnostics).
 public enum StartPanelEntry: String, Equatable, Hashable, Sendable {
     case workspaceFiles
     case newTerminal

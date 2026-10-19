@@ -203,7 +203,7 @@ extension AppModel {
 
     fileprivate func applyUITestScreen(_ screen: String) {
         switch screen {
-        case "landing":
+        case "landing", "startLanding":
             chat = nil
             firstPrompt = nil
         case "drawer", "viewOptions", "sessionActions":
