@@ -227,54 +227,6 @@ public enum ConversationHeaderPolicy {
     public static var includesOverflowMenu: Bool { false }
 }
 
-/// Desktop `@deepseek-ai/dsh-client-ui-conversation@0.2.1-alpha.5`
-/// `ConversationRoot.module.css` inlined as `css$4` at `lib/client.js:17325`
-/// (`ConversationSessionHeader` paints `.titleRow` then `.tabs`).
-///
-/// `.header` `{ min-height:76px; padding:10px 28px 0 20px; border-bottom:.5px
-/// solid var(--dsw-alias-border-l3) }`.
-/// `.titleRow` `{ min-height:30px }`.
-/// `.tabs` `{ gap:36px; margin-top:10px }`.
-/// `.tab` `{ padding:0 0 9px; font-size:13px; font-weight:500; line-height:16px }`.
-/// `.tab:after` `{ height:2px; bottom:-1px }`.
-/// `.header:where(:not(:has(.tabs)))` `{ min-height:0; padding-bottom:10px }`.
-/// `.headerBlank` `{ border-bottom:none; min-height:0; padding-bottom:0 }`
-/// (landing / empty hero: title row only).
-///
-/// Phone keeps the established 14pt side gutter (composer side-clearance), not
-/// desktop frame `20/28`. Vertical stack is px→pt 1:1.
-public let conversationHeaderPaddingTopPoints: Double = 10
-public let conversationHeaderPaddingBottomWithoutTabsPoints: Double = 10
-public let conversationHeaderBlankPaddingBottomPoints: Double = 0
-public let conversationHeaderPaddingHorizontalPoints: Double = 14
-public let conversationHeaderMinHeightPoints: Double = 76
-public let conversationHeaderTitleRowMinHeightPoints: Double = 30
-public let conversationHeaderTitleClusterGapPoints: Double = 10
-public let conversationHeaderTitleFontSizePoints: Double = 14
-public let conversationHeaderTitleLineHeightPoints: Double = 20
-public let conversationHeaderTitleWeight: Double = 500
-public let conversationHeaderTabsMarginTopPoints: Double = 10
-public let conversationHeaderTabGapPoints: Double = 36
-public let conversationHeaderTabPaddingBottomPoints: Double = 9
-public let conversationHeaderTabFontSizePoints: Double = 13
-public let conversationHeaderTabLineHeightPoints: Double = 16
-public let conversationHeaderTabWeight: Double = 500
-public let conversationHeaderTabUnderlineHeightPoints: Double = 2
-/// CSS `.tab:after { bottom:-1px }` — 1pt of the 2pt bar sits in the leftover
-/// of `.header` min-height 76 after 10+30+10+16+9.
-public let conversationHeaderTabUnderlineOverflowPoints: Double = 1
-public let conversationHeaderBorderWidthPoints: Double = 0.5
-
-/// XCUITest: session title text in the 30pt `.titleRow`.
-public func conversationHeaderTitleIdentifier() -> String { "conversationHeaderTitle" }
-
-/// Title text is 14/20 centered in `.titleRow` min-height 30, then `.tabs`
-/// `margin-top: 10`. Visual gap from title maxY to tab minY is 5 + 10.
-public var conversationHeaderTitleTabGapPoints: Double {
-    (conversationHeaderTitleRowMinHeightPoints - conversationHeaderTitleLineHeightPoints) / 2
-        + conversationHeaderTabsMarginTopPoints
-}
-
 /// Host titles a session asynchronously after the first turn. Android
 /// `refreshTitles` reloads `sessions.list` on status, then again 4s after stop.
 public let sessionTitleRefreshDelayNanoseconds: UInt64 = 4_000_000_000

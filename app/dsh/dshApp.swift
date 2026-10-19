@@ -9,9 +9,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     ) -> Bool {
         TerminalTypeface.registerBundledFont()
         ConnectionKeeper.shared.registerBackgroundTasks()
-        if UITestLaunch.isEnabled {
-            UIView.setAnimationsEnabled(false)
-        }
         return true
     }
 }

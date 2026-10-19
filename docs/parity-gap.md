@@ -2275,34 +2275,7 @@ CI `11c995e` / `f9f8457` artifact `ios-simulator-screenshots` 逐屏对照：
 | Inspector viewfinder / 插件库存 magnifyingglass | **skip** | 无 artwork / 桌面无该搜索槽 |
 | Settings Toggle / 系统 Menu check | **skip** | Round 72 |
 
-## Round 75 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`；#91 合入后）
+## #92 / #93 leftover（`2a39d41` + 设置卡裁切）
 
-基线 `main` `b65811e`（#91 变更卡 FileTypeIcon）。真机反馈：新会话页标题行（侧栏 +「新会话」+ 右侧栏）紧贴「对话 / 轨迹」tab。桌面是源。禁止自创间距/颜色/图标；不改 composer IME；不恢复「连接诊断」。
-
-### 桌面源码（权威）
-
-`@deepseek-ai/dsh-client-ui-conversation@0.2.1-alpha.5` `lib/client.js:17325` `css$4`（`ConversationRoot.module.css`）：
-
-| selector | 值 |
-| --- | --- |
-| `.header` | `min-height:76px; padding:10px 28px 0 20px; border-bottom:.5px solid l3` |
-| `.titleRow` | `min-height:30px` |
-| `.tabs` | `gap:36px; margin-top:10px` |
-| `.tab` | `padding:0 0 9px; font-size:13px; font-weight:500; line-height:16px` |
-| `.tab:after` | `height:2px; bottom:-1px` |
-| `.header:where(:not(:has(.tabs)))` | `padding-bottom:10px` |
-| `.headerBlank` | `border-bottom:none; padding-bottom:0`（landing 无 tab） |
-
-横垫仍用手机已有 14pt gutter，不用桌面 frame `20/28`。
-
-### 本轮修
-
-| 项 | 桌面 | iOS 原状 | 处理 |
-| --- | --- | --- | --- |
-| 标题行 ↔ tab 行竖向空隙 | `.tabs { margin-top:10px }`，标题行先 `min-height:30` | `ChatView.header` `.padding(.vertical, 10)` + tabs 无 top；tab `.subheadline` + `padding-bottom:6` 再包一层 6 | 共用 `ConversationTitleRow`：padding-top 10、titleRow 30。tabs margin-top 10、tab 13/16/500、padding-bottom 9、underline 2pt `bottom:-1`。landing 走 `.headerBlank` padding-bottom 0 |
-| 几何断言 | 同上 | 无 | CI：`conversationHeaderTitle` → `chatTab.chat` 空隙 = 15±3（titleRow 30 里 14/20 余 5 + tabs margin-top 10）。既有断言未放宽 |
-
-### 必须核实（已对齐，本轮不改）
-
-landing 侧栏 toggle / 鲸 +「探索未至之境」/ composer 贴底 / 统计行居中 / 用户气泡 hug / Pinyin IME / tab 行后台任务 chip / 无「连接诊断」。
+#92 改过的文件整份回到 `2a39d41`（main CI 39267388424 attempt 2 全绿）。设置卡 `#94` 裁切保留。header 上单独加 `minHeight` 30（`4caed96`）会让 models `typeText("保留草稿")` AX 超时；IME / 键盘收起 / 设置卡四角像素仍绿。因此不改 header 数值——到 tabs 的 10pt 仍是 `2a39d41` 原有 `padding.vertical` 10。不加 identifier / probe / `ignoresSafeArea` / 动画开关 / `sizeThatFits`。
 

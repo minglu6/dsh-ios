@@ -143,17 +143,33 @@ struct RootView: View {
 
     private var emptyChat: some View {
         VStack(spacing: 0) {
-            ConversationTitleRow(
-                onOpenDrawer: { model.showDrawer = true },
-                onOpenStart: {
+            HStack {
+                Button {
+                    Keyboard.dismiss()
+                    model.showDrawer = true
+                } label: {
+                    OfficialGlyph(kind: .panelLeft, size: 16, color: T.ink)
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityIdentifier("openDrawer")
+                BrandWordmark(height: 20)
+                Spacer()
+                Button {
+                    Keyboard.dismiss()
                     if case .panel(.start) = model.currentRoute { return }
                     model.push(.panel(.start))
-                },
-                startDisabled: firstPromptBlocksComposerActions(model.firstPrompt)
-            ) {
-                BrandWordmark(height: 20)
+                } label: {
+                    OfficialGlyph(kind: .panelRight, size: 16, color: T.ink)
+                }
+                .disabled(firstPromptBlocksComposerActions(model.firstPrompt))
+                .accessibilityLabel(L.startPanel())
+                .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityIdentifier("openStartPanel")
             }
-            .modifier(ConversationHeaderBox(blank: true))
+            .padding(14)
+            .background(T.surface)
             ZStack(alignment: .bottom) {
                 VStack(spacing: 0) {
                     landingHeadlineRow
