@@ -1426,6 +1426,7 @@ struct MessageRow: View {
                                         style: .continuous
                                     )
                                 )
+                                .accessibilityElement(children: .contain)
                                 .accessibilityIdentifier(userMessageBubbleIdentifier())
                         }
                         if let summary = referenceSummaryText(labels: user.referenceLabels, english: L.en) {
