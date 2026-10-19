@@ -33,6 +33,8 @@ final class MentionPolicyTests: XCTestCase {
         XCTAssertEqual(mentionReferenceOfficialSymbol(.directory), "official.folderClose")
         XCTAssertEqual(inputTriggerMenuStrokeHex(dark: false), 0x0A000000)
         XCTAssertEqual(inputTriggerMenuStrokeHex(dark: true), 0x0FFFFFFF)
+        XCTAssertEqual(mentionMenuCrumbStrokeHex(dark: false), inputTriggerMenuStrokeHex(dark: false))
+        XCTAssertEqual(mentionMenuCrumbStrokeHex(dark: true), inputTriggerMenuStrokeHex(dark: true))
         XCTAssertEqual(mentionMenuStrokeWidthPoints, 0.5)
     }
 

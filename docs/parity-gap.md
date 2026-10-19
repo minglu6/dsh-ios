@@ -98,7 +98,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R68 | 计划 chip / 提及气泡 / 传统 FileGlyph / 反馈 ✓ / 风险圈叹号 / 目录 chevron 官方 SVG；CI `planMode` + `mention` | done (#78) |
 | R69 | 终端不可用/断线/缺失态对齐 `ui-sidebar-terminal`；landing 顶栏补右侧栏按钮对齐 `ui-sidebar-right` | done (#79) |
 | R70 | `CODE_FILE_ARTWORK` 官方语言图标 PDF；outline/l3 token；markdown fileChip 官方 BrowseOutline；风险 checkbox CSS | done (#80) |
-| R71 | 触发行 TRIGGER_ICONS / 工作区 overflow ellipsis / 插件 add chevron / 文档预览 wrap·copy / 预设与模型 plus | this PR |
+| R71 | 触发行 TRIGGER_ICONS / 工作区 overflow ellipsis / 插件 add chevron / 文档预览 wrap·copy / 预设与模型 plus | done (#81) |
+| R72 | `@` / `/` MenuView 描边与 mention crumbs 对齐桌面 `--dsw-alias-border-l1` | this PR |
 
 ---
 
@@ -2200,4 +2201,46 @@ alpha.5 之后**没有新的 alpha**。rc.2 仍是 `next`，本轮不升级基�
 | `@deepseek-ai/dsh-client-ui-sidebar-documentpreview` | **0.2.1-alpha.5** | 0.2.1-rc.2 | 0.1.5-alpha.2 |
 
 alpha.5 之后**没有新的 alpha**。rc.2 仍是 `next`，本轮不升级基线。UI 基线维持 `0.2.1-alpha.5`。
+
+## Round 72 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`；#83 合入后）
+
+基线 `main` `68b155b`（#83 `@` mention 面板与原子 chip）。桌面是源。禁止自创颜色/图标/间距；无系统蓝；无 ActionSheet；文案「远程主机」。
+
+直播核对（2026-10-19）：#83 squash `68b155b`。PR CI run `39203012376`：`protocol` / `ios` / `screenshots` 全绿。`npm pack` `@deepseek-ai/dsh-client-ui-input-trigger@0.2.1-alpha.5` `lib/client.js:1628`：
+
+```
+._3e4SsG_menu{…--dsw-elevation-stroke-color:var(--dsw-alias-border-l1);…box-shadow:var(--dsw-elevation-prominent);border:0;…}
+._3e4SsG_crumbs{border-bottom:.5px solid var(--dsw-alias-border-l1);…}
+```
+
+`/` 与 `@` 共用同一 `MenuView`。
+
+### 必须核实（已对齐，本轮不改）
+
+| 项 | 判定 | 证据 |
+| --- | --- | --- |
+| landing `@` + 远程 `references.files` / `references.sessions` | **PASS** | `RootView.landingMentionMenuLayer`；`AppModel.prepareMentionSession` + `referenceFiles` / `referenceSessions`。CI `landingMention` |
+| 面板分组 / 官方图标 / 原子 chip | **PASS** | `*-mention.png` / `mentionFiltered` / `mentionChip` / `mentionSent`：files→sessions，`official.browseOutline` / `folderClose` / `queueOutline`，气泡无生 markdown |
+| landing 鲸 +「探索未至之境」仍在树里 | **PASS** | CI 断言 `official.fishLogo` + `landingHeadline`。窄屏 400pt 菜单盖住英雄区，不缩桌面 `max-height` |
+| #82 Start「会话数据诊断」 | **PASS** | `*-startLanding.png` 第四卡 |
+
+### 本轮修
+
+| 项 | 桌面源码 | iOS 原状 | 处理 |
+| --- | --- | --- | --- |
+| MenuView 描边 | `--dsw-elevation-stroke-color: var(--dsw-alias-border-l1)`；`border: 0`；0.5px 在 elevation shadow | mention `T.settingsCardStroke`（l4 `#29000000`）；slash `T.border`（l2） | `@` / `/` 卡描边改 `T.borderL1`。protocol `inputTriggerMenuStrokeHex` 锁 `0x0A000000` / `0x0FFFFFFF` |
+| mention crumbs 底边 | `border-bottom: .5px solid var(--dsw-alias-border-l1)` | `T.border`（l2） | 改 `T.borderL1`；`mentionMenuCrumbStrokeHex` 与描边同值 |
+
+### 有意 skip（桌面源码依据）
+
+| 项 | 判定 | 依据 |
+| --- | --- | --- |
+| turnNavigation / toBottom FAB / ask.review / hover chevron | **skip** | 桌面 hover / 触屏无对应窄屏切片 |
+| Account / shortcuts / CompatibilityBanner / 审批通知 | **skip** | 桌面专属 / hide |
+| 插件搜索 SF magnifyingglass | **skip** | `ui-plugin-manager` 无搜索槽 |
+| Inspector viewfinder / QR `qrcode.viewfinder` | **skip** | primitives 无 artwork |
+| ProgressView loading / 变更卡 `doc.on.doc` / 风险原生 checkbox | **skip** | 无 stacked-docs / checkbox / loading artwork |
+| FilePreview / PluginInventory 系统 Menu check | **skip** | 系统 Menu |
+| Settings Toggle / 语言 Picker / confirmationDialog | **skip** | 非系统蓝 ActionSheet；桌面无对应手机 Modal |
+| 管理 sheet 删除无确认 / 手机终端快捷键条 | **skip** | 平台 / Android 立即 `removeProfile` |
 

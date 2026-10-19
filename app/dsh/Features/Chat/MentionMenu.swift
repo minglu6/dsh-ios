@@ -87,7 +87,7 @@ struct MentionMenuOverlay: View {
         .background(T.settingsCard)
         .overlay(
             RoundedRectangle(cornerRadius: CGFloat(mentionMenuSurfaceRadiusPoints), style: .continuous)
-                .stroke(T.settingsCardStroke, lineWidth: CGFloat(mentionMenuStrokeWidthPoints))
+                .stroke(T.borderL1, lineWidth: CGFloat(mentionMenuStrokeWidthPoints))
         )
         .clipShape(RoundedRectangle(cornerRadius: CGFloat(mentionMenuSurfaceRadiusPoints), style: .continuous))
         .shadow(
@@ -124,7 +124,7 @@ struct MentionMenuOverlay: View {
         .padding(.bottom, CGFloat(mentionMenuCrumbPaddingBottomPoints))
         .padding(.horizontal, CGFloat(mentionMenuCrumbPaddingHorizontalPoints))
         .overlay(alignment: .bottom) {
-            T.border.frame(height: CGFloat(mentionMenuStrokeWidthPoints))
+            T.borderL1.frame(height: CGFloat(mentionMenuStrokeWidthPoints))
         }
         .padding(.bottom, CGFloat(mentionMenuCrumbMarginBottomPoints))
         .accessibilityLabel(L.t("目录导航", "Folder navigation"))

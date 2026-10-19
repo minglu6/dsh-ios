@@ -594,9 +594,7 @@ struct SettingsFontFamilyRow: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .focused($focused)
-                    .onChange(of: draft) { next in
-                        let clipped = themeFontFamilyDraft(next)
-                        if clipped != next { draft = clipped }
+                    .onChange(of: draft) { _ in
                         if focused { dirty = true }
                     }
                     .onSubmit { commit() }
@@ -622,7 +620,7 @@ struct SettingsFontFamilyRow: View {
 
     private func commit() {
         guard dirty else { return }
-        let normalized = normalizeFontFamily(draft)
+        let normalized = normalizeFontFamily(themeFontFamilyDraft(draft))
         draft = normalized
         dirty = false
         if normalized != value { onChange(normalized) }
