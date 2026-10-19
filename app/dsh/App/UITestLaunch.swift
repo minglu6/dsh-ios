@@ -336,6 +336,8 @@ extension AppModel {
             push(.general)
         case "settingsShell":
             showDrawer = false
+            ops.insert("plugins.inventory")
+            ops.insert("presets.list")
             push(.settings)
         case "plugins":
             ops.insert("plugins.install")

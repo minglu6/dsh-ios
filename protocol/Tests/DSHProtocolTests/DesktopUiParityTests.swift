@@ -818,6 +818,29 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertEqual(settingsGeneralSymbol(), "official.settingsOutlineRegular")
         XCTAssertEqual(settingsPresetsSymbol(), "official.agentPreset")
         XCTAssertEqual(settingsNavIconSizePoints, 16)
+        XCTAssertEqual(settingsNavGapPoints, 18)
+        XCTAssertEqual(settingsNavTitleFontSizePoints, 16)
+        XCTAssertEqual(settingsNavTitleLineHeightPoints, 24)
+        XCTAssertEqual(settingsNavCellHeightPoints, 40)
+        XCTAssertEqual(settingsNavCellPaddingTopPoints, 9)
+        XCTAssertEqual(settingsNavCellPaddingBottomPoints, 9)
+        XCTAssertEqual(settingsNavCellPaddingLeadingPoints, 12)
+        XCTAssertEqual(settingsNavCellPaddingTrailingPoints, 16)
+        XCTAssertEqual(settingsNavCellGapPoints, 8)
+        XCTAssertEqual(settingsNavCellFontSizePoints, 14)
+        XCTAssertEqual(settingsNavCellLineHeightPoints, 22)
+        XCTAssertEqual(
+            settingsNavCellPaddingTopPoints
+                + settingsNavCellLineHeightPoints
+                + settingsNavCellPaddingBottomPoints,
+            settingsNavCellHeightPoints
+        )
+        XCTAssertEqual(dswRadiusLgPoints, 16)
+        XCTAssertEqual(settingsCardRadiusPoints, 16)
+        XCTAssertEqual(settingsCardStrokeWidthPoints, 0.5)
+        XCTAssertEqual(settingsShellHeaderIdentifier(), "settingsShellHeader")
+        XCTAssertEqual(settingsNavCardIdentifier(), "settingsNavCard")
+        XCTAssertEqual(settingsNavRowIdentifier("general"), "settingsNavRow.general")
         XCTAssertTrue(settingsDataOutlineFillPath.hasPrefix("M7.8667 0.349609"))
         XCTAssertTrue(settingsDataOutlineGearPath.hasPrefix("M12.8936 10.0361"))
         XCTAssertTrue(isForbiddenSettingsShellSymbol("cpu"))
