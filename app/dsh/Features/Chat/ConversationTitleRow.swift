@@ -54,8 +54,7 @@ func conversationHeaderTabFont() -> Font {
 }
 
 /// Desktop `.header` / `.headerBlank` box: padding `10 14 0 14`, tabs case
-/// `min-height:76` and `border-bottom:.5px l3`. One chrome so keyboard
-/// compression cannot independently reflow title row vs tabs.
+/// `min-height:76` and `border-bottom:.5px l3`.
 struct ConversationHeaderBox: ViewModifier {
     var blank: Bool
 
@@ -69,7 +68,6 @@ struct ConversationHeaderBox: ViewModifier {
             )
             .frame(
                 minHeight: blank ? 0 : CGFloat(conversationHeaderMinHeightPoints),
-                maxHeight: blank ? nil : CGFloat(conversationHeaderMinHeightPoints),
                 alignment: .top
             )
             .background(T.surface)
@@ -78,6 +76,5 @@ struct ConversationHeaderBox: ViewModifier {
                     T.borderL3.frame(height: CGFloat(conversationHeaderBorderWidthPoints))
                 }
             }
-            .transaction { $0.animation = nil }
     }
 }
