@@ -603,6 +603,13 @@ public func changesCardMountsFetch(
     turnClosed && codeWork && changesCardShouldFetch(seq: seq, hasSummaryOp: hasSummaryOp)
 }
 
+/// Desktop `MessageItem.module.css` `.fileIcon` `width:28px;height:28px`
+/// (`FileTypeIcon` on a named file card). Single-file workspace-changes
+/// uses the same glyph; multi-file stacked-docs has no official artwork.
+public let changesCardFileIconSizePoints: Double = 28
+
+public func changesCardIdentifier() -> String { "changesCard" }
+
 /// Desktop InputBar sizes (`InputBar.module.css`): 28 add, 34 send, 36/52 text.
 public let composerAddButtonPoints: Double = 28
 public let composerSendButtonPoints: Double = 34

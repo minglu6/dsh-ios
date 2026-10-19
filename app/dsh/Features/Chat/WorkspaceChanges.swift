@@ -88,9 +88,22 @@ struct ChangesSummaryCard: View {
                             RoundedRectangle(cornerRadius: 12)
                                 .fill(T.surface)
                                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 1))
-                            Image(systemName: single == nil ? "doc.on.doc" : "doc.text")
-                                .font(.system(size: 18))
-                                .foregroundStyle(T.text2)
+                            if let single {
+                                // Desktop UserContent `.fileCard` / `.fileIcon` is
+                                // `FileTypeIcon` 28×28. Multi-file stacked-docs has
+                                // no official artwork — keep the Host skip.
+                                FileTypeIcon(
+                                    path: single.path,
+                                    type: "file",
+                                    openable: true,
+                                    size: CGFloat(changesCardFileIconSizePoints),
+                                    slotWidth: CGFloat(changesCardFileIconSizePoints)
+                                )
+                            } else {
+                                Image(systemName: "doc.on.doc")
+                                    .font(.system(size: 18))
+                                    .foregroundStyle(T.text2)
+                            }
                         }
                         .frame(width: 44, height: 44)
                         VStack(alignment: .leading, spacing: 3) {
@@ -108,6 +121,8 @@ struct ChangesSummaryCard: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(onOpen == nil)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier(changesCardIdentifier())
                 .accessibilityHint(L.t("查看本轮改动", "Review turn changes"))
 
                 if single == nil {

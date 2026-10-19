@@ -244,9 +244,10 @@ extension AppModel {
             // Desktop workspace-row overflow (`IconEllipsisOutline`). Off other
             // screens so `*-chat.png` / files / connections stay still.
             ops.formUnion(["workspace.rename", "workspace.delete"])
-        case "chat", "chatLong", "trajectory", "trajectoryDetail", "planMode", "mention", "mentionFiltered", "mentionChip", "mentionSent", "turnTrigger":
+        case "chat", "chatLong", "changesCard", "trajectory", "trajectoryDetail", "planMode", "mention", "mentionFiltered", "mentionChip", "mentionSent", "turnTrigger":
             seedUITestJobs()
             if screen == "turnTrigger" { seedUITestTurnTrigger() }
+            if screen == "changesCard" { seedUITestChangesCard() }
             if screen == "chatLong" {
                 guard var state = chat else {
                     fatalError("UITestLaunch chatLong requires a chat session")
@@ -592,6 +593,48 @@ extension AppModel {
             at: 0
         )
         chat = state
+    }
+
+    /// Single-file workspace-changes card: desktop `UserContent` `.fileCard`
+    /// paints `FileTypeIcon`, not SF `doc.text`.
+    fileprivate func seedUITestChangesCard() {
+        guard var state = chat else {
+            fatalError("UITestLaunch changesCard requires a chat session")
+        }
+        guard case .text(var assistant) = state.items.last(where: {
+            if case .text = $0 { return true }
+            return false
+        }) else {
+            fatalError("UITestLaunch changesCard requires the fixture assistant row")
+        }
+        assistant.turn = 1
+        guard let assistantIndex = state.items.lastIndex(where: {
+            if case .text(let text) = $0 { return text.key == assistant.key }
+            return false
+        }) else {
+            fatalError("UITestLaunch changesCard could not re-find the assistant row")
+        }
+        state.items[assistantIndex] = .text(assistant)
+        state.items.append(.changes(Item.Changes(key: "ch1", turn: 1, seq: 29)))
+        state.turns = [TurnRecord(turn: 1, startSeq: 1, endSeq: 30, startedAt: assistant.at, endedAt: (assistant.at ?? 0) + 1_000)]
+        state.lastAnswerKeys = [1: assistant.key]
+        chat = state
+        ops.insert("workspaceChanges.summary")
+        uiTestChangesSummary = WorkspaceChangesSummary(
+            turn: 1,
+            cwd: "/Users/dev/dsh-ios",
+            files: [
+                WorkspaceChangedFile(
+                    path: "README.md",
+                    display: "README.md",
+                    added: 4,
+                    deleted: 0
+                ),
+            ],
+            total: 1,
+            added: 4,
+            deleted: 0
+        )
     }
 
     fileprivate func seedUITestJobs() {

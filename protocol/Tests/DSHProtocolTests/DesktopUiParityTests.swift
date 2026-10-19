@@ -885,6 +885,10 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertTrue(changesCardMountsFetch(seq: 29, turnClosed: true, codeWork: true, hasSummaryOp: true))
         XCTAssertFalse(changesCardMountsFetch(seq: 29, turnClosed: false, codeWork: true, hasSummaryOp: true))
         XCTAssertFalse(changesCardMountsFetch(seq: 29, turnClosed: true, codeWork: false, hasSummaryOp: true))
+        XCTAssertEqual(changesCardFileIconSizePoints, 28)
+        XCTAssertEqual(changesCardIdentifier(), "changesCard")
+        XCTAssertEqual(fileTypeSymbol("markdown"), "official.fileMarkdown")
+        XCTAssertEqual(fileTypeKind(path: "README.md", type: "file"), "markdown")
         XCTAssertEqual(
             changesCardFetchIdentity(hostId: "h", sessionId: "s", seq: 29, hasSummaryOp: true),
             "h-s-29-true"

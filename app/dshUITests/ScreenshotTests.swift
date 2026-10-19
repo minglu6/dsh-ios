@@ -4,7 +4,7 @@ import XCTest
 /// screens parent / CI compare to desktop `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`.
 final class ScreenshotTests: XCTestCase {
     private let screens = [
-        "landing", "drawer", "viewOptions", "sessionActions", "chat", "chatLong", "planMode", "mention",
+        "landing", "drawer", "viewOptions", "sessionActions", "chat", "chatLong", "changesCard", "planMode", "mention",
         "landingMention", "mentionFiltered", "mentionChip", "mentionSent",
         "turnTrigger", "filePreview",
         "models", "permission", "start", "startLanding", "browser", "inspector",
@@ -241,7 +241,7 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertGreaterThanOrEqual(hostFrame.height, 44, "\(appearance) host hit shorter than 44pt")
                 assertNoConnectionDiagnostics(app, appearance: appearance, screen: screen)
             }
-            if screen == "landing" || screen == "landingMention" || screen == "chat" || screen == "chatLong" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
+            if screen == "landing" || screen == "landingMention" || screen == "chat" || screen == "chatLong" || screen == "changesCard" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
                 XCTAssertFalse(app.images["sidebar.left"].exists, "\(appearance) \(screen) still exposes SF sidebar.left")
                 XCTAssertFalse(app.images["sidebar.right"].exists, "\(appearance) \(screen) still exposes SF sidebar.right")
                 XCTAssertTrue(
@@ -249,7 +249,7 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) \(screen) missing official panel-left glyph"
                 )
             }
-            if screen == "landing" || screen == "landingMention" || screen == "chat" || screen == "chatLong" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
+            if screen == "landing" || screen == "landingMention" || screen == "chat" || screen == "chatLong" || screen == "changesCard" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
                 XCTAssertTrue(
                     app.descendants(matching: .any)["official.panelRight"].waitForExistence(timeout: 8),
                     "\(appearance) \(screen) missing official panel-right glyph"
@@ -277,7 +277,7 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) landing panelRight is not on the right"
                 )
             }
-            if screen == "landing" || screen == "landingMention" || screen == "chat" || screen == "chatLong" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" {
+            if screen == "landing" || screen == "landingMention" || screen == "chat" || screen == "chatLong" || screen == "changesCard" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" {
                 XCTAssertFalse(app.images["plus"].exists, "\(appearance) \(screen) still exposes SF plus")
                 XCTAssertTrue(
                     app.descendants(matching: .any)["official.plusOutline"].waitForExistence(timeout: 8),
@@ -420,7 +420,7 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) landing composer floated off the bottom (gap \(gap))"
                 )
             }
-            if screen == "chat" || screen == "chatLong" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "trajectory" {
+            if screen == "chat" || screen == "chatLong" || screen == "changesCard" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "trajectory" {
                 XCTAssertFalse(app.images["clock"].exists, "\(appearance) \(screen) still exposes SF clock on jobs chip")
                 XCTAssertFalse(app.images["clock.fill"].exists, "\(appearance) \(screen) still exposes SF clock.fill on jobs chip")
                 XCTAssertTrue(
@@ -796,6 +796,29 @@ final class ScreenshotTests: XCTestCase {
                 if screen == "chatLong" {
                     try assertUserBubbleWrapsLongMessage(app, appearance: appearance)
                 }
+                assertOfficialMenuChrome(app, appearance: appearance, screen: screen)
+            }
+            if screen == "changesCard" {
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["changesCard"].waitForExistence(timeout: 8),
+                    "\(appearance) changesCard missing desktop FileTypeIcon card"
+                )
+                XCTAssertTrue(
+                    app.staticTexts["README.md"].waitForExistence(timeout: 8),
+                    "\(appearance) changesCard missing README.md title"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.fileMarkdown"].waitForExistence(timeout: 8),
+                    "\(appearance) changesCard missing official FileTypeIcon markdown glyph"
+                )
+                XCTAssertFalse(
+                    app.images["doc.text"].exists,
+                    "\(appearance) changesCard still exposes SF doc.text"
+                )
+                XCTAssertFalse(
+                    app.images["doc.on.doc"].exists,
+                    "\(appearance) changesCard still exposes SF doc.on.doc"
+                )
                 assertOfficialMenuChrome(app, appearance: appearance, screen: screen)
             }
             if screen == "files" {

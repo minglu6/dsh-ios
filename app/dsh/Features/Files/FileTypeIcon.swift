@@ -6,6 +6,9 @@ struct FileTypeIcon: View {
     var type = "file"
     var openable = true
     var expanded: Bool? = nil
+    var size: CGFloat = CGFloat(fileTreeFileIconSizePoints)
+    /// File-tree rows keep a 20pt column around the 16pt desktop glyph.
+    var slotWidth: CGFloat = 20
 
     var body: some View {
         let kind = fileTypeKind(path: path, type: type)
@@ -14,24 +17,24 @@ struct FileTypeIcon: View {
             if kind == "folder" {
                 OfficialGlyph(
                     kind: (expanded ?? false) ? .folderOpen : .folderClose,
-                    size: CGFloat(fileTreeFileIconSizePoints),
+                    size: size,
                     color: color
                 )
             } else if kind == "warning" {
                 OfficialGlyph(
                     kind: .warningOutline,
-                    size: CGFloat(fileTreeFileIconSizePoints),
+                    size: size,
                     color: color
                 )
             } else if fileTypeHasTraditionalGlyph(kind) {
-                FileTypeGlyph(kind: kind, size: CGFloat(fileTreeFileIconSizePoints), fill: color)
+                FileTypeGlyph(kind: kind, size: size, fill: color)
             } else if fileTypeHasCodeFileArtwork(kind) {
-                CodeFileArtworkIcon(kind: kind, size: CGFloat(fileTreeFileIconSizePoints))
+                CodeFileArtworkIcon(kind: kind, size: size)
             } else {
-                FileTypeGlyph(kind: "other", size: CGFloat(fileTreeFileIconSizePoints), fill: color)
+                FileTypeGlyph(kind: "other", size: size, fill: color)
             }
         }
-        .frame(width: 20)
+        .frame(width: slotWidth, height: size)
     }
 }
 
