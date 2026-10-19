@@ -695,8 +695,7 @@ final class ScreenshotTests: XCTestCase {
                 )
                 XCTAssertFalse(app.images["doc"].exists, "\(appearance) chat markdown fileChip still uses SF doc")
                 XCTAssertTrue(
-                    app.images["officialBrowseOutline"].exists
-                        || app.descendants(matching: .any)["officialBrowseOutline"].exists,
+                    app.descendants(matching: .any)["official.markdownFileChip"].waitForExistence(timeout: 8),
                     "\(appearance) chat markdown fileChip missing official BrowseOutline asset"
                 )
                 assertOfficialMenuChrome(app, appearance: appearance, screen: screen)

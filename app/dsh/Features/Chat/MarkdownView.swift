@@ -160,8 +160,32 @@ private struct MdBlockView: View {
         }
     }
 
-    private func wraps(_ spans: [MdSpan]) -> Text {
-        spans.reduce(Text("")) { acc, span in acc + spanText(span) }
+    @ViewBuilder
+    private func wraps(_ spans: [MdSpan]) -> some View {
+        let text = spans.reduce(Text("")) { acc, span in acc + spanText(span) }
+        if spans.contains(where: Self.isFileChipSpan) {
+            text
+                .accessibilityIdentifier(markdownFileChipAccessibilityIdentifier)
+                .overlay(alignment: .leading) {
+                    Color.clear
+                        .frame(width: 16, height: 16)
+                        .accessibilityHidden(true)
+                        .accessibilityIdentifier(markdownFileChipAccessibilityIdentifier)
+                }
+        } else {
+            text
+        }
+    }
+
+    private static func isFileChipSpan(_ span: MdSpan) -> Bool {
+        switch span {
+        case .fileChip:
+            return true
+        case .link(_, let dest):
+            return parseFileLink(dest) != nil
+        default:
+            return false
+        }
     }
 
     private func spanText(_ span: MdSpan) -> Text {
