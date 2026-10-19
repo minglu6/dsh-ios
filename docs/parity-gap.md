@@ -2244,3 +2244,19 @@ alpha.5 之后**没有新的 alpha**。rc.2 仍是 `next`，本轮不升级基�
 | Settings Toggle / 语言 Picker / confirmationDialog | **skip** | 非系统蓝 ActionSheet；桌面无对应手机 Modal |
 | 管理 sheet 删除无确认 / 手机终端快捷键条 | **skip** | 平台 / Android 立即 `removeProfile` |
 
+## Round 73 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`；#87 合入后）
+
+基线 `main` `10f4240`（#87 用户气泡 hug）。桌面是源。禁止自创颜色/图标/间距；无系统蓝 ActionSheet；不改 composer IME；不恢复「连接诊断」。
+
+CI `10f4240` artifact `ios-simulator-screenshots` 逐屏对照 `ui-input-trigger` `MenuView.module.css` `.menu { max-height:400px }`：
+
+| 项 | 判定 | 证据 |
+| --- | --- | --- |
+| 用户气泡 hug / 贴右 / 文字 start | **PASS** | #87 `*-chat.png` / `chatLong` / `mentionSent` |
+| `@` / `/` MenuView 描边 l1 | **PASS** | #84 |
+| `/` 菜单 hug 内容、上限 400 | **本轮修** | `*-slash.png` 被 `minHeight: availableHeight` 拉满 transcript；桌面 card 不 stretch |
+| `@` 菜单 hug 内容、上限 400 | **本轮修** | `*-mention.png` / `landingMention` / `mentionFiltered` 空卡撑到 400pt cap |
+| Settings Toggle / 系统 Menu check / confirmationDialog | **skip** | Round 72 |
+| 变更卡单文件 `doc.text` | **GAP leftover** | 桌面 `FileTypeIcon`；本轮不修 |
+| Inspector SF viewfinder | **skip** | 无 artwork |
+

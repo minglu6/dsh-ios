@@ -1,7 +1,20 @@
 import Foundation
 
 /// Desktop `ui-input-trigger` `MenuView.module.css` `.menu` `max-height:400px`.
+/// Slash `/` and `@` share `MenuView`; both cards hug content up to this cap.
 public let mentionMenuMaxHeightPoints: Double = 400
+
+/// Overlay slot above the composer may be taller than the desktop card.
+/// `MenuView` itself is `max-height: 400px` and sizes to its rows — stretching
+/// `min-height` to the remaining transcript is what made `*-slash.png` a
+/// full-bleed panel and `*-mention.png` a 400pt empty card.
+public func inputTriggerMenuCardMaxHeight(availableHeight: Double) -> Double {
+    precondition(availableHeight >= 0, "inputTriggerMenuCardMaxHeight availableHeight must be >= 0")
+    if availableHeight == 0 {
+        return mentionMenuMaxHeightPoints
+    }
+    return min(availableHeight, mentionMenuMaxHeightPoints)
+}
 
 /// Desktop `MenuView.module.css` `.menu` `padding: 4px`.
 public let mentionMenuPaddingPoints: Double = 4

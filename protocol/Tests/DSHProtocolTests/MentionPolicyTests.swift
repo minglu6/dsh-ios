@@ -4,6 +4,10 @@ import XCTest
 final class MentionPolicyTests: XCTestCase {
     func testDesktopMenuMetricsComeFromInputTriggerMenuView() {
         XCTAssertEqual(mentionMenuMaxHeightPoints, 400)
+        XCTAssertEqual(inputTriggerMenuCardMaxHeight(availableHeight: 0), 400)
+        XCTAssertEqual(inputTriggerMenuCardMaxHeight(availableHeight: 600), 400)
+        XCTAssertEqual(inputTriggerMenuCardMaxHeight(availableHeight: 180), 180)
+        XCTAssertEqual(inputTriggerMenuCardMaxHeight(availableHeight: 400), 400)
         XCTAssertEqual(mentionMenuPaddingPoints, 4)
         XCTAssertEqual(mentionMenuGapAboveComposerPoints, 4)
         XCTAssertEqual(mentionMenuSurfaceRadiusPoints, 12)

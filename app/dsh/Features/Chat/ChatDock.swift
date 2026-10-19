@@ -914,13 +914,12 @@ struct CommandMenuOverlay: View {
         "\(model.activeId ?? "")-\(skillScope)-\(catalogReady)-\(attempt)-\(model.isOnline)-\(model.ops.sorted().joined())-\(subagent)"
     }
 
+    private var cardMaxHeight: CGFloat {
+        CGFloat(inputTriggerMenuCardMaxHeight(availableHeight: Double(availableHeight)))
+    }
+
     var body: some View {
         menuCard
-            .frame(
-                minHeight: availableHeight > 0 ? availableHeight : nil,
-                maxHeight: availableHeight > 0 ? availableHeight : nil,
-                alignment: .bottom
-            )
             .task(id: catalogTaskId) { await load() }
             .onAppear {
                 if skills.isEmpty, let scoped = model.skillEntries(for: skillScope), !scoped.isEmpty {
@@ -953,20 +952,36 @@ struct CommandMenuOverlay: View {
     }
 
     private var menuCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if pickingPermission {
-                permissionList
-            } else {
-                statusBanner
-                menuList
+        ScrollViewReader { proxy in
+            MenuViewViewport(maxHeight: cardMaxHeight) {
+                VStack(alignment: .leading, spacing: 0) {
+                    if pickingPermission {
+                        permissionRows
+                    } else {
+                        statusBanner
+                        menuRows
+                    }
+                }
+                .padding(CGFloat(mentionMenuPaddingPoints))
+            }
+            .onChange(of: highlight) { value in
+                if let value { proxy.scrollTo(value, anchor: .center) }
             }
         }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .background(T.settingsCard)
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.borderL1, lineWidth: 0.5))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("slashMenu")
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .background(T.settingsCard)
+        .overlay(
+            RoundedRectangle(cornerRadius: CGFloat(mentionMenuSurfaceRadiusPoints), style: .circular)
+                .stroke(T.borderL1, lineWidth: CGFloat(mentionMenuStrokeWidthPoints))
+        )
+        .clipShape(RoundedRectangle(cornerRadius: CGFloat(mentionMenuSurfaceRadiusPoints), style: .circular))
+        .shadow(
+            color: Color.black.opacity(mentionMenuShadowOpacity),
+            radius: CGFloat(mentionMenuShadowRadiusPoints),
+            y: CGFloat(mentionMenuShadowYPoints)
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("slashMenu")
     }
 
     @ViewBuilder
@@ -1000,45 +1015,35 @@ struct CommandMenuOverlay: View {
         .padding(12)
     }
 
-    private var permissionList: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 0) {
-                if model.permissionCatalogLoading && permissionOptions.isEmpty { loadingRow }
-                ForEach(Array(permissionOptions.enumerated()), id: \.offset) { index, option in
-                    HStack(spacing: 10) {
-                        if permissionHasGlyph(option.value) {
-                            OfficialGlyph(kind: .permission(option.value), size: 14, color: T.text2)
-                        }
-                        Text(permissionLabel(value: option.value, option: option, english: L.en)).foregroundStyle(T.ink)
-                        Spacer()
-                        if option.value == currentPermission {
-                            OfficialGlyph(kind: .checkOutline, size: 14, color: T.ink)
-                        }
+    private var permissionRows: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if model.permissionCatalogLoading && permissionOptions.isEmpty { loadingRow }
+            ForEach(Array(permissionOptions.enumerated()), id: \.offset) { index, option in
+                HStack(spacing: 10) {
+                    if permissionHasGlyph(option.value) {
+                        OfficialGlyph(kind: .permission(option.value), size: 14, color: T.text2)
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(highlight == index ? T.hoverBg : Color.clear)
-                    .contentShape(Rectangle())
-                    .onTapGesture { choosePermission(option.value) }
+                    Text(permissionLabel(value: option.value, option: option, english: L.en)).foregroundStyle(T.ink)
+                    Spacer()
+                    if option.value == currentPermission {
+                        OfficialGlyph(kind: .checkOutline, size: 14, color: T.ink)
+                    }
                 }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(highlight == index ? T.hoverBg : Color.clear)
+                .contentShape(Rectangle())
+                .id(index)
+                .onTapGesture { choosePermission(option.value) }
             }
         }
-        .frame(maxHeight: .infinity)
     }
 
-    private var menuList: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(Array(rows.enumerated()), id: \.offset) { index, item in
-                        menuItem(item, index: index)
-                    }
-                }
-            }
-            .frame(maxHeight: .infinity)
-            .onChange(of: highlight) { value in
-                if let value { proxy.scrollTo(value, anchor: .center) }
+    private var menuRows: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { index, item in
+                menuItem(item, index: index)
             }
         }
     }
