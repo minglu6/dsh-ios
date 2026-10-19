@@ -248,6 +248,16 @@ final class ScreenshotTests: XCTestCase {
                     app.descendants(matching: .any)["official.panelLeft"].waitForExistence(timeout: 8),
                     "\(appearance) \(screen) missing official panel-left glyph"
                 )
+                let titleRow = app.descendants(matching: .any)["conversationTitleRow"].firstMatch
+                XCTAssertTrue(
+                    titleRow.waitForExistence(timeout: 8),
+                    "\(appearance) \(screen) missing conversationTitleRow"
+                )
+                XCTAssertGreaterThanOrEqual(
+                    titleRow.frame.height,
+                    30,
+                    "\(appearance) \(screen) title row height \(titleRow.frame.height) is below desktop .titleRow min-height 30"
+                )
             }
             if screen == "landing" || screen == "landingMention" || screen == "chat" || screen == "chatLong" || screen == "changesCard" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
                 XCTAssertTrue(
@@ -419,6 +429,9 @@ final class ScreenshotTests: XCTestCase {
                     40,
                     "\(appearance) landing composer floated off the bottom (gap \(gap))"
                 )
+            }
+            if screen == "chat" || screen == "chatLong" || screen == "changesCard" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "composerStop" || screen == "slash" || screen == "jobs" || screen == "models" || screen == "permission" || screen == "trajectory" || screen == "trajectoryDetail" || screen == "chatDock" {
+                assertConversationHeaderTabGap(app, appearance: appearance, screen: screen)
             }
             if screen == "chat" || screen == "chatLong" || screen == "changesCard" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "trajectory" {
                 XCTAssertFalse(app.images["clock"].exists, "\(appearance) \(screen) still exposes SF clock on jobs chip")
@@ -1613,6 +1626,32 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertTrue(
             waitUntil(timeout: 4) { self.pairingLinkFieldValue(element) == value },
             "pairing-link field was \(pairingLinkFieldValue(element)), expected \(value)"
+        )
+    }
+
+    /// Desktop `ConversationRoot.module.css` `.tabs { margin-top: 10px }`
+    /// (`lib/client.js:17325`). Title-row maxY → tab-label minY is that gap.
+    private func assertConversationHeaderTabGap(
+        _ app: XCUIApplication,
+        appearance: String,
+        screen: String
+    ) {
+        let titleRow = app.descendants(matching: .any)["conversationTitleRow"].firstMatch
+        XCTAssertTrue(
+            titleRow.waitForExistence(timeout: 8),
+            "\(appearance) \(screen) missing conversationTitleRow before tab-gap assertion"
+        )
+        let chatTab = app.descendants(matching: .any)["chatTab.chat"].firstMatch
+        XCTAssertTrue(
+            chatTab.waitForExistence(timeout: 8),
+            "\(appearance) \(screen) missing chatTab.chat"
+        )
+        let gap = chatTab.frame.minY - titleRow.frame.maxY
+        XCTAssertEqual(
+            gap,
+            10,
+            accuracy: 2,
+            "\(appearance) \(screen) title-to-tab gap \(gap) is not desktop .tabs margin-top 10 (title \(titleRow.frame) tab \(chatTab.frame))"
         )
     }
 

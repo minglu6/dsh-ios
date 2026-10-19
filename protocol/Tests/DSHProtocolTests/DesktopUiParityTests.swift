@@ -232,6 +232,39 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertTrue(SessionRowChromePolicy.trailingActionsAlwaysVisibleOnTouch)
     }
 
+    func testConversationHeaderMatchesDesktopTitleAndTabGeometry() {
+        XCTAssertEqual(conversationHeaderPaddingTopPoints, 10)
+        XCTAssertEqual(conversationHeaderPaddingBottomWithoutTabsPoints, 10)
+        XCTAssertEqual(conversationHeaderBlankPaddingBottomPoints, 0)
+        XCTAssertEqual(conversationHeaderPaddingHorizontalPoints, 14)
+        XCTAssertEqual(conversationHeaderMinHeightPoints, 76)
+        XCTAssertEqual(conversationHeaderTitleRowMinHeightPoints, 30)
+        XCTAssertEqual(conversationHeaderTitleClusterGapPoints, 10)
+        XCTAssertEqual(conversationHeaderTitleFontSizePoints, 14)
+        XCTAssertEqual(conversationHeaderTitleLineHeightPoints, 20)
+        XCTAssertEqual(conversationHeaderTitleWeight, 500)
+        XCTAssertEqual(conversationHeaderTabsMarginTopPoints, 10)
+        XCTAssertEqual(conversationHeaderTitleTabGapPoints, 10)
+        XCTAssertEqual(conversationHeaderTabGapPoints, 36)
+        XCTAssertEqual(conversationHeaderTabPaddingBottomPoints, 9)
+        XCTAssertEqual(conversationHeaderTabFontSizePoints, 13)
+        XCTAssertEqual(conversationHeaderTabLineHeightPoints, 16)
+        XCTAssertEqual(conversationHeaderTabWeight, 500)
+        XCTAssertEqual(conversationHeaderTabUnderlineHeightPoints, 2)
+        XCTAssertEqual(conversationHeaderTabUnderlineOverflowPoints, 1)
+        XCTAssertEqual(conversationHeaderBorderWidthPoints, 0.5)
+        XCTAssertEqual(conversationTitleRowIdentifier(), "conversationTitleRow")
+        XCTAssertEqual(
+            conversationHeaderPaddingTopPoints
+                + conversationHeaderTitleRowMinHeightPoints
+                + conversationHeaderTabsMarginTopPoints
+                + conversationHeaderTabLineHeightPoints
+                + conversationHeaderTabPaddingBottomPoints
+                + conversationHeaderTabUnderlineOverflowPoints,
+            conversationHeaderMinHeightPoints
+        )
+    }
+
     func testConversationHeaderHasNoOverflowMenu() {
         XCTAssertFalse(ConversationHeaderPolicy.includesOverflowMenu)
         XCTAssertFalse(conversationHeaderShowsModelChip)

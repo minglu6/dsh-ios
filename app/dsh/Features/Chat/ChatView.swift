@@ -168,28 +168,26 @@ struct ChatView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 10) {
-            Button {
-                Keyboard.dismiss()
-                model.showDrawer = true
-            } label: {
-                OfficialGlyph(kind: .panelLeft, size: 16, color: T.ink)
-            }
-            .accessibilityElement(children: .contain)
-            .accessibilityAddTraits(.isButton)
-            .accessibilityIdentifier("openDrawer")
+        ConversationTitleRow(
+            onOpenDrawer: { model.showDrawer = true },
+            onOpenStart: {
+                if case .panel(.start) = model.currentRoute { return }
+                model.push(.panel(.start))
+            },
+            startDisabled: firstPromptBlocksComposerActions(model.firstPrompt)
+        ) {
             if conversationHeaderShowsCrumbs(headerCrumbs) {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 4) {
                         ForEach(Array(headerCrumbs.enumerated()), id: \.element.sessionId) { index, crumb in
                             if index > 0 {
                                 Text("/")
-                                    .font(.headline)
+                                    .font(conversationHeaderTitleFont())
                                     .foregroundStyle(T.text3)
                             }
                             if crumb.current {
                                 Text(crumb.title)
-                                    .font(.headline)
+                                    .font(conversationHeaderTitleFont())
                                     .foregroundStyle(crumb.subagent ? T.text2 : T.ink)
                                     .lineLimit(1)
                             } else {
@@ -197,7 +195,7 @@ struct ChatView: View {
                                     model.openSession(crumb.sessionId)
                                 } label: {
                                     Text(crumb.title)
-                                        .font(.headline)
+                                        .font(conversationHeaderTitleFont())
                                         .foregroundStyle(T.text2)
                                         .lineLimit(1)
                                 }
@@ -210,58 +208,53 @@ struct ChatView: View {
                 .accessibilityLabel(sessionHierarchyAria(english: L.en))
             } else {
                 Text(headerTitle)
-                    .font(.headline)
+                    .font(conversationHeaderTitleFont())
                     .foregroundStyle(T.ink)
                     .lineLimit(1)
+                    .frame(minHeight: CGFloat(conversationHeaderTitleLineHeightPoints), alignment: .center)
             }
-            Spacer()
-            Button {
-                Keyboard.dismiss()
-                if case .panel(.start) = model.currentRoute { return }
-                model.push(.panel(.start))
-            } label: {
-                OfficialGlyph(kind: .panelRight, size: 16, color: T.ink)
-            }
-            .disabled(firstPromptBlocksComposerActions(model.firstPrompt))
-            .accessibilityLabel(L.startPanel())
-            .accessibilityElement(children: .contain)
-            .accessibilityAddTraits(.isButton)
-            .accessibilityIdentifier("openStartPanel")
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
         .background(T.surface)
     }
 
     private var tabs: some View {
-        HStack(spacing: 16) {
+        HStack(alignment: .top, spacing: CGFloat(conversationHeaderTabGapPoints)) {
             tabChip(0, L.chatTab())
             if model.showCodeWorkView {
                 tabChip(1, TrajL.viewTrajectory)
             }
-            Spacer()
+            Spacer(minLength: 0)
             if let sessionId = model.chat?.sessionId {
                 JobsAction(model: model, sessionId: sessionId)
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.bottom, 6)
+        .padding(.top, CGFloat(conversationHeaderTabsMarginTopPoints))
+        .padding(.horizontal, CGFloat(conversationHeaderPaddingHorizontalPoints))
+        .padding(.bottom, CGFloat(conversationHeaderTabUnderlineOverflowPoints))
         .background(T.surface)
-        .overlay(alignment: .bottom) { T.borderL3.frame(height: 0.5) }
+        .overlay(alignment: .bottom) {
+            T.borderL3.frame(height: CGFloat(conversationHeaderBorderWidthPoints))
+        }
     }
 
     private func tabChip(_ index: Int, _ title: String) -> some View {
-        Button { tab = index } label: {
+        let selected = tab == index
+        return Button { tab = index } label: {
             Text(title)
-                .font(.subheadline.weight(tab == index ? .semibold : .regular))
-                .foregroundStyle(tab == index ? T.ink : T.text3)
-                .padding(.bottom, 6)
+                .font(conversationHeaderTabFont())
+                .foregroundStyle(selected ? T.businessPrimary : T.text3)
+                .frame(height: CGFloat(conversationHeaderTabLineHeightPoints), alignment: .center)
+                .padding(.bottom, CGFloat(conversationHeaderTabPaddingBottomPoints))
                 .overlay(alignment: .bottom) {
-                    if tab == index { T.accent.frame(height: 2) }
+                    if selected {
+                        T.businessPrimary
+                            .frame(height: CGFloat(conversationHeaderTabUnderlineHeightPoints))
+                            .offset(y: CGFloat(conversationHeaderTabUnderlineOverflowPoints))
+                    }
                 }
         }
         .buttonStyle(.plain)
-        .accessibilityAddTraits(tab == index ? [.isSelected] : [])
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
         .accessibilityIdentifier(index == 0 ? "chatTab.chat" : "chatTab.trajectory")
     }
 
