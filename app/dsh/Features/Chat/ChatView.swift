@@ -7,10 +7,6 @@ func conversationHeaderTitleFont() -> Font {
     .system(size: CGFloat(conversationHeaderTitleFontSizePoints), weight: .medium)
 }
 
-func conversationHeaderTabFont() -> Font {
-    .system(size: CGFloat(conversationHeaderTabFontSizePoints), weight: .medium)
-}
-
 struct ChatView: View {
     @ObservedObject var model: AppModel
     @Environment(\.scenePhase) private var scenePhase
@@ -237,14 +233,17 @@ struct ChatView: View {
             .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier("openStartPanel")
         }
-        .frame(minHeight: CGFloat(conversationHeaderTitleRowMinHeightPoints))
+        .frame(
+            minHeight: CGFloat(conversationHeaderTitleRowMinHeightPoints),
+            maxHeight: CGFloat(conversationHeaderTitleRowMinHeightPoints)
+        )
         .padding(.top, CGFloat(conversationHeaderPaddingTopPoints))
         .padding(.horizontal, CGFloat(conversationHeaderPaddingHorizontalPoints))
         .background(T.surface)
     }
 
     private var tabs: some View {
-        HStack(spacing: CGFloat(conversationHeaderTabGapPoints)) {
+        HStack(spacing: 16) {
             tabChip(0, L.chatTab())
             if model.showCodeWorkView {
                 tabChip(1, TrajL.viewTrajectory)
@@ -255,36 +254,24 @@ struct ChatView: View {
             }
         }
         .padding(.top, CGFloat(conversationHeaderTabsMarginTopPoints))
-        .padding(.horizontal, CGFloat(conversationHeaderPaddingHorizontalPoints))
+        .padding(.horizontal, 14)
+        .padding(.bottom, 6)
         .background(T.surface)
-        .overlay(alignment: .bottom) {
-            T.borderL3.frame(height: CGFloat(conversationHeaderBorderWidthPoints))
-        }
+        .overlay(alignment: .bottom) { T.borderL3.frame(height: 0.5) }
     }
 
     private func tabChip(_ index: Int, _ title: String) -> some View {
-        let selected = tab == index
-        return Button { tab = index } label: {
+        Button { tab = index } label: {
             Text(title)
-                .font(conversationHeaderTabFont())
-                .foregroundStyle(selected ? T.businessPrimary : T.text3)
-                .frame(height: CGFloat(conversationHeaderTabLineHeightPoints), alignment: .center)
-                .padding(.bottom, CGFloat(conversationHeaderTabPaddingBottomPoints))
+                .font(.subheadline.weight(tab == index ? .semibold : .regular))
+                .foregroundStyle(tab == index ? T.ink : T.text3)
+                .padding(.bottom, 6)
                 .overlay(alignment: .bottom) {
-                    if selected {
-                        // Desktop `bottom: -1px` needs a locked .header box to
-                        // not reflow when the keyboard rises. Header and tabs
-                        // stay siblings (b65811e); sit the 2pt rule on the
-                        // chip bottom above the l3 hairline.
-                        T.businessPrimary
-                            .frame(height: CGFloat(conversationHeaderTabUnderlineHeightPoints))
-                            .allowsHitTesting(false)
-                            .accessibilityHidden(true)
-                    }
+                    if tab == index { T.accent.frame(height: 2) }
                 }
         }
         .buttonStyle(.plain)
-        .accessibilityAddTraits(selected ? [.isSelected] : [])
+        .accessibilityAddTraits(tab == index ? [.isSelected] : [])
         .accessibilityIdentifier(index == 0 ? "chatTab.chat" : "chatTab.trajectory")
     }
 
