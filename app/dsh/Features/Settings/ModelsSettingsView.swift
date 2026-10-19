@@ -42,7 +42,7 @@ struct ModelsSettingsView: View {
                             message = nil
                         } label: {
                             HStack {
-                                Image(systemName: "plus")
+                                OfficialGlyph(kind: .plusOutline, size: 16, color: canAdd ? T.ink : T.text3)
                                 Text(L.t("添加模型提供商", "Add model provider"))
                             }
                             .foregroundStyle(canAdd ? T.ink : T.text3)
@@ -51,6 +51,9 @@ struct ModelsSettingsView: View {
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(style: StrokeStyle(lineWidth: 1, dash: [4])))
                         }
                         .disabled(!canAdd)
+                        .accessibilityElement(children: .contain)
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityIdentifier(modelsAddProviderSymbol())
                         .padding(.horizontal, 18)
                         if !loading && !addOptions.offered {
                             settingsMessage(L.t("远程主机未提供可新增的模型提供商配置。", "The remote host has not exposed an add-provider configuration."))

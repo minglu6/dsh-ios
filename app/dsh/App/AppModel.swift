@@ -214,6 +214,7 @@ final class AppModel: ObservableObject {
     @Published var toastUndoArchiveId: String?
     @Published var archiveConfirm: ArchiveConfirmRequest?
     var uiTestFixture = false
+    var uiTestFilePreviewText: String?
 
     let terminal = AnsiTerminal()
     let hostSettings = HostSettings()

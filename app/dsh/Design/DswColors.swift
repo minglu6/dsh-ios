@@ -10,6 +10,7 @@ struct DswColors {
     let bgModulePlatform: Color
     let bgMask1: Color
     let bgDocumentPreview: Color
+    let borderL1: Color
     let borderL2: Color
     let borderL3: Color
     let borderL4: Color
@@ -54,6 +55,7 @@ struct DswColors {
         bgModulePlatform: Color(hex: 0xFFF5F6F7),
         bgMask1: Color(hex: 0x3D000000),
         bgDocumentPreview: Color(hex: 0xFFEBEEF2),
+        borderL1: Color(hex: dswAliasBorderL1LightHex),
         borderL2: Color(hex: 0x1A000000),
         borderL3: Color(hex: dswAliasBorderL3LightHex),
         borderL4: Color(hex: 0x29000000),
@@ -98,6 +100,7 @@ struct DswColors {
         bgModulePlatform: Color(hex: 0xFF353638),
         bgMask1: Color(hex: 0x80000000),
         bgDocumentPreview: Color(hex: 0xFF151517),
+        borderL1: Color(hex: dswAliasBorderL1DarkHex),
         borderL2: Color(hex: 0x1FFFFFFF),
         borderL3: Color(hex: dswAliasBorderL3DarkHex),
         borderL4: Color(hex: 0x33FFFFFF),

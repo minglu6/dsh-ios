@@ -299,6 +299,17 @@ final class ComposerPickerParityTests: XCTestCase {
         XCTAssertEqual(pluginAddCreatePluginUnavailable(english: false), "暂时不可用，请重新打开菜单重试")
         XCTAssertEqual(pluginAddCreatePluginMissing(english: false), "当前配置未提供创造模式")
         XCTAssertTrue(pluginAddMenuUsesMenuSurface)
+        XCTAssertEqual(pluginAddChevronSymbol(), "official.chevronDown")
+        XCTAssertEqual(pluginInventoryChevronSymbol(), "official.chevronDown")
+        XCTAssertTrue(isForbiddenPluginChromeSystemSymbol("chevron.down"))
+        XCTAssertFalse(isForbiddenPluginChromeSystemSymbol("official.chevronDown"))
+        XCTAssertEqual(modelsAddProviderSymbol(), "official.plusOutline")
+        XCTAssertEqual(presetAddSymbol(), "official.plusOutline")
+        XCTAssertEqual(presetRefreshSymbol(), "official.refreshOutline")
+        XCTAssertEqual(presetBrowseSymbol(), "official.browseOutline")
+        XCTAssertTrue(isForbiddenPresetChromeSystemSymbol("plus"))
+        XCTAssertTrue(isForbiddenPresetChromeSystemSymbol("arrow.clockwise"))
+        XCTAssertTrue(isForbiddenPresetChromeSystemSymbol("doc.text.magnifyingglass"))
     }
 
     func testPermissionCopyAndMenuMetricsMatchDesktop() {

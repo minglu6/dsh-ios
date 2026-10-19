@@ -1022,49 +1022,60 @@ private struct TurnTriggerRow: View {
 
     var body: some View {
         let provider = turnTriggerProvider(item.messageSourceJson)
+        let icon = turnTriggerIcon(sourceKind: item.sourceKind, provider: provider)
         let title = turnTriggerTitle(sourceKind: item.sourceKind, provider: provider, english: L.en)
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 0) {
             Button { open.toggle() } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: triggerSymbol(turnTriggerIcon(sourceKind: item.sourceKind, provider: provider)))
-                        .font(.system(size: 13))
-                        .foregroundStyle(T.text3)
-                    Text(title).font(.subheadline).foregroundStyle(T.text2)
+                HStack(spacing: CGFloat(turnTriggerHeaderGapPoints)) {
+                    OfficialGlyph(
+                        kind: OfficialGlyph.turnTrigger(icon),
+                        size: CGFloat(turnTriggerIconSizePoints),
+                        color: T.text3
+                    )
+                    Text(title)
+                        .font(.system(size: CGFloat(turnTriggerTitleFontSizePoints)))
+                        .foregroundStyle(T.text2)
                     Spacer(minLength: 8)
                     if let at = item.at {
-                        Text(formatMessageClock(at, english: L.en)).font(.caption).foregroundStyle(T.text3)
+                        Text(formatMessageClock(at, english: L.en))
+                            .font(.system(size: CGFloat(turnTriggerTimeFontSizePoints)))
+                            .foregroundStyle(T.text3)
                     }
-                    OfficialGlyph(kind: .chevronDown, size: 14, color: T.text3)
-                        .rotationEffect(.degrees(open ? 180 : 0))
+                    OfficialGlyph(
+                        kind: .chevronDown,
+                        size: CGFloat(turnTriggerChevronSizePoints),
+                        color: T.text3
+                    )
+                    .rotationEffect(.degrees(open ? 180 : 0))
                 }
+                .padding(.horizontal, CGFloat(turnTriggerHeaderPaddingHorizontalPoints))
+                .padding(.vertical, CGFloat(turnTriggerHeaderPaddingVerticalPoints))
             }
             .buttonStyle(.plain)
             .accessibilityLabel(title)
             if open {
-                Text(turnTriggerExplanation(english: L.en))
-                    .font(.caption)
-                    .foregroundStyle(T.text3)
-                if !item.text.isEmpty {
-                    Text(item.text).font(.subheadline).foregroundStyle(T.ink)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(turnTriggerExplanation(english: L.en))
+                        .font(.caption)
+                        .foregroundStyle(T.text3)
+                    if !item.text.isEmpty {
+                        Text(item.text).font(.subheadline).foregroundStyle(T.ink)
+                    }
                 }
+                .padding(.leading, CGFloat(turnTriggerBodyPaddingLeadingPoints))
+                .padding(.trailing, CGFloat(turnTriggerHeaderPaddingHorizontalPoints))
+                .padding(.bottom, CGFloat(turnTriggerBodyPaddingBottomPoints))
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(T.fill2, in: RoundedRectangle(cornerRadius: 10))
-    }
-
-    private func triggerSymbol(_ icon: TurnTriggerIcon) -> String {
-        switch icon {
-        case .goal: return D.goal
-        case .agent, .team, .subagent: return "person.crop.circle"
-        case .github: return "arrow.triangle.branch"
-        case .webhook: return "globe"
-        case .schedule: return "clock"
-        case .job: return "clock.arrow.circlepath"
-        case .plugin: return "puzzlepiece.extension"
-        case .request: return "bolt.horizontal"
-        }
+        .background(
+            T.turnTriggerBg,
+            in: RoundedRectangle(cornerRadius: CGFloat(turnTriggerRadiusPoints), style: .continuous)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: CGFloat(turnTriggerRadiusPoints), style: .continuous)
+                .stroke(T.borderL1, lineWidth: CGFloat(turnTriggerBorderWidthPoints))
+        )
+        .accessibilityIdentifier("turnTrigger")
     }
 }
 

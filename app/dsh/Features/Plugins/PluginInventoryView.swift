@@ -74,6 +74,8 @@ struct PluginInventoryView: View {
             : []
 
         HStack(spacing: 8) {
+            // Desktop `ui-plugin-manager` has no inventory search slot / IconSearch.
+            // Phone filter is a controller convenience; keep the SF affordance.
             Image(systemName: "magnifyingglass").foregroundStyle(T.text3)
             TextField(L.t("搜索插件", "Search plugins"), text: $query)
                 .textInputAutocapitalization(.never)
@@ -116,7 +118,7 @@ struct PluginInventoryView: View {
                 } label: {
                     HStack(spacing: 12) {
                         Text(presetLabel(selected)).foregroundStyle(T.ink).lineLimit(1)
-                        Image(systemName: "chevron.down").font(.system(size: 12)).foregroundStyle(T.ink)
+                        OfficialGlyph(kind: .chevronDown, size: 12, color: T.ink)
                     }
                     .padding(.horizontal, 14)
                     .frame(height: 36)
@@ -194,10 +196,8 @@ struct PluginInventoryView: View {
             HStack(spacing: 8) {
                 Button(action: toggle) {
                     HStack(spacing: 8) {
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 10))
+                        OfficialGlyph(kind: .chevronDown, size: 10, color: T.ink)
                             .rotationEffect(.degrees(open ? 0 : -90))
-                            .foregroundStyle(T.ink)
                         Text(title).foregroundStyle(T.ink).font(.system(size: 14))
                     }
                     .frame(minHeight: 36)
@@ -252,10 +252,8 @@ struct PluginInventoryView: View {
                                 .padding(.vertical, 2)
                                 .background((state == "disabled" ? T.fill2 : stateColor(state).opacity(0.08)), in: RoundedRectangle(cornerRadius: 4))
                         }
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 10))
+                        OfficialGlyph(kind: .chevronDown, size: 10, color: T.text3)
                             .rotationEffect(.degrees(expanded ? 180 : 0))
-                            .foregroundStyle(T.text3)
                     }
                     if let description = pluginLocalized(row["meta"]["description"], english: english), !description.isEmpty {
                         Text(description).font(.system(size: 12)).foregroundStyle(T.text3).lineLimit(expanded ? nil : 2)

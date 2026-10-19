@@ -68,9 +68,12 @@ struct AgentPresetSettingsView: View {
             Spacer()
             if error != nil {
                 Button { Task { await load() } } label: {
-                    Image(systemName: "arrow.clockwise").foregroundStyle(T.ink)
+                    OfficialGlyph(kind: .refreshOutline, size: 16, color: T.ink)
                 }
                 .disabled(!canLoad || busy || loading)
+                .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityIdentifier(presetRefreshSymbol())
             }
         }
         .padding(.horizontal, 16)
@@ -109,7 +112,11 @@ struct AgentPresetSettingsView: View {
                     if let creator {
                         Button(action: creator) {
                             HStack {
-                                Image(systemName: D.plus)
+                                OfficialGlyph(
+                                    kind: .plusOutline,
+                                    size: 16,
+                                    color: (model.isOnline && model.ops.contains("sessions.create") && !busy) ? T.ink : T.caption
+                                )
                                 Text(L.letAgentCreatePreset())
                             }
                             .foregroundStyle((model.isOnline && model.ops.contains("sessions.create") && !busy) ? T.ink : T.caption)
@@ -118,6 +125,9 @@ struct AgentPresetSettingsView: View {
                             .overlay(RoundedRectangle(cornerRadius: 16).stroke(style: StrokeStyle(lineWidth: 1, dash: [4])))
                         }
                         .disabled(!(model.isOnline && model.ops.contains("sessions.create")) || busy)
+                        .accessibilityElement(children: .contain)
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityIdentifier(presetAddSymbol())
                     }
                 }
                 .padding(.horizontal, 18)
@@ -249,10 +259,17 @@ private struct PresetCard: View {
                 }
                 Spacer()
                 Button(action: onView) {
-                    Image(systemName: D.browse).foregroundStyle(canRead ? T.text3 : T.caption)
+                    OfficialGlyph(
+                        kind: .browseOutline,
+                        size: 16,
+                        color: canRead ? T.text3 : T.caption
+                    )
                 }
                 .disabled(!canRead)
+                .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(.isButton)
                 .accessibilityLabel(L.viewConfiguration() + " · " + name)
+                .accessibilityIdentifier(presetBrowseSymbol())
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
