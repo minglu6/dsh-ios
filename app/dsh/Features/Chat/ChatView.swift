@@ -2063,9 +2063,7 @@ private struct ComposerTextView: UIViewRepresentable {
         }
 
         func render(_ view: UITextView, force: Bool = false) {
-            if !ImeComposition.shouldRewriteText(isMarked: view.markedTextRange != nil) {
-                fatalError("composer render rewrites attributedText while IME marked text is active")
-            }
+            guard ImeComposition.shouldRewriteText(isMarked: view.markedTextRange != nil) else { return }
             let next = mentionProjection(parent.text, cursor: parent.cursor, previous: projection)
             if !force,
                !applying,
@@ -2087,9 +2085,7 @@ private struct ComposerTextView: UIViewRepresentable {
         }
 
         func applySelection(_ view: UITextView, original: Int) {
-            if !ImeComposition.shouldRewriteText(isMarked: view.markedTextRange != nil) {
-                fatalError("composer must not rewrite selectedRange while IME marked text is active")
-            }
+            guard ImeComposition.shouldRewriteText(isMarked: view.markedTextRange != nil) else { return }
             let viewOffset = mentionViewOffset(original: original, projection: projection)
             let utf16 = mentionCharsToUtf16(view.attributedText?.string ?? "", viewOffset)
             let length = (view.attributedText?.string as NSString?)?.length ?? 0
@@ -2101,7 +2097,7 @@ private struct ComposerTextView: UIViewRepresentable {
 
         func commit(text: String, cursor: Int, selectionStart: Int) {
             if let view = textView, !ImeComposition.shouldRewriteText(isMarked: view.markedTextRange != nil) {
-                fatalError("composer commit rewrites text while IME marked text is active")
+                return
             }
             applying = true
             parent.text = text
