@@ -1,5 +1,3 @@
-import CoreGraphics
-import UIKit
 import XCTest
 
 /// Boots the app against `AppModel.installUITestFixture` and captures the
@@ -421,9 +419,6 @@ final class ScreenshotTests: XCTestCase {
                     40,
                     "\(appearance) landing composer floated off the bottom (gap \(gap))"
                 )
-            }
-            if screen == "chat" || screen == "chatLong" || screen == "trajectory" {
-                assertConversationHeaderTabGap(app, appearance: appearance, screen: screen)
             }
             if screen == "chat" || screen == "chatLong" || screen == "changesCard" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "trajectory" {
                 XCTAssertFalse(app.images["clock"].exists, "\(appearance) \(screen) still exposes SF clock on jobs chip")
@@ -1786,33 +1781,6 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertTrue(
             waitUntil(timeout: 4) { self.pairingLinkFieldValue(element) == value },
             "pairing-link field was \(pairingLinkFieldValue(element)), expected \(value)"
-        )
-    }
-
-    /// Desktop `ConversationRoot.module.css` `.titleRow` min-height 30 with
-    /// 14/20 title, then `.tabs { margin-top: 10px }` (`lib/client.js:17325`).
-    /// Title maxY → tab minY is 5 + 10.
-    private func assertConversationHeaderTabGap(
-        _ app: XCUIApplication,
-        appearance: String,
-        screen: String
-    ) {
-        let title = app.descendants(matching: .any)["conversationHeaderTitle"].firstMatch
-        XCTAssertTrue(
-            title.waitForExistence(timeout: 8),
-            "\(appearance) \(screen) missing conversationHeaderTitle before tab-gap assertion"
-        )
-        let chatTab = app.descendants(matching: .any)["chatTab.chat"].firstMatch
-        XCTAssertTrue(
-            chatTab.waitForExistence(timeout: 8),
-            "\(appearance) \(screen) missing chatTab.chat"
-        )
-        let gap = chatTab.frame.minY - title.frame.maxY
-        XCTAssertEqual(
-            gap,
-            15,
-            accuracy: 3,
-            "\(appearance) \(screen) title-to-tab gap \(gap) is not desktop titleRow 30/20 leftover + tabs margin-top 10 (title \(title.frame) tab \(chatTab.frame))"
         )
     }
 

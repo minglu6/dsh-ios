@@ -143,7 +143,7 @@ struct RootView: View {
 
     private var emptyChat: some View {
         VStack(spacing: 0) {
-            HStack(spacing: CGFloat(conversationHeaderTitleClusterGapPoints)) {
+            HStack {
                 Button {
                     Keyboard.dismiss()
                     model.showDrawer = true
@@ -168,11 +168,8 @@ struct RootView: View {
                 .accessibilityAddTraits(.isButton)
                 .accessibilityIdentifier("openStartPanel")
             }
-            .frame(minHeight: CGFloat(conversationHeaderTitleRowMinHeightPoints))
-            .padding(.top, CGFloat(conversationHeaderPaddingTopPoints))
-            .padding(.horizontal, CGFloat(conversationHeaderPaddingHorizontalPoints))
+            .padding(14)
             .background(T.surface)
-            .ignoresSafeArea(.keyboard)
             ZStack(alignment: .bottom) {
                 VStack(spacing: 0) {
                     landingHeadlineRow

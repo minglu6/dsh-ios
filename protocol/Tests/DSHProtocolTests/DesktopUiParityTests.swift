@@ -232,39 +232,6 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertTrue(SessionRowChromePolicy.trailingActionsAlwaysVisibleOnTouch)
     }
 
-    func testConversationHeaderMatchesDesktopTitleAndTabGeometry() {
-        XCTAssertEqual(conversationHeaderPaddingTopPoints, 10)
-        XCTAssertEqual(conversationHeaderPaddingBottomWithoutTabsPoints, 10)
-        XCTAssertEqual(conversationHeaderBlankPaddingBottomPoints, 0)
-        XCTAssertEqual(conversationHeaderPaddingHorizontalPoints, 14)
-        XCTAssertEqual(conversationHeaderMinHeightPoints, 76)
-        XCTAssertEqual(conversationHeaderTitleRowMinHeightPoints, 30)
-        XCTAssertEqual(conversationHeaderTitleClusterGapPoints, 10)
-        XCTAssertEqual(conversationHeaderTitleFontSizePoints, 14)
-        XCTAssertEqual(conversationHeaderTitleLineHeightPoints, 20)
-        XCTAssertEqual(conversationHeaderTitleWeight, 500)
-        XCTAssertEqual(conversationHeaderTabsMarginTopPoints, 10)
-        XCTAssertEqual(conversationHeaderTabGapPoints, 36)
-        XCTAssertEqual(conversationHeaderTabPaddingBottomPoints, 9)
-        XCTAssertEqual(conversationHeaderTabFontSizePoints, 13)
-        XCTAssertEqual(conversationHeaderTabLineHeightPoints, 16)
-        XCTAssertEqual(conversationHeaderTabWeight, 500)
-        XCTAssertEqual(conversationHeaderTabUnderlineHeightPoints, 2)
-        XCTAssertEqual(conversationHeaderTabUnderlineOverflowPoints, 1)
-        XCTAssertEqual(conversationHeaderBorderWidthPoints, 0.5)
-        XCTAssertEqual(conversationHeaderTitleIdentifier(), "conversationHeaderTitle")
-        XCTAssertEqual(conversationHeaderTitleTabGapPoints, 15)
-        XCTAssertEqual(
-            conversationHeaderPaddingTopPoints
-                + conversationHeaderTitleRowMinHeightPoints
-                + conversationHeaderTabsMarginTopPoints
-                + conversationHeaderTabLineHeightPoints
-                + conversationHeaderTabPaddingBottomPoints
-                + conversationHeaderTabUnderlineOverflowPoints,
-            conversationHeaderMinHeightPoints
-        )
-    }
-
     func testConversationHeaderHasNoOverflowMenu() {
         XCTAssertFalse(ConversationHeaderPolicy.includesOverflowMenu)
         XCTAssertFalse(conversationHeaderShowsModelChip)
@@ -871,6 +838,8 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertEqual(dswRadiusLgPoints, 16)
         XCTAssertEqual(settingsCardRadiusPoints, 16)
         XCTAssertEqual(settingsCardStrokeWidthPoints, 0.5)
+        XCTAssertEqual(settingsShellHeaderIdentifier(), "settingsShellHeader")
+        XCTAssertEqual(settingsNavCardIdentifier(), "settingsNavCard")
         XCTAssertEqual(dswAliasBgBaseHex(dark: false), 0xFFFFFFFF)
         XCTAssertEqual(dswAliasBgBaseHex(dark: true), 0xFF151517)
         XCTAssertEqual(dswAliasSettingsCardFillHex(dark: false), 0xFFFFFFFF)
@@ -881,8 +850,6 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertEqual(dswHexRed(dswAliasSettingsCardFillDarkHex), 44)
         XCTAssertEqual(dswHexGreen(dswAliasSettingsCardFillDarkHex), 44)
         XCTAssertEqual(dswHexBlue(dswAliasSettingsCardFillDarkHex), 46)
-        XCTAssertEqual(settingsShellHeaderIdentifier(), "settingsShellHeader")
-        XCTAssertEqual(settingsNavCardIdentifier(), "settingsNavCard")
         XCTAssertEqual(settingsNavRowIdentifier("general"), "settingsNavRow.general")
         XCTAssertTrue(settingsDataOutlineFillPath.hasPrefix("M7.8667 0.349609"))
         XCTAssertTrue(settingsDataOutlineGearPath.hasPrefix("M12.8936 10.0361"))

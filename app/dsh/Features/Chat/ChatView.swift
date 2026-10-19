@@ -3,10 +3,6 @@ import UIKit
 import UniformTypeIdentifiers
 import DSHProtocol
 
-func conversationHeaderTitleFont() -> Font {
-    .system(size: CGFloat(conversationHeaderTitleFontSizePoints), weight: .medium)
-}
-
 struct ChatView: View {
     @ObservedObject var model: AppModel
     @Environment(\.scenePhase) private var scenePhase
@@ -172,7 +168,7 @@ struct ChatView: View {
     }
 
     private var header: some View {
-        HStack(spacing: CGFloat(conversationHeaderTitleClusterGapPoints)) {
+        HStack(spacing: 10) {
             Button {
                 Keyboard.dismiss()
                 model.showDrawer = true
@@ -188,12 +184,12 @@ struct ChatView: View {
                         ForEach(Array(headerCrumbs.enumerated()), id: \.element.sessionId) { index, crumb in
                             if index > 0 {
                                 Text("/")
-                                    .font(conversationHeaderTitleFont())
+                                    .font(.headline)
                                     .foregroundStyle(T.text3)
                             }
                             if crumb.current {
                                 Text(crumb.title)
-                                    .font(conversationHeaderTitleFont())
+                                    .font(.headline)
                                     .foregroundStyle(crumb.subagent ? T.text2 : T.ink)
                                     .lineLimit(1)
                             } else {
@@ -201,7 +197,7 @@ struct ChatView: View {
                                     model.openSession(crumb.sessionId)
                                 } label: {
                                     Text(crumb.title)
-                                        .font(conversationHeaderTitleFont())
+                                        .font(.headline)
                                         .foregroundStyle(T.text2)
                                         .lineLimit(1)
                                 }
@@ -214,10 +210,9 @@ struct ChatView: View {
                 .accessibilityLabel(sessionHierarchyAria(english: L.en))
             } else {
                 Text(headerTitle)
-                    .font(conversationHeaderTitleFont())
+                    .font(.headline)
                     .foregroundStyle(T.ink)
                     .lineLimit(1)
-                    .accessibilityIdentifier(conversationHeaderTitleIdentifier())
             }
             Spacer()
             Button {
@@ -233,12 +228,10 @@ struct ChatView: View {
             .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier("openStartPanel")
         }
-        .frame(minHeight: CGFloat(conversationHeaderTitleRowMinHeightPoints),
-               maxHeight: CGFloat(conversationHeaderTitleRowMinHeightPoints))
-        .padding(.horizontal, CGFloat(conversationHeaderPaddingHorizontalPoints))
-        .padding(.vertical, CGFloat(conversationHeaderPaddingTopPoints))
+        .frame(minHeight: 30)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
         .background(T.surface)
-        .ignoresSafeArea(.keyboard)
     }
 
     private var tabs: some View {
@@ -256,7 +249,6 @@ struct ChatView: View {
         .padding(.bottom, 6)
         .background(T.surface)
         .overlay(alignment: .bottom) { T.borderL3.frame(height: 0.5) }
-        .ignoresSafeArea(.keyboard)
     }
 
     private func tabChip(_ index: Int, _ title: String) -> some View {
