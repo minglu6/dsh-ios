@@ -181,9 +181,14 @@ final class AppModel: ObservableObject {
     @Published var hiddenQuestionId: String?
     @Published var nearby: [DiscoveredHost] = []
     @Published var composerText = ""
+    @Published var composerCursor = 0
     @Published var mentionQuery: String?
+    @Published var mentionLoading = false
+    @Published var mentionDrilled = false
     @Published var fileMentions: [FileReference] = []
     @Published var sessionMentions: [SessionReference] = []
+    private var mentionFetchGeneration = 0
+    private var mentionPreparing = false
     @Published var routeStack: [AppRoute] = []
     @Published var showDrawer = false
     @Published var feedback: [String: MessageFeedback] = [:]
@@ -586,6 +591,11 @@ final class AppModel: ObservableObject {
             )
         }
         composerText = ""
+        composerCursor = 0
+        mentionQuery = nil
+        mentionDrilled = false
+        fileMentions = []
+        sessionMentions = []
         pendingAttaches = []
         if let chat {
             Task {
@@ -701,6 +711,7 @@ final class AppModel: ObservableObject {
     private func failFirstPrompt(_ message: String?) {
         guard let first = firstPrompt else { return }
         composerText = first.text
+        composerCursor = first.text.count
         reducer.discardEcho(first.requestId)
         if chat != nil { publishChat() }
         firstPrompt = nil
@@ -1269,9 +1280,27 @@ final class AppModel: ObservableObject {
     }
 
     func insertComposer(_ token: String) {
-        let next = replaceComposerToken(composerText, cursor: composerText.count, token: token)
+        let next = replaceComposerToken(composerText, cursor: composerCursor, token: token)
         composerText = next.text
+        composerCursor = next.cursor
         mentionQuery = nil
+    }
+
+    func insertMention(_ token: String, appendSpace: Bool = true, drilled: Bool = false) {
+        let next = replaceComposerToken(
+            composerText,
+            cursor: composerCursor,
+            token: token,
+            appendSpace: appendSpace
+        )
+        composerText = next.text
+        composerCursor = next.cursor
+        mentionDrilled = drilled
+        if !drilled {
+            mentionQuery = nil
+            fileMentions = []
+            sessionMentions = []
+        }
     }
 
     func consumeComposerSlash() {
@@ -1293,29 +1322,100 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func fetchMentions(query: String) {
+    func fetchMentions(query: String, quoted: Bool = false) {
+        if uiTestFixture { return }
+        mentionFetchGeneration += 1
+        let generation = mentionFetchGeneration
+        mentionLoading = true
         Task {
-            guard let client, let sessionId = chat?.sessionId else { return }
+            defer {
+                if mentionFetchGeneration == generation {
+                    mentionLoading = false
+                }
+            }
+            guard let client else { return }
+            let sessionId: String
+            if let existing = chat?.sessionId {
+                sessionId = existing
+            } else {
+                guard let prepared = await prepareMentionSession() else { return }
+                sessionId = prepared
+            }
+            guard mentionFetchGeneration == generation else { return }
             let canFiles = ops.contains("references.files")
-            let canSessions = ops.contains("references.sessions")
+            let canSessions = ops.contains("references.sessions") && !quoted
             if !canFiles { fileMentions = [] }
             if !canSessions { sessionMentions = [] }
             if canFiles {
                 do {
                     let fileResult = try await client.referenceFiles(sessionId: sessionId, query: query)
-                    fileMentions = (fileResult["items"].arr() ?? []).compactMap(FileReference.parse)
+                    if mentionFetchGeneration == generation {
+                        fileMentions = (fileResult["items"].arr() ?? []).compactMap(FileReference.parse)
+                    }
+                } catch is CancellationError {
+                    return
                 } catch {
-                    fileMentions = []
+                    if mentionFetchGeneration == generation { fileMentions = [] }
                 }
             }
             if canSessions {
                 do {
                     let sessionResult = try await client.referenceSessions(sessionId: sessionId, query: query)
-                    sessionMentions = (sessionResult["items"].arr() ?? []).compactMap(SessionReference.parse)
+                    if mentionFetchGeneration == generation {
+                        sessionMentions = (sessionResult["items"].arr() ?? []).compactMap(SessionReference.parse)
+                    }
+                } catch is CancellationError {
+                    return
                 } catch {
-                    sessionMentions = []
+                    if mentionFetchGeneration == generation { sessionMentions = [] }
                 }
             }
+        }
+    }
+
+    /// Desktop `ui-reference` requires a retained Session before
+    /// `fileReferences.list` / `sessionReferenceResolver.candidates`. Landing
+    /// therefore prepares a blank session the way Android `prepareSidebarSession`
+    /// does — draft text stays in `composerText`.
+    func prepareMentionSession() async -> String? {
+        if let id = chat?.sessionId { return id }
+        guard let client, firstPrompt == nil, !mentionPreparing else { return chat?.sessionId }
+        mentionPreparing = true
+        defer { mentionPreparing = false }
+        let chosenWorkspace = draftWorkspaceId ?? workspaces.first?.workspaceId
+        if landingComposerNeedsWorkspace(selectedWorkspaceId: chosenWorkspace, workspaceCount: workspaces.count) {
+            return nil
+        }
+        let keptQuery = mentionQuery
+        let keptFiles = fileMentions
+        let keptSessions = sessionMentions
+        let keptDrilled = mentionDrilled
+        do {
+            let chosen = pendingCreatorPreset ?? draftPreset.nilIfBlank
+            let id = try await client.createSession(agentPreset: chosen, workspaceId: chosenWorkspace)
+            pendingCreatorPreset = nil
+            initializeChat(id)
+            mentionQuery = keptQuery
+            fileMentions = keptFiles
+            sessionMentions = keptSessions
+            mentionDrilled = keptDrilled
+            showDrawer = false
+            loadSessionPermission(id)
+            await applyDraftPermission(sessionId: id)
+            await applyDraftModel(sessionId: id)
+            try await refollow(client, sessionId: id, afterSeq: nil)
+            mentionQuery = keptQuery
+            mentionDrilled = keptDrilled
+            return chat?.sessionId == id ? id : nil
+        } catch is CancellationError {
+            mentionQuery = keptQuery
+            fileMentions = keptFiles
+            sessionMentions = keptSessions
+            mentionDrilled = keptDrilled
+            return chat?.sessionId
+        } catch {
+            emit(error.localizedDescription)
+            return nil
         }
     }
 
@@ -2272,6 +2372,7 @@ final class AppModel: ObservableObject {
         presetProjectionSeq = -1
         sessionPermission = nil
         mentionQuery = nil
+        mentionDrilled = false
         fileMentions = []
         sessionMentions = []
     }

@@ -206,37 +206,72 @@ extension AppModel {
         case "landing", "startLanding":
             chat = nil
             firstPrompt = nil
+        case "landingMention":
+            chat = nil
+            firstPrompt = nil
+            seedUITestMentionComposer(
+                text: "@",
+                files: [
+                    uiTestFileMention("README.md"),
+                    uiTestFileMention("src/", directory: true),
+                ],
+                sessions: [uiTestSessionMention()]
+            )
         case "drawer", "viewOptions", "sessionActions":
             showDrawer = true
             // Desktop workspace-row overflow (`IconEllipsisOutline`). Off other
             // screens so `*-chat.png` / files / connections stay still.
             ops.formUnion(["workspace.rename", "workspace.delete"])
-        case "chat", "trajectory", "trajectoryDetail", "planMode", "mention", "turnTrigger":
+        case "chat", "trajectory", "trajectoryDetail", "planMode", "mention", "mentionFiltered", "mentionChip", "mentionSent", "turnTrigger":
             seedUITestJobs()
             if screen == "turnTrigger" { seedUITestTurnTrigger() }
             if screen == "planMode" {
                 chat?.planMode = true
                 composerText = ""
+                composerCursor = 0
             }
             if screen == "mention" {
-                composerText = "@[你好](dsh-session:s-hello) @README.md @"
-                fileMentions = [
-                    FileReference.parse(.object([
-                        "path": .string("README.md"),
-                        "kind": .string("file"),
-                    ]))!,
-                    FileReference.parse(.object([
-                        "path": .string("src/"),
-                        "kind": .string("directory"),
-                    ]))!,
+                seedUITestMentionComposer(
+                    text: "@[你好](dsh-session:s-hello) @README.md @",
+                    files: [
+                        uiTestFileMention("README.md"),
+                        uiTestFileMention("src/", directory: true),
+                    ],
+                    sessions: [uiTestSessionMention()]
+                )
+            }
+            if screen == "mentionFiltered" {
+                seedUITestMentionComposer(
+                    text: "@READ",
+                    files: [uiTestFileMention("README.md")],
+                    sessions: []
+                )
+            }
+            if screen == "mentionChip" {
+                seedUITestMentionComposer(
+                    text: "@[你好](dsh-session:s-hello) ",
+                    files: [],
+                    sessions: []
+                )
+            }
+            if screen == "mentionSent" {
+                composerText = ""
+                composerCursor = 0
+                guard var state = chat else {
+                    fatalError("UITestLaunch mentionSent requires a chat session")
+                }
+                guard case .user(let user) = state.items.first else {
+                    fatalError("UITestLaunch mentionSent requires the fixture user row")
+                }
+                state.items = [
+                    .user(Item.User(
+                        key: "u-mention",
+                        text: "@[你好](dsh-session:s-hello) @README.md",
+                        at: user.at,
+                        messageId: "m-mention"
+                    )),
                 ]
-                sessionMentions = [
-                    SessionReference.parse(.object([
-                        "mention": .string("@[你好](dsh-session:s-hello)"),
-                        "title": .string("你好"),
-                        "sessionId": .string("s-hello"),
-                    ]))!,
-                ]
+                chat = state
             }
         case "chatDock":
             seedUITestChatDocks()
@@ -374,8 +409,10 @@ extension AppModel {
         case "composerStop":
             chat?.running = true
             composerText = ""
+            composerCursor = 0
         case "slash":
             composerText = "/"
+            composerCursor = 1
             // Desktop slash HOST_FACES + /file + /model + /feedback + /export.
             // Keep these ops on this screen only so other fixtures stay still.
             ops.formUnion(["attachments.upload", "sessionFeedback.record", "commands.execute"])
@@ -400,6 +437,34 @@ extension AppModel {
         default:
             fatalError("UITestLaunch: unknown screen \(screen)")
         }
+    }
+
+    fileprivate func seedUITestMentionComposer(
+        text: String,
+        files: [FileReference],
+        sessions: [SessionReference]
+    ) {
+        composerText = text
+        composerCursor = text.count
+        mentionQuery = mentionMenuTrigger(text, cursor: text.count)?.query
+        mentionDrilled = false
+        fileMentions = files
+        sessionMentions = sessions
+    }
+
+    fileprivate func uiTestFileMention(_ path: String, directory: Bool = false) -> FileReference {
+        FileReference.parse(.object([
+            "path": .string(path),
+            "kind": .string(directory ? "directory" : "file"),
+        ]))!
+    }
+
+    fileprivate func uiTestSessionMention() -> SessionReference {
+        SessionReference.parse(.object([
+            "mention": .string("@[你好](dsh-session:s-hello)"),
+            "title": .string("你好"),
+            "sessionId": .string("s-hello"),
+        ]))!
     }
 
     /// Desktop TodoPanel / GoalBar / QueueDock. Kept off the `chat` fixture so

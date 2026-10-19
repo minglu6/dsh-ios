@@ -5,6 +5,7 @@ import XCTest
 final class ScreenshotTests: XCTestCase {
     private let screens = [
         "landing", "drawer", "viewOptions", "sessionActions", "chat", "planMode", "mention",
+        "landingMention", "mentionFiltered", "mentionChip", "mentionSent",
         "turnTrigger", "filePreview",
         "models", "permission", "start", "startLanding", "browser", "inspector",
         "settings", "settingsShell", "schedule", "terminal", "files", "trajectory", "plugins", "connections",
@@ -140,22 +141,22 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) inspector type-filter skip lost; do not invent a filter SVG"
                 )
             }
-            if screen == "landing" || screen == "drawer" {
+            if screen == "landing" || screen == "landingMention" || screen == "drawer" {
                 XCTAssertFalse(app.images["folder.fill"].exists, "\(appearance) \(screen) still exposes SF folder.fill")
                 XCTAssertFalse(app.images["folder"].exists, "\(appearance) \(screen) still exposes SF folder")
             }
-            if screen == "landing" {
+            if screen == "landing" || screen == "landingMention" {
                 let officialOpen = app.descendants(matching: .any)["official.folderOpen"]
                 let officialClose = app.descendants(matching: .any)["official.folderClose"]
                 XCTAssertTrue(
                     officialOpen.waitForExistence(timeout: 8) || officialClose.waitForExistence(timeout: 2),
-                    "\(appearance) landing missing official workspace-chip folder glyph"
+                    "\(appearance) \(screen) missing official workspace-chip folder glyph"
                 )
-                XCTAssertFalse(app.images["chevron.down"].exists, "\(appearance) landing still exposes SF chevron.down")
-                XCTAssertFalse(app.images["checkmark"].exists, "\(appearance) landing still exposes SF checkmark")
+                XCTAssertFalse(app.images["chevron.down"].exists, "\(appearance) \(screen) still exposes SF chevron.down")
+                XCTAssertFalse(app.images["checkmark"].exists, "\(appearance) \(screen) still exposes SF checkmark")
                 XCTAssertTrue(
                     app.descendants(matching: .any)["official.chevronDown"].waitForExistence(timeout: 8),
-                    "\(appearance) landing missing official workspace-chip chevron"
+                    "\(appearance) \(screen) missing official workspace-chip chevron"
                 )
             }
             if screen == "drawer" {
@@ -232,7 +233,7 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertGreaterThanOrEqual(settingsFrame.height, 44, "\(appearance) settings hit shorter than 44pt")
                 XCTAssertGreaterThanOrEqual(hostFrame.height, 44, "\(appearance) host hit shorter than 44pt")
             }
-            if screen == "landing" || screen == "chat" || screen == "planMode" || screen == "mention" || screen == "turnTrigger" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
+            if screen == "landing" || screen == "landingMention" || screen == "chat" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
                 XCTAssertFalse(app.images["sidebar.left"].exists, "\(appearance) \(screen) still exposes SF sidebar.left")
                 XCTAssertFalse(app.images["sidebar.right"].exists, "\(appearance) \(screen) still exposes SF sidebar.right")
                 XCTAssertTrue(
@@ -240,21 +241,21 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) \(screen) missing official panel-left glyph"
                 )
             }
-            if screen == "landing" || screen == "chat" || screen == "planMode" || screen == "mention" || screen == "turnTrigger" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
+            if screen == "landing" || screen == "landingMention" || screen == "chat" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
                 XCTAssertTrue(
                     app.descendants(matching: .any)["official.panelRight"].waitForExistence(timeout: 8),
                     "\(appearance) \(screen) missing official panel-right glyph"
                 )
             }
-            if screen == "landing" {
+            if screen == "landing" || screen == "landingMention" {
                 XCTAssertTrue(
                     app.descendants(matching: .any)["openStartPanel"].waitForExistence(timeout: 8),
-                    "\(appearance) landing missing openStartPanel"
+                    "\(appearance) \(screen) missing openStartPanel"
                 )
                 let panelLeft = app.descendants(matching: .any)["official.panelLeft"].firstMatch
                 let panelRight = app.descendants(matching: .any)["official.panelRight"].firstMatch
-                XCTAssertTrue(panelLeft.waitForExistence(timeout: 8), "\(appearance) landing panelLeft gone before alignment")
-                XCTAssertTrue(panelRight.exists, "\(appearance) landing panelRight gone before alignment")
+                XCTAssertTrue(panelLeft.waitForExistence(timeout: 8), "\(appearance) \(screen) panelLeft gone before alignment")
+                XCTAssertTrue(panelRight.exists, "\(appearance) \(screen) panelRight gone before alignment")
                 XCTAssertEqual(
                     panelLeft.frame.midY,
                     panelRight.frame.midY,
@@ -268,7 +269,7 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) landing panelRight is not on the right"
                 )
             }
-            if screen == "landing" || screen == "chat" || screen == "planMode" || screen == "mention" {
+            if screen == "landing" || screen == "landingMention" || screen == "chat" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" {
                 XCTAssertFalse(app.images["plus"].exists, "\(appearance) \(screen) still exposes SF plus")
                 XCTAssertTrue(
                     app.descendants(matching: .any)["official.plusOutline"].waitForExistence(timeout: 8),
@@ -352,7 +353,7 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertGreaterThanOrEqual(tipFrame.minY, window.minY, "\(appearance) tooltip clipped top")
                 XCTAssertLessThanOrEqual(tipFrame.maxY, window.maxY, "\(appearance) tooltip clipped bottom")
             }
-            if screen == "landing" {
+            if screen == "landing" || screen == "landingMention" {
                 XCTAssertFalse(app.images["fish"].exists, "\(appearance) landing still exposes SF fish")
                 XCTAssertFalse(app.images["fish.fill"].exists, "\(appearance) landing still exposes SF fish.fill")
                 XCTAssertFalse(app.images["fish.circle"].exists, "\(appearance) landing still exposes SF fish.circle")
@@ -410,7 +411,7 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) landing composer floated off the bottom (gap \(gap))"
                 )
             }
-            if screen == "chat" || screen == "planMode" || screen == "mention" || screen == "turnTrigger" || screen == "trajectory" {
+            if screen == "chat" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "trajectory" {
                 XCTAssertFalse(app.images["clock"].exists, "\(appearance) \(screen) still exposes SF clock on jobs chip")
                 XCTAssertFalse(app.images["clock.fill"].exists, "\(appearance) \(screen) still exposes SF clock.fill on jobs chip")
                 XCTAssertTrue(
@@ -1021,21 +1022,91 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertFalse(app.images["square.on.square"].exists, "\(appearance) filePreview still uses SF square.on.square")
                 XCTAssertTrue(app.staticTexts["main.py"].waitForExistence(timeout: 8), "\(appearance) filePreview missing main.py")
             }
-            if screen == "mention" {
+            if screen == "mention" || screen == "landingMention" {
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["mentionMenu"].waitForExistence(timeout: 8),
+                    "\(appearance) \(screen) missing desktop mentionMenu"
+                )
+                XCTAssertTrue(
+                    app.staticTexts["文件与文件夹"].waitForExistence(timeout: 8),
+                    "\(appearance) \(screen) missing desktop Files & folders header"
+                )
+                XCTAssertTrue(
+                    app.staticTexts["对话"].exists,
+                    "\(appearance) \(screen) missing desktop Sessions header"
+                )
                 XCTAssertTrue(
                     app.descendants(matching: .any)["official.queueOutline"].waitForExistence(timeout: 8),
-                    "\(appearance) mention missing official session ChatLines glyph"
+                    "\(appearance) \(screen) missing official session ChatLines glyph"
                 )
                 XCTAssertTrue(
                     app.descendants(matching: .any)["official.browseOutline"].exists,
-                    "\(appearance) mention missing official file Browse glyph"
+                    "\(appearance) \(screen) missing official file Browse glyph"
                 )
                 XCTAssertTrue(
                     app.descendants(matching: .any)["official.folderClose"].exists,
-                    "\(appearance) mention missing official folder Close glyph"
+                    "\(appearance) \(screen) missing official folder Close glyph"
                 )
-                XCTAssertFalse(app.images["bubble.left"].exists, "\(appearance) mention still uses SF bubble.left")
-                XCTAssertFalse(app.images["doc"].exists, "\(appearance) mention still uses SF doc")
+                XCTAssertFalse(app.images["bubble.left"].exists, "\(appearance) \(screen) still uses SF bubble.left")
+                XCTAssertFalse(app.images["doc"].exists, "\(appearance) \(screen) still uses SF doc")
+            }
+            if screen == "mentionFiltered" {
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["mentionMenu"].waitForExistence(timeout: 8),
+                    "\(appearance) mentionFiltered missing desktop mentionMenu"
+                )
+                XCTAssertTrue(
+                    app.staticTexts["README.md"].waitForExistence(timeout: 8),
+                    "\(appearance) mentionFiltered missing README.md row"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.browseOutline"].exists,
+                    "\(appearance) mentionFiltered missing official file Browse glyph"
+                )
+                XCTAssertFalse(
+                    app.descendants(matching: .any)["official.queueOutline"].exists,
+                    "\(appearance) mentionFiltered still shows session rows when the query is a file prefix"
+                )
+            }
+            if screen == "mentionChip" {
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["mentionChip.session"].waitForExistence(timeout: 8),
+                    "\(appearance) mentionChip missing composer session chip"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.queueOutline"].exists,
+                    "\(appearance) mentionChip missing official session ChatLines glyph"
+                )
+                XCTAssertFalse(
+                    app.descendants(matching: .any)["mentionMenu"].exists,
+                    "\(appearance) mentionChip still shows the menu after a committed chip"
+                )
+            }
+            if screen == "mentionSent" {
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["userMentionText"].waitForExistence(timeout: 8),
+                    "\(appearance) mentionSent missing userMentionText"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["mentionChip.session"].exists,
+                    "\(appearance) mentionSent missing session chip"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["mentionChip.file"].exists,
+                    "\(appearance) mentionSent missing file chip"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.queueOutline"].exists,
+                    "\(appearance) mentionSent missing official session ChatLines glyph"
+                )
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["official.browseOutline"].exists,
+                    "\(appearance) mentionSent missing official file Browse glyph"
+                )
+                XCTAssertFalse(
+                    app.staticTexts["@[你好](dsh-session:s-hello)"].exists,
+                    "\(appearance) mentionSent still shows raw session markdown"
+                )
             }
             let shot = XCUIScreen.main.screenshot()
             let url = root.appendingPathComponent("\(appearance.lowercased())-\(screen).png")
