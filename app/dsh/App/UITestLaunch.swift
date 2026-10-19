@@ -450,8 +450,8 @@ extension AppModel {
                 text: "open-step claimed",
                 sourceKind: "execution-request",
                 at: at - 1_000,
-                waking: true,
-                messageId: "m-trigger"
+                messageId: "m-trigger",
+                waking: true
             )),
             at: 0
         )
