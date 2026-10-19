@@ -43,8 +43,8 @@ struct HostPanelView: View {
             case .start:
                 StartPanel(
                     model: model,
-                    onFiles: { model.push(.panel(.files)) },
-                    onTerminal: { model.push(.panel(.terminal)) },
+                    onFiles: { openWorkspaceSurface(.files) },
+                    onTerminal: { openWorkspaceSurface(.terminal) },
                     onBrowser: { model.push(.panel(.browser)) },
                     onInspector: { model.push(.panel(.inspector)) },
                     onDismiss: { model.pop() }
@@ -79,6 +79,18 @@ struct HostPanelView: View {
         switch panel {
         case .files, .terminal, .jobs, .plugins, .schedule, .browser, .inspector, .start: return false
         default: return true
+        }
+    }
+
+    /// Desktop new-session page is a blank session. The iOS landing is
+    /// session-less, so Files / Terminal first create that session.
+    private func openWorkspaceSurface(_ panel: DrawerPanel) {
+        if model.chat != nil {
+            model.push(.panel(panel))
+            return
+        }
+        model.createAndOpenSession(workspaceId: model.draftWorkspaceId) {
+            model.push(.panel(panel))
         }
     }
 

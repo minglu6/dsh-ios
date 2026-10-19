@@ -197,6 +197,10 @@ final class AppModel: ObservableObject {
     @Published var terminalMeta: TerminalMeta?
     @Published var terminalPlatform: String?
     @Published var terminalOpening = false
+    @Published var terminalFailure: String?
+    @Published var terminalMissing = false
+    @Published var terminalExited = false
+    var terminalAttachFrozen = false
     @Published var filePreview: FilePreviewRef?
     @Published var exportShare: ExportShare?
     @Published var filesRevision: Int64 = 0
@@ -442,7 +446,7 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func createAndOpenSession(workspaceId: String? = nil, preset: String? = nil) {
+    func createAndOpenSession(workspaceId: String? = nil, preset: String? = nil, then: (() -> Void)? = nil) {
         Task {
             guard let client else { return }
             let chosenWorkspace = workspaceId ?? draftWorkspaceId ?? workspaces.first?.workspaceId
@@ -460,6 +464,7 @@ final class AppModel: ObservableObject {
                 openSession(id)
                 await applyDraftPermission(sessionId: id)
                 await applyDraftModel(sessionId: id)
+                then?()
             } catch {
                 emit(error.localizedDescription)
             }
@@ -2106,7 +2111,7 @@ final class AppModel: ObservableObject {
             pendingAttaches = []
             followEpoch += 1
             detachFollow()
-            resetTerminalAttachment(keepScreen: true)
+            resetTerminalAttachment(keepScreen: true, keepMeta: true)
             resetCompletion()
             resetJobs(unfollow: false)
             ops = []
@@ -2763,7 +2768,10 @@ final class AppModel: ObservableObject {
             } else {
                 let message = m["error"]["message"].str() ?? "终端连接已结束"
                 terminalReady.fail(PocketError(code: "terminal/unavailable", message: message))
-                if m["ev"].str() == "terminal.error" { emit(message) }
+                if m["ev"].str() == "terminal.error" {
+                    terminalFailure = message
+                    emit(message)
+                }
                 terminalSubId = nil
                 terminalMeta = nil
             }
@@ -2816,6 +2824,7 @@ final class AppModel: ObservableObject {
     }
 
     private func attachTerminal(sessionId: String, forceNew: Bool, terminalId: String?) async {
+        if terminalAttachFrozen { return }
         terminalOpenEpoch += 1
         let epoch = terminalOpenEpoch
         let client = self.client
@@ -2826,6 +2835,9 @@ final class AppModel: ObservableObject {
         let ready = TerminalReady()
         terminalReady = ready
         terminalOpening = true
+        terminalFailure = nil
+        terminalMissing = false
+        terminalExited = false
         terminalStray = [:]
         terminalMeta = nil
         terminalHostId = hostId
@@ -2849,11 +2861,19 @@ final class AppModel: ObservableObject {
             if forceNew {
                 existing = nil
             } else {
-                existing = try selectTerminal(
-                    entries: try await listTerminalOwner(client, hostId: hostId, sessionId: sessionId),
-                    savedId: saved,
-                    explicitId: terminalId
-                )
+                do {
+                    existing = try selectTerminal(
+                        entries: try await listTerminalOwner(client, hostId: hostId, sessionId: sessionId),
+                        savedId: saved,
+                        explicitId: terminalId
+                    )
+                } catch let error as PocketError where error.code == terminalMissingIdentityCode {
+                    if current() {
+                        terminalMissing = true
+                        terminalFailure = nil
+                    }
+                    throw error
+                }
             }
             if !current() { return }
             let info: TerminalSessionEntry
@@ -2915,7 +2935,17 @@ final class AppModel: ObservableObject {
             return
         } catch {
             ready.fail(error)
-            if current() { emit(error.localizedDescription) }
+            if current() {
+                if terminalMissing {
+                    terminalFailure = nil
+                } else if let pocket = error as? PocketError {
+                    terminalFailure = pocket.message
+                    emit(error.localizedDescription)
+                } else {
+                    terminalFailure = error.localizedDescription
+                    emit(error.localizedDescription)
+                }
+            }
         }
         if current() {
             terminalOpening = false
@@ -2949,13 +2979,15 @@ final class AppModel: ObservableObject {
         return entries
     }
 
-    private func resetTerminalAttachment(keepScreen: Bool) {
+    private func resetTerminalAttachment(keepScreen: Bool, keepMeta: Bool = false) {
         terminalOpenEpoch += 1
         terminalOpening = false
         terminalStray = [:]
         terminalReady.fail(CancellationError())
         terminalHostId = nil
-        terminalMeta = nil
+        if !keepMeta {
+            terminalMeta = nil
+        }
         if !keepScreen {
             terminal.clear()
             terminalRevision = terminal.revision

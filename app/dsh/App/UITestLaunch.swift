@@ -273,6 +273,53 @@ extension AppModel {
         case "terminal":
             showDrawer = false
             push(.panel(.terminal))
+        case "terminalUnavailable":
+            showDrawer = false
+            terminalAttachFrozen = true
+            terminalOpening = false
+            terminalFailure = "terminalController.follow(...) is not a function"
+            terminalMissing = false
+            terminalMeta = nil
+            push(.panel(.terminal))
+        case "terminalMissing":
+            showDrawer = false
+            terminalAttachFrozen = true
+            terminalOpening = false
+            terminalMissing = true
+            terminalFailure = nil
+            terminalMeta = nil
+            push(.panel(.terminal))
+        case "terminalDisconnected":
+            showDrawer = false
+            terminalAttachFrozen = true
+            terminalOpening = false
+            if let hostId = activeId {
+                status[hostId] = .offline
+            }
+            terminalFailure = nil
+            terminalMissing = false
+            terminal.write("preserved-shell-output")
+            terminalRevision = terminal.revision
+            terminalMeta = TerminalMeta(
+                sessionId: chat?.sessionId ?? "",
+                id: "term-saved",
+                attachmentId: "attach-saved",
+                title: "Terminal",
+                state: "running",
+                cwd: "/Users/dev/dsh-ios"
+            )
+            push(.panel(.terminal))
+        case "terminalExited":
+            showDrawer = false
+            terminalAttachFrozen = true
+            terminalOpening = false
+            terminalFailure = nil
+            terminalMissing = false
+            terminalExited = true
+            terminal.write("closed-shell-output")
+            terminalRevision = terminal.revision
+            terminalMeta = nil
+            push(.panel(.terminal))
         case "files":
             showDrawer = false
             push(.panel(.files))

@@ -95,7 +95,8 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | R66 | 配对链接输入框与按钮同一 22pt 边距；Todo/Goal/Queue dock 与设置壳模型行官方 SVG + CI `chatDock`/`settingsShell` | done (#75) |
 | R66-fix | PairLinkSheet bounds host 不参与布局；小标签与标题 22pt 对齐 | done (#76) |
 | R67 | `/` 菜单行官方 SVG（paperclip / paperPlane / compact / data Regular / permission FullAccess / download / goal / plan） | done (#77) |
-| R68 | 计划 chip / 提及气泡 / 传统 FileGlyph / 反馈 ✓ / 风险圈叹号 / 目录 chevron 官方 SVG；CI `planMode` + `mention` | this PR |
+| R68 | 计划 chip / 提及气泡 / 传统 FileGlyph / 反馈 ✓ / 风险圈叹号 / 目录 chevron 官方 SVG；CI `planMode` + `mention` | done (#78) |
+| R69 | 终端不可用/断线/缺失态对齐 `ui-sidebar-terminal`；landing 顶栏补右侧栏按钮对齐 `ui-sidebar-right` | this PR |
 
 ---
 
@@ -1913,4 +1914,98 @@ Android `MainActivity` 窄屏是 `ModalNavigationDrawer`（按钮 / 手势滑出
 ### npm dist-tag（只报告，不 bump 基线）
 
 `npm view @deepseek-ai/dsh-client-ui-primitives`：`alpha` 仍 `0.2.1-alpha.5`，`next` 仍 `0.2.1-rc.2`，`latest` 仍 `0.0.1-rc.1`。alpha.5 之后**没有新的 alpha**。rc.2 与 alpha.5 的 primitives `lib/index.js` / commands `lib/client.js` sha256 **相同**（locale / 组件 API 无增量）。**只报告，不升级基线。**
+
+## Round 69 对照清单（桌面 `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`；Android 仅参考）
+
+基线 `main` `83e5e70`（#78 Round 68：计划 chip / 提及 / FileGlyph / 风险与目录官方 SVG）。本轮把 #79 rebase 到该 tip。桌面是源。禁止自创颜色/图标/间距；无系统蓝；无 ActionSheet；文案「远程主机」。
+
+真机反馈：新会话 landing 顶栏没有右侧栏按钮，对话页右上角有。同时对齐桌面终端不可用 / 断线 / 缺失空态。
+
+### 必须核实（已对齐，本轮不改）
+
+| 项 | 判定 |
+| --- | --- |
+| landing「探索未至之境」+ whale | **PASS** |
+| Composer 贴底 | **PASS** |
+| 抽屉设置 vs 绿点+主机名独立热区 ≥16pt | **PASS** |
+| 远程主机整页 | **PASS** |
+| 开抽屉 / 滚动 / 进设置 / 进远程主机收键盘 | **PASS** |
+| 权限 chip 只图标 + #68 菜单 | **PASS** |
+| #69–#77 既有对齐；#78 计划 chip / 提及 / FileGlyph / 风险圈叹号 / 目录 chevron；CI `planMode` + `mention` | **PASS**（rebase 后全部保留，断言未放宽、未删） |
+| `/` 菜单全量不显示数量；聊天顶栏无分享；用户消息下无常驻复制 | **PASS** |
+
+### 本轮修
+
+| 项 | 桌面源码 | iOS 原状 | 处理 |
+| --- | --- | --- | --- |
+| 连接恢复后不重新 attach | Android `online` attach effect；桌面 `TerminalBody` `phase === "disconnected"` 点 `reconnect` → `model.connect()` | `isOnline` 回 true 不重开 follow | `terminalShouldAttachOnOnline`；`onChange(of: model.isOnline)` 重新 `openTerminal`。protocol 锁四态 |
+| 传输掉线清画面 | 桌面 README.zh：暂时断线保留屏幕并提供 **重新连接**，不展示传输内部错误。`TerminalBody` `state.info !== void 0` 仍画 `TerminalScreen` | 掉线常清 `TerminalMeta` | `resetTerminalAttachment(keepScreen: true)`。状态行 `terminalDisconnectedCopy`「连接已断开。」+ outline「重新连接」。离线不画 `failed` 段 |
+| `terminal.error` / attach 失败 | `t("failed")` =「终端错误：{message}」；`._UE8Aa_error` padding 10/12、`bg-l2`、`label-primary` | 只 toast，不进 `.error` 段 | `terminalFailure`；`terminalFailureCopy`。离线不显示。CI `terminalUnavailable` |
+| 已回收终端死循环「重新连接」 | `state.issue === "missingTerminal"`：36×36 SVG `viewBox 0 0 28 28`、`#17191d` 底板、`m8 10 4 4-4 4M15 18h5` 白描、文案「此终端已不存在，请新建终端。」、primary md「新建终端」+ `IconPlusOutlineRegular` | `selectTerminal` 抛 `terminal/unavailable` 仍走重连 | `terminalMissing` 空态。英文跟桌面 `Open a new terminal.`（原 PR 误写成 `Create a new one.`，本轮改回） |
+| 状态行系统蓝 + SF `arrow.clockwise` | `._UE8Aa_status`：`bg-l2`、`padding: 5px 12px`、`gap: 8px`、全宽。outline sm：高 28、字 12/18、横垫 10、`radius-sm` 6、描边 `0.5px` | 居中 / 系统蓝 / SF 刷新 | 左对齐 outline，`T.ink` / `T.border`。禁 `arrow.clockwise` |
+| 无 `state.info` 仍画画布 | 桌面 `state.info !== void 0` 才 `TerminalScreen` | 空白 snapshot 也能开始选择 | 无 meta 不画 `TerminalView` / 快捷键条；`terminalGridIsBlank` 拒选 |
+| 快捷键条键帽 / glyph | 桌面无键帽条（真键盘）。Android `TerminalView.kt` `TerminalKey` 英文 `Ctrl+V`/`Cmd+V`、`Copy`/`Cmd+C`，图标 20.dp | SF `keyboard` / `checkmark` | 官方 `keyboard` / `checkOutline` 20pt。会话菜单 check / plus 同官方 SVG |
+| landing 无右侧栏按钮 | 对话顶栏已有 `OfficialGlyph.panelRight` 16 + `openStartPanel`（#70）。桌面新会话是空白 session，右侧栏始终可开 | `emptyChat` 顶栏只有 `panelLeft` | 与 ChatView 同一 `panelRight` / `openStartPanel`。CI 断言与 `panelLeft` 齐平且在窗口右半 |
+| 无会话开「工作区文件 / 新建终端」 | 桌面 Guide 入口落在当前 session | landing 无 session | 先 `createAndOpenSession(workspaceId: draftWorkspaceId)`（`landingComposerNeedsWorkspace` 则 toast），再 push 面板。浏览器仍直接开 |
+
+### 截图对照（旧 #79 CI `ios-simulator-screenshots` + 本轮源码；light+dark）
+
+| 屏 | 判定 | 对照 |
+| --- | --- | --- |
+| `*-landing.png` | **PASS** | 顶栏左 `panelLeft`、右 `panelRight`，无 SF sidebar。标题「探索未至之境」+ 官方鲸。Composer 贴底。发送是官方实心圆，无系统蓝 |
+| `*-terminalUnavailable.png` | **PASS** | 「终端错误：terminalController.follow(...) is not a function」。状态行左对齐 outline「重试」（无 `state.info` 且非断线 → `retry`）。无键帽条、无 SF `arrow.clockwise`/`keyboard`/`checkmark` |
+| `*-terminalMissing.png` | **PASS** | 36pt 官方 SVG（深色圆角底板 + `>_`）。「此终端已不存在，请新建终端。」primary「+ 新建终端」（`button-primary-fill` `#0F1115` / dark `#F9FAFB`，不是系统蓝）。无「重新连接」 |
+| `*-terminalDisconnected.png` | **PASS** | 「连接已断开。」+ outline「重新连接」。画面保留 `preserved-shell-output`。键帽条灰显英文 `Esc`/`Tab`/`Ctrl+C`/`Ctrl+D`/`Ctrl+V`/`Copy` + 官方 keyboard。头栏「离线」 |
+
+### 查过但本轮不提取（写明包/文件）
+
+| 项 | 查过 | 结论 |
+| --- | --- | --- |
+| outline 描边 `border-l3` | `ui-primitives` `Button.module.css` `.outline`：`0.5px solid var(--dsw-alias-border-l3)` | `DswColors` 只铺了 `borderL2` / `borderL4`（theme 注释仍 alpha.2）。配对链接等既有 outline 已用 `T.border`（l2）。**不发明** l3 色值 |
+| 右侧栏 ExpandButton 用 `IconPanelLeft` | `ui-sidebar-right` `ExpandButton`：栏内折叠是 `IconPanelLeftOutlineRegular` | 手机顶栏按钮是**打开** Start，与 #70 ChatView `panelRight` 同一语义。不改成 panelLeft |
+| 语言 CODE_FILE / Markdown 行内 fileChip / 变更卡叠层 / 风险 checkbox | #78 已记 | **不发明**。rebase 后原样保留 |
+
+### 有意 skip（桌面源码依据）
+
+| 项 | 判定 | 依据 |
+| --- | --- | --- |
+| 终端中间 `ProgressView` | **skip** | primitives 无 loading artwork。`terminalCenterLoadingUsesOfficialGlyph` 已锁 |
+| 手机快捷键条 | **平台** | 桌面无此条；Android `33b97b2` `TerminalView.kt`。键帽保持英文 |
+| 退出终端 `confirmationDialog` | **skip / 既有** | 桌面 close 走 Host cleanup，不是这张手机确认。本轮不改、不发明 Modal |
+| 管理 sheet「删除」无确认 | **skip** | Android 立即 `removeProfile`。桌面 pocket 无这张 sheet |
+| 通用设置 Toggle / 语言 Picker | **skip** | 非系统蓝 ActionSheet |
+| `turnNavigation` / toBottom FAB / ask.review / hover chevron / Account/shortcuts / CompatibilityBanner / 审批通知 / stop-state | **skip** | 既定平台 / hide / 禁止发明 |
+
+### 逐屏核对（light+dark）剩余 SF / 系统控件
+
+| 屏 | 判定 | 剩余 SF / 系统控件 | 处理结论 |
+| --- | --- | --- | --- |
+| landing | **本轮修** | 无计划 chip（`planMode=false`） | 右侧栏按钮 + 标题/鲸/Composer 贴底 |
+| chat / planMode / mention | **PASS** | — | #78 官方 plan / 提及；顶栏已有 panelRight |
+| chatDock | **PASS** | Todo `in_progress` `ProgressView` | 有意 skip |
+| drawer | **PASS** | — | 设置 vs 绿点+主机名 |
+| jobs | **PASS** | — | 官方 chevronDown / stopFill |
+| trajectory / trajectoryDetail | **PASS** | — | KIND_ICON + 详情官方 SVG |
+| inspector | **skip** | viewfinder / 类型过滤 | primitives 无 artwork |
+| browser | **PASS** | WK 线性 `ProgressView` | 无 primitives 进度条 |
+| terminal | **skip** | 中间 `ProgressView` | 不发明 loading SVG |
+| terminalUnavailable / terminalMissing / terminalDisconnected | **本轮修** | 退出确认既有 `confirmationDialog` | 见上表 |
+| settings | **PASS** | Toggle / 语言 `Picker` | 有意 skip，非系统蓝 |
+| settingsShell | **PASS** | — | 模型 `IconDataOutlineMedium` |
+| plugins / builtinPlugins | **skip / PASS** | 列表搜索框 SF magnifyingglass | 桌面无该槽 |
+| models / permission | **PASS** | — | 官方 chevron/check |
+| slash | **PASS** | loading `ProgressView` | #77 行图标；loading skip |
+| schedule / sessionActions / viewOptions / start / composerStop | **PASS** | — | 既有官方 SVG / 全屏 Start |
+| connections / pairingLink / nearby / manage | **PASS** | 管理删除无确认 | #76 版式不回归 |
+| 文件树 / 目录选择 / 反馈 sheet / 风险 sheet | **PASS** | 语言 CODE_FILE 仍 `doc.fill`；风险 checkbox 系统方框 | #78 保留 |
+
+### npm dist-tag（只报告，不 bump 基线）
+
+`npm view`：`alpha` 仍 `0.2.1-alpha.5`，`next` 仍 `0.2.1-rc.2`。`@deepseek-ai/dsh-client-ui-primitives` `latest` 仍 `0.0.1-rc.1`；`ui-sidebar-terminal` `latest` `0.1.6-alpha.1`；`ui-sidebar-right` `latest` `0.1.5-alpha.1`。alpha.5 之后**没有新的 alpha**。本轮 pack 核对：
+
+- primitives `lib/index.js` sha256 `333ea89e7518ec1f1d33111bb9c65d382454bcc3638ebac7116253c92fe5d566`（与 #78 相同）
+- sidebar-terminal `lib/client.js` sha256 `999adc8712854da63dd62944c51af1bf57fd9bdfcb65e7ad0d8c196f6e979b73`；`lib/client.terminal.js` sha256 `0821b155ce820424ff788474fedea3e6f606d95cea6ebe03b580660e7701eb6f`
+- sidebar-right `lib/client.js` sha256 `55e410c962d9373ed6588b9ec6f5b848241e2979d1b7d578f149b2a23428ec14`
+
+locale / 组件 API **无增量**。**只报告，不升级基线。**
 

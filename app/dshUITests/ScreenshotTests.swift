@@ -9,6 +9,7 @@ final class ScreenshotTests: XCTestCase {
         "settings", "settingsShell", "schedule", "terminal", "trajectory", "plugins", "connections",
         "composerStop", "slash", "jobs", "builtinPlugins", "trajectoryDetail",
         "chatDock",
+        "terminalUnavailable", "terminalMissing", "terminalDisconnected", "terminalExited",
     ]
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool { false }
@@ -220,10 +221,32 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) \(screen) missing official panel-left glyph"
                 )
             }
-            if screen == "chat" || screen == "planMode" || screen == "mention" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
+            if screen == "landing" || screen == "chat" || screen == "planMode" || screen == "mention" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
                 XCTAssertTrue(
                     app.descendants(matching: .any)["official.panelRight"].waitForExistence(timeout: 8),
                     "\(appearance) \(screen) missing official panel-right glyph"
+                )
+            }
+            if screen == "landing" {
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["openStartPanel"].waitForExistence(timeout: 8),
+                    "\(appearance) landing missing openStartPanel"
+                )
+                let panelLeft = app.descendants(matching: .any)["official.panelLeft"].firstMatch
+                let panelRight = app.descendants(matching: .any)["official.panelRight"].firstMatch
+                XCTAssertTrue(panelLeft.waitForExistence(timeout: 8), "\(appearance) landing panelLeft gone before alignment")
+                XCTAssertTrue(panelRight.exists, "\(appearance) landing panelRight gone before alignment")
+                XCTAssertEqual(
+                    panelLeft.frame.midY,
+                    panelRight.frame.midY,
+                    accuracy: 2,
+                    "\(appearance) landing panelRight is not level with panelLeft"
+                )
+                let window = app.windows.firstMatch.frame
+                XCTAssertGreaterThan(
+                    panelRight.frame.minX,
+                    (window.minX + window.maxX) / 2,
+                    "\(appearance) landing panelRight is not on the right"
                 )
             }
             if screen == "landing" || screen == "chat" || screen == "planMode" || screen == "mention" {
@@ -413,7 +436,9 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) permission picker looks like a full-screen sheet (\(picker) vs \(window))"
                 )
             }
-            if screen == "schedule" || screen == "terminal" {
+            if screen == "schedule" || screen == "terminal"
+                || screen == "terminalUnavailable" || screen == "terminalMissing"
+                || screen == "terminalDisconnected" || screen == "terminalExited" {
                 XCTAssertFalse(app.images["chevron.left"].exists, "\(appearance) \(screen) still exposes SF chevron.left")
                 XCTAssertTrue(
                     app.descendants(matching: .any)["official.chevronLeft"].waitForExistence(timeout: 8),
@@ -427,6 +452,82 @@ final class ScreenshotTests: XCTestCase {
                     app.descendants(matching: .any)["official.loadingOutline"].exists,
                     "\(appearance) terminal invented a loading SVG; keep the system ProgressView skip"
                 )
+            }
+            if screen == "terminalUnavailable" {
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["terminalError"].waitForExistence(timeout: 8)
+                        || app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "终端错误：")).firstMatch.waitForExistence(timeout: 2),
+                    "\(appearance) terminalUnavailable missing 终端错误 paragraph"
+                )
+                let status = app.descendants(matching: .any)["terminalStatus"].firstMatch
+                XCTAssertTrue(status.waitForExistence(timeout: 8), "\(appearance) terminalUnavailable missing status row")
+                let window = app.windows.firstMatch.frame
+                XCTAssertEqual(
+                    status.frame.minX,
+                    window.minX + 12,
+                    accuracy: 2,
+                    "\(appearance) terminalUnavailable status minX \(status.frame.minX) is not 12pt from the window"
+                )
+                XCTAssertFalse(app.images["arrow.clockwise"].exists, "\(appearance) terminalUnavailable still exposes SF arrow.clockwise")
+                XCTAssertFalse(app.images["keyboard"].exists, "\(appearance) terminalUnavailable still exposes SF keyboard")
+                XCTAssertFalse(app.images["checkmark"].exists, "\(appearance) terminalUnavailable still exposes SF checkmark")
+                XCTAssertFalse(
+                    app.descendants(matching: .any)["terminalKeyBar"].exists,
+                    "\(appearance) terminalUnavailable still shows the key bar"
+                )
+            }
+            if screen == "terminalMissing" {
+                XCTAssertTrue(
+                    app.staticTexts["此终端已不存在，请新建终端。"].waitForExistence(timeout: 8)
+                        || app.descendants(matching: .any)["terminalMissing"].waitForExistence(timeout: 2),
+                    "\(appearance) terminalMissing missing 此终端已不存在 copy"
+                )
+                XCTAssertTrue(
+                    app.buttons["新建终端"].waitForExistence(timeout: 8)
+                        || app.descendants(matching: .any)["terminalNew"].waitForExistence(timeout: 2),
+                    "\(appearance) terminalMissing missing 新建终端"
+                )
+                XCTAssertFalse(
+                    app.buttons["重新连接"].exists || app.staticTexts["重新连接"].exists,
+                    "\(appearance) terminalMissing still offers 重新连接"
+                )
+            }
+            if screen == "terminalDisconnected" {
+                XCTAssertTrue(
+                    app.staticTexts["连接已断开。"].waitForExistence(timeout: 8),
+                    "\(appearance) terminalDisconnected missing 连接已断开。"
+                )
+                let screenNode = app.descendants(matching: .any)["terminalScreen"].firstMatch
+                XCTAssertTrue(screenNode.waitForExistence(timeout: 8), "\(appearance) terminalDisconnected missing preserved screen")
+                let value = (screenNode.value as? String) ?? screenNode.label
+                XCTAssertTrue(
+                    value.contains("preserved-shell-output"),
+                    "\(appearance) terminalDisconnected lost the screen text (got \(value))"
+                )
+            }
+            if screen == "terminalExited" {
+                XCTAssertTrue(
+                    app.staticTexts["已停止"].waitForExistence(timeout: 8),
+                    "\(appearance) terminalExited missing 已停止"
+                )
+                XCTAssertFalse(
+                    app.staticTexts["运行中"].exists,
+                    "\(appearance) terminalExited still shows 运行中"
+                )
+                XCTAssertTrue(
+                    app.staticTexts["终端已退出。可从菜单切换会话或新建终端。"].waitForExistence(timeout: 8),
+                    "\(appearance) terminalExited missing exit copy"
+                )
+                let keyBar = app.descendants(matching: .any)["terminalKeyBar"].firstMatch
+                XCTAssertTrue(keyBar.waitForExistence(timeout: 8), "\(appearance) terminalExited missing key bar")
+                let keys = keyBar.buttons.allElementsBoundByIndex
+                XCTAssertFalse(keys.isEmpty, "\(appearance) terminalExited key bar has no keys")
+                for key in keys {
+                    XCTAssertFalse(
+                        key.isEnabled,
+                        "\(appearance) terminalExited key still enabled: \(key.label)"
+                    )
+                }
             }
             if screen == "connections" {
                 assertConnectionsIsFullScreen(app, appearance: appearance)

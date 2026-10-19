@@ -154,6 +154,18 @@ struct RootView: View {
                 .accessibilityIdentifier("openDrawer")
                 BrandWordmark(height: 20)
                 Spacer()
+                Button {
+                    Keyboard.dismiss()
+                    if case .panel(.start) = model.currentRoute { return }
+                    model.push(.panel(.start))
+                } label: {
+                    OfficialGlyph(kind: .panelRight, size: 16, color: T.ink)
+                }
+                .disabled(firstPromptBlocksComposerActions(model.firstPrompt))
+                .accessibilityLabel(L.startPanel())
+                .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityIdentifier("openStartPanel")
             }
             .padding(14)
             .background(T.surface)
