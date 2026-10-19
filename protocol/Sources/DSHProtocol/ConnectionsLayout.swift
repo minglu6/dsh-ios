@@ -68,6 +68,12 @@ public let dswButtonDisabledOpacity: Double = 0.4
 public let dswButtonOutlineWidthPoints: Double = 0.5
 public let dswButtonMdHeightPoints: Double = 36
 
+/// Desktop `ui-theme` `@0.2.1-alpha.5` `--dsw-alias-border-l3`.
+/// Light `body` `#0000001f`; dark `body[data-ds-dark-theme]` `#ffffff29`.
+/// `Button.module.css` `.outline` uses this stroke (not l2).
+public let dswAliasBorderL3LightHex: UInt32 = 0x1F000000
+public let dswAliasBorderL3DarkHex: UInt32 = 0x29FFFFFF
+
 /// Android `PairLinkSheet` / `ConnField` (9aa43c4 / 33b97b2): phone touch
 /// height 48, field 14pt / pad 14×12 / radius-md 12. Sheet title 18
 /// semibold; hint 13 tertiary.

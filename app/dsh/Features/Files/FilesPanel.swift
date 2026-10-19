@@ -51,7 +51,7 @@ struct FilesPanel: View {
         VStack(spacing: 0) {
             header(L.workspaceFiles()) { model.pop() }
             toolbar
-            Divider()
+            T.borderL3.frame(height: 0.5)
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     content

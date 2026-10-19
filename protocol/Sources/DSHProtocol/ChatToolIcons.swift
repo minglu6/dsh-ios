@@ -65,6 +65,15 @@ public func isForbiddenChatToolSystemSymbol(_ name: String) -> Bool {
         || name == "questionmark.circle"
 }
 
+/// Desktop `IconBrowseOutlineArtwork` Regular exported as a template PDF so
+/// SwiftUI `Text(Image)` markdown file chips can paint `ReferenceIconRegular`.
+public let markdownFileChipAssetName = "officialBrowseOutline"
+
+/// XCUI identifier for an inline markdown file chip. Catalog names inside
+/// `Text(Image)` attachments are not exposed as XCUI images, so the wrapping
+/// paragraph advertises this identifier instead.
+public let markdownFileChipAccessibilityIdentifier = "official.markdownFileChip"
+
 /// Desktop `IconBrowseOutlineArtwork` Regular: two caption strokes + filled page.
 public let chatBrowseCaptionTopPath = "M4.9375 5.90295H11.0625"
 public let chatBrowseCaptionMidPath = "M4.9375 9.02991H8.27841"

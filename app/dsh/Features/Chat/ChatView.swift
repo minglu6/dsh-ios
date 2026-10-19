@@ -240,7 +240,7 @@ struct ChatView: View {
         .padding(.horizontal, 14)
         .padding(.bottom, 6)
         .background(T.surface)
-        .overlay(alignment: .bottom) { Divider() }
+        .overlay(alignment: .bottom) { T.borderL3.frame(height: 0.5) }
     }
 
     private func tabChip(_ index: Int, _ title: String) -> some View {

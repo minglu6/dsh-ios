@@ -212,7 +212,7 @@ struct TerminalPanel: View {
                                 .padding(.horizontal, CGFloat(dswButtonSmHorizontalPaddingPoints))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: CGFloat(dswButtonRadiusSmPoints))
-                                        .stroke(T.border, lineWidth: CGFloat(dswButtonOutlineWidthPoints))
+                                        .stroke(T.borderL3, lineWidth: CGFloat(dswButtonOutlineWidthPoints))
                                 )
                         }
                         .buttonStyle(.plain)

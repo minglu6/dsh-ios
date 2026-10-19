@@ -200,9 +200,8 @@ public func isForbiddenSystemFolderSymbol(_ name: String) -> Bool {
 }
 
 /// Desktop `FileTypeIcon` traditional `FileGlyph` kinds (28×28 folded sheet
-/// + category mark). Language-specific `CODE_FILE_ARTWORK` is nested SVG
-/// markup (text / clipPath / linearGradient) that this phone SVGPath
-/// renderer cannot paint — those kinds keep a generic document fill.
+/// + category mark). Language kinds use `CODE_FILE_ARTWORK` (see
+/// `fileTypeHasCodeFileArtwork`).
 public func fileTypeHasTraditionalGlyph(_ kind: String) -> Bool {
     switch kind {
     case "markdown", "image", "pdf", "excel", "word", "ppt", "video", "html", "code", "other":
@@ -212,8 +211,30 @@ public func fileTypeHasTraditionalGlyph(_ kind: String) -> Bool {
     }
 }
 
-/// Identifier painted by `FileTypeGlyph` / `OfficialGlyph` for traditional
-/// kinds and the socket/fifo warning. Code-language kinds stay `doc.fill`.
+/// Desktop `ui-primitives` `CODE_FILE_TYPE_SET` / `CodeFileIcon` 20×20
+/// full-color markup (`#region lib/types/code-file-icon-artwork.js`).
+public func fileTypeHasCodeFileArtwork(_ kind: String) -> Bool {
+    switch kind {
+    case "angular", "c", "clojure", "cmake", "cpp", "csharp", "css", "dart",
+         "docker", "elixir", "env", "erlang", "flutter", "git", "go", "graphql",
+         "haskell", "ini", "java", "javascript", "json", "kotlin", "lua",
+         "makefile", "node", "objective-c", "perl", "php", "powershell",
+         "protobuf", "python", "r", "react", "ruby", "rust", "scala", "shell",
+         "solidity", "sql", "svelte", "swift", "toml", "typescript", "vue",
+         "wasm", "xml", "yaml", "zig":
+        return true
+    default:
+        return false
+    }
+}
+
+/// Asset catalog imageset for a `CODE_FILE_ARTWORK` kind (`codeFile_python`).
+public func fileTypeCodeFileAssetName(_ kind: String) -> String {
+    "codeFile_" + kind.replacingOccurrences(of: "-", with: "_")
+}
+
+/// Identifier painted by `FileTypeGlyph` / `OfficialGlyph` / `CodeFileArtworkIcon`.
+/// Unknown kinds follow desktop `FileGlyph` `other`, never SF `doc.fill`.
 public func fileTypeSymbol(_ kind: String) -> String {
     switch kind {
     case "folder": return fileTreeFolderSymbol(expanded: true)
@@ -228,16 +249,11 @@ public func fileTypeSymbol(_ kind: String) -> String {
     case "code": return "official.fileCode"
     case "other": return "official.fileOther"
     case "warning": return "official.warningOutline"
-    case "javascript", "typescript", "json", "xml",
-         "python", "go", "rust", "java", "kotlin", "swift", "ruby", "docker",
-         "git", "node", "react", "vue", "css", "yaml", "shell", "c", "cpp",
-         "csharp", "php", "sql", "toml", "ini", "env", "angular", "svelte",
-         "dart", "elixir", "erlang", "haskell", "lua", "perl", "r", "scala",
-         "solidity", "zig", "wasm", "graphql", "cmake", "makefile",
-         "powershell", "protobuf", "objective-c", "clojure":
-        return "doc.fill"
     default:
-        return "doc.fill"
+        if fileTypeHasCodeFileArtwork(kind) {
+            return "official.codeFile.\(kind)"
+        }
+        return "official.fileOther"
     }
 }
 
@@ -251,6 +267,11 @@ public func isForbiddenTraditionalFileTypeSystemSymbol(_ name: String) -> Bool {
         || name == "chevron.left.forwardslash.chevron.right"
         || name == "doc"
         || name == "exclamationmark.triangle"
+}
+
+/// Language `CodeFileIcon` never falls back to SF document fills.
+public func isForbiddenCodeFileSystemSymbol(_ name: String) -> Bool {
+    name == "doc.fill" || name == "doc"
 }
 
 /// Desktop `FileTypeIcon` `FILE_BODY` / `FILE_FOLD`, viewBox 0 0 28 28.

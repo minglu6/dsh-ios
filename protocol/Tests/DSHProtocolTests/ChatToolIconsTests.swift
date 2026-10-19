@@ -55,6 +55,8 @@ final class ChatToolIconsTests: XCTestCase {
     }
 
     func testArtworkPathsAreDesktopBytes() {
+        XCTAssertEqual(markdownFileChipAssetName, "officialBrowseOutline")
+        XCTAssertEqual(markdownFileChipAccessibilityIdentifier, "official.markdownFileChip")
         XCTAssertEqual(chatBrowseCaptionTopPath, "M4.9375 5.90295H11.0625")
         XCTAssertTrue(chatBrowsePagePath.hasPrefix("M12.5 1.32617"))
         XCTAssertEqual(chatEditStrokePath, "M7.7849 8.23878L13.888 2.13574")
