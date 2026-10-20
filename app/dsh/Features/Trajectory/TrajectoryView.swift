@@ -84,27 +84,35 @@ struct TrajectoryView: View {
                 }
             }
         }
-        .sheet(item: $selection) { detail in
-            switch detail {
-            case .row(let row, let turn):
-                TrajectoryDetailSheet(
-                    row: row,
-                    turnIndex: turn,
-                    parentRequest: requestForRow(row, requests: snapshot.requests),
-                    onOpenRequest: { selection = .request($0, tab: .overview) },
-                    onOpenRequestTiming: { selection = .request($0, tab: .timing) },
-                    toolCalls: snapshot.toolCalls(for: row)
-                ) { call in
-                    openRow(call.key, in: snapshot)
+        .sheet(isPresented: Binding(
+            get: { selection != nil },
+            set: { if !$0 { selection = nil } }
+        )) {
+            if let detail = selection {
+                Group {
+                    switch detail {
+                    case .row(let row, let turn):
+                        TrajectoryDetailSheet(
+                            row: row,
+                            turnIndex: turn,
+                            parentRequest: requestForRow(row, requests: snapshot.requests),
+                            onOpenRequest: { selection = .request($0, tab: .overview) },
+                            onOpenRequestTiming: { selection = .request($0, tab: .timing) },
+                            toolCalls: snapshot.toolCalls(for: row)
+                        ) { call in
+                            openRow(call.key, in: snapshot)
+                        }
+                    case .request(let request, let tab):
+                        TrajectoryRequestSheet(
+                            request: request,
+                            onOpenResult: { openRow($0, in: snapshot) },
+                            initialTab: tab,
+                            assistantRow: request.resultKey.flatMap { snapshot.assistantByKey[$0] },
+                            onDismiss: { selection = nil }
+                        )
+                    }
                 }
-            case .request(let request, let tab):
-                TrajectoryRequestSheet(
-                    request: request,
-                    onOpenResult: { openRow($0, in: snapshot) },
-                    initialTab: tab,
-                    assistantRow: request.resultKey.flatMap { snapshot.assistantByKey[$0] },
-                    onDismiss: { selection = nil }
-                )
+                .id(detail.id)
             }
         }
     }

@@ -36,9 +36,11 @@ final class TrajectoryUITests: XCTestCase {
         XCTAssertTrue(request.waitForExistence(timeout: 5), "The final row keeps its original request number")
         request.tap()
         XCTAssertTrue(app.navigationBars["请求 #128"].waitForExistence(timeout: 5))
+        try capture(app, name: "trajectory-large-request")
         let result = app.buttons.matching(NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "结果", "助手消息")).firstMatch
         XCTAssertTrue(result.waitForExistence(timeout: 5))
         result.tap()
+        try capture(app, name: "trajectory-large-result-navigation")
         let rawResult = app.buttons["原始内容"].firstMatch
         XCTAssertTrue(rawResult.waitForExistence(timeout: 5), "Result navigation opens assistant content, not the request inspector")
         rawResult.tap()
