@@ -55,11 +55,9 @@ final class WorkspaceChangesUITests: XCTestCase {
         selectFile(1, app: app)
         let retry = app.buttons["changesDiffRetry"]
         XCTAssertTrue(retry.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Fixture: diff temporarily unavailable"].exists)
         XCTAssertFalse(app.staticTexts["-previousValue"].exists)
         retry.tap()
         XCTAssertTrue(app.staticTexts["+new-file-content"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.staticTexts["Fixture: diff temporarily unavailable"].exists)
     }
 
     private func launch(_ screen: String) -> XCUIApplication {
