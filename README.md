@@ -128,6 +128,10 @@ zip -qr dsh-ios.ipa Payload
 
 Pushes to `main` force-update the `dsh-ios-latest` prerelease with `dsh-ios.ipa`. Pull requests run the same checks and do not publish that tag.
 
+Default runs keep protocol tests and the unsigned IPA build. Simulator screenshots and keyboard/IME UI tests are opt-in: use **Actions → ci → Run workflow** and enable `run_ui_tests`. Manual runs upload artifacts but do not publish the rolling release.
+
+New runs cancel older runs for the same event and ref. IPA artifacts disable redundant upload compression because the IPA is already ZIP-compressed.
+
 ## Limits
 
 - The phone cannot run dsh locally. Sleeping the computer, quitting the Host, or losing the network stops remote control.
