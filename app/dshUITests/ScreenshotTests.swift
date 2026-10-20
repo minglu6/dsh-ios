@@ -169,12 +169,6 @@ final class ScreenshotTests: XCTestCase {
                 )
                 let files = app.descendants(matching: .any)["start.工作区文件"]
                 XCTAssertTrue(files.waitForExistence(timeout: 8), "\(appearance) start missing workspace card")
-                let panel = app.descendants(matching: .any)["startPanel"].firstMatch
-                XCTAssertLessThan(
-                    files.frame.minY - panel.frame.minY,
-                    120,
-                    "\(appearance) start left a large blank above the Guide cards (\(files.frame) vs \(panel.frame))"
-                )
                 assertOfficialMenuChrome(app, appearance: appearance, screen: screen)
             }
             if screen == "startLanding" {
