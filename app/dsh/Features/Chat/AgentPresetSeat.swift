@@ -230,40 +230,43 @@ struct AgentPresetSeat: View {
                 attachmentAnchor: .rect(.bounds),
                 arrowEdge: composerPickerPopoverOpensAbove ? .bottom : .top
             ) {
-                VStack(alignment: .leading, spacing: 0) {
-                    ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                        let id = row["id"].str() ?? ""
-                        Button {
-                            model.draftPreset = id
-                            model.pendingCreatorPreset = nil
-                            open = false
-                        } label: {
-                            HStack(alignment: .top, spacing: 8) {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(PresetPolicy.name(row, english: L.en))
-                                        .font(.system(size: 13))
-                                        .foregroundStyle(T.ink)
-                                    Text(PresetPolicy.description(row, english: L.en).flatMap { $0.isEmpty ? nil : $0 }
-                                         ?? agentPresetNoDescription(english: L.en))
-                                        .font(.system(size: 12))
-                                        .foregroundStyle(T.caption)
-                                        .fixedSize(horizontal: false, vertical: true)
+                MenuViewViewport(maxHeight: 400) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                            let id = row["id"].str() ?? ""
+                            Button {
+                                model.draftPreset = id
+                                model.pendingCreatorPreset = nil
+                                open = false
+                            } label: {
+                                HStack(alignment: .top, spacing: 8) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(PresetPolicy.name(row, english: L.en))
+                                            .font(.system(size: 13))
+                                            .foregroundStyle(T.ink)
+                                        Text(PresetPolicy.description(row, english: L.en).flatMap { $0.isEmpty ? nil : $0 }
+                                             ?? agentPresetNoDescription(english: L.en))
+                                            .font(.system(size: 12))
+                                            .foregroundStyle(T.caption)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                    Spacer(minLength: 8)
+                                    if currentId == id {
+                                        OfficialGlyph(kind: .checkOutline, size: 12, color: T.ink)
+                                    }
                                 }
-                                Spacer(minLength: 8)
-                                if currentId == id {
-                                    OfficialGlyph(kind: .checkOutline, size: 12, color: T.ink)
-                                }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 6)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
                             }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 6)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .contentShape(Rectangle())
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
+                    .padding(CGFloat(permissionMenuPaddingPoints))
                 }
-                .padding(CGFloat(permissionMenuPaddingPoints))
-                .frame(minWidth: 156, maxWidth: 280)
+                .frame(width: 280)
+                .fixedSize(horizontal: false, vertical: true)
                 .modifier(PopoverCompactAdaptation())
             }
     }

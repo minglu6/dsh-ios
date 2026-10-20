@@ -31,6 +31,8 @@ The terminal page reads loading state directly from the attachment model, so an 
 
 Conversations show the current workspace and work mode below the Chat/Trajectory tabs, using the session's membership, directory and Agent preset rather than new-task drafts. Missing metadata is explicitly marked as unavailable. New tasks retain workspace and mode selectors, locked while the first message is being submitted; an unloaded preset catalog no longer hides the mode position.
 
+The work-mode menu measures its content at a fixed width and caps its height at 400pt. When space is limited, it scrolls vertically so mode names and descriptions remain reachable instead of overflowing the popover edges.
+
 ## Architecture
 
 ```
