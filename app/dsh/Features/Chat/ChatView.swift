@@ -213,6 +213,7 @@ struct ChatView: View {
                     .font(.headline)
                     .foregroundStyle(T.ink)
                     .lineLimit(1)
+                    .accessibilityIdentifier("conversationHeaderTitle")
             }
             Spacer()
             Button {
@@ -228,8 +229,14 @@ struct ChatView: View {
             .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier("openStartPanel")
         }
+        // Desktop title-text → tabs is 15. Growing this header (minHeight
+        // 30 or extra bottom pad) shrinks the composer column and kills
+        // AX after focus (CI 39346945482 / 39350052809, including IME
+        // mentionChip). Keep the 2a39d41 20pt vertical budget: move 5pt
+        // from top to bottom so the gap is 15 and total height is unchanged.
         .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.top, 5)
+        .padding(.bottom, 15)
         .background(T.surface)
     }
 
