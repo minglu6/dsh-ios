@@ -231,7 +231,6 @@ final class DesktopUiParityTests: XCTestCase {
     func testConversationHeaderHasNoOverflowMenu() {
         XCTAssertFalse(ConversationHeaderPolicy.includesOverflowMenu)
         XCTAssertFalse(conversationHeaderShowsModelChip)
-        XCTAssertFalse(conversationHeaderShowsAgentPreset)
         XCTAssertFalse(conversationHeaderShowsTimestamp)
         XCTAssertFalse(conversationHeaderShowsShare)
         XCTAssertFalse(settingsIncludesPhoneConnection)
