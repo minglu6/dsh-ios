@@ -1879,12 +1879,14 @@ final class ScreenshotTests: XCTestCase {
         // `modelReleaseBadge` stay in the tree while the popover is open,
         // so waiting on them does not mean the menu has dismissed.
         // `minHeight: 30` on the title row lowers the chip — and the
-        // popover with it — over the composer, so tap/typeText races AX
-        // (`{{inf, inf},{0,0}}` / "Timed out while evaluating UI query").
-        // Same 8s budget as every other wait here; not a retry or skip.
-        let picker = app.descendants(matching: .any)["modelPicker"].firstMatch
+        // popover with it — over the composer, so tap/typeText races AX.
+        // Do not put an identifier on the picker VStack: SwiftUI copies it
+        // onto the 模型 / 推理等级 rows and hides `modelPickerModel`.
+        // `PopoverDismissRegion` is the system overlay the failure dump
+        // already showed. Same 8s budget as every other wait; not a retry.
+        let popover = app.descendants(matching: .any)["PopoverDismissRegion"]
         XCTAssertTrue(
-            picker.waitForNonExistence(timeout: 8),
+            popover.waitForNonExistence(timeout: 8),
             "\(appearance) model picker still covering composer after Flash pick"
         )
 

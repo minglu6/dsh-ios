@@ -2281,5 +2281,5 @@ CI `11c995e` / `f9f8457` artifact `ios-simulator-screenshots` 逐屏对照：
 
 根因（`4caed96` `*-models.png`）：model picker 叠在 composer 上（占位字从菜单后露出）。`modelChip` / `modelReleaseBadge` 在菜单开着时就在树上，等它们存在并不等于 popover 已关。title row 加高 8pt 把 chip（以及锚在它上面的菜单）往下推，盖住输入框，tap/`typeText` 跟拆除抢 AX（`{{inf, inf},{0,0}}` / Timed out while evaluating UI query）。
 
-修：Flash 点完先 `modelPicker.waitForNonExistence(8)`（和其他 wait 同一预算，不是 skip/retry/放宽），再断言 composer 有限可点，然后 `typeText`。header 只加回桌面 `.titleRow` min-height 30；`.tabs` margin-top 10 仍是原 `padding.vertical` 10。`conversationHeaderTitle` + `chatTab.chat` 断言 title-text→tabs 15±3。不加 wrapper / maxWidth / probe / `ignoresSafeArea` / 动画开关 / `sizeThatFits`。
+修：Flash 点完先等系统 `PopoverDismissRegion` 离开（8s，和其他 wait 同一预算；不是 skip/retry/放宽）。不要给 picker VStack 加 identifier——SwiftUI 会把它复制到「模型 / 推理等级」行上，子级 `modelPickerModel` 就丢了。再断言 composer 有限可点，然后 `typeText`。header 只加回桌面 `.titleRow` min-height 30；`.tabs` margin-top 10 仍是原 `padding.vertical` 10。`conversationHeaderTitle` + `chatTab.chat` 断言 title-text→tabs 15±3。不加 wrapper / maxWidth / probe / `ignoresSafeArea` / 动画开关 / `sizeThatFits`。
 
