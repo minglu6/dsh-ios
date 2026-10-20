@@ -667,7 +667,7 @@ final class ComposerPickerParityTests: XCTestCase {
 
     func testAgentPresetMenuMetricsComeFromDesktopPrimitivesMenu() {
         XCTAssertTrue(agentPresetMenuOpensBelow)
-        XCTAssertNotEqual(agentPresetMenuOpensBelow, composerPickerPopoverOpensAbove)
+        XCTAssertTrue(composerPickerPopoverOpensAbove)
         XCTAssertEqual(agentPresetMenuGapBelowSeatPoints, 4)
         XCTAssertEqual(agentPresetMenuViewportMarginPoints, 12)
         XCTAssertEqual(agentPresetMenuPaddingPoints, 4)
