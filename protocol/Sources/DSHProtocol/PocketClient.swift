@@ -695,23 +695,7 @@ public final class PocketClient: @unchecked Sendable {
     }
 
     private func handshakePayload(_ auth: Auth) -> (op: String, args: JSONValue) {
-        switch auth {
-        case .token(let token):
-            return ("hello", jsonObject([
-                "proto": .number(Double(VersionCompatibility.proto)),
-                "token": .string(token),
-                "app": .string("dsh-ios"),
-                "appVersion": .string(appVersion),
-            ]))
-        case .pair(let code, let name):
-            return ("pair", jsonObject([
-                "proto": .number(Double(VersionCompatibility.proto)),
-                "code": .string(code),
-                "name": .string(name),
-                "app": .string("dsh-ios"),
-                "appVersion": .string(appVersion),
-            ]))
-        }
+        pocketHandshake(auth: auth, appVersion: appVersion)
     }
 
     private func beginConnect() -> Int64 {

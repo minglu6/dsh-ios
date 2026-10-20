@@ -362,12 +362,20 @@ final class AppModel: ObservableObject {
     }
 
     func pair(name: String, host: String, port: Int, code: String) async throws {
-        let deviceName = try clipProfileName(name.isEmpty ? host : name)
+        let names = try pairingNames(
+            hostRemark: name,
+            host: host,
+            clientDeviceName: resolvedClientDeviceName()
+        )
         guard let url = websocketURL(host: host, port: port) else {
             throw PocketError(code: "transport", message: "invalid host:port")
         }
         let client = PocketClient(appVersion: Self.appVersion)
-        let hello = try await client.connect(url: url, host: host, auth: .pair(code: code, deviceName: deviceName))
+        let hello = try await client.connect(
+            url: url,
+            host: host,
+            auth: names.pairAuth(code: code)
+        )
         if let issue = hello.handshakeVersions().flatMap({
             VersionCompatibility.evaluate(appVersion: Self.appVersion, handshake: $0)
         }) {
@@ -380,7 +388,7 @@ final class AppModel: ObservableObject {
         }
         let profile = Profile(
             id: UUID().uuidString,
-            name: deviceName,
+            name: names.localHostRemark,
             deviceId: deviceId,
             host: host,
             port: port,

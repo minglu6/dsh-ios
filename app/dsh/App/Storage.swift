@@ -1,5 +1,6 @@
 import Foundation
 import Security
+import UIKit
 import DSHProtocol
 
 struct Profile: Codable, Equatable, Identifiable {
@@ -28,10 +29,15 @@ struct Profile: Codable, Equatable, Identifiable {
     var subtitle: String { "\(host):\(port)" }
 }
 
-func clipProfileName(_ name: String) throws -> String {
-    let trimmed = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(64))
-    if trimmed.isEmpty { throw PocketError(code: "bad-request", message: "profile name required") }
-    return trimmed
+/// Android `Build.MODEL ?: "Android"` — this phone's identity for pair `args.name`.
+/// Prefer the Settings device name, then `UIDevice.model`. Empty is an error.
+func resolvedClientDeviceName() throws -> String {
+    for raw in [UIDevice.current.name, UIDevice.current.model] {
+        if !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return try clipProfileName(raw)
+        }
+    }
+    throw PocketError(code: "bad-request", message: "client device name required")
 }
 
 enum TokenStore {
