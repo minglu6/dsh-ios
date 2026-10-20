@@ -6,6 +6,11 @@ extension AppModel {
         guard uiTestFixture, let id = chat?.sessionId else { return }
         chat?.agentPreset = "standard"
         chat?.loaded = true
+        let title = "项目代码修改与报告生成任务的完整会话标题"
+        chat?.title = title
+        if let index = sessions.firstIndex(where: { $0.sessionId == id }) {
+            sessions[index].title = title
+        }
         draftPreset = "cordis"
         ops.insert("sessions.projections")
         let children: [JSONValue] = (1...6).map { index in

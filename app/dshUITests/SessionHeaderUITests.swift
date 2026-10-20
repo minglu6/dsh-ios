@@ -16,6 +16,10 @@ final class SessionHeaderUITests: XCTestCase {
         let title = app.descendants(matching: .any)["conversationHeaderTitle"].firstMatch
         let preset = app.descendants(matching: .any)["conversationPreset"].firstMatch
         let tabs = app.buttons["chatTab.chat"]
+        XCTAssertGreaterThan(title.frame.width, 24, "Long titles retain a visible navigation label")
+        XCTAssertGreaterThanOrEqual(team.frame.minX, title.frame.maxX)
+        XCTAssertGreaterThanOrEqual(preset.frame.minX, team.frame.maxX)
+        XCTAssertGreaterThanOrEqual(count.frame.minX, preset.frame.maxX)
         for control in [team, preset, count] {
             XCTAssertLessThan(control.frame.maxY, tabs.frame.minY, "Header actions belong above the tab strip")
             XCTAssertLessThan(abs(control.frame.midY - title.frame.midY), 8, "Header actions share the title row")
