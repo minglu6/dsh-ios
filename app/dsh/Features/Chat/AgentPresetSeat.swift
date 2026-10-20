@@ -33,7 +33,7 @@ struct LandingWorkspaceChip: View {
                     color: T.ink
                 )
                 Text(model.landingWorkspaceLabel ?? landingChooseWorkspace(english: L.en))
-                    .font(.system(size: CGFloat(workspaceChipFontSizePoints), weight: .medium))
+                    .font(PhoneTypography.font(size: CGFloat(workspaceChipFontSizePoints), weight: .medium))
                     .lineLimit(1)
                 OfficialGlyph(
                     kind: .chevronDown,
@@ -61,7 +61,7 @@ struct LandingWorkspaceChip: View {
             VStack(alignment: .leading, spacing: 0) {
                 if model.workspaces.isEmpty {
                     Text(workspacePickerLoading(english: L.en))
-                        .font(.system(size: 12))
+                        .font(PhoneTypography.font(size: 12))
                         .foregroundStyle(T.text2)
                         .padding(8)
                 }
@@ -82,7 +82,7 @@ struct LandingWorkspaceChip: View {
                                 color: T.ink
                             )
                             Text(title)
-                                .font(.system(size: 13))
+                                .font(PhoneTypography.font(size: 13))
                                 .foregroundStyle(T.ink)
                                 .lineLimit(1)
                             Spacer(minLength: 8)
@@ -109,7 +109,7 @@ struct LandingWorkspaceChip: View {
                                 color: T.ink
                             )
                             Text(addWorkspaceMenuLabel(english: L.en))
-                                .font(.system(size: 13))
+                                .font(PhoneTypography.font(size: 13))
                                 .foregroundStyle(T.ink)
                             Spacer(minLength: 0)
                         }
@@ -154,7 +154,7 @@ struct AgentPresetSeat: View {
                 HStack(spacing: 4) {
                     OfficialGlyph(kind: .agentPreset, size: 14, color: T.ink)
                     Text(currentLabel)
-                        .font(.system(size: CGFloat(agentPresetSeatFontSizePoints), weight: .medium))
+                        .font(PhoneTypography.font(size: CGFloat(agentPresetSeatFontSizePoints), weight: .medium))
                         .lineLimit(1)
                     if !rows.isEmpty {
                         OfficialGlyph(kind: .chevronDown, size: 11, color: T.caption)
@@ -229,7 +229,7 @@ struct AgentPresetMenuLayer: View {
                     HStack(alignment: .top, spacing: CGFloat(agentPresetMenuRowGapPoints)) {
                         VStack(alignment: .leading, spacing: CGFloat(agentPresetMenuItemCopyGapPoints)) {
                             Text(PresetPolicy.name(row, english: L.en))
-                                .font(.system(size: CGFloat(agentPresetMenuItemNameFontSizePoints)))
+                                .font(PhoneTypography.font(size: CGFloat(agentPresetMenuItemNameFontSizePoints)))
                                 .foregroundStyle(T.ink)
                                 .frame(
                                     minHeight: CGFloat(agentPresetMenuItemNameLineHeightPoints),
@@ -239,7 +239,7 @@ struct AgentPresetMenuLayer: View {
                                 .accessibilityIdentifier("agentPresetTitle.\(id)")
                             Text(PresetPolicy.description(row, english: L.en).flatMap { $0.isEmpty ? nil : $0 }
                                  ?? agentPresetNoDescription(english: L.en))
-                                .font(.system(size: CGFloat(agentPresetMenuItemDescFontSizePoints)))
+                                .font(PhoneTypography.font(size: CGFloat(agentPresetMenuItemDescFontSizePoints)))
                                 .foregroundStyle(T.caption)
                                 .fixedSize(horizontal: false, vertical: true)
                                 .accessibilityIdentifier("agentPresetDesc.\(id)")

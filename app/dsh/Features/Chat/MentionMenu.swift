@@ -112,7 +112,7 @@ struct MentionMenuOverlay: View {
                     onDrill(crumb.drill)
                 } label: {
                     Text(crumb.label)
-                        .font(.system(size: CGFloat(mentionMenuCrumbFontSizePoints)))
+                        .font(PhoneTypography.font(size: CGFloat(mentionMenuCrumbFontSizePoints)))
                         .foregroundStyle(crumb.current ? T.ink : T.text3)
                         .lineLimit(1)
                         .padding(.horizontal, CGFloat(mentionMenuCrumbPaddingInlinePoints))
@@ -157,7 +157,7 @@ struct MentionMenuOverlay: View {
             ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
                 if index == 0 || rows[index - 1].section != row.section {
                     Text(mentionSectionTitle(row.section, english: L.en))
-                        .font(.system(size: CGFloat(mentionMenuSectionTitleFontSizePoints), weight: .medium))
+                        .font(PhoneTypography.font(size: CGFloat(mentionMenuSectionTitleFontSizePoints), weight: .medium))
                         .foregroundStyle(T.text3)
                         .padding(.top, index == 0 ? CGFloat(mentionMenuSectionTitlePaddingTopPoints) : CGFloat(mentionMenuSectionTitlePaddingTopPoints + mentionMenuSectionTitleGapPoints))
                         .padding(.bottom, CGFloat(mentionMenuSectionTitlePaddingBottomPoints))
@@ -180,12 +180,12 @@ struct MentionMenuOverlay: View {
                 )
                 MentionNameDescription {
                     Text(row.title)
-                        .font(.system(size: CGFloat(mentionMenuItemFontSizePoints)))
+                        .font(PhoneTypography.font(size: CGFloat(mentionMenuItemFontSizePoints)))
                         .foregroundStyle(T.ink)
                         .lineLimit(1)
                     if let description = row.description {
                         Text(description)
-                            .font(.system(size: CGFloat(mentionMenuDescriptionFontSizePoints)))
+                            .font(PhoneTypography.font(size: CGFloat(mentionMenuDescriptionFontSizePoints)))
                             .foregroundStyle(T.text3)
                             .lineLimit(1)
                     }
@@ -205,9 +205,9 @@ struct MentionMenuOverlay: View {
                     HStack(spacing: 3) {
                         Text(mentionDrillHint(english: L.en))
                             .foregroundStyle(T.caption)
-                            .font(.system(size: CGFloat(mentionMenuDrillHintFontSizePoints)))
+                            .font(PhoneTypography.font(size: CGFloat(mentionMenuDrillHintFontSizePoints)))
                         Text(mentionDrillKey())
-                            .font(.system(size: CGFloat(mentionMenuDrillHintFontSizePoints)))
+                            .font(PhoneTypography.font(size: CGFloat(mentionMenuDrillHintFontSizePoints)))
                             .foregroundStyle(T.caption)
                             .padding(.horizontal, 4)
                             .background(T.hoverBg, in: RoundedRectangle(cornerRadius: CGFloat(dswRadiusXsPoints), style: .continuous))

@@ -41,7 +41,7 @@ struct AgentTeamSheet: View {
                             .accessibilityIdentifier("agentTeamUnavailable")
                     }
                 }
-                .font(.system(size: 16))
+                .font(PhoneTypography.font(size: 16))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)
             }
@@ -51,13 +51,13 @@ struct AgentTeamSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(L.t("关闭", "Close")) { dismiss() }
-                        .font(.system(size: 16))
+                        .font(PhoneTypography.font(size: 16))
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button(L.t("刷新", "Refresh")) {
                         Task { await model.loadHeaderProjection(sessionId: leadSessionId) }
                     }
-                    .font(.system(size: 16))
+                    .font(PhoneTypography.font(size: 16))
                     .disabled(loading)
                 }
             }
@@ -73,7 +73,7 @@ struct AgentTeamSheet: View {
             Text(message).foregroundStyle(T.err)
             if team != nil {
                 Text(L.t("保留最后有效的团队数据", "Showing the last valid Team data"))
-                    .font(.system(size: 14))
+                    .font(PhoneTypography.font(size: 14))
                     .foregroundStyle(T.text2)
             }
         }
@@ -127,22 +127,22 @@ struct AgentTeamSheet: View {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(member.name)
-                            .font(.system(size: 16, weight: .medium))
+                            .font(PhoneTypography.font(size: 16, weight: .medium))
                             .foregroundStyle(T.ink)
                             .fixedSize(horizontal: false, vertical: true)
                         if current {
                             Text(L.t("当前会话", "Current chat"))
-                                .font(.system(size: 14))
+                                .font(PhoneTypography.font(size: 14))
                                 .foregroundStyle(T.accent)
                                 .fixedSize()
                         }
                     }
                     Text(memberStatus(member.phase, running: running))
-                        .font(.system(size: 14))
+                        .font(PhoneTypography.font(size: 14))
                         .foregroundStyle(member.phase == .failed ? T.err : T.text2)
                     if let error = member.error {
                         Text(error)
-                            .font(.system(size: 14))
+                            .font(PhoneTypography.font(size: 14))
                             .foregroundStyle(T.err)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -206,16 +206,16 @@ private struct AgentTeamTaskCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(task.subject)
-                .font(.system(size: 16, weight: .semibold))
+                .font(PhoneTypography.font(size: 16, weight: .semibold))
                 .foregroundStyle(T.ink)
             HStack(spacing: 7) {
                 Circle().fill(statusColor).frame(width: 7, height: 7)
                 Text(statusLabel)
-                    .font(.system(size: 14))
+                    .font(PhoneTypography.font(size: 14))
                     .foregroundStyle(T.text2)
             }
             Text(task.description)
-                .font(.system(size: 16))
+                .font(PhoneTypography.font(size: 16))
                 .foregroundStyle(T.ink)
                 .lineLimit(expanded ? nil : 2)
                 .fixedSize(horizontal: false, vertical: true)
@@ -223,7 +223,7 @@ private struct AgentTeamTaskCard: View {
                 Button { expanded.toggle() } label: {
                     HStack(spacing: 4) {
                         Text(expanded ? L.t("收起", "Show less") : L.t("展开", "Show more"))
-                            .font(.system(size: 14))
+                            .font(PhoneTypography.font(size: 14))
                         OfficialGlyph(kind: .chevronDown, size: 12, color: T.text2)
                             .rotationEffect(.degrees(expanded ? 180 : 0))
                     }
@@ -251,7 +251,7 @@ private struct AgentTeamTaskCard: View {
                     Text(warning).foregroundStyle(T.warnText)
                 }
             }
-            .font(.system(size: 14))
+            .font(PhoneTypography.font(size: 14))
             .foregroundStyle(T.text2)
             .fixedSize(horizontal: false, vertical: true)
         }

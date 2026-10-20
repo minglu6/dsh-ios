@@ -203,7 +203,7 @@ private struct SessionInspectorContent: View {
                 } label: {
                     HStack(spacing: 4) {
                         Text(state.grouped ? L.t("对话分组", "Chat Group") : L.t("原始数据", "Raw Log"))
-                            .font(.system(size: 11))
+                            .font(PhoneTypography.font(size: 11))
                             .foregroundStyle(T.ink)
                         OfficialGlyph(kind: .chevronDown, size: 9, color: T.ink)
                     }
@@ -230,7 +230,7 @@ private struct SessionInspectorContent: View {
                 .accessibilityAddTraits(.isButton)
 
                 Text("· " + (state.filter.isEmpty ? "\(allCount)" : "\(matchingCount) / \(allCount)"))
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(PhoneTypography.font(size: 11, design: .monospaced))
                     .foregroundStyle(T.ink)
             }
             Spacer()
@@ -240,7 +240,7 @@ private struct SessionInspectorContent: View {
                     if model.chat?.sessionId == chat.sessionId { model.loadOlderHistory() }
                 } label: {
                     Text(loadOlderLabel(loading: chat.loadingOlder, english: L.en))
-                        .font(.system(size: 11))
+                        .font(PhoneTypography.font(size: 11))
                         .foregroundStyle(chat.loadingOlder ? T.text3 : T.ink)
                 }
                 .disabled(chat.loadingOlder)
@@ -249,7 +249,7 @@ private struct SessionInspectorContent: View {
                 state.follow = true
                 state.scrollRequest += 1
             } label: {
-                Text(L.t("跟踪最新", "Follow Latest")).font(.system(size: 11)).foregroundStyle(T.ink)
+                Text(L.t("跟踪最新", "Follow Latest")).font(PhoneTypography.font(size: 11)).foregroundStyle(T.ink)
             }
         }
         .padding(.horizontal, 8)
@@ -265,7 +265,7 @@ private struct SessionInspectorContent: View {
                     Divider()
                     if visible.isEmpty {
                         Text(L.t("暂无记录", "No records"))
-                            .font(.system(size: 11))
+                            .font(PhoneTypography.font(size: 11))
                             .foregroundStyle(T.text3)
                             .padding(12)
                     } else {
@@ -297,7 +297,7 @@ private struct SessionInspectorContent: View {
         HStack(spacing: 0) {
             cell(L.t("序号", "Index"), width: 64, header: true)
             HStack(spacing: 6) {
-                Text(L.t("类型", "Type")).font(.system(size: 11, weight: .bold, design: .monospaced)).foregroundStyle(T.ink)
+                Text(L.t("类型", "Type")).font(PhoneTypography.font(size: 11, weight: .bold, design: .monospaced)).foregroundStyle(T.ink)
                 InspectorTypeFilter(value: state.filter, rows: rows) { state.applyFilter($0) }
             }
             .frame(width: 190, alignment: .leading)
@@ -306,11 +306,11 @@ private struct SessionInspectorContent: View {
             if !state.grouped {
                 cell(L.t("时间 (UTC)", "Time (UTC)"), width: 100, header: true)
             }
-            Text(L.t("数据", "Data")).font(.system(size: 11, weight: .bold, design: .monospaced)).foregroundStyle(T.ink)
+            Text(L.t("数据", "Data")).font(PhoneTypography.font(size: 11, weight: .bold, design: .monospaced)).foregroundStyle(T.ink)
                 .padding(.horizontal, 8)
             Spacer(minLength: 0)
         }
-        .frame(height: 30)
+        .frame(minHeight: 32)
         .background(T.fill2)
     }
 
@@ -347,7 +347,7 @@ private struct SessionInspectorContent: View {
                 }
                 Button(action: select) {
                     Text(row.type)
-                        .font(.system(size: 11, design: .monospaced))
+                        .font(PhoneTypography.font(size: 11, design: .monospaced))
                         .foregroundStyle(entry.matches ? T.ink : T.text3)
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -363,7 +363,7 @@ private struct SessionInspectorContent: View {
             }
             Button(action: select) {
                 Text(row.summary.flatMap { row.type != "block-start" || collapsed ? $0 : nil } ?? inspectorPreview(row.value))
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(PhoneTypography.font(size: 11, design: .monospaced))
                     .foregroundStyle(T.ink)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -371,7 +371,7 @@ private struct SessionInspectorContent: View {
             }
             .buttonStyle(.plain)
         }
-        .frame(height: 30)
+        .frame(minHeight: 32)
         .background(state.selectedKey == row.key ? T.hoverBg : T.surface)
     }
 
@@ -388,12 +388,12 @@ private struct SessionInspectorContent: View {
                 })
                 .accessibilityLabel(L.t("调整原始数据面板高度", "Resize raw data panel"))
             HStack {
-                Text(L.t("原始数据", "Raw data")).font(.system(size: 11)).foregroundStyle(T.ink)
+                Text(L.t("原始数据", "Raw data")).font(PhoneTypography.font(size: 11)).foregroundStyle(T.ink)
                 Spacer()
                 Button {
                     state.selectedKey = nil
                 } label: {
-                    Text(L.t("关闭", "Close")).font(.system(size: 11)).foregroundStyle(T.ink)
+                    Text(L.t("关闭", "Close")).font(PhoneTypography.font(size: 11)).foregroundStyle(T.ink)
                 }
             }
             .padding(.horizontal, 8)
@@ -402,7 +402,7 @@ private struct SessionInspectorContent: View {
             if let selected {
                 if grouped {
                     Text("\(selected.type) · \(selected.identity)")
-                        .font(.system(size: 11))
+                        .font(PhoneTypography.font(size: 11))
                         .foregroundStyle(T.ink)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 8)
@@ -412,7 +412,7 @@ private struct SessionInspectorContent: View {
                 InspectorValueTree(value: selected.value, grouped: grouped)
             } else {
                 Text(L.t("该记录已移除或结算，请选择当前记录。", "This record was removed or settled. Select a current record."))
-                    .font(.system(size: 11))
+                    .font(PhoneTypography.font(size: 11))
                     .foregroundStyle(T.ink)
                     .padding(8)
             }
@@ -422,7 +422,7 @@ private struct SessionInspectorContent: View {
 
     private func cell(_ text: String, width: CGFloat, header: Bool = false, muted: Bool = false) -> some View {
         Text(text)
-            .font(.system(size: 11, weight: header ? .bold : .regular, design: .monospaced))
+            .font(PhoneTypography.font(size: 11, weight: header ? .bold : .regular, design: .monospaced))
             .foregroundStyle(muted ? T.text3 : T.ink)
             .lineLimit(1)
             .padding(.horizontal, 8)
@@ -456,7 +456,7 @@ private struct InspectorTypeFilter: View {
             let suggestions = inspectorTypeSuggestions(rows, filter: draft)
             VStack(alignment: .leading, spacing: 6) {
                 TextField(L.t("输入类型片段，如 delta", "Type a fragment, e.g. delta"), text: $draft)
-                    .font(.system(size: 11))
+                    .font(PhoneTypography.font(size: 11))
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .padding(6)
@@ -464,13 +464,13 @@ private struct InspectorTypeFilter: View {
                     .accessibilityLabel(L.t("类型关键词", "Type keyword"))
                     .onSubmit { commit(draft) }
                 Text(L.t("默认包含匹配（*关键词*）；Enter 确认，Esc 取消。", "Contains matching (*keyword*). Enter confirms; Esc cancels."))
-                    .font(.system(size: 11))
+                    .font(PhoneTypography.font(size: 11))
                     .foregroundStyle(T.text2)
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(suggestions, id: \.self) { type in
                             Button { commit(type) } label: {
-                                Text(type).font(.system(size: 11, design: .monospaced)).foregroundStyle(T.ink)
+                                Text(type).font(PhoneTypography.font(size: 11, design: .monospaced)).foregroundStyle(T.ink)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .padding(.horizontal, 6)
                                     .padding(.vertical, 4)
@@ -483,7 +483,7 @@ private struct InspectorTypeFilter: View {
                 .accessibilityLabel(L.t("类型候选", "Type suggestions"))
                 if suggestions.isEmpty {
                     Text(L.t("没有匹配候选，仍可确认当前关键词。", "No suggestions. You can still apply this keyword."))
-                        .font(.system(size: 11))
+                        .font(PhoneTypography.font(size: 11))
                         .foregroundStyle(T.ink)
                 }
                 HStack {
@@ -492,7 +492,7 @@ private struct InspectorTypeFilter: View {
                     Button(L.t("取消", "Cancel")) { open = false }
                     Button(L.t("确认筛选", "Apply filter")) { commit(draft) }
                 }
-                .font(.system(size: 11))
+                .font(PhoneTypography.font(size: 11))
             }
             .padding(10)
             .frame(width: 290)
@@ -599,14 +599,14 @@ private struct InspectorValueTree: View {
                     }
                 } label: {
                     Text(text)
-                        .font(.system(size: 11, design: .monospaced))
+                        .font(PhoneTypography.font(size: 11, design: .monospaced))
                         .foregroundStyle(entry.more ? T.accent : T.ink)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.plain)
             } else {
                 Text(text)
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(PhoneTypography.font(size: 11, design: .monospaced))
                     .foregroundStyle(T.text2)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)

@@ -186,7 +186,7 @@ struct WorkspaceGroupHeader: View {
                             color: active ? T.businessPrimary : T.text3
                         )
                         Text(title)
-                            .font(.system(size: 14))
+                            .font(PhoneTypography.font(size: 14))
                             .foregroundStyle(T.ink)
                             .lineLimit(1)
                         Spacer()

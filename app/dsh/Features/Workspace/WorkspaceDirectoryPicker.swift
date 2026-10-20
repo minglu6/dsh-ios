@@ -69,10 +69,10 @@ struct WorkspaceDirectoryDialog: View {
             Divider()
             panes
             if dir.parent?.truncated == true || dir.child?.truncated == true {
-                Text(L.foldersTruncated()).font(.system(size: 12)).foregroundStyle(T.text3).padding(.horizontal, 24).padding(.vertical, 4)
+                Text(L.foldersTruncated()).font(PhoneTypography.font(size: 12)).foregroundStyle(T.text3).padding(.horizontal, 24).padding(.vertical, 4)
             }
             if let err = saveError ?? dir.error {
-                Text(err).font(.system(size: 12)).foregroundStyle(T.err).lineLimit(3).padding(.horizontal, 24).padding(.vertical, 4)
+                Text(err).font(PhoneTypography.font(size: 12)).foregroundStyle(T.err).lineLimit(3).padding(.horizontal, 24).padding(.vertical, 4)
             }
             Divider()
             footer
@@ -89,7 +89,7 @@ struct WorkspaceDirectoryDialog: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(L.selectWorkspaceDirectory()).font(.system(size: 16, weight: .medium)).foregroundStyle(T.ink)
+            Text(L.selectWorkspaceDirectory()).font(PhoneTypography.font(size: 16, weight: .medium)).foregroundStyle(T.ink)
             if !browse || dir.draft != nil {
                 TextField(L.editPath(), text: Binding(
                     get: { browse ? (dir.draft ?? "") : nativePath },
@@ -115,7 +115,7 @@ struct WorkspaceDirectoryDialog: View {
                                     Task { await dir.navigate(path: crumb.path) }
                                 } label: {
                                     Text(crumb.path == dir.parent?.home ? L.homeDirectory() : crumb.name)
-                                        .font(.system(size: 13))
+                                        .font(PhoneTypography.font(size: 13))
                                         .foregroundStyle(T.text3)
                                         .lineLimit(1)
                                 }
@@ -163,7 +163,7 @@ struct WorkspaceDirectoryDialog: View {
             }
             if dir.loading {
                 Text(L.loading())
-                    .font(.system(size: 12))
+                    .font(PhoneTypography.font(size: 12))
                     .foregroundStyle(T.text3)
                     .padding(8)
                     .background(T.surface3, in: RoundedRectangle(cornerRadius: 8))
@@ -190,7 +190,7 @@ struct WorkspaceDirectoryDialog: View {
                     .disabled(!(canCreate && ready))
                     Button { dir.toggleHidden() } label: {
                         HStack(spacing: 4) {
-                            Text(L.showHiddenFiles()).font(.system(size: 12)).foregroundStyle(T.text3)
+                            Text(L.showHiddenFiles()).font(PhoneTypography.font(size: 12)).foregroundStyle(T.text3)
                             if dir.showHidden {
                                 OfficialGlyph(kind: .checkOutline, size: 11, color: T.text3)
                             }
@@ -218,15 +218,15 @@ struct WorkspaceDirectoryDialog: View {
 
     private var createFolderSheet: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(L.newFolder()).font(.system(size: 16, weight: .medium)).foregroundStyle(T.ink)
-            Text(L.newFolderIn(currentFolderName)).font(.system(size: 14)).foregroundStyle(T.ink)
+            Text(L.newFolder()).font(PhoneTypography.font(size: 16, weight: .medium)).foregroundStyle(T.ink)
+            Text(L.newFolderIn(currentFolderName)).font(PhoneTypography.font(size: 14)).foregroundStyle(T.ink)
             TextField(L.untitledFolder(), text: Binding(get: { folderName ?? "" }, set: { folderName = $0 }))
                 .textInputAutocapitalization(.never)
                 .padding(12)
                 .overlay(RoundedRectangle(cornerRadius: 16).stroke(T.borderStrong, lineWidth: 0.5))
                 .disabled(creating)
                 .onSubmit { createFolder() }
-            if let createError { Text(createError).font(.system(size: 12)).foregroundStyle(T.err) }
+            if let createError { Text(createError).font(PhoneTypography.font(size: 12)).foregroundStyle(T.err) }
             HStack {
                 Spacer()
                 Button(L.cancel()) { if !creating { folderName = nil } }.disabled(creating)
@@ -306,7 +306,7 @@ private struct DirectoryColumn: View {
                                 size: 14,
                                 color: !enabled ? T.caption : T.ink
                             )
-                            Text(entry.name).font(.system(size: 13)).foregroundStyle(enabled ? T.ink : T.caption).lineLimit(1)
+                            Text(entry.name).font(PhoneTypography.font(size: 13)).foregroundStyle(enabled ? T.ink : T.caption).lineLimit(1)
                             Spacer()
                             OfficialGlyph(kind: .chevronRight, size: 10, color: T.text3)
                         }

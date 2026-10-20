@@ -21,7 +21,7 @@ struct TrajectoryRequestSheet: View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 0) {
                 Text(location)
-                    .font(.caption)
+                    .font(PhoneTypography.caption)
                     .foregroundStyle(T.text3)
                     .padding(.horizontal, 14)
                     .padding(.top, 8)
@@ -32,7 +32,7 @@ struct TrajectoryRequestSheet: View {
                                 tab = candidate
                             } label: {
                                 Text(candidate.label)
-                                    .font(.subheadline.weight(activeTab == candidate ? .semibold : .regular))
+                                    .font(PhoneTypography.subheadline.weight(activeTab == candidate ? .semibold : .regular))
                                     .foregroundStyle(activeTab == candidate ? T.ink : T.text3)
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 8)
@@ -143,7 +143,7 @@ private struct RequestOverview: View {
             if tabs.contains(.options), let json = request.requestConfigJson {
                 section(TrajL.tabOptions, onOpen: { onOpen(.options) }) {
                     Text(prettyRequestJson(json).split(separator: "\n").prefix(4).joined(separator: "\n"))
-                        .font(.system(size: 11, design: .monospaced))
+                        .font(PhoneTypography.font(size: 11, design: .monospaced))
                         .foregroundStyle(T.text2)
                         .lineLimit(4)
                 }
@@ -162,8 +162,8 @@ private struct RequestOverview: View {
             onClick?()
         } label: {
             HStack(alignment: .top) {
-                Text(label).font(.caption).foregroundStyle(T.text3).frame(width: 88, alignment: .leading)
-                Text(value).font(.caption).foregroundStyle(valueColor)
+                Text(label).font(PhoneTypography.caption).foregroundStyle(T.text3).frame(width: 88, alignment: .leading)
+                Text(value).font(PhoneTypography.caption).foregroundStyle(valueColor)
                 Spacer()
             }
             .padding(.vertical, 4)
@@ -176,7 +176,7 @@ private struct RequestOverview: View {
         VStack(alignment: .leading, spacing: 6) {
             Button(action: onOpen) {
                 HStack {
-                    Text(title).font(.caption.weight(.semibold)).foregroundStyle(T.ink)
+                    Text(title).font(PhoneTypography.caption.weight(.semibold)).foregroundStyle(T.ink)
                     Spacer()
                     OfficialGlyph(
                         kind: .chevronRight,
@@ -200,11 +200,11 @@ private struct RequestOptions: View {
     var body: some View {
         if let configJson, !configJson.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             VStack(alignment: .leading, spacing: 6) {
-                Text(TrajL.optionsJson).font(.system(size: 12)).foregroundStyle(T.text3)
+                Text(TrajL.optionsJson).font(PhoneTypography.font(size: 12)).foregroundStyle(T.text3)
                 TrajectoryJsonValue(source: configJson)
             }
         } else {
-            Text(TrajL.optionsNotRecorded).font(.subheadline).foregroundStyle(T.text3)
+            Text(TrajL.optionsNotRecorded).font(PhoneTypography.subheadline).foregroundStyle(T.text3)
         }
     }
 }
@@ -215,10 +215,10 @@ private struct RequestUsage: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(TrajL.usageThisRequest).font(.system(size: 12, weight: .medium)).foregroundStyle(T.text2)
+            Text(TrajL.usageThisRequest).font(PhoneTypography.font(size: 12, weight: .medium)).foregroundStyle(T.text2)
             UsageBlock(usage: usage)
             Spacer().frame(height: 12)
-            Text(TrajL.usageSessionCumulative).font(.system(size: 12, weight: .medium)).foregroundStyle(T.text2)
+            Text(TrajL.usageSessionCumulative).font(PhoneTypography.font(size: 12, weight: .medium)).foregroundStyle(T.text2)
             UsageBlock(usage: cumulative)
         }
     }
@@ -230,7 +230,7 @@ private struct UsageBlock: View {
     var body: some View {
         let values = [usage?.inputTokens, usage?.cacheReadTokens, usage?.cacheWriteTokens, usage?.outputTokens, usage?.reasoningTokens].compactMap { $0 }
         if usage == nil || values.isEmpty {
-            Text(TrajL.usageNotReported).font(.system(size: 13)).foregroundStyle(T.text3).padding(.top, 4)
+            Text(TrajL.usageNotReported).font(PhoneTypography.font(size: 13)).foregroundStyle(T.text3).padding(.top, 4)
         } else {
             VStack(alignment: .leading, spacing: 0) {
                 if let n = usage?.inputTokens { line(TrajL.usageInput, TrajL.unitTokens(n)) }
@@ -244,8 +244,8 @@ private struct UsageBlock: View {
 
     private func line(_ label: String, _ value: String) -> some View {
         HStack {
-            Text(label).font(.caption).foregroundStyle(T.text3).frame(width: 88, alignment: .leading)
-            Text(value).font(.caption).foregroundStyle(T.ink)
+            Text(label).font(PhoneTypography.caption).foregroundStyle(T.text3).frame(width: 88, alignment: .leading)
+            Text(value).font(PhoneTypography.caption).foregroundStyle(T.ink)
             Spacer()
         }
         .padding(.vertical, 4)
@@ -287,8 +287,8 @@ private struct RequestTiming: View {
 
     private func line(_ label: String, _ value: String) -> some View {
         HStack {
-            Text(label).font(.caption).foregroundStyle(T.text3).frame(width: 88, alignment: .leading)
-            Text(value).font(.caption).foregroundStyle(T.ink)
+            Text(label).font(PhoneTypography.caption).foregroundStyle(T.text3).frame(width: 88, alignment: .leading)
+            Text(value).font(PhoneTypography.caption).foregroundStyle(T.ink)
             Spacer()
         }
         .padding(.vertical, 4)

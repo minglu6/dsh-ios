@@ -57,7 +57,7 @@ private struct FilePreviewContent: View {
             toolbar
             Divider()
             if let refreshed {
-                Text(refreshed).font(.system(size: 12)).foregroundStyle(T.text3).padding(.horizontal, 16)
+                Text(refreshed).font(PhoneTypography.font(size: 12)).foregroundStyle(T.text3).padding(.horizontal, 16)
             }
             bodyContent
         }
@@ -93,7 +93,7 @@ private struct FilePreviewContent: View {
                         }
                     }
                 } label: {
-                    Text(modeLabel(mode)).font(.system(size: 12)).foregroundStyle(T.text2)
+                    Text(modeLabel(mode)).font(PhoneTypography.font(size: 12)).foregroundStyle(T.text2)
                 }
                 .accessibilityLabel(L.openWith())
             }
@@ -159,14 +159,14 @@ private struct FilePreviewContent: View {
                 }
             case .preview:
                 ScrollView {
-                    Text(text).font(.system(size: 14)).foregroundStyle(T.ink).frame(maxWidth: .infinity, alignment: .leading).padding(16)
+                    Text(text).font(LocalFonts.text()).foregroundStyle(T.ink).frame(maxWidth: .infinity, alignment: .leading).padding(16)
                 }
             case .code, .plain:
                 VStack(spacing: 0) {
                     if mode == .code {
                         HStack {
                             Text(language ?? L.code())
-                                .font(.system(size: 12, design: .monospaced))
+                                .font(PhoneTypography.font(size: 12, design: .monospaced))
                                 .foregroundStyle(T.text2)
                             Spacer()
                             Button {
@@ -301,7 +301,7 @@ struct PreviewPathLabel: View {
                 Text(prefix).foregroundStyle(T.text3)
                 Text(name).foregroundStyle(T.ink)
             }
-            .font(.system(size: 12, design: .monospaced))
+            .font(PhoneTypography.font(size: 12, design: .monospaced))
         }
     }
 }
@@ -313,10 +313,10 @@ private struct MarkdownPreview: View {
             ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
                 switch block {
                 case .heading(let level, let line):
-                    Text(line).font(level <= 1 ? .title2.weight(.semibold) : .headline).foregroundStyle(T.ink)
+                    Text(line).font(level <= 1 ? PhoneTypography.title2.weight(.semibold) : PhoneTypography.headline).foregroundStyle(T.ink)
                 case .code(let code):
                     Text(code)
-                        .font(.system(size: 13, design: .monospaced))
+                        .font(LocalFonts.code())
                         .foregroundStyle(T.ink)
                         .padding(10)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -379,7 +379,7 @@ private struct DelimitedPreview: View {
                         HStack(alignment: .top, spacing: 0) {
                             ForEach(0..<columns, id: \.self) { column in
                                 Text(row.indices.contains(column) ? row[column] : "")
-                                    .font(.system(size: 12, design: .monospaced))
+                                    .font(PhoneTypography.font(size: 12, design: .monospaced))
                                     .foregroundStyle(T.ink)
                                     .frame(width: 160, alignment: .leading)
                                     .padding(8)
@@ -461,7 +461,7 @@ private struct OfficeFontWarning: View {
             .popover(isPresented: $expanded) {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text(L.t("缺失的字体", "Missing fonts")).font(.system(size: 14, weight: .semibold)).foregroundStyle(T.ink)
+                        Text(L.t("缺失的字体", "Missing fonts")).font(PhoneTypography.font(size: 14, weight: .semibold)).foregroundStyle(T.ink)
                         Spacer()
                         Button { expanded = false } label: {
                             OfficialGlyph(kind: .closeOutline, size: 14, color: T.text2)
@@ -469,14 +469,14 @@ private struct OfficeFontWarning: View {
                         .accessibilityLabel(L.t("关闭字体详情", "Close font details"))
                     }
                     Text(L.t("本次预览无法使用以下字体，预览中的文字和排版可能与原文档不同。", "These fonts are unavailable for this preview. Text and layout may differ from the original document."))
-                        .font(.system(size: 13))
+                        .font(PhoneTypography.font(size: 13))
                         .foregroundStyle(T.text2)
-                    Text(L.t("\(fonts.count) 种字体", "Fonts: \(fonts.count)")).font(.system(size: 12)).foregroundStyle(T.text3)
+                    Text(L.t("\(fonts.count) 种字体", "Fonts: \(fonts.count)")).font(PhoneTypography.font(size: 12)).foregroundStyle(T.text3)
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
                             ForEach(fonts, id: \.self) { font in
                                 Divider()
-                                Text(font).font(.system(size: 13)).foregroundStyle(T.ink).padding(.vertical, 8)
+                                Text(font).font(PhoneTypography.font(size: 13)).foregroundStyle(T.ink).padding(.vertical, 8)
                             }
                         }
                     }
@@ -504,7 +504,7 @@ private struct PdfPreviewBody: View {
                 LazyVStack(alignment: .leading, spacing: 12) {
                     ForEach(0..<document.pageCount, id: \.self) { index in
                         Text("\(L.pdfPage(index + 1)) / \(document.pageCount)")
-                            .font(.system(size: 12))
+                            .font(PhoneTypography.font(size: 12))
                             .foregroundStyle(T.text3)
                         if let page = document.page(at: index) {
                             PdfPageImage(page: page, label: L.pdfPage(index + 1))

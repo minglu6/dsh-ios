@@ -46,7 +46,7 @@ struct TerminalPanel: View {
                 statusLine(current: current, hasScreen: hasScreen)
                 if let failure = model.terminalFailure, model.isOnline {
                     Text(terminalFailureCopy(message: failure, english: L.en))
-                        .font(.system(size: CGFloat(terminalBodyFontSizePoints)))
+                        .font(PhoneTypography.font(size: CGFloat(terminalBodyFontSizePoints)))
                         .foregroundStyle(T.ink)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, CGFloat(terminalErrorPaddingXPoints))
@@ -115,7 +115,7 @@ struct TerminalPanel: View {
             } label: {
                 HStack(spacing: 4) {
                     Text(current?.title?.nilIfBlank ?? L.terminal())
-                        .font(.headline)
+                        .font(PhoneTypography.headline)
                         .foregroundStyle(T.ink)
                         .lineLimit(1)
                     OfficialGlyph(kind: .chevronDown, size: 12, color: T.text3)
@@ -130,7 +130,7 @@ struct TerminalPanel: View {
             Spacer()
             HStack(spacing: 5) {
                 Circle().fill(running ? T.ok : T.text3).frame(width: 6, height: 6)
-                Text(statusLabel(running: running)).font(.system(size: 11)).foregroundStyle(T.text3)
+                Text(statusLabel(running: running)).font(PhoneTypography.font(size: 11)).foregroundStyle(T.text3)
             }
         }
         .padding(.horizontal, 16)
@@ -155,7 +155,7 @@ struct TerminalPanel: View {
                 HStack(spacing: CGFloat(terminalStatusGapPoints)) {
                     if let status {
                         Text(status)
-                            .font(.system(size: CGFloat(terminalBodyFontSizePoints)))
+                            .font(PhoneTypography.font(size: CGFloat(terminalBodyFontSizePoints)))
                             .foregroundStyle(T.ink)
                     }
                     if retry {
@@ -163,7 +163,7 @@ struct TerminalPanel: View {
                             attempt += 1
                         } label: {
                             Text(terminalRetryLabel(hasScreenInfo: hasScreen, disconnected: !model.isOnline, english: L.en))
-                                .font(.system(size: CGFloat(dswButtonSmFontSizePoints)))
+                                .font(PhoneTypography.font(size: CGFloat(dswButtonSmFontSizePoints)))
                                 .foregroundStyle(T.ink)
                                 .frame(height: CGFloat(dswButtonSmHeightPoints))
                                 .padding(.horizontal, CGFloat(dswButtonSmHorizontalPaddingPoints))
@@ -190,7 +190,7 @@ struct TerminalPanel: View {
         VStack(spacing: CGFloat(terminalEmptyGapPoints)) {
             TerminalMissingArtwork()
             Text(terminalMissingCopy(english: L.en))
-                .font(.system(size: CGFloat(terminalBodyFontSizePoints)))
+                .font(PhoneTypography.font(size: CGFloat(terminalBodyFontSizePoints)))
                 .foregroundStyle(T.ink)
                 .multilineTextAlignment(.center)
                 .lineSpacing(CGFloat(terminalBodyFontSizePoints) * (terminalEmptyMessageLineHeight - 1))
@@ -199,7 +199,7 @@ struct TerminalPanel: View {
                 HStack(spacing: CGFloat(dswButtonIconGapPoints)) {
                     OfficialGlyph(kind: .plusOutline, size: 16, color: T.onPrimary)
                     Text(L.newTerminal())
-                        .font(.system(size: CGFloat(dswButtonFontSizePoints)))
+                        .font(PhoneTypography.font(size: CGFloat(dswButtonFontSizePoints)))
                         .foregroundStyle(T.onPrimary)
                 }
                 .padding(.horizontal, CGFloat(dswButtonMdHorizontalPaddingPoints))
@@ -227,13 +227,13 @@ struct TerminalPanel: View {
         let canMutate = model.isOnline && !opening && !terminating
         return VStack(alignment: .leading, spacing: 0) {
             Text(L.terminalSessions())
-                .font(.system(size: CGFloat(terminalSwitcherSectionFontSizePoints)))
+                .font(PhoneTypography.font(size: CGFloat(terminalSwitcherSectionFontSizePoints)))
                 .foregroundStyle(T.text3)
                 .padding(.horizontal, CGFloat(terminalSwitcherSectionPaddingXPoints))
                 .padding(.vertical, CGFloat(terminalSwitcherSectionPaddingYPoints))
             if !model.isOnline {
                 Text(L.connectToSwitchSessions())
-                    .font(.system(size: CGFloat(terminalSwitcherSectionFontSizePoints)))
+                    .font(PhoneTypography.font(size: CGFloat(terminalSwitcherSectionFontSizePoints)))
                     .foregroundStyle(T.text3)
                     .padding(.horizontal, CGFloat(terminalSwitcherSectionPaddingXPoints))
                     .padding(.vertical, CGFloat(terminalSwitcherSectionPaddingYPoints))
@@ -243,7 +243,7 @@ struct TerminalPanel: View {
                     .padding(.vertical, CGFloat(terminalSwitcherRowPaddingYPoints))
             } else if let listError {
                 Text(listError)
-                    .font(.system(size: CGFloat(terminalSwitcherRowFontSizePoints)))
+                    .font(PhoneTypography.font(size: CGFloat(terminalSwitcherRowFontSizePoints)))
                     .foregroundStyle(T.err)
                     .padding(.horizontal, CGFloat(terminalSwitcherRowPaddingXPoints))
                     .padding(.vertical, CGFloat(terminalSwitcherRowPaddingYPoints))
@@ -252,7 +252,7 @@ struct TerminalPanel: View {
                 }
             } else if displayedEntries.isEmpty {
                 Text(L.noRetainedSessions())
-                    .font(.system(size: CGFloat(terminalSwitcherSectionFontSizePoints)))
+                    .font(PhoneTypography.font(size: CGFloat(terminalSwitcherSectionFontSizePoints)))
                     .foregroundStyle(T.text3)
                     .padding(.horizontal, CGFloat(terminalSwitcherSectionPaddingXPoints))
                     .padding(.vertical, CGFloat(terminalSwitcherSectionPaddingYPoints))
@@ -332,7 +332,7 @@ struct TerminalPanel: View {
                         OfficialGlyph(kind: icon, size: CGFloat(terminalSwitcherIconSizePoints), color: T.ink)
                     }
                     Text(title)
-                        .font(.system(size: CGFloat(terminalSwitcherRowFontSizePoints)))
+                        .font(PhoneTypography.font(size: CGFloat(terminalSwitcherRowFontSizePoints)))
                         .foregroundStyle(T.ink)
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .leading)

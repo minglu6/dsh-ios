@@ -468,6 +468,16 @@ extension AppModel {
             terminalRevision = terminal.revision
             terminalMeta = nil
             push(.panel(.terminal))
+        case "filePreviewPython":
+            ops.remove("files.list")
+            codeWordWrap = false
+            if let index = sessions.firstIndex(where: { $0.sessionId == chat?.sessionId }) {
+                sessions[index].cwd = "/Users/dev/dsh-ios"
+            }
+            uiTestFilePreviewText = CodePreviewFixture.python
+            filePreview = FilePreviewRef(sessionId: chat?.sessionId ?? "", path: CodePreviewFixture.path)
+            showDrawer = false
+            push(.panel(.files))
         case "filePreview":
             ops.remove("files.list")
             codeWordWrap = false

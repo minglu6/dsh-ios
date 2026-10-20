@@ -22,7 +22,7 @@ struct TrajectoryJsonValue: View {
                 }
             } else {
                 Text(source)
-                    .font(.system(size: 12, design: .monospaced))
+                    .font(LocalFonts.code())
                     .foregroundStyle(error ? T.err : T.ink)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .textSelection(.enabled)
@@ -58,7 +58,7 @@ struct TrajectoryJsonValue: View {
                 Color.clear.frame(width: 28, height: 28)
             }
             Text(trajectoryJsonRowText(row, expanded: open))
-                .font(.system(size: 12, design: .monospaced))
+                .font(LocalFonts.code())
                 .foregroundStyle(error ? T.err : T.ink)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.vertical, 4)

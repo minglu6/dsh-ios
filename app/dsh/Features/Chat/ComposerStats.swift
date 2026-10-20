@@ -128,7 +128,7 @@ struct ComposerStats: View {
                     color: open.wrappedValue ? T.text2 : T.text3
                 )
                 Text(text)
-                    .font(.system(size: CGFloat(composerStatisticsPillFontSizePoints)))
+                    .font(PhoneTypography.font(size: CGFloat(composerStatisticsPillFontSizePoints)))
                     .monospacedDigit()
                     .foregroundStyle(open.wrappedValue ? T.text2 : T.text3)
                     .lineLimit(1)
@@ -154,10 +154,7 @@ struct ComposerStats: View {
             UsagePopoverHeader(
                 icon: .gaugeOutline,
                 title: composerActivityTitle(english: L.en),
-                titleFont: .system(
-                    size: CGFloat(composerStatDialogFontSizePoints),
-                    weight: .medium
-                ),
+                titleFont: PhoneTypography.font(size: CGFloat(composerStatDialogFontSizePoints), weight: .medium),
                 afterTitle: composerStatDialogTitleMarginBottomPoints,
                 afterRule: composerStatDialogTitleRuleMarginBottomPoints,
                 titleGap: composerStatDialogTitleGapPoints
@@ -179,7 +176,7 @@ struct ComposerStats: View {
                 }
             }
         }
-        .font(.system(size: CGFloat(composerStatDialogFontSizePoints)))
+        .font(PhoneTypography.font(size: CGFloat(composerStatDialogFontSizePoints)))
         .padding(CGFloat(composerStatDialogPaddingPoints))
         .frame(minWidth: statDialogMinWidth, maxWidth: statDialogMaxWidth)
         .modifier(PopoverCompactAdaptation())
@@ -192,7 +189,7 @@ struct ComposerStats: View {
             HStack(spacing: CGFloat(composerContextMeterIconGapPoints)) {
                 ComposerContextRing(percent: context.percent, fill: ink)
                 Text(reading)
-                    .font(.system(size: CGFloat(composerContextMeterFontSizePoints)))
+                    .font(PhoneTypography.font(size: CGFloat(composerContextMeterFontSizePoints)))
                     .monospacedDigit()
                     .foregroundStyle(ink)
                     .lineLimit(1)
@@ -219,7 +216,7 @@ struct ComposerStats: View {
     private func contextPopover(_ context: ComposerContext) -> some View {
         let headline = composerContextHeadline(english: L.en)
         let reading = "\(context.percent)%"
-        let panelFont = Font.system(size: CGFloat(composerContextPanelFontSizePoints))
+        let panelFont = PhoneTypography.font(size: CGFloat(composerContextPanelFontSizePoints))
         return VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center, spacing: CGFloat(composerContextPanelHeaderGapPoints)) {
                 if !headline.before.isEmpty {
@@ -272,10 +269,7 @@ struct ComposerStats: View {
             UsagePopoverHeader(
                 title: composerSessionUsageTitle(english: L.en),
                 value: composerSessionUsageTitleValue(exactTotal: statisticsExact(usage.totalTokens)),
-                titleFont: .system(
-                    size: CGFloat(composerStatDialogFontSizePoints),
-                    weight: .medium
-                ),
+                titleFont: PhoneTypography.font(size: CGFloat(composerStatDialogFontSizePoints), weight: .medium),
                 afterTitle: composerStatDialogTitleMarginBottomPoints,
                 afterRule: composerStatDialogTitleRuleMarginBottomPoints,
                 titleGap: composerStatDialogTitleGapPoints
@@ -304,7 +298,7 @@ struct ComposerStats: View {
                 )
             }
         }
-        .font(.system(size: CGFloat(composerStatDialogFontSizePoints)))
+        .font(PhoneTypography.font(size: CGFloat(composerStatDialogFontSizePoints)))
         .padding(CGFloat(composerStatDialogPaddingPoints))
         .frame(minWidth: statDialogMinWidth, maxWidth: statDialogMaxWidth)
         .modifier(PopoverCompactAdaptation())
@@ -317,7 +311,7 @@ struct ComposerStats: View {
             Spacer(minLength: 0)
             Text(value).foregroundStyle(T.text2).monospacedDigit().multilineTextAlignment(.trailing)
         }
-        .font(.system(size: CGFloat(composerStatDialogFontSizePoints)))
+        .font(PhoneTypography.font(size: CGFloat(composerStatDialogFontSizePoints)))
     }
 
     /// Desktop `ContextMeter` `.row dt` secondary / `dd` primary.
@@ -335,7 +329,7 @@ struct ComposerStats: View {
             Spacer(minLength: 0)
             Text(value).foregroundStyle(T.ink).monospacedDigit()
         }
-        .font(.system(size: CGFloat(composerContextPanelFontSizePoints)))
+        .font(PhoneTypography.font(size: CGFloat(composerContextPanelFontSizePoints)))
         .padding(.vertical, CGFloat(composerContextRowPaddingVerticalPoints))
     }
 
@@ -378,7 +372,7 @@ struct TurnUsageAction: View {
         Button { expanded.toggle() } label: {
             HStack(spacing: 4) {
                 OfficialGlyph(kind: .databaseOutline, size: CGFloat(composerStatisticsIconSizePoints), color: T.text3)
-                Text(label).font(.caption).foregroundStyle(T.text3).lineLimit(1)
+                Text(label).font(PhoneTypography.caption).foregroundStyle(T.text3).lineLimit(1)
             }
             .padding(.leading, 11)
             .padding(.trailing, 2)
@@ -392,7 +386,7 @@ struct TurnUsageAction: View {
                 UsagePopoverHeader(
                     title: composerTurnUsageTitle(english: L.en),
                     value: composerSessionUsageTitleValue(exactTotal: statisticsExact(usage.totalTokens)),
-                    titleFont: .subheadline.weight(.medium),
+                    titleFont: PhoneTypography.subheadline.weight(.medium),
                     afterTitle: 8,
                     afterRule: 0,
                     titleGap: 16
@@ -413,7 +407,7 @@ struct TurnUsageAction: View {
                 }
                 outputRow
             }
-            .font(.subheadline)
+            .font(PhoneTypography.subheadline)
             .padding(16)
             .frame(minWidth: 240, maxWidth: 320)
             .modifier(PopoverCompactAdaptation())

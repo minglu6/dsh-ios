@@ -29,13 +29,15 @@ The terminal forwards native key events directly: Return sends `\r`, Delete send
 
 The terminal page reads loading state directly from the attachment model, so an immediate failure leaves Connecting and exposes Retry without waiting for a mirrored view state. Leaving the page cancels pending attachment work and releases the subscription without closing the remote shell.
 
-Conversation header actions follow desktop order: Agent Team, current work mode, and the subagent catalog; the working-directory chip is reserved for new tasks. The Team roster/task board comes from `agentTeam`, separately from `subagentCatalog`; ordinary forks are not counted as subagents. Members and nested children can be opened, with navigation back to the lead; one-shot children are read-only. Complete live updates and catalog-only child navigation require the matching `dsh-android/plugin` update (`sessions.projections`, parent-address routing and projection forwarding). Installing an IPA does not update the running desktop plugin.
+Conversation actions share the title row above the Chat/Trajectory tabs: Agent Team, current work mode, and the subagent catalog. There is no separate working-directory row; workspace selection remains on new tasks. Narrow screens compact labels while preserving controls and their full accessibility names. The Team roster/task board comes from `agentTeam`, separately from `subagentCatalog`; ordinary forks are not counted as subagents. Members and nested children can be opened, with navigation back to the lead; one-shot children are read-only. Complete live updates and catalog-only child navigation require the matching `dsh-android/plugin` update (`sessions.projections`, parent-address routing and projection forwarding). Installing an IPA does not update the running desktop plugin.
 
 The work-mode menu uses a desktop-style anchored overlay, up to 360pt wide, measured to its content and bounded by the viewport with 12pt margins. Overflow scrolls vertically while keeping mode names and descriptions intact.
 
-iOS defaults to 16pt body text, 13pt code and 14pt terminal text when no size was explicitly saved. Existing personal font choices are preserved and never written to the remote host.
+App-wide interface text uses `PhoneTypography` at two points above the original desktop baseline, including toolbars, menus, drawers, settings, trajectory and preview labels; icon sizes are unchanged. Unconfigured body/code/terminal defaults are 18/15/16pt. Content fonts do not apply the interface increment twice, explicit user sizes are preserved, and these preferences are never written to the remote host.
 
 Edited-file cards and comparisons use the same real Host snapshots as Android: file switching, old/new line numbers, wrapping and a 5,000-line display limit. Failed reads remain visible and retryable rather than hiding the card; previews and comparison caches are isolated by Host/session/file identity. Missing events, capabilities or expired Host comparisons never produce fabricated diffs from tool summaries.
+
+Source previews, including Python, retain Android's offline highlighting assets and the existing CSP isolation. Native delivery waits for an explicit renderer-ready message and only records a document as sent after its complete DOM text is acknowledged; WebView `didFinish` is not module readiness. Resource/script initialization failures expose an error and reload action instead of silently leaving a blank viewport.
 
 ## Architecture
 

@@ -13,6 +13,14 @@ final class SessionHeaderUITests: XCTestCase {
         XCTAssertTrue(count.label.contains("6 个子智能体"))
         XCTAssertEqual(app.descendants(matching: .any)["conversationPreset"].firstMatch.label, "标准模式")
         XCTAssertFalse(app.descendants(matching: .any)["conversationWorkspace"].exists)
+        let title = app.descendants(matching: .any)["conversationHeaderTitle"].firstMatch
+        let preset = app.descendants(matching: .any)["conversationPreset"].firstMatch
+        let tabs = app.buttons["chatTab.chat"]
+        for control in [team, preset, count] {
+            XCTAssertLessThan(control.frame.maxY, tabs.frame.minY, "Header actions belong above the tab strip")
+            XCTAssertLessThan(abs(control.frame.midY - title.frame.midY), 8, "Header actions share the title row")
+            XCTAssertLessThanOrEqual(control.frame.maxX, app.frame.maxX)
+        }
         try capture(app, name: "session-header-actions")
 
         team.tap()

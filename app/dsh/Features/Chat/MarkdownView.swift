@@ -12,7 +12,7 @@ struct MarkdownView: View {
     var streaming = false
     var wrapCode = false
     var bodyColor: Color = T.ink
-    var variant: MarkdownVariant = .body
+    var variant: MarkdownVariant = PhoneTypography.body
     var onFile: ((String) -> Void)? = nil
     var onLink: ((URL) -> Void)? = nil
 
@@ -45,7 +45,7 @@ private struct MdBlockView: View {
     let block: MdBlock
     let wrapCode: Bool
     let bodyColor: Color
-    var variant: MarkdownVariant = .body
+    var variant: MarkdownVariant = PhoneTypography.body
 
     private var compactSize: CGFloat {
         CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))
@@ -72,7 +72,7 @@ private struct MdBlockView: View {
                     .font(LocalFonts.text(size: compactSize).weight(.semibold))
                     .lineSpacing(compactLineSpacing)
             } else {
-                wraps(spans).font(level <= 1 ? LocalFonts.text().weight(.semibold) : .headline)
+                wraps(spans).font(level <= 1 ? LocalFonts.text().weight(.semibold) : PhoneTypography.headline)
             }
         case .bulletList(let items, _):
             VStack(alignment: .leading, spacing: 4) {
@@ -103,7 +103,7 @@ private struct MdBlockView: View {
         case .code(let language, let literal, let incomplete):
             VStack(alignment: .leading, spacing: 4) {
                 if let language, !language.isEmpty {
-                    Text(language).font(.caption2).foregroundStyle(T.text3)
+                    Text(language).font(PhoneTypography.caption2).foregroundStyle(T.text3)
                 }
                 Group {
                     if wrapCode {
@@ -131,7 +131,7 @@ private struct MdBlockView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(spacing: 0) {
                         ForEach(Array((headers.first ?? []).enumerated()), id: \.offset) { _, cell in
-                            wraps(cell).font(.subheadline.weight(.semibold)).frame(minWidth: 72, alignment: .leading).padding(6)
+                            wraps(cell).font(PhoneTypography.subheadline.weight(.semibold)).frame(minWidth: 72, alignment: .leading).padding(6)
                         }
                     }
                     .background(T.fill2)

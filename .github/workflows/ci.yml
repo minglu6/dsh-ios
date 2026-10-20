@@ -142,6 +142,7 @@ jobs:
             -only-testing:dshUITests/ComposerImeTests \
             -only-testing:dshUITests/SessionHeaderUITests \
             -only-testing:dshUITests/WorkspaceChangesUITests \
+            -only-testing:dshUITests/CodePreviewUITests \
             -resultBundlePath derived-ui/dsh-screenshots.xcresult \
             CODE_SIGN_IDENTITY=- \
             DEVELOPMENT_TEAM= \

@@ -20,7 +20,7 @@ struct AgentPresetSettingsView: View {
             header
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text(L.presetOnboarding()).font(.subheadline).foregroundStyle(T.text2).padding(.horizontal, 18)
+                    Text(L.presetOnboarding()).font(PhoneTypography.subheadline).foregroundStyle(T.text2).padding(.horizontal, 18)
                     if let error { Text(error).foregroundStyle(T.err).padding(.horizontal, 18) }
                     if busy { ProgressView().padding(.horizontal, 18) }
                     if loading {
@@ -34,7 +34,7 @@ struct AgentPresetSettingsView: View {
                         groups
                     }
                     if model.isOnline && revisionFresh && !hostWritable {
-                        Text(L.presetReadOnly()).font(.footnote).foregroundStyle(T.text3).padding(.horizontal, 18)
+                        Text(L.presetReadOnly()).font(PhoneTypography.footnote).foregroundStyle(T.text3).padding(.horizontal, 18)
                     }
                 }
                 .padding(.vertical, 12)
@@ -64,7 +64,7 @@ struct AgentPresetSettingsView: View {
     private var header: some View {
         HStack {
             Button(action: model.pop) { OfficialGlyph(kind: .chevronLeft, size: 16, color: T.ink) }
-            Text(L.agentPresets()).font(.headline).foregroundStyle(T.ink)
+            Text(L.agentPresets()).font(PhoneTypography.headline).foregroundStyle(T.ink)
             Spacer()
             if error != nil {
                 Button { Task { await load() } } label: {
@@ -95,7 +95,7 @@ struct AgentPresetSettingsView: View {
             if !group.isEmpty || creator != nil {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(builtIn ? L.builtIn() : L.custom())
-                        .font(.caption.weight(.semibold))
+                        .font(PhoneTypography.caption.weight(.semibold))
                         .foregroundStyle(T.text3)
                     ForEach(Array(group.enumerated()), id: \.offset) { _, row in
                         PresetCard(
@@ -225,26 +225,26 @@ private struct PresetCard: View {
             Button(action: onSelect) {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
-                        Text(name).font(.subheadline.weight(.semibold)).foregroundStyle(T.ink).lineLimit(1)
+                        Text(name).font(PhoneTypography.subheadline.weight(.semibold)).foregroundStyle(T.ink).lineLimit(1)
                         if broken != nil {
-                            Text(L.loadFailed()).font(.caption2).foregroundStyle(T.onPrimary)
+                            Text(L.loadFailed()).font(PhoneTypography.caption2).foregroundStyle(T.onPrimary)
                                 .padding(.horizontal, 8).background(T.err, in: Capsule())
                         }
                         Text(active ? L.newTaskDefault() : (builtIn ? L.builtIn() : L.custom()))
-                            .font(.caption2.weight(.medium))
+                            .font(PhoneTypography.caption2.weight(.medium))
                             .foregroundStyle(active ? T.surface : T.text3)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 2)
                             .background(active ? T.ink : Color.clear, in: Capsule())
                             .overlay(Capsule().stroke(active ? Color.clear : T.border, lineWidth: 0.5))
                         Spacer()
-                        Text(id).font(.system(size: 11, design: .monospaced)).foregroundStyle(T.text3).lineLimit(1)
+                        Text(id).font(PhoneTypography.font(size: 11, design: .monospaced)).foregroundStyle(T.text3).lineLimit(1)
                     }
                     Text(PresetPolicy.description(row, english: L.en) ?? L.noDescription())
-                        .font(.footnote)
+                        .font(PhoneTypography.footnote)
                         .foregroundStyle(T.text2)
                         .lineLimit(4)
-                    if let broken { Text(broken).font(.caption).foregroundStyle(T.err) }
+                    if let broken { Text(broken).font(PhoneTypography.caption).foregroundStyle(T.err) }
                 }
                 .padding(14)
             }
@@ -254,8 +254,8 @@ private struct PresetCard: View {
             Divider()
             HStack {
                 if builtIn && PresetPolicy.guideAvailable(id) {
-                    Button(L.modeExplanation()) { onGuide(.explanation) }.font(.caption).foregroundStyle(T.text3)
-                    Button(L.howToUse()) { onGuide(.usage) }.font(.caption).foregroundStyle(T.text3)
+                    Button(L.modeExplanation()) { onGuide(.explanation) }.font(PhoneTypography.caption).foregroundStyle(T.text3)
+                    Button(L.howToUse()) { onGuide(.usage) }.font(PhoneTypography.caption).foregroundStyle(T.text3)
                 }
                 Spacer()
                 Button(action: onView) {
@@ -289,7 +289,7 @@ private struct PresetConfigurationSheet: View {
             ScrollView(.horizontal) {
                 ScrollView {
                     Text(content)
-                        .font(.system(size: 12.5, design: .monospaced))
+                        .font(LocalFonts.code())
                         .foregroundStyle(T.text2)
                         .textSelection(.enabled)
                         .padding(12)

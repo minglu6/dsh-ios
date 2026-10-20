@@ -8,7 +8,7 @@ struct ModelLabel: View {
     let name: String
     let badge: String?
     var color: Color = T.ink
-    var font: Font = .system(size: 13)
+    var font: Font = PhoneTypography.font(size: 13)
     var nameIdentifier: String? = nil
 
     var body: some View {
@@ -21,7 +21,7 @@ struct ModelLabel: View {
                 .modifier(OptionalAccessibilityIdentifier(nameIdentifier))
             if let badge {
                 Text(badge)
-                    .font(.system(size: CGFloat(modelReleaseBadgeFontSizePoints), weight: .medium))
+                    .font(PhoneTypography.font(size: CGFloat(modelReleaseBadgeFontSizePoints), weight: .medium))
                     .foregroundStyle(T.ok)
                     .lineLimit(1)
                     .padding(.horizontal, CGFloat(modelReleaseBadgePaddingHorizontalPoints))

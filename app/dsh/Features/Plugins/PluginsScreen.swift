@@ -62,7 +62,7 @@ struct PluginsScreen: View {
                             bundleDetail(selected)
                         } else {
                             Text(L.pluginsHint())
-                                .font(.footnote)
+                                .font(PhoneTypography.footnote)
                                 .foregroundStyle(T.text3)
                                 .padding(.horizontal, 22)
                             market
@@ -169,7 +169,7 @@ struct PluginsScreen: View {
     private func pluginsHeader(_ title: String) -> some View {
         HStack(spacing: 10) {
             Button(action: back) { OfficialGlyph(kind: .chevronLeft, size: 16, color: T.ink) }
-            Text(title).font(.headline).foregroundStyle(T.ink).lineLimit(1).minimumScaleFactor(0.8)
+            Text(title).font(PhoneTypography.headline).foregroundStyle(T.ink).lineLimit(1).minimumScaleFactor(0.8)
             Spacer(minLength: 8)
             if selected == nil {
                 Button { showPluginInfo.toggle() } label: {
@@ -218,7 +218,7 @@ struct PluginsScreen: View {
     /// Anchored below the header so it cannot cover Add plugin / refresh.
     private var pluginInfoTooltip: some View {
         Text(pluginInfoDescription(english: L.en))
-            .font(.system(size: CGFloat(pluginInfoTooltipFontSizePoints)))
+            .font(PhoneTypography.font(size: CGFloat(pluginInfoTooltipFontSizePoints)))
             .lineSpacing(CGFloat(pluginInfoTooltipLineHeightPoints) - 16)
             .foregroundStyle(T.tooltipFg)
             .multilineTextAlignment(.leading)
@@ -236,11 +236,11 @@ struct PluginsScreen: View {
     private func titleLine(_ title: String, experimental: Bool) -> some View {
         ViewThatFits(in: .horizontal) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(title).font(.body.weight(.medium)).foregroundStyle(T.ink)
+                Text(title).font(PhoneTypography.body.weight(.medium)).foregroundStyle(T.ink)
                 if experimental { experimentalBadge }
             }
             VStack(alignment: .leading, spacing: 4) {
-                Text(title).font(.body.weight(.medium)).foregroundStyle(T.ink)
+                Text(title).font(PhoneTypography.body.weight(.medium)).foregroundStyle(T.ink)
                 if experimental { experimentalBadge }
             }
         }
@@ -248,7 +248,7 @@ struct PluginsScreen: View {
 
     private var experimentalBadge: some View {
         Text(L.experimentalBadge())
-            .font(.system(size: 10, weight: .medium))
+            .font(PhoneTypography.font(size: 10, weight: .medium))
             .foregroundStyle(T.accent)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
@@ -260,13 +260,13 @@ struct PluginsScreen: View {
         let groups = pluginMarketGroups(bundles)
         if !loading && error == nil && bundles.isEmpty {
             Text(pluginsEmptyLabel(english: L.en))
-                .font(.footnote)
+                .font(PhoneTypography.footnote)
                 .foregroundStyle(T.text3)
                 .padding(.horizontal, 22)
         }
         if !groups.official.isEmpty {
             Text(L.officialPlugins(groups.official.count))
-                .font(.subheadline.weight(.medium))
+                .font(PhoneTypography.subheadline.weight(.medium))
                 .foregroundStyle(T.text2)
                 .padding(.horizontal, 22)
                 .padding(.top, 8)
@@ -276,7 +276,7 @@ struct PluginsScreen: View {
         }
         if !groups.installed.isEmpty {
             Text(L.installedPlugins())
-                .font(.subheadline.weight(.medium))
+                .font(PhoneTypography.subheadline.weight(.medium))
                 .foregroundStyle(T.text2)
                 .padding(.horizontal, 22)
                 .padding(.top, 8)
@@ -307,13 +307,13 @@ struct PluginsScreen: View {
                         titleLine(pluginTitle(bundle, english: L.en), experimental: pluginExperimental(bundle))
                         if !description.isEmpty {
                             Text(description)
-                                .font(.caption)
+                                .font(PhoneTypography.caption)
                                 .foregroundStyle(T.text3)
                                 .fixedSize(horizontal: false, vertical: true)
                                 .multilineTextAlignment(.leading)
                         }
                         if !state.isEmpty {
-                            Text(state).font(.caption).foregroundStyle(T.err)
+                            Text(state).font(PhoneTypography.caption).foregroundStyle(T.err)
                         }
                     }
                     Spacer(minLength: 4)
@@ -336,8 +336,8 @@ struct PluginsScreen: View {
     private func bundleDetail(_ bundle: JSONValue) -> some View {
         let rows = bundle["rows"].arr() ?? []
         let counts = pluginParts(rows: rows, plugins: plugins)
-        Text(pluginTitle(bundle, english: L.en)).font(.headline).padding(.horizontal, 22)
-        Text("\(counts.total) · \(counts.running)").font(.caption).foregroundStyle(T.text3).padding(.horizontal, 22)
+        Text(pluginTitle(bundle, english: L.en)).font(PhoneTypography.headline).padding(.horizontal, 22)
+        Text("\(counts.total) · \(counts.running)").font(PhoneTypography.caption).foregroundStyle(T.text3).padding(.horizontal, 22)
         let description = pluginDescription(bundle, english: L.en)
         if !description.isEmpty {
             Text(description).foregroundStyle(T.text2).padding(.horizontal, 22)
@@ -360,7 +360,7 @@ struct PluginsScreen: View {
                     PluginMetadataArtwork(icon: row["meta"]["icon"].str(), size: 28)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(pluginTitle(row, english: L.en)).foregroundStyle(T.ink)
-                        Text(phaseText(liveRow)).font(.caption).foregroundStyle(T.text3)
+                        Text(phaseText(liveRow)).font(PhoneTypography.caption).foregroundStyle(T.text3)
                     }
                     Spacer()
                 }
@@ -703,7 +703,7 @@ private struct PluginAddMenu: View {
                 expanded = false
                 onInstall()
             } label: {
-                Text(L.addPlugin()).font(.system(size: 13)).foregroundStyle(T.onPrimary)
+                Text(L.addPlugin()).font(PhoneTypography.font(size: 13)).foregroundStyle(T.onPrimary)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
                     .background(T.primaryButton, in: RoundedRectangle(cornerRadius: 8))
@@ -757,10 +757,10 @@ private struct PluginAddMenu: View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 13))
+                    .font(PhoneTypography.font(size: 13))
                     .foregroundStyle(enabled ? T.ink : T.text3)
                 Text(detail)
-                    .font(.system(size: 12))
+                    .font(PhoneTypography.font(size: 12))
                     .foregroundStyle(T.caption)
                     .fixedSize(horizontal: false, vertical: true)
             }

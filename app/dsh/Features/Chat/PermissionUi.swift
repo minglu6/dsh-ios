@@ -31,10 +31,10 @@ struct PermissionRiskSheet: View {
             Text(auto
                  ? permissionAutoConfirmTitle(english: L.en)
                  : L.t("确认启用完全权限？", "Enable Full access?"))
-                .font(.title3.weight(.semibold))
+                .font(PhoneTypography.title3.weight(.semibold))
                 .foregroundStyle(T.ink)
             Text(description)
-                .font(.subheadline)
+                .font(PhoneTypography.subheadline)
                 .foregroundStyle(T.text2)
                 .lineSpacing(4)
             Button { if interactive { acknowledged.toggle() } } label: {
@@ -172,7 +172,7 @@ struct PermissionChipMenu: View {
                     .rotationEffect(.degrees(open ? 180 : 0))
                     .accessibilityHidden(true)
             }
-            .font(.system(size: 13, weight: .medium))
+            .font(PhoneTypography.font(size: 13, weight: .medium))
             .foregroundStyle(current == "danger-full-access" ? T.warnText : T.text2)
             .padding(.leading, permissionChipTriggerShowsLabel ? 8 : 2)
             .padding(.trailing, 2)
@@ -201,12 +201,12 @@ struct PermissionChipMenu: View {
                                 )
                             }
                             Text(permissionLabel(value: option.value, option: option, english: L.en))
-                                .font(.system(size: 13))
+                                .font(PhoneTypography.font(size: 13))
                                 .foregroundStyle(T.ink)
                                 .lineLimit(1)
                             if let badge = permissionExpBadge(option.value) {
                                 Text(badge)
-                                    .font(.system(size: CGFloat(permissionExpBadgeFontSizePoints), weight: .medium))
+                                    .font(PhoneTypography.font(size: CGFloat(permissionExpBadgeFontSizePoints), weight: .medium))
                                     .tracking(CGFloat(permissionExpBadgeLetterSpacing))
                                     .foregroundStyle(T.text3)
                             }
@@ -261,7 +261,7 @@ struct SettingsPermissionSelect: View {
         Button { if enabled { open.toggle() } } label: {
             HStack(spacing: CGFloat(settingsPermissionSelectorGapPoints)) {
                 Text(currentLabel)
-                    .font(.system(size: 14))
+                    .font(PhoneTypography.font(size: 14))
                     .foregroundStyle(T.ink)
                     .lineLimit(1)
                 OfficialGlyph(kind: .chevronDown, size: 14, color: T.text2)
@@ -297,7 +297,7 @@ struct SettingsPermissionSelect: View {
                                 )
                             }
                             Text(permissionLabel(value: option.value, option: option, english: L.en))
-                                .font(.system(size: 13))
+                                .font(PhoneTypography.font(size: 13))
                                 .foregroundStyle(T.ink)
                                 .lineLimit(1)
                             Spacer(minLength: 8)

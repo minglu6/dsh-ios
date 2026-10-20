@@ -42,6 +42,8 @@ struct CodePreviewBody: View {
     let plain: Bool
 
     @Environment(\.colorScheme) private var colorScheme
+    @State private var renderError: String?
+    @State private var reloadID = 0
 
     private var encodedOptions: String {
         let options: [String: Any] = [
@@ -62,8 +64,24 @@ struct CodePreviewBody: View {
     }
 
     var body: some View {
-        CodePreviewWebView(path: path, text: text, options: encodedOptions)
-            .background(T.surface)
+        ZStack {
+            CodePreviewWebView(path: path, text: text, options: encodedOptions, reloadID: reloadID) {
+                renderError = $0
+            }
+            if let renderError {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(renderError).foregroundStyle(T.err)
+                        .accessibilityIdentifier("codePreviewError")
+                    Button(L.docRetry()) { reloadID += 1 }
+                        .accessibilityIdentifier("codePreviewRetry")
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .background(T.surface)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(T.surface)
     }
 }
 
@@ -71,6 +89,8 @@ private struct CodePreviewWebView: UIViewRepresentable {
     let path: String
     let text: String
     let options: String
+    let reloadID: Int
+    let onError: (String?) -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -81,28 +101,30 @@ private struct CodePreviewWebView: UIViewRepresentable {
         config.websiteDataStore = .nonPersistent()
         config.preferences.javaScriptCanOpenWindowsAutomatically = false
         config.defaultWebpagePreferences.allowsContentJavaScript = true
+        config.userContentController.add(context.coordinator, name: "codePreview")
         let view = WKWebView(frame: .zero, configuration: config)
         view.isOpaque = false
         view.backgroundColor = .clear
         view.scrollView.backgroundColor = .clear
+        view.accessibilityIdentifier = "codePreviewViewport"
         view.navigationDelegate = context.coordinator
         context.coordinator.view = view
-        if let url = URL(string: codePreviewSchemeURL) {
-            view.load(URLRequest(url: url))
-        }
+        context.coordinator.onError = onError
         return view
     }
 
     func updateUIView(_ uiView: WKWebView, context: Context) {
         context.coordinator.view = uiView
+        context.coordinator.onError = onError
         context.coordinator.update(path: path, text: text, options: options)
+        context.coordinator.loadIfNeeded(reloadID: reloadID)
     }
 
     static func dismantleUIView(_ uiView: WKWebView, coordinator: Coordinator) {
         coordinator.destroy()
     }
 
-    final class Coordinator: NSObject, WKNavigationDelegate {
+    final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         let handler = CodePreviewSchemeHandler()
         weak var view: WKWebView?
         private var ready = false
@@ -113,6 +135,13 @@ private struct CodePreviewWebView: UIViewRepresentable {
         private var sentPath: String?
         private var sentText: String?
         private var sentOptions: String?
+        var onError: ((String?) -> Void)?
+        private var loadedID: Int?
+        private var inFlight = false
+        private var failed = false
+        private var loadGeneration = 0
+        private var readyTimeout: DispatchWorkItem?
+        private var navigation: WKNavigation?
 
         func ensureHandler() {
             handler.assets = CodePreviewSchemeHandler.loadAssets()
@@ -125,6 +154,51 @@ private struct CodePreviewWebView: UIViewRepresentable {
             flush()
         }
 
+        func loadIfNeeded(reloadID: Int) {
+            guard !destroyed, loadedID != reloadID, let view,
+                  let url = URL(string: codePreviewSchemeURL) else { return }
+            loadedID = reloadID
+            loadGeneration += 1
+            ready = false
+            failed = false
+            inFlight = false
+            sentPath = nil
+            sentText = nil
+            sentOptions = nil
+            publishError(nil)
+            readyTimeout?.cancel()
+            let generation = loadGeneration
+            let timeout = DispatchWorkItem { [weak self] in
+                guard let self, self.loadGeneration == generation, !self.ready else { return }
+                self.fail("Code preview initialization timed out.")
+            }
+            readyTimeout = timeout
+            DispatchQueue.main.asyncAfter(deadline: .now() + 15, execute: timeout)
+            let controller = view.configuration.userContentController
+            controller.removeAllUserScripts()
+            controller.addUserScript(WKUserScript(
+                source: "Object.defineProperty(window, 'codePreviewLoadID', { value: \(generation) });",
+                injectionTime: .atDocumentStart,
+                forMainFrameOnly: true
+            ))
+            navigation = view.load(URLRequest(url: url))
+        }
+
+        private func publishError(_ message: String?) {
+            DispatchQueue.main.async { [weak self] in
+                guard let self, !self.destroyed else { return }
+                self.onError?(message)
+            }
+        }
+
+        private func fail(_ message: String) {
+            guard !destroyed else { return }
+            failed = true
+            ready = false
+            readyTimeout?.cancel()
+            publishError(message)
+        }
+
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
             let url = navigationAction.request.url
             if url?.scheme == codePreviewScheme {
@@ -134,30 +208,78 @@ private struct CodePreviewWebView: UIViewRepresentable {
             }
         }
 
-        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            if !destroyed && webView.url?.absoluteString == codePreviewSchemeURL {
+        func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+            guard !destroyed, !failed, message.frameInfo.isMainFrame,
+                  message.webView === view,
+                  message.frameInfo.request.url?.absoluteString == codePreviewSchemeURL,
+                  let payload = message.body as? [String: Any],
+                  payload["loadID"] as? Int == loadGeneration else { return }
+            switch payload["type"] as? String {
+            case "ready":
                 ready = true
+                readyTimeout?.cancel()
                 flush()
+            case "error":
+                fail(payload["message"] as? String ?? "Code preview JavaScript failed.")
+            default: break
             }
         }
 
+        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+            guard navigation === self.navigation else { return }
+            fail(error.localizedDescription)
+        }
+
+        func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+            guard navigation === self.navigation else { return }
+            fail(error.localizedDescription)
+        }
+
+        func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+            fail("Code preview process terminated.")
+        }
+
         private func flush() {
-            guard ready, !destroyed, let view,
-                  let path, let text, let options else { return }
-            if sentOptions != options {
-                view.evaluateJavaScript("window.codePreview.setOptions(\(options));", completionHandler: nil)
-                sentOptions = options
-            }
-            if sentPath != path || sentText != text {
-                view.evaluateJavaScript(codePreviewDocumentScript(path: path, text: text), completionHandler: nil)
-                sentPath = path
-                sentText = text
+            guard ready, !destroyed, !failed, !inFlight, let view,
+                  let path, let text, let options,
+                  sentPath != path || sentText != text || sentOptions != options else { return }
+            let document = sentPath != path || sentText != text
+                ? codePreviewDocumentScript(path: path, text: text) : ""
+            let script = """
+            (() => {
+                window.codePreview.setOptions(\(options));
+                \(document)
+                return window.codePreviewBridge.ack();
+            })()
+            """
+            inFlight = true
+            let generation = loadGeneration
+            view.evaluateJavaScript(script) { [weak self] result, error in
+                guard let self, !self.destroyed, self.loadGeneration == generation else { return }
+                self.inFlight = false
+                guard !self.failed else { return }
+                if let error {
+                    self.fail(error.localizedDescription)
+                    return
+                }
+                guard let ack = result as? [String: Any],
+                      ack["ready"] as? Bool == true,
+                      ack["textLength"] as? Int == text.utf16.count else {
+                    self.fail("Code preview did not acknowledge the source document.")
+                    return
+                }
+                self.sentPath = path
+                self.sentText = text
+                self.sentOptions = options
+                self.flush()
             }
         }
 
         func destroy() {
             destroyed = true
             ready = false
+            readyTimeout?.cancel()
+            view?.configuration.userContentController.removeScriptMessageHandler(forName: "codePreview")
             view?.stopLoading()
             view?.navigationDelegate = nil
             view = nil

@@ -31,9 +31,9 @@ public func themeFontSizeSpec(_ role: ThemeFontRole) -> ThemeFontSizeSpec {
 public enum PhoneFontPreferences {
     public static func defaultSize(_ role: ThemeFontRole) -> Int {
         switch role {
-        case .text: return 16
-        case .code: return 13
-        case .terminal: return 14
+        case .text: return 18
+        case .code: return 15
+        case .terminal: return 16
         }
     }
 

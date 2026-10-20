@@ -90,7 +90,7 @@ struct PresetGuideDialog: View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 16) {
                 Text(PresetGuideLocales.string("guide\(key)Intro", english: L.en))
-                    .font(.subheadline)
+                    .font(PhoneTypography.subheadline)
                     .foregroundStyle(T.text2)
                 Picker("", selection: $page) {
                     Text(PresetGuideLocales.string("modeExplanation", english: L.en)).tag(PresetGuidePage.explanation)
@@ -101,10 +101,10 @@ struct PresetGuideDialog: View {
                     VStack(alignment: .leading, spacing: 20) {
                         ForEach(sections, id: \.title) { section in
                             VStack(alignment: .leading, spacing: 8) {
-                                Text(section.title).font(.headline).foregroundStyle(T.ink)
+                                Text(section.title).font(PhoneTypography.headline).foregroundStyle(T.ink)
                                 if page == .usage {
                                     Text(L.t("示例任务", "Example task"))
-                                        .font(.caption)
+                                        .font(PhoneTypography.caption)
                                         .foregroundStyle(T.text2)
                                         .padding(.horizontal, 6)
                                         .padding(.vertical, 3)
