@@ -8,8 +8,8 @@ struct TrajectoryDetailSheet: View {
     var onOpenRequest: (TrajectoryRequest) -> Void = { _ in }
     var onOpenRequestTiming: (TrajectoryRequest) -> Void = { _ in }
     var toolCalls: [TrajRow] = []
+    let onDismiss: () -> Void
     var onOpenTool: (TrajRow) -> Void = { _ in }
-    @Environment(\.dismiss) private var dismiss
     @State private var tab: TrajDetailTab?
 
     private var tabs: [TrajDetailTab] { trajDetailTabs(row) }
@@ -47,7 +47,7 @@ struct TrajectoryDetailSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(TrajL.detailsClose) { dismiss() }
+                    Button(TrajL.detailsClose, action: onDismiss)
                 }
             }
         }

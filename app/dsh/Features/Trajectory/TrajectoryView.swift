@@ -98,7 +98,8 @@ struct TrajectoryView: View {
                             parentRequest: requestForRow(row, requests: snapshot.requests),
                             onOpenRequest: { selection = .request($0, tab: .overview) },
                             onOpenRequestTiming: { selection = .request($0, tab: .timing) },
-                            toolCalls: snapshot.toolCalls(for: row)
+                            toolCalls: snapshot.toolCalls(for: row),
+                            onDismiss: { selection = nil }
                         ) { call in
                             openRow(call.key, in: snapshot)
                         }

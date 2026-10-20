@@ -167,6 +167,7 @@ private struct RequestOverview: View {
                 Spacer()
             }
             .padding(.vertical, 4)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(onClick == nil)
