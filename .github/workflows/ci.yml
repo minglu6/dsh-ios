@@ -12,7 +12,7 @@ on:
       ui_scope:
         description: UI verification scope
         type: choice
-        options: [full, settings-trajectory]
+        options: [full, settings-trajectory, session-header]
         default: full
 
 concurrency:
@@ -143,6 +143,9 @@ jobs:
               -only-testing:dshUITests/ScreenshotTests/testDarkScreenshots
               -only-testing:dshUITests/TrajectoryUITests
             )
+            MIN_SCREENSHOTS=4
+          elif [ "$UI_SCOPE" = "session-header" ]; then
+            UI_TESTS=(-only-testing:dshUITests/SessionHeaderUITests)
             MIN_SCREENSHOTS=4
           else
             UI_TESTS=(

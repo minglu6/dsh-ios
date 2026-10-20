@@ -39,9 +39,9 @@ struct ConversationHeaderActions: View {
                 ) {
                     HStack(spacing: 5) {
                         OfficialGlyph(kind: .agentPreset, size: 14, color: T.text2)
-                        if !minimal {
+                        if !compact {
                             Text(preset)
-                                .frame(maxWidth: compact ? 80 : 180, alignment: .leading)
+                                .frame(maxWidth: 180, alignment: .leading)
                                 .truncationMode(.tail)
                         }
                     }
