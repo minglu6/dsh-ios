@@ -1,53 +1,6 @@
 import SwiftUI
 import DSHProtocol
 
-/// One context row: editable drafts on landing, host-owned metadata in a conversation.
-struct ConversationContextRow: View {
-    @ObservedObject var model: AppModel
-
-    var body: some View {
-        HStack(spacing: 10) {
-            if let chat = model.chat {
-                let workspace = SessionContextPolicy.workspaceLabel(
-                    sessionId: chat.sessionId,
-                    cwd: model.sessions.first { $0.sessionId == chat.sessionId }?.cwd,
-                    workspaces: model.workspaces,
-                    localizedDefault: L.defaultWorkspace()
-                )
-                contextLabel(
-                    workspace ?? SessionContextPolicy.unknownWorkspace(english: L.en),
-                    kind: .folderOpen,
-                    identifier: "conversationWorkspace"
-                )
-                contextLabel(
-                    SessionContextPolicy.presetName(
-                        id: chat.agentPreset, roster: model.presetRoster, english: L.en
-                    ) ?? SessionContextPolicy.unknownPreset(english: L.en),
-                    kind: .agentPreset,
-                    identifier: "conversationPreset"
-                )
-            }
-            Spacer(minLength: 0)
-        }
-        .accessibilityIdentifier("conversationContext")
-    }
-
-    private func contextLabel(_ title: String, kind: OfficialGlyph.Kind, identifier: String) -> some View {
-        HStack(spacing: 4) {
-            OfficialGlyph(kind: kind, size: 14, color: T.caption)
-            Text(title)
-                .font(.system(size: CGFloat(agentPresetSeatFontSizePoints), weight: .medium))
-                .lineLimit(1)
-                .truncationMode(.middle)
-        }
-        .foregroundStyle(T.ink)
-        .padding(.horizontal, 8)
-        .frame(minHeight: CGFloat(agentPresetSeatMinHeightPoints))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(title)
-        .accessibilityIdentifier(identifier)
-    }
-}
 
 /// Desktop `EmptyHero` `WorkspaceChip`: ghost trigger + WorkspacePicker MenuSurface.
 /// System `Menu` + capsule fill is not the desktop chip.

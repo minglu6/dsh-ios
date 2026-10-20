@@ -230,6 +230,8 @@ extension AppModel {
 
     fileprivate func applyUITestScreen(_ screen: String) {
         switch screen {
+        case "sessionHeader":
+            seedUITestSessionHeader()
         case "contextActive", "contextBlank", "contextOffline", "contextUnknown", "contextNoRoster":
             draftWorkspaceId = "ws-android"
             draftPreset = "cordis"
@@ -273,10 +275,13 @@ extension AppModel {
             // Desktop workspace-row overflow (`IconEllipsisOutline`). Off other
             // screens so `*-chat.png` / files / connections stay still.
             ops.formUnion(["workspace.rename", "workspace.delete"])
-        case "chat", "chatLong", "changesCard", "trajectory", "trajectoryDetail", "planMode", "mention", "mentionFiltered", "mentionChip", "mentionSent", "turnTrigger":
+        case "chat", "chatLong", "changesCard", "changesReview", "changesRetry", "trajectory", "trajectoryDetail", "planMode", "mention", "mentionFiltered", "mentionChip", "mentionSent", "turnTrigger":
             seedUITestJobs()
             if screen == "turnTrigger" { seedUITestTurnTrigger() }
-            if screen == "changesCard" { seedUITestChangesCard() }
+            if ["changesCard", "changesReview", "changesRetry"].contains(screen) {
+                seedUITestChangesCard()
+                if screen != "changesCard" { seedUITestChangesReview(retry: screen == "changesRetry") }
+            }
             if screen == "chatLong" {
                 guard var state = chat else {
                     fatalError("UITestLaunch chatLong requires a chat session")
@@ -650,7 +655,7 @@ extension AppModel {
         state.turns = [TurnRecord(turn: 1, startSeq: 1, endSeq: 30, startedAt: assistant.at, endedAt: (assistant.at ?? 0) + 1_000)]
         state.lastAnswerKeys = [1: assistant.key]
         chat = state
-        ops.insert("workspaceChanges.summary")
+        ops.formUnion(["workspaceChanges.summary", "workspaceChanges.diff"])
         uiTestChangesSummary = WorkspaceChangesSummary(
             turn: 1,
             cwd: "/Users/dev/dsh-ios",
@@ -666,6 +671,12 @@ extension AppModel {
             added: 4,
             deleted: 0
         )
+        uiTestChangesDiffs = [
+            0: WorkspaceFileDiff(
+                kind: "text", path: "README.md", display: "README.md", before: false,
+                hunks: [WorkspaceDiffHunk(oldStart: 0, newStart: 1, lines: ["+# dsh-ios", "+", "+Native iOS client.", "+Pocket workspace changes."])]
+            ),
+        ]
     }
 
     fileprivate func seedUITestJobs() {

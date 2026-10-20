@@ -6,8 +6,21 @@ struct ChangesCard: View {
     let sessionId: String
     let item: Item.Changes
 
+    var body: some View {
+        ChangesCardContent(model: model, sessionId: sessionId, item: item)
+            .id([model.activeId ?? "", sessionId, item.seq.map(String.init) ?? ""])
+    }
+}
+
+private struct ChangesCardContent: View {
+    @ObservedObject var model: AppModel
+    let sessionId: String
+    let item: Item.Changes
+
     @State private var summary: WorkspaceChangesSummary?
     @State private var selected: Int?
+    @State private var failure: String?
+    @State private var retry = 0
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -18,20 +31,36 @@ struct ChangesCard: View {
                 )
                 .accessibilityHidden(true)
             if let summary, !summary.files.isEmpty {
-                ChangesSummaryCard(
-                    summary: summary,
-                    identity: "\(model.activeId ?? "")/\(sessionId)/\(item.seq.map(String.init) ?? "")",
-                    onOpen: model.ops.contains("workspaceChanges.diff") ? { selected = $0 } : nil
-                )
+                VStack(alignment: .leading, spacing: 8) {
+                    ChangesSummaryCard(
+                        summary: summary,
+                        identity: "\(model.activeId ?? "")/\(sessionId)/\(item.seq.map(String.init) ?? "")",
+                        onOpen: model.ops.contains("workspaceChanges.diff") ? { selected = $0 } : nil
+                    )
+                    if !model.ops.contains("workspaceChanges.diff") {
+                        Text(L.t("主机未提供文件差异预览，请更新 Pocket 桥接", "The host does not support file comparisons; update the Pocket bridge"))
+                            .font(.footnote)
+                            .foregroundStyle(T.text3)
+                    }
+                }
+            } else if let failure {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(L.t("读取本轮改动失败", "Failed to load turn changes"))
+                        .font(.headline)
+                    Text(failure).foregroundStyle(T.err)
+                    Button(L.docRetry()) { retry += 1 }
+                        .accessibilityIdentifier("changesSummaryRetry")
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
+                .background(T.fill2, in: RoundedRectangle(cornerRadius: 16))
+                .accessibilityIdentifier("changesSummaryError")
             }
         }
-        .task(id: changesCardFetchIdentity(
-            hostId: model.activeId,
-            sessionId: sessionId,
-            seq: item.seq,
-            hasSummaryOp: model.ops.contains("workspaceChanges.summary")
-        )) {
+        .task(id: "\(retry)-\(changesCardFetchIdentity(hostId: model.activeId, sessionId: sessionId, seq: item.seq, hasSummaryOp: model.ops.contains("workspaceChanges.summary")))") {
+            selected = nil
             summary = nil
+            failure = nil
             let hasOp = model.ops.contains("workspaceChanges.summary")
             guard changesCardShouldFetch(seq: item.seq, hasSummaryOp: hasOp), let seq = item.seq else {
                 #if DEBUG
@@ -40,16 +69,17 @@ struct ChangesCard: View {
                 return
             }
             do {
-                summary = try await model.fetchChangesSummary(sessionId: sessionId, seq: seq)
-                #if DEBUG
-                print("[dsh.changes] card session=\(sessionId) seq=\(seq) files=\(summary?.files.count ?? 0) turnClosed")
-                #endif
+                let loaded = try await model.fetchChangesSummary(sessionId: sessionId, seq: seq)
+                try Task.checkCancellation()
+                if let loaded, loaded.turn != item.turn {
+                    throw PocketError(code: "bad-reply", message: L.t("主机返回的改动与当前轮次不匹配", "Host changes do not match this turn"))
+                }
+                summary = loaded
             } catch is CancellationError {
                 return
             } catch {
-                #if DEBUG
-                print("[dsh.changes] card fetch failed session=\(sessionId) seq=\(seq) error=\(error)")
-                #endif
+                guard !Task.isCancelled else { return }
+                failure = error.localizedDescription
             }
         }
         .sheet(isPresented: Binding(get: { selected != nil }, set: { if !$0 { selected = nil } })) {
@@ -62,6 +92,7 @@ struct ChangesCard: View {
                     initialIndex: selected,
                     onDismiss: { self.selected = nil }
                 )
+                .id([model.activeId ?? "", sessionId, String(item.seq ?? 0)])
             }
         }
     }
@@ -147,6 +178,7 @@ struct ChangesSummaryCard: View {
                         }
                         .buttonStyle(.plain)
                         .disabled(onOpen == nil)
+                        .accessibilityIdentifier("changedFile:\(index)")
                     }
                     if summary.files.count > 4 {
                         Button {
@@ -206,9 +238,10 @@ private struct ChangesReviewSheet: View {
     @State private var index: Int
     @State private var retry = 0
     @State private var loading = true
+    @State private var loadedIndex: Int?
     @State private var failure: String?
     @State private var diff: WorkspaceFileDiff?
-    @State private var cache: [Int: WorkspaceFileDiff?] = [:]
+    @State private var cache: [Int: WorkspaceFileDiff] = [:]
 
     init(
         model: AppModel,
@@ -235,6 +268,7 @@ private struct ChangesReviewSheet: View {
                     Menu {
                         ForEach(Array(summary.files.enumerated()), id: \.offset) { at, entry in
                             Button(entry.display) { index = at }
+                                .accessibilityIdentifier("changesFile:\(at)")
                         }
                     } label: {
                         HStack {
@@ -243,9 +277,10 @@ private struct ChangesReviewSheet: View {
                             Spacer()
                         }
                     }
+                    .accessibilityIdentifier("changesFilePicker")
                     ChangeCounts(added: file.added, deleted: file.deleted, file: file)
                 }
-                if loading {
+                if loading || loadedIndex != index {
                     Spacer()
                     ProgressView().tint(T.accent).frame(maxWidth: .infinity)
                     Spacer()
@@ -253,11 +288,16 @@ private struct ChangesReviewSheet: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(failure).foregroundStyle(T.err)
                         Button(L.docRetry()) { retry += 1 }
+                            .accessibilityIdentifier("changesDiffRetry")
                     }
                     .padding(.vertical, 8)
                     Spacer()
                 } else {
                     ChangesDiffBody(diff: diff)
+                    if diff == nil {
+                        Button(L.docRetry()) { retry += 1 }
+                            .accessibilityIdentifier("changesDiffRetry")
+                    }
                 }
             }
             .padding(16)
@@ -270,24 +310,33 @@ private struct ChangesReviewSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
-        .task(id: "\(sessionId)-\(seq)-\(index)-\(retry)") {
+        .presentationDetents([.large])
+        .task(id: "\(model.activeId ?? "")-\(sessionId)-\(seq)-\(index)-\(retry)") {
+            let requestedIndex = index
             loading = true
             failure = nil
+            diff = nil
             do {
-                if let cached = cache[index] {
+                if let cached = cache[requestedIndex] {
                     diff = cached
                 } else {
-                    let loaded = try await model.fetchChangesDiff(sessionId: sessionId, seq: seq, index: index)
-                    cache[index] = loaded
+                    let loaded = try await model.fetchChangesDiff(sessionId: sessionId, seq: seq, index: requestedIndex)
+                    try Task.checkCancellation()
+                    guard requestedIndex == index else { return }
+                    if let loaded, loaded.path != summary.files[requestedIndex].path {
+                        throw PocketError(code: "bad-reply", message: L.t("主机返回的差异与所选文件不匹配", "Host diff does not match the selected file"))
+                    }
+                    cache[requestedIndex] = loaded
                     diff = loaded
                 }
             } catch is CancellationError {
                 return
             } catch {
+                guard !Task.isCancelled, requestedIndex == index else { return }
                 failure = error.localizedDescription
             }
             loading = false
+            loadedIndex = requestedIndex
         }
     }
 }
@@ -303,7 +352,7 @@ private struct ChangesDiffBody: View {
             if let notice {
                 Text(notice).foregroundStyle(T.text3).padding(.bottom, 8)
             }
-            ScrollView([.vertical, .horizontal]) {
+            ScrollView(.vertical) {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
                         let mark = line.text.first
@@ -321,6 +370,8 @@ private struct ChangesDiffBody: View {
                                 .font(LocalFonts.code())
                                 .foregroundStyle(T.ink)
                                 .frame(maxWidth: .infinity, alignment: .leading)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .textSelection(.enabled)
                         }
                         .padding(.vertical, 2)
                         .background(mark == " " || mark == nil ? Color.clear : tint.opacity(0.09))
@@ -331,7 +382,9 @@ private struct ChangesDiffBody: View {
                             .padding(.vertical, 16)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .accessibilityIdentifier("changesDiff")
         }
     }
 }

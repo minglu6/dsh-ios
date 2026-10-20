@@ -130,6 +130,10 @@ final class AppModel: ObservableObject {
     @Published var jobsPanelError: String?
     @Published var jobDetail: JobDetailState?
     @Published var chat: ChatState?
+    @Published var headerProjections: [String: SessionHeaderProjection] = [:]
+    @Published var headerProjectionLoading: Set<String> = []
+    @Published var headerProjectionErrors: [String: String] = [:]
+    private var headerAddresses: [String: PocketSubagentAddress] = [:]
     @Published var approvals: [Approval] = []
     @Published var userQuestions: [UserQuestion] = []
     @Published var questionDrafts: [String: [String: QuestionDraft]] = [:]
@@ -220,6 +224,9 @@ final class AppModel: ObservableObject {
     var uiTestFixture = false
     var uiTestFilePreviewText: String?
     var uiTestChangesSummary: WorkspaceChangesSummary?
+    var uiTestChangesDiffs: [Int: WorkspaceFileDiff] = [:]
+    var uiTestChangesDiffFailures: Set<Int> = []
+    var uiTestChangesSummaryFailures = 0
     var uiTestTerminalEntries: [TerminalSessionEntry] = []
 
     let terminal = AnsiTerminal()
@@ -338,6 +345,10 @@ final class AppModel: ObservableObject {
         collapsedWorkspaces = AppPrefs.collapsedWorkspaces(hostId: profileId)
         filePreview = nil
         sessions = []
+        headerProjections = [:]
+        headerProjectionLoading = []
+        headerProjectionErrors = [:]
+        headerAddresses = [:]
         chat = nil
         firstPrompt = nil
         firstPromptSessionId = nil
@@ -439,6 +450,100 @@ final class AppModel: ObservableObject {
         if isArchived(sessionId) { return }
         clearFirstPrompt()
         beginSession(sessionId)
+    }
+
+    func subagentAddress(for sessionId: String) -> PocketSubagentAddress? {
+        if let address = headerAddresses[sessionId] { return address }
+        guard let row = sessions.first(where: { $0.sessionId == sessionId }),
+              row.origin == "subagent", let parent = row.parentSessionId,
+              parent != sessionId else { return nil }
+        return PocketSubagentAddress(parentSessionId: parent, mode: "unknown")
+    }
+
+    var currentSubagentAddress: PocketSubagentAddress? {
+        chat.flatMap { subagentAddress(for: $0.sessionId) }
+    }
+
+    /// Retained catalog-only children are deliberately absent from the root session list.
+    var headerSessionRoster: [SessionSummary] {
+        var result = sessions
+        var known = Set(sessions.map(\.sessionId))
+        for (parent, projection) in headerProjections {
+            for child in projection.subagents ?? [] where child.mode != "external" {
+                if known.insert(child.id).inserted {
+                    result.append(SessionSummary(
+                        sessionId: child.id, title: child.label,
+                        parentSessionId: parent, origin: "subagent"
+                    ))
+                }
+            }
+            for member in projection.team?.members ?? [] where member.role == .teammate {
+                if known.insert(member.id).inserted {
+                    result.append(SessionSummary(
+                        sessionId: member.id, title: member.name,
+                        parentSessionId: parent, origin: "subagent"
+                    ))
+                }
+            }
+        }
+        return result
+    }
+
+    func openHeaderSession(_ id: String, parentSessionId: String? = nil, mode: String? = nil) {
+        if let parentSessionId, parentSessionId != id {
+            headerAddresses[id] = PocketSubagentAddress(parentSessionId: parentSessionId, mode: mode ?? "unknown")
+        }
+        openSession(id)
+    }
+
+    func loadHeaderProjection(sessionId: String) async {
+        guard !uiTestFixture, isOnline, let client,
+              !headerProjectionLoading.contains(sessionId) else { return }
+        guard ops.contains("sessions.projections") else {
+            if headerProjections[sessionId] == nil {
+                headerProjectionErrors[sessionId] = L.t(
+                    "远程主机未提供会话投影读取，请更新手机连接插件。",
+                    "Update the phone connection plugin on the remote host to read session projections."
+                )
+            }
+            return
+        }
+        let host = activeId
+        headerProjectionLoading.insert(sessionId)
+        headerProjectionErrors[sessionId] = nil
+        defer {
+            if self.client === client, activeId == host { headerProjectionLoading.remove(sessionId) }
+        }
+        do {
+            let frame = try await client.sessionProjections(sessionId: sessionId, address: subagentAddress(for: sessionId))
+            try Task.checkCancellation()
+            guard self.client === client, activeId == host else { return }
+            applyHeaderProjection(sessionId: sessionId, frame: frame)
+        } catch is CancellationError {
+        } catch {
+            guard self.client === client, activeId == host else { return }
+            headerProjectionErrors[sessionId] = error.localizedDescription
+        }
+    }
+
+    private func applyHeaderProjection(sessionId: String, frame: JSONValue) {
+        headerProjections[sessionId, default: SessionHeaderProjection()].apply(frame: frame)
+        let values = (frame["type"].str() == "snapshot" || frame["type"].str() == "resume")
+            ? frame["projections"]["values"] : frame["values"]
+        if let address = subagentAddress(for: sessionId), address.mode == "unknown",
+           let mode = values["subagent"]["mode"].str(), ["continuable", "one-shot"].contains(mode) {
+            headerAddresses[sessionId] = PocketSubagentAddress(parentSessionId: address.parentSessionId, mode: mode)
+        }
+        guard let projection = headerProjections[sessionId] else { return }
+        headerProjectionErrors[sessionId] = projection.errors.isEmpty ? nil : projection.errors.values.sorted().joined(separator: "\n")
+        for child in projection.subagents ?? [] where child.mode != "external" && child.id != sessionId {
+            if child.mode != "unknown" || headerAddresses[child.id]?.parentSessionId != sessionId {
+                headerAddresses[child.id] = PocketSubagentAddress(parentSessionId: sessionId, mode: child.mode)
+            }
+        }
+        for member in projection.team?.members ?? [] where member.role == .teammate && member.id != sessionId {
+            headerAddresses[member.id] = PocketSubagentAddress(parentSessionId: sessionId, mode: "continuable")
+        }
     }
 
     private func beginSession(_ sessionId: String, seed: FirstPrompt? = nil) {
@@ -732,7 +837,7 @@ final class AppModel: ObservableObject {
     func stopRun() {
         Task {
             guard let client, let id = chat?.sessionId else { return }
-            do { _ = try await client.cancel(sessionId: id) }
+            do { _ = try await client.cancel(sessionId: id, address: subagentAddress(for: id)) }
             catch { emit(error.localizedDescription) }
         }
     }
@@ -773,7 +878,8 @@ final class AppModel: ObservableObject {
                     sessionId: state.sessionId,
                     throughSeq: req.throughSeq,
                     beforeSeq: req.beforeSeq,
-                    maxMessages: req.maxMessages
+                    maxMessages: req.maxMessages,
+                    address: subagentAddress(for: state.sessionId)
                 )
                 guard followEpoch == epoch, reducer === target else { return }
                 _ = reducer.prepend(records: page["records"], pageHasMore: page["hasMore"].bool() ?? false)
@@ -1809,16 +1915,20 @@ final class AppModel: ObservableObject {
     }
 
     func readFileBytes(sessionId: String, path: String, offset: Int? = nil, length: Int? = nil) async throws -> JSONValue {
+        try Task.checkCancellation()
         guard let client else { throw PocketError(code: "transport", message: "未连接") }
         return try await client.readFileBytes(sessionId: sessionId, path: path, offset: offset, length: length)
     }
 
     func readAllText(sessionId: String, path: String) async throws -> String {
+        guard let client else { throw PocketError(code: "transport", message: "未连接") }
         var out = ""
         var offset = 1
         var version: String?
         while true {
-            let result = try await readFile(sessionId: sessionId, path: path, offset: offset, limit: 200)
+            try Task.checkCancellation()
+            let result = try await client.readFile(sessionId: sessionId, path: path, offset: offset, limit: 200)
+            try Task.checkCancellation()
             let pageVersion = result["version"].str()
             if offset == 1 { version = pageVersion }
             else if pageVersion != version {
@@ -1844,7 +1954,11 @@ final class AppModel: ObservableObject {
     }
 
     func fetchChangesSummary(sessionId: String, seq: Int64) async throws -> WorkspaceChangesSummary? {
-        if let seeded = uiTestChangesSummary {
+        if uiTestFixture, sessionId == chat?.sessionId, seq == 29, let seeded = uiTestChangesSummary {
+            if uiTestChangesSummaryFailures > 0 {
+                uiTestChangesSummaryFailures -= 1
+                throw PocketError(code: "transport", message: "Fixture: summary temporarily unavailable")
+            }
             return seeded
         }
         let hasOp = ops.contains("workspaceChanges.summary")
@@ -1854,17 +1968,27 @@ final class AppModel: ObservableObject {
         }
         guard let client else { throw PocketError(code: "transport", message: "not connected") }
         let result = try await client.workspaceChangesSummary(sessionId: sessionId, seq: seq)
-        let parsed = WorkspaceChangesSummary.parsePocketResult(result)
+        let parsed = try WorkspaceChangesSummary.decodePocketResult(result)
         logChanges(
-            "summary session=\(sessionId) seq=\(seq) parsed=\(parsed != nil) files=\(parsed.map { String($0.files.count) } ?? "nil") raw=\(result)"
+            "summary session=\(sessionId) seq=\(seq) parsed=\(parsed != nil) files=\(parsed.map { String($0.files.count) } ?? "nil")"
         )
         return parsed
     }
 
     func fetchChangesDiff(sessionId: String, seq: Int64, index: Int) async throws -> WorkspaceFileDiff? {
-        guard ops.contains("workspaceChanges.diff") else { return nil }
+        guard ops.contains("workspaceChanges.diff") else {
+            throw PocketError(code: "unsupported", message: L.t("主机未提供文件差异预览，请更新 Pocket 桥接", "The host does not support file comparisons; update the Pocket bridge"))
+        }
+        if uiTestFixture, sessionId == chat?.sessionId, seq == 29 {
+            if uiTestChangesDiffFailures.remove(index) != nil {
+                throw PocketError(code: "transport", message: "Fixture: diff temporarily unavailable")
+            }
+            return uiTestChangesDiffs[index]
+        }
         guard let client else { throw PocketError(code: "transport", message: "not connected") }
-        return WorkspaceFileDiff.parse(try await client.workspaceChangesDiff(sessionId: sessionId, seq: seq, index: index)["diff"])
+        return try WorkspaceFileDiff.decodePocketResult(
+            try await client.workspaceChangesDiff(sessionId: sessionId, seq: seq, index: index)
+        )
     }
 
     var canShowTerminal: Bool {
@@ -2214,6 +2338,7 @@ final class AppModel: ObservableObject {
                 client.close()
             }
             self.client = nil
+            headerProjectionLoading = []
             hostSettings.onChange = nil
             hostSettings.clear()
             permissionCatalog = nil
@@ -2357,7 +2482,8 @@ final class AppModel: ObservableObject {
         transcriptPublisher.cancel()
         reducer = TranscriptReducer()
         inspectorLog = SessionInspectorLog()
-        reducer.setRunning(sessions.first { $0.sessionId == sessionId }?.running ?? false)
+        let summary = headerSessionRoster.first { $0.sessionId == sessionId }
+        reducer.setRunning(summary?.running ?? false)
         if let seed {
             reducer.echo(
                 text: seed.text,
@@ -2369,7 +2495,7 @@ final class AppModel: ObservableObject {
         chat = ChatState(
             sessionId: sessionId,
             items: reducer.items(),
-            title: sessions.first { $0.sessionId == sessionId }?.title,
+            title: summary?.title,
             running: reducer.running
         )
         feedback = [:]
@@ -2408,13 +2534,17 @@ final class AppModel: ObservableObject {
             try? await client.unfollow(old)
         }
         guard self.client === client, chat?.sessionId == sessionId, followEpoch == epoch else { return }
-        let sid = try await client.follow(sessionId: sessionId, afterSeq: afterSeq)
+        let sid = try await client.follow(sessionId: sessionId, afterSeq: afterSeq, address: subagentAddress(for: sessionId))
         guard self.client === client, chat?.sessionId == sessionId, followEpoch == epoch else {
             try? await client.unfollow(sid)
             return
         }
         subId = sid
         chat?.loaded = true
+        await loadHeaderProjection(sessionId: sessionId)
+        if let parent = subagentAddress(for: sessionId)?.parentSessionId {
+            await loadHeaderProjection(sessionId: parent)
+        }
         await loadFeedback(client, sessionId: sessionId)
         await loadSkills(sessionId)
     }
@@ -2539,7 +2669,8 @@ final class AppModel: ObservableObject {
                 mode: mode,
                 images: images,
                 files: files,
-                requestId: requestId
+                requestId: requestId,
+                address: subagentAddress(for: chat.sessionId)
             )
         } catch {
             target.discardEcho(requestId)
@@ -2649,6 +2780,11 @@ final class AppModel: ObservableObject {
 
     private func applyFollowProjections(_ frame: JSONValue) {
         let type = frame["type"].str()
+        if let id = chat?.sessionId,
+           type == "snapshot" || type == "resume"
+            || (type == "projection" && ["agentTeam", "subagentCatalog"].contains(frame["key"].str() ?? "")) {
+            applyHeaderProjection(sessionId: id, frame: frame)
+        }
         let projection = (type == "snapshot" || type == "resume") ? frame["projections"] : nil
         let values = projection?["values"]
         let seq = projection?["asOfSeq"].long() ?? frame["seq"].long() ?? frame["cursor"].long() ?? -1

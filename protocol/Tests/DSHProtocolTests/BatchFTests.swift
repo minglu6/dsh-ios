@@ -137,7 +137,7 @@ final class WorkspaceChangesTests: XCTestCase {
         }}}
         """)
         XCTAssertEqual(envelope["ok"].bool(), true)
-        let parsed = try XCTUnwrap(WorkspaceChangesSummary.parsePocketResult(envelope["result"]))
+        let parsed = try XCTUnwrap(WorkspaceChangesSummary.decodePocketResult(envelope["result"]))
         XCTAssertEqual(parsed.turn, 1)
         XCTAssertEqual(parsed.cwd, "/Users/luming/project")
         XCTAssertEqual(parsed.total, 1)
@@ -148,15 +148,15 @@ final class WorkspaceChangesTests: XCTestCase {
         ))
     }
 
-    func testPocketSummaryNullAndMalformedFlagsStayUnavailable() throws {
-        XCTAssertNil(try WorkspaceChangesSummary.parsePocketResult(j(#"{"summary":null}"#)))
-        XCTAssertNil(WorkspaceChangesSummary.parsePocketResult(nil))
-        let serializedFalse = try XCTUnwrap(WorkspaceChangesSummary.parsePocketResult(j(#"{"summary":{"turn":1,"total":1,"added":2,"deleted":0,"files":[{"path":"a","display":"a","added":2,"deleted":0,"binary":false,"oversized":false}]}}"#)))
+    func testPocketSummaryNullIsUnavailableButMalformedFlagsThrow() throws {
+        XCTAssertNil(try WorkspaceChangesSummary.decodePocketResult(j(#"{"summary":null}"#)))
+        XCTAssertThrowsError(try WorkspaceChangesSummary.decodePocketResult(j("null")))
+        let serializedFalse = try XCTUnwrap(WorkspaceChangesSummary.decodePocketResult(j(#"{"summary":{"turn":1,"total":1,"added":2,"deleted":0,"files":[{"path":"a","display":"a","added":2,"deleted":0,"binary":false,"oversized":false}]}}"#)))
         XCTAssertEqual(serializedFalse.files.single, WorkspaceChangedFile(path: "a", display: "a", added: 2, deleted: 0))
-        XCTAssertNil(try WorkspaceChangesSummary.parsePocketResult(j(#"{"summary":{"turn":1,"total":1,"added":2,"deleted":0,"files":[{"path":"","display":"a","added":2,"deleted":0}]}}"#)))
-        XCTAssertNil(try WorkspaceChangesSummary.parsePocketResult(j(#"{"summary":{"turn":1,"total":1,"added":2,"deleted":0,"files":[{"path":"a","display":"a","added":2,"deleted":0,"binary":null}]}}"#)))
-        XCTAssertNil(try WorkspaceChangesSummary.parsePocketResult(j(#"{"summary":{"turn":1,"total":1,"added":2,"deleted":0,"files":[{"path":"a","display":"a","added":2,"deleted":0,"binary":"yes"}]}}"#)))
-        let http = try XCTUnwrap(WorkspaceChangesSummary.parsePocketResult(j("""
+        XCTAssertThrowsError(try WorkspaceChangesSummary.decodePocketResult(j(#"{"summary":{"turn":1,"total":1,"added":2,"deleted":0,"files":[{"path":"","display":"a","added":2,"deleted":0}]}}"#)))
+        XCTAssertThrowsError(try WorkspaceChangesSummary.decodePocketResult(j(#"{"summary":{"turn":1,"total":1,"added":2,"deleted":0,"files":[{"path":"a","display":"a","added":2,"deleted":0,"binary":null}]}}"#)))
+        XCTAssertThrowsError(try WorkspaceChangesSummary.decodePocketResult(j(#"{"summary":{"turn":1,"total":1,"added":2,"deleted":0,"files":[{"path":"a","display":"a","added":2,"deleted":0,"binary":"yes"}]}}"#)))
+        let http = try XCTUnwrap(WorkspaceChangesSummary.decodePocketResult(j("""
         {"summary":{"turn":1,"total":1,"added":1,"deleted":1,"files":[
             {"path":"parity-r3-card.txt","display":"parity-r3-card.txt","added":1,"deleted":1}
         ]}}

@@ -114,13 +114,16 @@ public final class PocketClient: @unchecked Sendable {
         mode: String,
         images: [PromptImage] = [],
         files: [PromptFile] = [],
-        requestId: String? = nil
+        requestId: String? = nil,
+        address: PocketSubagentAddress? = nil
     ) async throws -> JSONValue {
         var args: [String: JSONValue?] = [
             "sessionId": .string(sessionId),
             "text": .string(text),
             "mode": .string(mode),
             "requestId": requestId.map { .string($0) },
+            "parentSessionId": address.map { .string($0.parentSessionId) },
+            "subagentMode": address.map { .string($0.mode) },
         ]
         if !images.isEmpty {
             args["images"] = .array(images.map { image in
@@ -139,13 +142,17 @@ public final class PocketClient: @unchecked Sendable {
         return try await call("prompt", args: jsonObject(args))
     }
 
-    public func cancel(sessionId: String) async throws -> JSONValue {
-        try await call("cancel", args: jsonObject(["sessionId": .string(sessionId)]))
+    public func cancel(sessionId: String, address: PocketSubagentAddress? = nil) async throws -> JSONValue {
+        try await call("cancel", args: jsonObject([
+            "sessionId": .string(sessionId),
+            "parentSessionId": address.map { .string($0.parentSessionId) },
+            "subagentMode": address.map { .string($0.mode) },
+        ]))
     }
 
     /// Session follow. Do not send `maxMessages` / iroh frame caps on the phone WS path.
-    public func follow(sessionId: String, afterSeq: Int64? = nil) async throws -> String {
-        let result = try await call("follow", args: FollowRequest.args(sessionId: sessionId, afterSeq: afterSeq))
+    public func follow(sessionId: String, afterSeq: Int64? = nil, address: PocketSubagentAddress? = nil) async throws -> String {
+        let result = try await call("follow", args: FollowRequest.args(sessionId: sessionId, afterSeq: afterSeq, address: address))
         return result["subId"].str() ?? ""
     }
 
@@ -153,12 +160,22 @@ public final class PocketClient: @unchecked Sendable {
         _ = try await call("unfollow", args: jsonObject(["subId": .string(subId)]))
     }
 
-    public func historyPage(sessionId: String, throughSeq: Int64, beforeSeq: Int64? = nil, maxMessages: Int = 100) async throws -> JSONValue {
+    public func historyPage(sessionId: String, throughSeq: Int64, beforeSeq: Int64? = nil, maxMessages: Int = 100, address: PocketSubagentAddress? = nil) async throws -> JSONValue {
         try await call("history.page", args: jsonObject([
             "sessionId": .string(sessionId),
             "throughSeq": .number(Double(throughSeq)),
             "beforeSeq": beforeSeq.map { .number(Double($0)) },
             "maxMessages": .number(Double(maxMessages)),
+            "parentSessionId": address.map { .string($0.parentSessionId) },
+            "subagentMode": address.map { .string($0.mode) },
+        ]))
+    }
+
+    public func sessionProjections(sessionId: String, address: PocketSubagentAddress? = nil) async throws -> JSONValue {
+        try await call("sessions.projections", args: jsonObject([
+            "sessionId": .string(sessionId),
+            "parentSessionId": address.map { .string($0.parentSessionId) },
+            "subagentMode": address.map { .string($0.mode) },
         ]))
     }
 

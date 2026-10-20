@@ -59,20 +59,22 @@ final class ScreenshotTests: XCTestCase {
         add(shot)
     }
 
-    func testConversationContextUsesSessionMetadataNotDraftSelections() {
+    func testConversationPresetUsesSessionMetadataNotDraftSelection() {
         for screen in ["contextActive", "contextBlank", "contextOffline", "contextNoRoster", "contextUnknown"] {
             let app = XCUIApplication()
             app.launchArguments = ["-UITestFixture", "-UITestScreen", screen]
             app.launch()
-            let workspace = app.descendants(matching: .any)["conversationWorkspace"].firstMatch
+            XCTAssertTrue(app.buttons["openDrawer"].waitForExistence(timeout: 15), screen)
             let preset = app.descendants(matching: .any)["conversationPreset"].firstMatch
-            XCTAssertTrue(workspace.waitForExistence(timeout: 15), screen)
-            XCTAssertTrue(preset.exists, screen)
-            XCTAssertEqual(workspace.label, screen == "contextUnknown" ? "工作区未提供" : "dsh-ios", screen)
-            XCTAssertEqual(preset.label, screen == "contextUnknown" ? "工作模式未提供" : "标准模式", screen)
+            if screen == "contextUnknown" {
+                XCTAssertFalse(preset.exists, screen)
+            } else {
+                XCTAssertTrue(preset.waitForExistence(timeout: 5), screen)
+                XCTAssertEqual(preset.label, "标准模式", screen)
+            }
+            XCTAssertFalse(app.descendants(matching: .any)["conversationWorkspace"].exists, screen)
             XCTAssertFalse(app.buttons["draftWorkspace"].exists, screen)
-            XCTAssertFalse(app.buttons["draftPreset"].exists, screen)
-            XCTAssertFalse(app.buttons["conversationWorkspace"].exists, screen)
+            XCTAssertFalse(app.buttons["agentPresetSeat"].exists, screen)
             XCTAssertFalse(app.buttons["conversationPreset"].exists, screen)
             app.terminate()
         }
@@ -83,7 +85,7 @@ final class ScreenshotTests: XCTestCase {
         app.launchArguments = ["-UITestFixture", "-UITestScreen", "landing"]
         app.launch()
         let workspace = app.buttons["draftWorkspace"]
-        let preset = app.buttons["draftPreset"]
+        let preset = app.buttons["agentPresetSeat"]
         XCTAssertTrue(workspace.waitForExistence(timeout: 15))
         XCTAssertEqual(workspace.value as? String, "dsh-ios")
         XCTAssertEqual(preset.label, "标准模式")
@@ -93,7 +95,7 @@ final class ScreenshotTests: XCTestCase {
         android.tap()
         XCTAssertEqual(workspace.value as? String, "dsh-android")
         preset.tap()
-        let creator = app.buttons.containing(.staticText, identifier: "创造模式").firstMatch
+        let creator = app.buttons["agentPresetRow.cordis"]
         XCTAssertTrue(creator.waitForExistence(timeout: 5))
         creator.tap()
         XCTAssertEqual(preset.label, "创造模式")

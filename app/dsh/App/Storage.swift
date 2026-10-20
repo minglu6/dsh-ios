@@ -122,18 +122,18 @@ enum AppPrefs {
     }
 
     static var fontSize: Int {
-        get { clampFontSize(UserDefaults.standard.object(forKey: "dsh.fontSize") as? Int ?? themeFontSizeSpec(.text).default, range: themeFontSizeSpec(.text).range) }
-        set { UserDefaults.standard.set(clampFontSize(newValue, range: themeFontSizeSpec(.text).range), forKey: "dsh.fontSize") }
+        get { PhoneFontPreferences.size(.text) }
+        set { PhoneFontPreferences.setSize(newValue, for: .text) }
     }
 
     static var codeFontSize: Int {
-        get { clampFontSize(UserDefaults.standard.object(forKey: "dsh.codeFontSize") as? Int ?? themeFontSizeSpec(.code).default, range: themeFontSizeSpec(.code).range) }
-        set { UserDefaults.standard.set(clampFontSize(newValue, range: themeFontSizeSpec(.code).range), forKey: "dsh.codeFontSize") }
+        get { PhoneFontPreferences.size(.code) }
+        set { PhoneFontPreferences.setSize(newValue, for: .code) }
     }
 
     static var terminalFontSize: Int {
-        get { clampFontSize(UserDefaults.standard.object(forKey: "dsh.terminalFontSize") as? Int ?? themeFontSizeSpec(.terminal).default, range: themeFontSizeSpec(.terminal).range) }
-        set { UserDefaults.standard.set(clampFontSize(newValue, range: themeFontSizeSpec(.terminal).range), forKey: "dsh.terminalFontSize") }
+        get { PhoneFontPreferences.size(.terminal) }
+        set { PhoneFontPreferences.setSize(newValue, for: .terminal) }
     }
 
     static var textFontFamily: String {

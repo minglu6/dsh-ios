@@ -29,9 +29,13 @@ The terminal forwards native key events directly: Return sends `\r`, Delete send
 
 The terminal page reads loading state directly from the attachment model, so an immediate failure leaves Connecting and exposes Retry without waiting for a mirrored view state. Leaving the page cancels pending attachment work and releases the subscription without closing the remote shell.
 
-Conversations show the current workspace and work mode below the Chat/Trajectory tabs, using the session's membership, directory and Agent preset rather than new-task drafts. Missing metadata is explicitly marked as unavailable. New tasks retain workspace and mode selectors, locked while the first message is being submitted; an unloaded preset catalog no longer hides the mode position.
+Conversation header actions follow desktop order: Agent Team, current work mode, and the subagent catalog; the working-directory chip is reserved for new tasks. The Team roster/task board comes from `agentTeam`, separately from `subagentCatalog`; ordinary forks are not counted as subagents. Members and nested children can be opened, with navigation back to the lead; one-shot children are read-only. Complete live updates and catalog-only child navigation require the matching `dsh-android/plugin` update (`sessions.projections`, parent-address routing and projection forwarding). Installing an IPA does not update the running desktop plugin.
 
 The work-mode menu uses a desktop-style anchored overlay, up to 360pt wide, measured to its content and bounded by the viewport with 12pt margins. Overflow scrolls vertically while keeping mode names and descriptions intact.
+
+iOS defaults to 16pt body text, 13pt code and 14pt terminal text when no size was explicitly saved. Existing personal font choices are preserved and never written to the remote host.
+
+Edited-file cards and comparisons use the same real Host snapshots as Android: file switching, old/new line numbers, wrapping and a 5,000-line display limit. Failed reads remain visible and retryable rather than hiding the card; previews and comparison caches are isolated by Host/session/file identity. Missing events, capabilities or expired Host comparisons never produce fabricated diffs from tool summaries.
 
 ## Architecture
 

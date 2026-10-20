@@ -34,7 +34,7 @@ struct ChatView: View {
         VStack(spacing: 0) {
             header
             tabs
-            ConversationContextRow(model: model)
+            ConversationHeaderActions(model: model)
                 .padding(.horizontal, 14)
                 .padding(.bottom, 4)
             if tab == 0 {
@@ -162,7 +162,7 @@ struct ChatView: View {
 
     private var headerCrumbs: [ConversationHeaderCrumb] {
         conversationHeaderAncestry(
-            sessions: model.sessions,
+            sessions: model.headerSessionRoster,
             sessionId: model.chat?.sessionId,
             currentTitle: headerTitle,
             newSession: L.newSession(),
@@ -332,7 +332,18 @@ struct ChatView: View {
                         .padding(.top, 4)
                         .accessibilityIdentifier("firstPromptStatus")
                 }
-                composer
+                if let address = model.currentSubagentAddress, address.isReadOnly {
+                    Text(address.mode == "one-shot"
+                         ? L.t("一次性任务不支持后续消息，可在这里查看完整执行记录。", "One-shot tasks do not accept follow-up messages. Their full execution record is available here.")
+                         : L.t("读取子会话后才能确定是否可继续。", "Read the child session to determine whether it can be continued."))
+                        .font(.system(size: 14))
+                        .foregroundStyle(T.text2)
+                        .padding(16)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("subagentReadOnly")
+                } else {
+                    composer
+                }
             }
             if let metrics = model.chat?.composerMetrics {
                 ComposerStats(metrics: metrics)

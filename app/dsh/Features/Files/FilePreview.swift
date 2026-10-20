@@ -11,6 +11,18 @@ struct FilePreviewView: View {
     let path: String
     var onBack: (() -> Void)?
 
+    var body: some View {
+        FilePreviewContent(model: model, sessionId: sessionId, path: path, onBack: onBack)
+            .id([model.activeId ?? "", sessionId, path])
+    }
+}
+
+private struct FilePreviewContent: View {
+    @ObservedObject var model: AppModel
+    let sessionId: String
+    let path: String
+    var onBack: (() -> Void)?
+
     @State private var mode: TextPreviewMode = .preview
     @State private var generation = 0
     @State private var loading = true
@@ -209,6 +221,7 @@ struct FilePreviewView: View {
             switch kind {
             case .image, .pdf:
                 let result = try await model.readFileBytes(sessionId: sessionId, path: path)
+                try Task.checkCancellation()
                 if result["eof"].bool() == false {
                     throw PocketError(code: "preview", message: L.incompleteFile())
                 }
@@ -225,6 +238,8 @@ struct FilePreviewView: View {
                         cacheDirectory: cache,
                         read: reader.read
                     )
+                    defer { next.close() }
+                    try Task.checkCancellation()
                     if let previous = office {
                         refreshed = previous.version == next.version && previous.generation == next.generation
                             ? L.fileUnchanged() : L.fileUpdated()
@@ -240,21 +255,22 @@ struct FilePreviewView: View {
                 let next = try await readWorkbookChunks { offset, length in
                     try await model.readFileBytes(sessionId: sessionId, path: path, offset: offset, length: length)
                 }
+                try Task.checkCancellation()
                 let unchanged = bytes == next
                 refreshed = bytes.map { _ in unchanged ? L.fileUnchanged() : L.fileUpdated() }
                 if !unchanged { bytes = next }
             case .text:
                 let next = try await model.readAllText(sessionId: sessionId, path: path)
+                try Task.checkCancellation()
                 refreshed = text.map { $0 == next ? L.fileUnchanged() : L.fileUpdated() }
                 text = next
             case .unsupported:
                 break
             }
         } catch is CancellationError {
-            office?.close()
-            office = nil
             return
         } catch {
+            guard !Task.isCancelled else { return }
             self.error = {
                 switch kind {
                 case .office: return officePreviewErrorMessage(error, english: L.en)

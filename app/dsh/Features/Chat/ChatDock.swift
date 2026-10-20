@@ -80,11 +80,11 @@ struct UserQuestionCard: View {
                 .padding(.vertical, 8)
             }
             VStack(alignment: .leading, spacing: 8) {
-                if let err { Text(err).font(.caption).foregroundStyle(T.err) }
+                if let err { Text(err).font(LocalFonts.secondaryText()).foregroundStyle(T.err) }
                 if busy { Text(questionSubmitting(english: L.en)).foregroundStyle(T.text3) }
                 else if question.state == "continued" {
                     Text(questionWaitContinued(english: L.en))
-                        .font(.caption)
+                        .font(LocalFonts.secondaryText())
                         .foregroundStyle(T.text3)
                 }
                 if isPlan {
@@ -155,7 +155,7 @@ struct UserQuestionCard: View {
                             .foregroundStyle(T.accent)
                     }
                     if let description = opt.description, !description.isEmpty {
-                        Text(description).font(.caption).foregroundStyle(T.text3)
+                        Text(description).font(LocalFonts.secondaryText()).foregroundStyle(T.text3)
                     }
                 }
                 Spacer()
@@ -325,24 +325,24 @@ struct QuestionReplyRow: View {
         let values = replyAnswerValues(answers: item.answers, id: question.id)
         return VStack(alignment: .leading, spacing: 4) {
             if let header = question.header, !header.isEmpty, header != question.question {
-                Text(header).font(.system(size: 11)).foregroundStyle(T.text3)
+                Text(header).font(LocalFonts.secondaryText()).foregroundStyle(T.text3)
             }
             Text(question.question).font(LocalFonts.text()).foregroundStyle(T.ink)
             if let detail = question.detail, !detail.isEmpty {
-                Text(detail).font(.system(size: 11)).foregroundStyle(T.text3)
+                Text(detail).font(LocalFonts.secondaryText()).foregroundStyle(T.text3)
             }
             if !question.options.isEmpty {
                 VStack(alignment: .leading, spacing: 2) {
                     ForEach(Array(question.options.enumerated()), id: \.offset) { _, option in
                         Text(option.description.map { "\(option.label) — \($0)" } ?? option.label)
-                            .font(.system(size: 11))
+                            .font(LocalFonts.secondaryText())
                             .foregroundStyle(T.text3)
                     }
                 }
             }
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(questionReplyAnswerLabel(english: L.en))
-                    .font(.system(size: 12))
+                    .font(LocalFonts.secondaryText())
                     .foregroundStyle(T.text3)
                 Text(values.isEmpty ? questionReplySkipped(english: L.en) : values.joined(separator: ", "))
                     .font(LocalFonts.text())

@@ -1,0 +1,52 @@
+import XCTest
+
+final class SessionHeaderUITests: XCTestCase {
+    override class var runsForEachTargetApplicationUIConfiguration: Bool { false }
+
+    func testTeamAndCatalogUseDifferentDataAndNavigateRetainedChildren() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-UITestFixture", "-UITestScreen", "sessionHeader"]
+        app.launch()
+        let team = app.buttons["conversationTeam"]
+        XCTAssertTrue(team.waitForExistence(timeout: 10))
+        let count = app.buttons["conversationSubagents"]
+        XCTAssertTrue(count.label.contains("6 个子智能体"))
+        XCTAssertEqual(app.descendants(matching: .any)["conversationPreset"].firstMatch.label, "标准模式")
+        XCTAssertFalse(app.descendants(matching: .any)["conversationWorkspace"].exists)
+        try capture(app, name: "session-header-actions")
+
+        team.tap()
+        XCTAssertTrue(app.staticTexts["Review session header"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["agentTeamMember_header-child-1"].exists)
+        XCTAssertFalse(app.buttons["agentTeamMember_header-child-6"].exists)
+        try capture(app, name: "session-header-team")
+        app.buttons["关闭"].tap()
+
+        count.tap()
+        let oneShot = app.buttons["subagentSession.header-child-6"]
+        XCTAssertTrue(oneShot.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["subagentSession.ordinary-fork"].exists)
+        try capture(app, name: "session-header-subagents")
+        oneShot.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["subagentReadOnly"].waitForExistence(timeout: 5))
+        app.buttons["conversationSubagents"].tap()
+        let main = app.buttons["subagentMainSession"]
+        XCTAssertTrue(main.waitForExistence(timeout: 5))
+        XCTAssertTrue(main.isEnabled)
+        main.tap()
+        XCTAssertFalse(app.descendants(matching: .any)["subagentReadOnly"].exists)
+    }
+
+    private func capture(_ app: XCUIApplication, name: String) throws {
+        let screenshot = app.screenshot()
+        let attachment = XCTAttachment(screenshot: screenshot)
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        if let root = ProcessInfo.processInfo.environment["DSH_SCREENSHOT_DIR"] {
+            let directory = URL(fileURLWithPath: root, isDirectory: true)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try screenshot.pngRepresentation.write(to: directory.appendingPathComponent("\(name).png"))
+        }
+    }
+}

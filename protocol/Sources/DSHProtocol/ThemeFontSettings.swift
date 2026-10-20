@@ -25,6 +25,38 @@ public func themeFontSizeSpec(_ role: ThemeFontRole) -> ThemeFontSizeSpec {
     }
 }
 
+/// Phone-local defaults are larger than desktop without changing its settings contract.
+/// An absent key means "use the current default"; reads must never persist that default.
+/// Existing keys were written only by explicit local edits, including edits to the old default.
+public enum PhoneFontPreferences {
+    public static func defaultSize(_ role: ThemeFontRole) -> Int {
+        switch role {
+        case .text: return 16
+        case .code: return 13
+        case .terminal: return 14
+        }
+    }
+
+    public static func size(_ role: ThemeFontRole, defaults: UserDefaults = .standard) -> Int {
+        let value = defaults.object(forKey: key(role)) as? Int ?? defaultSize(role)
+        let range = themeFontSizeSpec(role).range
+        return min(max(value, range.lowerBound), range.upperBound)
+    }
+
+    public static func setSize(_ value: Int, for role: ThemeFontRole, defaults: UserDefaults = .standard) {
+        let range = themeFontSizeSpec(role).range
+        defaults.set(min(max(value, range.lowerBound), range.upperBound), forKey: key(role))
+    }
+
+    private static func key(_ role: ThemeFontRole) -> String {
+        switch role {
+        case .text: return "dsh.fontSize"
+        case .code: return "dsh.codeFontSize"
+        case .terminal: return "dsh.terminalFontSize"
+        }
+    }
+}
+
 /// Desktop `FontSettingsGroup` expanded region, in render order.
 /// Collapsed on every mount (`useState(false)`).
 public enum ThemeFontExpandedRow: String, CaseIterable, Sendable {

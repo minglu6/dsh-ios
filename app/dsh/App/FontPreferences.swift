@@ -25,6 +25,10 @@ enum LocalFonts {
     static func text(size: CGFloat? = nil) -> Font {
         resolve(AppPrefs.textFontFamily, monospace: false, size: size ?? CGFloat(AppPrefs.fontSize))
     }
+    /// Secondary conversation copy follows the user's text size without shrinking below 10 pt.
+    static func secondaryText() -> Font {
+        text(size: CGFloat(max(10, AppPrefs.fontSize - 2)))
+    }
     static func code(size: CGFloat? = nil) -> Font {
         resolve(AppPrefs.codeFontFamily, monospace: true, size: size ?? CGFloat(AppPrefs.codeFontSize))
     }

@@ -78,11 +78,17 @@ public struct WorkspaceChangesSummary: Sendable, Equatable {
 
     /// Pocket `workspaceChanges.summary` result after `call` unwraps `{ok,result}`.
     /// Plugin returns `{summary: HostSummary | null}`; Host object may include `cwd` and `snapshot`.
-    public static func parsePocketResult(_ result: JSONValue?) -> WorkspaceChangesSummary? {
-        guard let result, !result.isNull else { return nil }
-        let summary = result["summary"]
-        if summary.isNull { return nil }
-        return parse(summary)
+    /// Only an explicit null means the Host has no comparison. A malformed
+    /// envelope must remain a retryable error, not silently hide the edit card.
+    public static func decodePocketResult(_ result: JSONValue) throws -> WorkspaceChangesSummary? {
+        guard let value = result.obj()?["summary"] else {
+            throw PocketError(code: "bad-reply", message: "Missing workspace changes summary")
+        }
+        if value.isNull { return nil }
+        guard let summary = parse(value) else {
+            throw PocketError(code: "bad-reply", message: "Invalid workspace changes summary")
+        }
+        return summary
     }
 }
 
@@ -178,6 +184,17 @@ public struct WorkspaceFileDiff: Sendable, Equatable {
         return WorkspaceFileDiff(
             kind: kind, path: path, display: display, before: before, after: after, hunks: hunks, coarse: coarse
         )
+    }
+
+    public static func decodePocketResult(_ result: JSONValue) throws -> WorkspaceFileDiff? {
+        guard let value = result.obj()?["diff"] else {
+            throw PocketError(code: "bad-reply", message: "Missing workspace changes diff")
+        }
+        if value.isNull { return nil }
+        guard let diff = parse(value) else {
+            throw PocketError(code: "bad-reply", message: "Invalid workspace changes diff")
+        }
+        return diff
     }
 }
 

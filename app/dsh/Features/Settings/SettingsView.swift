@@ -111,7 +111,7 @@ struct GeneralSettingsView: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(L.t("权限", "Permission")).foregroundStyle(T.ink)
                                     Text(permissionDefaultDescription(english: L.en))
-                                        .font(.caption)
+                                        .font(.system(size: 14))
                                         .foregroundStyle(T.text3)
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -203,7 +203,7 @@ struct GeneralSettingsView: View {
                             VStack(alignment: .leading) {
                                 Text(L.t("显示代码工作视图", "Show coding view")).foregroundStyle(T.ink)
                                 Text(L.t("开启后，显示轨迹、本轮代码差异，可选择完整的 Agent 预设切换", "Shows trajectory, code diffs, and all Agent presets"))
-                                    .font(.caption).foregroundStyle(T.text3)
+                                    .font(.system(size: 14)).foregroundStyle(T.text3)
                             }
                             Spacer()
                             Toggle("", isOn: Binding(
@@ -232,7 +232,7 @@ struct GeneralSettingsView: View {
                             HStack {
                                 VStack(alignment: .leading) {
                                     Text(sessionLogUploadLabel(english: L.en)).foregroundStyle(T.ink)
-                                    Text(L.t("帮助改进 DeepSeek 模型与产品", "Help improve DeepSeek models and products.")).font(.caption).foregroundStyle(T.text3)
+                                    Text(L.t("帮助改进 DeepSeek 模型与产品", "Help improve DeepSeek models and products.")).font(.system(size: 14)).foregroundStyle(T.text3)
                                 }
                                 Spacer()
                                 Toggle("", isOn: Binding(
@@ -306,7 +306,7 @@ struct GeneralSettingsView: View {
             VStack(spacing: 8) {
                 OfficialGlyph(kind: icon, size: 18, color: T.ink)
                 Text(title)
-                    .font(.caption)
+                    .font(.system(size: 14))
                     .foregroundStyle(T.ink)
             }
             .frame(maxWidth: .infinity)
@@ -400,7 +400,7 @@ func preferenceRow(
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title).foregroundStyle(T.ink)
                     if let description, !description.isEmpty {
-                        Text(description).font(.caption).foregroundStyle(T.text3)
+                        Text(description).font(.system(size: 14)).foregroundStyle(T.text3)
                     }
                 }
                 Spacer()
@@ -597,7 +597,7 @@ struct SettingsFontSizeRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(themeFontSizeTitle(role, english: L.en)).foregroundStyle(T.ink)
                     Text(themeFontSizeDescription(role, english: L.en))
-                        .font(.caption)
+                        .font(.system(size: 14))
                         .foregroundStyle(T.text3)
                 }
                 Spacer(minLength: 8)
@@ -669,7 +669,7 @@ struct SettingsFontFamilyRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(themeFontFamilyTitle(role, english: L.en)).foregroundStyle(T.ink)
                     Text(themeFontFamilyDescription(role, english: L.en))
-                        .font(.caption)
+                        .font(.system(size: 14))
                         .foregroundStyle(T.text3)
                 }
                 TextField(themeFontFamilyPlaceholder(english: L.en), text: $draft)
