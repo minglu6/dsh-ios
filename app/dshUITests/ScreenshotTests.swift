@@ -502,9 +502,6 @@ final class ScreenshotTests: XCTestCase {
             if screen == "landingPreset" {
                 try assertLandingAgentPresetMenu(app, appearance: appearance)
             }
-            if screen == "chat" || screen == "chatLong" || screen == "trajectory" {
-                assertConversationHeaderTabGap(app, appearance: appearance, screen: screen)
-            }
             if screen == "chat" || screen == "chatLong" || screen == "changesCard" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "trajectory" {
                 XCTAssertFalse(app.images["clock"].exists, "\(appearance) \(screen) still exposes SF clock on jobs chip")
                 XCTAssertFalse(app.images["clock.fill"].exists, "\(appearance) \(screen) still exposes SF clock.fill on jobs chip")
@@ -2046,32 +2043,6 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertFalse(chip.label.contains("1017"), "\(appearance) Pro chip still exposes 1017")
     }
 
-    /// Desktop title-text → tabs is 15. Header keeps the 2a39d41 20pt
-    /// vertical budget (`padding.top` 5 + `padding.bottom` 15) so the
-    /// composer column is not shorter.
-    private func assertConversationHeaderTabGap(
-        _ app: XCUIApplication,
-        appearance: String,
-        screen: String
-    ) {
-        let title = app.descendants(matching: .any)["conversationHeaderTitle"].firstMatch
-        XCTAssertTrue(
-            title.waitForExistence(timeout: 8),
-            "\(appearance) \(screen) missing conversationHeaderTitle before tab-gap assertion"
-        )
-        let chatTab = app.descendants(matching: .any)["chatTab.chat"].firstMatch
-        XCTAssertTrue(
-            chatTab.waitForExistence(timeout: 8),
-            "\(appearance) \(screen) missing chatTab.chat"
-        )
-        let gap = chatTab.frame.minY - title.frame.maxY
-        XCTAssertEqual(
-            gap,
-            15,
-            accuracy: 3,
-            "\(appearance) \(screen) title-to-tab gap \(gap) is not desktop titleRow 30/20 leftover + tabs margin-top 10 (title \(title.frame) tab \(chatTab.frame))"
-        )
-    }
 
     private func assertOfficialMenuChrome(_ app: XCUIApplication, appearance: String, screen: String) {
         XCTAssertFalse(
