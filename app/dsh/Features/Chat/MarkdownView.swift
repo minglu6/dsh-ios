@@ -12,7 +12,7 @@ struct MarkdownView: View {
     var streaming = false
     var wrapCode = false
     var bodyColor: Color = T.ink
-    var variant: MarkdownVariant = PhoneTypography.body
+    var variant: MarkdownVariant = .body
     var onFile: ((String) -> Void)? = nil
     var onLink: ((URL) -> Void)? = nil
 
@@ -45,7 +45,7 @@ private struct MdBlockView: View {
     let block: MdBlock
     let wrapCode: Bool
     let bodyColor: Color
-    var variant: MarkdownVariant = PhoneTypography.body
+    var variant: MarkdownVariant = .body
 
     private var compactSize: CGFloat {
         CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))
