@@ -34,6 +34,9 @@ struct ChatView: View {
         VStack(spacing: 0) {
             header
             tabs
+            ConversationContextRow(model: model, showDirectoryPicker: .constant(false))
+                .padding(.horizontal, 14)
+                .padding(.bottom, 4)
             if tab == 0 {
                 chatTab
             } else if model.showCodeWorkView {

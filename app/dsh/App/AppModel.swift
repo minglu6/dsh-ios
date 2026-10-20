@@ -246,6 +246,7 @@ final class AppModel: ObservableObject {
     private var terminalStray: [String: [JSONValue]] = [:]
     private var terminalRosterRevision: [String: Int64] = [:]
     private var terminalAttachTask: Task<Void, Never>?
+    private var terminalCommandTask: Task<Void, Never>?
     private let completionReminders = CompletionReminders()
     private var completionReadySession: String?
     private var desiredViewedSession: String?
@@ -1964,29 +1965,44 @@ final class AppModel: ObservableObject {
     }
 
     func writeTerminal(_ data: String) {
-        Task {
-            guard let client, let meta = terminalMeta else { return }
-            do {
-                _ = try await client.writeTerminal(sessionId: meta.sessionId, id: meta.id, attachmentId: meta.attachmentId, data: data)
-            } catch { emit(error.localizedDescription) }
+        guard !data.isEmpty else { return }
+        enqueueTerminalCommand { client, meta in
+            _ = try await client.writeTerminal(
+                sessionId: meta.sessionId, id: meta.id, attachmentId: meta.attachmentId, data: data
+            )
         }
     }
 
     func resizeTerminal(cols: Int, rows: Int) {
-        terminalWantCols = max(cols, 2)
-        terminalWantRows = max(rows, 1)
-        if terminal.cols != terminalWantCols || terminal.rows != terminalWantRows {
-            terminal.resize(newCols: terminalWantCols, newRows: terminalWantRows)
-            terminalRevision = terminal.revision
+        let cols = max(cols, 2)
+        let rows = max(rows, 1)
+        guard cols != terminalWantCols || rows != terminalWantRows else { return }
+        terminalWantCols = cols
+        terminalWantRows = rows
+        // The Host emits state before output at the new size. Resizing locally
+        // here would interpret already-in-flight old-size output at new coordinates.
+        enqueueTerminalCommand { client, meta in
+            _ = try await client.resizeTerminal(
+                sessionId: meta.sessionId, id: meta.id, attachmentId: meta.attachmentId,
+                cols: cols, rows: rows
+            )
         }
-        Task {
-            guard let client, let meta = terminalMeta else { return }
+    }
+
+    private func enqueueTerminalCommand(_ send: @escaping (PocketClient, TerminalMeta) async throws -> Void) {
+        guard let client, let meta = terminalMeta, !terminalOpening, meta.state == "running" else { return }
+        let epoch = terminalOpenEpoch
+        let previous = terminalCommandTask
+        terminalCommandTask = Task { [weak self] in
+            await previous?.value
+            guard let self, !Task.isCancelled,
+                  self.client === client, self.terminalOpenEpoch == epoch,
+                  self.terminalMeta?.attachmentId == meta.attachmentId else { return }
             do {
-                _ = try await client.resizeTerminal(
-                    sessionId: meta.sessionId, id: meta.id, attachmentId: meta.attachmentId,
-                    cols: terminalWantCols, rows: terminalWantRows
-                )
-            } catch { emit(error.localizedDescription) }
+                try await send(client, meta)
+            } catch {
+                if self.terminalOpenEpoch == epoch { self.emit(error.localizedDescription) }
+            }
         }
     }
 
@@ -2877,10 +2893,10 @@ final class AppModel: ObservableObject {
     }
 
     private func applyTerminalFrame(_ frame: JSONValue) {
+        applyTerminalScreenFrame(frame, to: terminal)
+        terminalRevision = terminal.revision
         switch frame["type"].str() {
         case "snapshot":
-            terminal.applySnapshot(frame["screen"].str() ?? "")
-            terminalRevision = terminal.revision
             if let info = frame["info"].obj() {
                 terminalMeta = terminalMeta.map {
                     TerminalMeta(
@@ -2898,9 +2914,6 @@ final class AppModel: ObservableObject {
                 TerminalStore.remember(hostId: hostId, sessionId: meta.sessionId, terminalId: meta.id)
                 terminalReady.succeed()
             }
-        case "output":
-            terminal.write(frame["data"].str() ?? "")
-            terminalRevision = terminal.revision
         case "state":
             if let info = frame["info"].obj() {
                 terminalMeta = terminalMeta.map {
@@ -2922,6 +2935,8 @@ final class AppModel: ObservableObject {
     private func attachTerminal(sessionId: String, forceNew: Bool, terminalId: String?) async {
         if terminalAttachFrozen { return }
         terminalOpenEpoch += 1
+        terminalCommandTask?.cancel()
+        terminalCommandTask = nil
         let epoch = terminalOpenEpoch
         let client = self.client
         let hostId = activeId
@@ -3000,7 +3015,6 @@ final class AppModel: ObservableObject {
             }
             terminalSubId = followed
             terminalMeta = TerminalMeta(sessionId: sessionId, id: info.id, attachmentId: attachmentId, title: info.title, state: info.state, cwd: info.cwd)
-            terminalOpening = false
             let buffered = terminalStray.removeValue(forKey: followed) ?? []
             terminalStray = [:]
             for event in buffered { handleTerminalEvent(event) }
@@ -3021,10 +3035,14 @@ final class AppModel: ObservableObject {
             }
             if !current() { return }
             attached = true
-            terminal.resize(newCols: terminalWantCols, newRows: terminalWantRows)
-            terminalRevision = terminal.revision
-            if terminalMeta?.state == "running" {
-                _ = try await client.resizeTerminal(sessionId: sessionId, id: info.id, attachmentId: attachmentId, cols: terminalWantCols, rows: terminalWantRows)
+            terminalOpening = false
+            let cols = terminalWantCols
+            let rows = terminalWantRows
+            enqueueTerminalCommand { client, meta in
+                _ = try await client.resizeTerminal(
+                    sessionId: meta.sessionId, id: meta.id, attachmentId: meta.attachmentId,
+                    cols: cols, rows: rows
+                )
             }
         } catch is CancellationError {
             ready.fail(CancellationError())
@@ -3077,6 +3095,8 @@ final class AppModel: ObservableObject {
 
     private func resetTerminalAttachment(keepScreen: Bool, keepMeta: Bool = false) {
         terminalOpenEpoch += 1
+        terminalCommandTask?.cancel()
+        terminalCommandTask = nil
         terminalOpening = false
         terminalStray = [:]
         terminalReady.fail(CancellationError())

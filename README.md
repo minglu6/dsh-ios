@@ -25,7 +25,9 @@ Available surfaces depend on the Host version and enabled plugins. The phone mir
 
 Host configuration is adopted from `plugins.settingsDescribe` and `settings.changed`. Normal use does not show a manual sync control.
 
-The terminal forwards the software keyboard's Return submit event as `\r` to the remote PTY; multiline paste still requires confirmation. The Start page's new-terminal card opens the terminal directly, without desktop shortcuts or a decorative dropdown chevron. The terminal header retains its working session switcher.
+The terminal forwards native key events directly: Return sends `\r`, Delete sends DEL, and multiline paste still requires confirmation. Snapshots use the remote PTY dimensions; size changes are applied in output-stream order. Primary-screen resizing reflows soft-wrapped lines and preserves the cursor, retaining up to 1,000 rows above and below the viewport for size restoration (not a scrollback browser). Full-screen applications remain responsible for redrawing their grid. The Start card omits desktop shortcuts and decorative chevrons; the terminal's session switcher remains.
+
+Conversations show the current workspace and work mode below the Chat/Trajectory tabs, using the session's membership, directory and Agent preset rather than new-task drafts. Missing metadata is explicitly marked as unavailable. New tasks retain workspace and mode selectors, locked while the first message is being submitted; an unloaded preset catalog no longer hides the mode position.
 
 ## Architecture
 

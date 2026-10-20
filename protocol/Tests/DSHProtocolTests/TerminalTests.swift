@@ -83,13 +83,6 @@ final class TerminalTests: XCTestCase {
         XCTAssertEqual(owners.map(\.sessionId), ["same"])
     }
 
-    func testCommittedInputMapsNewlineAndEmptyBackspace() {
-        XCTAssertEqual(terminalCommittedInput(""), "\u{007f}")
-        XCTAssertEqual(terminalCommittedInput(terminalImeAnchor), "")
-        XCTAssertEqual(terminalCommittedInput("\(terminalImeAnchor)echo\n"), "echo\r")
-        XCTAssertEqual(terminalCommittedInput("\(terminalImeAnchor)ok"), "ok")
-    }
-
     func testAlternateScreenAndResize() {
         let term = AnsiTerminal(cols: 10, rows: 3)
         term.write("keep")
@@ -104,6 +97,173 @@ final class TerminalTests: XCTestCase {
         XCTAssertEqual(term.cols, 12)
         XCTAssertEqual(term.rows, 5)
         XCTAssertTrue(term.plainText().contains("keep"))
+    }
+
+    func testResizeReflowsSoftLinesWithoutJoiningHardLines() {
+        let term = AnsiTerminal(cols: 10, rows: 6)
+        term.write("abcdefghijklmnop\r\nNEXT")
+        term.resize(newCols: 6, newRows: 6)
+        XCTAssertEqual(term.plainText(), "abcdef\nghijkl\nmnop\nNEXT")
+        XCTAssertEqual(term.snapshot().wrapped, [6, 6, 0, 0, 0, 0])
+        XCTAssertEqual(term.cursorX, 4)
+        XCTAssertEqual(term.cursorY, 3)
+        XCTAssertEqual(term.snapshot().selectedText(anchor: 0, end: 23), "abcdefghijklmnop\nNEXT")
+        term.resize(newCols: 10, newRows: 6)
+        XCTAssertEqual(term.plainText(), "abcdefghij\nklmnop\nNEXT")
+        XCTAssertEqual(term.cursorX, 4)
+        XCTAssertEqual(term.cursorY, 2)
+    }
+
+    func testResizeMapsCursorWithinLongLineAndSavedCursor() {
+        let term = AnsiTerminal(cols: 12, rows: 4)
+        term.write("abcdefghijkl\u{001b}[1;8H\u{001b}7")
+        term.resize(newCols: 5, newRows: 4)
+        XCTAssertEqual(term.plainText(), "abcde\nfghij\nkl")
+        XCTAssertEqual(term.cursorX, 2)
+        XCTAssertEqual(term.cursorY, 1)
+        term.write("\u{001b}[1;1H\u{001b}8Z")
+        XCTAssertEqual(term.plainText(), "abcde\nfgZij\nkl")
+        term.resize(newCols: 12, newRows: 4)
+        XCTAssertEqual(term.plainText(), "abcdefgZijkl")
+        XCTAssertEqual(term.cursorX, 8)
+        XCTAssertEqual(term.cursorY, 0)
+    }
+
+    func testResizePreservesPendingWrapAtRightMargin() {
+        let term = AnsiTerminal(cols: 8, rows: 4)
+        term.write("abcdefgh")
+        term.resize(newCols: 4, newRows: 4)
+        XCTAssertEqual(term.cursorX, 4)
+        XCTAssertEqual(term.cursorY, 1)
+        term.resize(newCols: 8, newRows: 4)
+        XCTAssertEqual(term.cursorX, 8)
+        XCTAssertEqual(term.cursorY, 0)
+        term.write("I")
+        XCTAssertEqual(term.plainText(), "abcdefgh\nI")
+        XCTAssertEqual(term.snapshot().wrapped[0], 8)
+    }
+
+    func testResizeRetainsBottomContentAndRestoresDisplacedRows() {
+        let term = AnsiTerminal(cols: 8, rows: 4)
+        term.write("one\r\ntwo\r\nthree\r\nfour")
+        term.resize(newCols: 8, newRows: 2)
+        XCTAssertEqual(term.plainText(), "three\nfour")
+        XCTAssertEqual(term.cursorX, 4)
+        XCTAssertEqual(term.cursorY, 1)
+        term.resize(newCols: 8, newRows: 4)
+        XCTAssertEqual(term.plainText(), "one\ntwo\nthree\nfour")
+        XCTAssertEqual(term.cursorY, 3)
+    }
+
+    func testResizeRetainsRowsBelowCursorWithoutHidingCursor() {
+        let term = AnsiTerminal(cols: 8, rows: 4)
+        term.write("one\r\ntwo\r\nthree\r\nfour\u{001b}[1;2H")
+        term.resize(newCols: 8, newRows: 2)
+        XCTAssertEqual(term.plainText(), "one\ntwo")
+        XCTAssertEqual(term.cursorX, 1)
+        XCTAssertEqual(term.cursorY, 0)
+        term.resize(newCols: 8, newRows: 4)
+        XCTAssertEqual(term.plainText(), "one\ntwo\nthree\nfour")
+        XCTAssertEqual(term.cursorX, 1)
+        XCTAssertEqual(term.cursorY, 0)
+    }
+
+    func testNarrowViewportRetainsWrappedPrefixForWidening() {
+        let term = AnsiTerminal(cols: 12, rows: 2)
+        term.write("abcdefghijkl")
+        term.resize(newCols: 3, newRows: 2)
+        XCTAssertEqual(term.plainText(), "ghi\njkl")
+        XCTAssertEqual(term.cursorX, 3)
+        XCTAssertEqual(term.cursorY, 1)
+        term.write("M")
+        XCTAssertEqual(term.plainText(), "jkl\nM")
+        term.resize(newCols: 12, newRows: 2)
+        XCTAssertEqual(term.plainText(), "abcdefghijkl\nM")
+        XCTAssertEqual(term.cursorX, 1)
+        XCTAssertEqual(term.cursorY, 1)
+    }
+
+    func testResizeKeepsWideCharactersAndSoftWrapPaddingIntact() {
+        let term = AnsiTerminal(cols: 6, rows: 5)
+        term.write("\u{001b}[31mabc中界Z")
+        term.resize(newCols: 4, newRows: 5)
+        XCTAssertEqual(term.plainText(), "abc\n中界\nZ")
+        XCTAssertEqual(term.snapshot().wrapped, [3, 4, 0, 0, 0])
+        XCTAssertEqual(term.snapshot().selectedText(anchor: 0, end: 11), "abc中界Z")
+        XCTAssertEqual(term.cursorX, 1)
+        XCTAssertEqual(term.cursorY, 2)
+        for r in 0..<term.rows {
+            for c in 0..<term.cols {
+                if term.cell(r, c).wide {
+                    XCTAssertLessThan(c + 1, term.cols)
+                    XCTAssertTrue(term.cell(r, c + 1).spacer)
+                    XCTAssertEqual(term.cell(r, c).fg, 1)
+                }
+                if term.cell(r, c).spacer {
+                    XCTAssertGreaterThan(c, 0)
+                    XCTAssertTrue(term.cell(r, c - 1).wide)
+                }
+            }
+        }
+        term.resize(newCols: 6, newRows: 5)
+        XCTAssertEqual(term.plainText(), "abc中\n界Z")
+        XCTAssertEqual(term.snapshot().wrapped[0], 5)
+        XCTAssertEqual(term.cursorX, 3)
+        XCTAssertEqual(term.cursorY, 1)
+    }
+
+    func testAlternateResizeCropsGridButReflowsInactivePrimary() {
+        let term = AnsiTerminal(cols: 8, rows: 4)
+        term.write("abcdefghij")
+        term.write("\u{001b}[?1049h123中")
+        term.resize(newCols: 4, newRows: 2)
+        XCTAssertEqual(term.plainText(), "123")
+        XCTAssertFalse(term.cell(0, 3).wide)
+        XCTAssertEqual(term.cursorX, 3)
+        term.write("\u{001b}[2J\u{001b}[?1049l")
+        XCTAssertEqual(term.plainText(), "efgh\nij")
+        XCTAssertEqual(term.cursorX, 2)
+        XCTAssertEqual(term.cursorY, 1)
+        term.resize(newCols: 8, newRows: 4)
+        XCTAssertEqual(term.plainText(), "abcdefgh\nij")
+        XCTAssertEqual(term.cursorX, 2)
+        XCTAssertEqual(term.cursorY, 1)
+    }
+
+    func testSnapshotClearDiscardsResizeHistory() {
+        let term = AnsiTerminal(cols: 12, rows: 2)
+        term.write("abcdefghijkl")
+        term.resize(newCols: 3, newRows: 2)
+        term.applySnapshot("new")
+        term.resize(newCols: 12, newRows: 4)
+        XCTAssertEqual(term.plainText(), "new")
+    }
+
+    func testResizeRetainedHistoryIsBounded() {
+        let term = AnsiTerminal(cols: 4, rows: 1_200)
+        term.write(String(repeating: "old\r\n", count: 1_199) + "END")
+        term.resize(newCols: 4, newRows: 1)
+        XCTAssertEqual(term.plainText(), "END")
+        XCTAssertEqual(term.cursorY, 0)
+        term.resize(newCols: 4, newRows: 1_200)
+        let restored = term.plainText().split(separator: "\n")
+        XCTAssertEqual(restored.count, 1_001)
+        XCTAssertEqual(restored.last, "END")
+        XCTAssertEqual(term.cursorY, 1_000)
+    }
+
+    func testResizeWideMarginAtMinimumWidth() {
+        let term = AnsiTerminal(cols: 4, rows: 4)
+        term.write("中界")
+        term.resize(newCols: 1, newRows: 4)
+        XCTAssertEqual(term.cols, 2)
+        XCTAssertEqual(term.plainText(), "中\n界")
+        XCTAssertEqual(term.cursorX, 2)
+        XCTAssertEqual(term.cursorY, 1)
+        term.resize(newCols: 4, newRows: 4)
+        XCTAssertEqual(term.plainText(), "中界")
+        XCTAssertEqual(term.cursorX, 4)
+        XCTAssertEqual(term.cursorY, 0)
     }
 
     func testCJKWideCells() {

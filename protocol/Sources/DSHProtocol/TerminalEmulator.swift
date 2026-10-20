@@ -130,6 +130,15 @@ public final class AnsiTerminal: @unchecked Sendable {
     private var primaryScreen: TerminalGrid?
     private var primaryX = 0
     private var primaryY = 0
+    private var primarySavedX = 0
+    private var primarySavedY = 0
+    // Rows displaced by a primary-screen resize are retained, not horizontally clipped.
+    // This is bounded local history, not a scrollback UI or a replacement for host replay.
+    private static let retainedRowLimit = 1_000
+    private var precedingCells: [[TermCell]] = []
+    private var precedingWrapped: [Int] = []
+    private var followingCells: [[TermCell]] = []
+    private var followingWrapped: [Int] = []
     private var mouseMode = 0
     private var sgrMouse = false
     private var savedX = 0
@@ -221,25 +230,129 @@ public final class AnsiTerminal: @unchecked Sendable {
         let nc = max(newCols, 2)
         let nr = max(newRows, 1)
         if nc == cols && nr == rows { return }
-        var next = Self.blank(cols: nc, rows: nr)
-        for r in 0..<min(nr, rows) {
-            for c in 0..<min(nc, cols) {
-                next[r][c] = cells[r][c]
+        if alternateScreen {
+            let alternateCells = cells
+            let alternateWrapped = wrapped
+            let alternateX = cursorX
+            let alternateY = cursorY
+            let alternateSavedX = savedX
+            let alternateSavedY = savedY
+            if let primaryScreen {
+                cells = primaryScreen.cells
+                wrapped = primaryScreen.wrapped
+                cursorX = primaryX
+                cursorY = primaryY
+                savedX = primarySavedX
+                savedY = primarySavedY
+                reflowPrimary(cols: nc, rows: nr)
+                self.primaryScreen = snapshot()
+                primaryX = cursorX
+                primaryY = cursorY
+                primarySavedX = savedX
+                primarySavedY = savedY
             }
-        }
-        cells = next
-        if wrapped.count < nr {
-            wrapped.append(contentsOf: Array(repeating: 0, count: nr - wrapped.count))
-        } else if wrapped.count > nr {
-            wrapped = Array(wrapped.prefix(nr))
+            // Full-screen applications own their layout: crop/pad, never reflow.
+            cells = Self.blank(cols: nc, rows: nr)
+            wrapped = Array(repeating: 0, count: nr)
+            for r in 0..<min(rows, nr) {
+                for c in 0..<min(cols, nc) {
+                    cells[r][c] = alternateCells[r][c]
+                }
+                if cells[r][nc - 1].wide { cells[r][nc - 1] = TermCell() }
+                wrapped[r] = min(alternateWrapped[r], nc)
+            }
+            cursorX = min(alternateX, nc - 1)
+            cursorY = min(alternateY, nr - 1)
+            savedX = min(alternateSavedX, nc - 1)
+            savedY = min(alternateSavedY, nr - 1)
+        } else {
+            reflowPrimary(cols: nc, rows: nr)
         }
         cols = nc
         rows = nr
         scrollTop = 0
         scrollBottom = rows - 1
-        cursorX = min(max(cursorX, 0), cols - 1)
-        cursorY = min(max(cursorY, 0), rows - 1)
         bump()
+    }
+
+    private func reflowPrimary(cols newCols: Int, rows newRows: Int) {
+        let source = precedingCells + cells + followingCells
+        let sourceWrapped = precedingWrapped + wrapped + followingWrapped
+        let cursorRow = precedingCells.count + cursorY
+        let savedRow = precedingCells.count + savedY
+        let blank = TermCell()
+        // Ignore unused bottom padding, but keep explicit blank lines before content/cursors.
+        var end = source.count
+        while end > max(cursorRow, savedRow) + 1,
+              sourceWrapped[end - 1] == 0,
+              source[end - 1].allSatisfy({ $0 == blank }) {
+            end -= 1
+        }
+        var output: [[TermCell]] = []
+        var outputWrapped: [Int] = []
+        var line = Array(repeating: blank, count: newCols)
+        var column = 0
+        var mappedCursor: (x: Int, y: Int)?
+        var mappedSaved: (x: Int, y: Int)?
+        func appendLine(wrap: Int) {
+            output.append(line)
+            outputWrapped.append(wrap)
+            line = Array(repeating: blank, count: newCols)
+            column = 0
+        }
+        for r in 0..<end {
+            let sourceLine = source[r]
+            let soft = sourceWrapped[r] > 0
+            var length = soft ? min(sourceWrapped[r], sourceLine.count)
+                : (sourceLine.lastIndex(where: { $0 != blank }).map { $0 + 1 } ?? 0)
+            if r == cursorRow { length = max(length, min(cursorX, sourceLine.count)) }
+            if r == savedRow { length = max(length, min(savedX, sourceLine.count)) }
+            var c = 0
+            while c < length {
+                var cell = sourceLine[c]
+                // A spacer is emitted only with its lead; never carry an orphan across a resize.
+                if cell.spacer { cell = blank }
+                let width = cell.wide ? 2 : 1
+                if column + width > newCols { appendLine(wrap: column) }
+                if r == cursorRow, cursorX == c { mappedCursor = (column, output.count) }
+                if r == savedRow, savedX == c { mappedSaved = (column, output.count) }
+                line[column] = cell
+                if width == 2 {
+                    line[column + 1] = TermCell(spacer: true)
+                    if r == cursorRow, cursorX == c + 1 { mappedCursor = (column + 1, output.count) }
+                    if r == savedRow, savedX == c + 1 { mappedSaved = (column + 1, output.count) }
+                }
+                column += width
+                c += width
+            }
+            // Keep the delayed-wrap position (x == cols), rather than moving it left.
+            if r == cursorRow, mappedCursor == nil { mappedCursor = (column, output.count) }
+            if r == savedRow, mappedSaved == nil { mappedSaved = (column, output.count) }
+            if !soft { appendLine(wrap: 0) }
+        }
+        if column > 0 { appendLine(wrap: 0) }
+        let cursor = mappedCursor ?? (x: 0, y: 0)
+        let saved = mappedSaved ?? (x: 0, y: 0)
+        // Prefer the bottom content, but never move the active cursor outside the viewport.
+        let start = min(max(output.count - newRows, 0), cursor.y)
+        let stop = min(start + newRows, output.count)
+        let historyStart = max(start - Self.retainedRowLimit, 0)
+        precedingCells = Array(output[historyStart..<start])
+        precedingWrapped = Array(outputWrapped[historyStart..<start])
+        let followingEnd = min(stop + Self.retainedRowLimit, output.count)
+        followingCells = Array(output[stop..<followingEnd])
+        followingWrapped = Array(outputWrapped[stop..<followingEnd])
+        cells = Array(output[start..<stop])
+        wrapped = Array(outputWrapped[start..<stop])
+        if cells.count < newRows {
+            let padding = newRows - cells.count
+            cells.append(contentsOf: Self.blank(cols: newCols, rows: padding))
+            wrapped.append(contentsOf: Array(repeating: 0, count: padding))
+        }
+        cursorX = cursor.x
+        cursorY = cursor.y - start
+        savedX = saved.x
+        savedY = min(max(saved.y - start, 0), newRows - 1)
     }
 
     public func clear() {
@@ -247,6 +360,10 @@ public final class AnsiTerminal: @unchecked Sendable {
         wrapped = Array(repeating: 0, count: rows)
         alternateScreen = false
         primaryScreen = nil
+        precedingCells.removeAll()
+        precedingWrapped.removeAll()
+        followingCells.removeAll()
+        followingWrapped.removeAll()
         mouseMode = 0
         sgrMouse = false
         savedX = 0
@@ -466,6 +583,14 @@ public final class AnsiTerminal: @unchecked Sendable {
 
     private func scrollUp(_ n: Int) {
         for _ in 0..<n {
+            if !alternateScreen, scrollTop == 0, scrollBottom == rows - 1 {
+                precedingCells.append(cells[0])
+                precedingWrapped.append(wrapped[0])
+                if precedingCells.count > Self.retainedRowLimit {
+                    precedingCells.removeFirst()
+                    precedingWrapped.removeFirst()
+                }
+            }
             for r in scrollTop..<scrollBottom { copyRow(from: r + 1, to: r) }
             clearRow(scrollBottom)
         }
@@ -571,19 +696,23 @@ public final class AnsiTerminal: @unchecked Sendable {
             primaryScreen = snapshot()
             primaryX = cursorX
             primaryY = cursorY
+            primarySavedX = savedX
+            primarySavedY = savedY
+            savedX = 0
+            savedY = 0
             cells = Self.blank(cols: cols, rows: rows)
             wrapped = Array(repeating: 0, count: rows)
             cursorX = 0
             cursorY = 0
         } else {
             if let saved = primaryScreen {
-                cells = (0..<rows).map { r in
-                    (0..<cols).map { c in saved.cell(r, c) }
-                }
-                wrapped = (0..<rows).map { min(saved.wrapped[safe: $0] ?? 0, cols) }
+                cells = saved.cells
+                wrapped = saved.wrapped
             }
-            cursorX = min(max(primaryX, 0), cols - 1)
-            cursorY = min(max(primaryY, 0), rows - 1)
+            cursorX = primaryX
+            cursorY = primaryY
+            savedX = primarySavedX
+            savedY = primarySavedY
             primaryScreen = nil
         }
         alternateScreen = active
@@ -603,6 +732,14 @@ public final class AnsiTerminal: @unchecked Sendable {
             eraseLine(1)
         case 2, 3:
             for r in 0..<rows { clearRow(r) }
+            if !alternateScreen {
+                followingCells.removeAll()
+                followingWrapped.removeAll()
+                if mode == 3 {
+                    precedingCells.removeAll()
+                    precedingWrapped.removeAll()
+                }
+            }
         default:
             break
         }

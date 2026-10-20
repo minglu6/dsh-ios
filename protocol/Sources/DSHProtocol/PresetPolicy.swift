@@ -1,3 +1,5 @@
+import Foundation
+
 /// Official agent-preset registry fold. Port of Android `isBuiltInPreset` / `presetName`.
 public enum PresetPolicy {
     public static let builtInIds: Set<String> = ["standard", "ptc", "minimal", "cordis"]
@@ -89,6 +91,50 @@ public enum PresetPolicy {
     /// Desktop/Android: the current default card is not rewritten on tap.
     public static func canSelectAsDefault(_ row: JSONValue) -> Bool {
         row["broken"].str() == nil && row["isDefault"].bool() != true
+    }
+}
+
+/// Session context is immutable after creation; never resolve it through draft selections.
+public enum SessionContextPolicy {
+    public static func presetName(id: String?, roster: [JSONValue], english: Bool) -> String? {
+        guard let id = nonblank(id) else { return nil }
+        let row = roster.first { $0["id"].str() == id } ?? jsonObject(["id": .string(id)])
+        return PresetPolicy.name(row, english: english)
+    }
+
+    public static func draftPresetId(pending: String?, draft: String, roster: [JSONValue]) -> String? {
+        nonblank(pending) ?? nonblank(draft)
+            ?? roster.first { $0["isDefault"].bool() == true }.flatMap { nonblank($0["id"].str()) }
+    }
+
+    public static func workspaceLabel(
+        sessionId: String,
+        cwd: String?,
+        workspaces: [WorkspaceView],
+        localizedDefault: String
+    ) -> String? {
+        if let workspace = workspaces.first(where: { $0.sessionIds.contains(sessionId) }) {
+            return workspaceDisplayTitle(
+                title: workspace.title, path: workspace.path, localizedDefault: localizedDefault
+            )
+        }
+        // Do not infer workspace identity from a path or another session's draft.
+        return nonblank(cwd)
+    }
+
+    public static func unknownWorkspace(english: Bool) -> String {
+        english ? "Workspace not provided" : "工作区未提供"
+    }
+
+    public static func unknownPreset(english: Bool) -> String {
+        english ? "Work mode not provided" : "工作模式未提供"
+    }
+
+    private static func nonblank(_ value: String?) -> String? {
+        guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else {
+            return nil
+        }
+        return value
     }
 }
 

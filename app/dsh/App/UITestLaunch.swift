@@ -101,6 +101,10 @@ extension AppModel {
             WorkspaceView(workspaceId: "ws-ios", path: "/Users/dev/dsh-ios", title: "dsh-ios", sessionIds: [chatId, "s-blank"]),
             WorkspaceView(workspaceId: "ws-android", path: "/Users/dev/dsh-android", title: "dsh-android", sessionIds: ["s-old"]),
         ]
+        presetRoster = [
+            jsonObject(["id": .string("standard"), "isDefault": .bool(true)]),
+            jsonObject(["id": .string("cordis")]),
+        ]
         catalog = ModelCatalog.parse(.object([
             "default": .object([
                 "provider": .string("deepseek-official"),
@@ -215,7 +219,8 @@ extension AppModel {
                     outputTokens: 10
                 ),
                 context: ComposerContext(usedTokens: 2, contextWindow: 100)
-            )
+            ),
+            agentPreset: "standard"
         )
 
         showDrawer = false
@@ -225,6 +230,26 @@ extension AppModel {
 
     fileprivate func applyUITestScreen(_ screen: String) {
         switch screen {
+        case "contextActive", "contextBlank", "contextOffline", "contextUnknown", "contextNoRoster":
+            draftWorkspaceId = "ws-android"
+            draftPreset = "cordis"
+            if screen == "contextBlank" {
+                chat = ChatState(sessionId: "s-blank", loaded: true, agentPreset: "standard")
+            }
+            if screen == "contextOffline", let activeId {
+                status[activeId] = .offline
+            }
+            if screen == "contextUnknown" {
+                workspaces = []
+                chat?.agentPreset = nil
+                chat?.loaded = false
+            }
+            if screen == "contextNoRoster" { presetRoster = [] }
+        case "contextLandingEmpty":
+            chat = nil
+            firstPrompt = nil
+            workspaces = []
+            presetRoster = []
         case "landing", "startLanding":
             chat = nil
             firstPrompt = nil

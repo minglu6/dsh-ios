@@ -25,6 +25,55 @@ final class ScreenshotTests: XCTestCase {
         try capture(appearance: "Dark")
     }
 
+    func testConversationContextUsesSessionMetadataNotDraftSelections() {
+        for screen in ["contextActive", "contextBlank", "contextOffline", "contextNoRoster", "contextUnknown"] {
+            let app = XCUIApplication()
+            app.launchArguments = ["-UITestFixture", "-UITestScreen", screen]
+            app.launch()
+            let workspace = app.descendants(matching: .any)["conversationWorkspace"].firstMatch
+            let preset = app.descendants(matching: .any)["conversationPreset"].firstMatch
+            XCTAssertTrue(workspace.waitForExistence(timeout: 15), screen)
+            XCTAssertTrue(preset.exists, screen)
+            XCTAssertEqual(workspace.label, screen == "contextUnknown" ? "工作区未提供" : "dsh-ios", screen)
+            XCTAssertEqual(preset.label, screen == "contextUnknown" ? "工作模式未提供" : "标准模式", screen)
+            XCTAssertFalse(app.buttons["draftWorkspace"].exists, screen)
+            XCTAssertFalse(app.buttons["draftPreset"].exists, screen)
+            XCTAssertFalse(app.buttons["conversationWorkspace"].exists, screen)
+            XCTAssertFalse(app.buttons["conversationPreset"].exists, screen)
+            app.terminate()
+        }
+    }
+
+    func testLandingContextRemainsSelectableAndVisibleWithoutMetadata() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-UITestFixture", "-UITestScreen", "landing"]
+        app.launch()
+        let workspace = app.buttons["draftWorkspace"]
+        let preset = app.buttons["draftPreset"]
+        XCTAssertTrue(workspace.waitForExistence(timeout: 15))
+        XCTAssertEqual(workspace.value as? String, "dsh-ios")
+        XCTAssertEqual(preset.label, "标准模式")
+        workspace.tap()
+        let android = app.buttons.containing(.staticText, identifier: "dsh-android").firstMatch
+        XCTAssertTrue(android.waitForExistence(timeout: 5))
+        android.tap()
+        XCTAssertEqual(workspace.value as? String, "dsh-android")
+        preset.tap()
+        let creator = app.buttons.containing(.staticText, identifier: "创造模式").firstMatch
+        XCTAssertTrue(creator.waitForExistence(timeout: 5))
+        creator.tap()
+        XCTAssertEqual(preset.label, "创造模式")
+        app.terminate()
+
+        app.launchArguments = ["-UITestFixture", "-UITestScreen", "contextLandingEmpty"]
+        app.launch()
+        XCTAssertTrue(workspace.waitForExistence(timeout: 15))
+        XCTAssertEqual(workspace.value as? String, "")
+        XCTAssertTrue(preset.exists)
+        XCTAssertEqual(preset.label, "选择工作模式")
+        XCTAssertFalse(preset.isEnabled)
+    }
+
     private func capture(appearance: String) throws {
         let root = try screenshotRoot()
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)

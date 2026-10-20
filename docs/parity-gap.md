@@ -191,6 +191,10 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Top shortcut row; Tab → `\t` | `TerminalView.kt` | same two-row English keycaps; Tab sends `\t`. Tab title is shell name only; 退出 → 关闭（#20） | **present** | **B** / **P1** / **#20** |
 | Tap cursor / long-press select | `TerminalView.kt` | tap / long-press + drag | **present** | **B** |
 | Resume saved PTY identities | `Pocket.kt` | `TerminalStore` + `selectTerminal` | **present** | **B** |
+| Portrait / keyboard resize | Host PTY size | Apply Host snapshot dimensions and ordered state changes; primary-screen soft-line reflow with cursor mapping and bounded displaced-row retention | **present** | terminal repair |
+| Native key input | Key events | `UIKeyInput` insertion / Delete / Return, no asynchronous TextField buffer reset; serial attachment-bound writes | **present** | terminal repair |
+
+Current iOS context display: `ConversationContextRow` shows the active workspace and work mode below the conversation tabs. Existing sessions use Host metadata read-only (including blank sessions); landing keeps editable draft selectors. This extends the earlier landing-only preset presentation documented in the historical rounds below.
 
 ## 4. Files / workspace
 

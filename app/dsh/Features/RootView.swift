@@ -398,11 +398,7 @@ struct RootView: View {
     }
 
     private var landingWorkspaceRow: some View {
-        HStack(spacing: 10) {
-            LandingWorkspaceChip(model: model, showDirectoryPicker: $showWorkspacePicker)
-            AgentPresetSeat(model: model)
-            Spacer()
-        }
+        ConversationContextRow(model: model, showDirectoryPicker: $showWorkspacePicker)
         .padding(.horizontal, 14)
     }
 

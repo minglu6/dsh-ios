@@ -2,14 +2,53 @@ import XCTest
 @testable import DSHProtocol
 
 final class ComposerPickerParityTests: XCTestCase {
-    func testConversationHeaderOmitsModelAndPresetOnPhone() {
+    func testConversationHeaderOmitsModelAndExtraActionsOnPhone() {
         XCTAssertFalse(conversationHeaderShowsModelChip)
-        XCTAssertFalse(conversationHeaderShowsAgentPreset)
         XCTAssertFalse(conversationHeaderShowsTimestamp)
         XCTAssertFalse(conversationHeaderShowsShare)
         XCTAssertTrue(connectionsPresentedAsFullScreenRoute)
         XCTAssertTrue(connectionsRouteClosesSessionDrawer)
-        XCTAssertTrue(agentPresetSeatOnLandingOnly)
+    }
+
+    func testSessionPresetUsesActualProjectionAndUnfilteredRegistryName() {
+        let roster: [JSONValue] = [
+            jsonObject(["id": .string("standard"), "isDefault": .bool(true)]),
+            jsonObject(["id": .string("minimal"), "name": .string("团队模式")]),
+        ]
+        XCTAssertEqual(SessionContextPolicy.presetName(id: "minimal", roster: roster, english: false), "团队模式")
+        XCTAssertEqual(SessionContextPolicy.presetName(id: "ptc", roster: [], english: false), "PTC 模式")
+        XCTAssertEqual(SessionContextPolicy.presetName(id: "custom-mode", roster: [], english: true), "custom-mode")
+        XCTAssertNil(SessionContextPolicy.presetName(id: nil, roster: roster, english: false))
+        XCTAssertNil(SessionContextPolicy.presetName(id: "  ", roster: roster, english: false))
+    }
+
+    func testDraftPresetMatchesCreationPrecedenceWithoutGuessingFirstRow() {
+        let roster: [JSONValue] = [
+            jsonObject(["id": .string("minimal")]),
+            jsonObject(["id": .string("standard"), "isDefault": .bool(true)]),
+        ]
+        XCTAssertEqual(SessionContextPolicy.draftPresetId(pending: "cordis", draft: "ptc", roster: roster), "cordis")
+        XCTAssertEqual(SessionContextPolicy.draftPresetId(pending: nil, draft: "ptc", roster: roster), "ptc")
+        XCTAssertEqual(SessionContextPolicy.draftPresetId(pending: nil, draft: " ", roster: roster), "standard")
+        XCTAssertNil(SessionContextPolicy.draftPresetId(pending: nil, draft: "", roster: [roster[0]]))
+        XCTAssertNil(SessionContextPolicy.draftPresetId(pending: nil, draft: "", roster: []))
+    }
+
+    func testSessionWorkspaceUsesMembershipThenActualCwdWithoutDraftFallback() {
+        let workspaces = [
+            WorkspaceView(workspaceId: "draft", path: "/draft/project", title: "Draft", sessionIds: []),
+            WorkspaceView(workspaceId: "active", path: "/active/project", title: "Active", sessionIds: ["s"]),
+        ]
+        XCTAssertEqual(
+            SessionContextPolicy.workspaceLabel(sessionId: "s", cwd: "/other", workspaces: workspaces, localizedDefault: "默认"),
+            "Active"
+        )
+        XCTAssertEqual(
+            SessionContextPolicy.workspaceLabel(sessionId: "unlisted", cwd: "/actual/project", workspaces: workspaces, localizedDefault: "默认"),
+            "/actual/project"
+        )
+        XCTAssertNil(SessionContextPolicy.workspaceLabel(sessionId: "unlisted", cwd: nil, workspaces: workspaces, localizedDefault: "默认"))
+        XCTAssertNil(SessionContextPolicy.workspaceLabel(sessionId: "unlisted", cwd: " ", workspaces: [], localizedDefault: "默认"))
     }
 
     func testPhoneConnectionLivesInDrawerFooterNotSettings() {

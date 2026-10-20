@@ -146,13 +146,33 @@ public enum TerminalIdentityStore {
     }
 }
 
-/// The sentinel lets soft keyboards send backspace even after the last committed keystroke.
-public func terminalCommittedInput(_ text: String) -> String {
-    if text.isEmpty { return "\u{007f}" }
-    return String(text.drop(while: { $0 == "\u{200B}" })).replacingOccurrences(of: "\n", with: "\r")
+/// UIKeyInput supplies committed text, not the entire contents of an editing buffer.
+/// Normalize pasted CRLF as one Return; backspace is a separate key event.
+public func terminalInputText(_ text: String) -> String {
+    text.replacingOccurrences(of: "\r\n", with: "\r").replacingOccurrences(of: "\n", with: "\r")
 }
 
-public let terminalImeAnchor = "\u{200B}"
+/// Screen coordinates belong to the Host frame's dimensions, not the current
+/// phone viewport. Apply size changes in stream order before subsequent output.
+public func applyTerminalScreenFrame(_ frame: JSONValue, to terminal: AnsiTerminal) {
+    switch frame["type"].str() {
+    case "snapshot":
+        terminal.clear()
+        terminal.resize(
+            newCols: frame["info"]["cols"].int() ?? terminal.cols,
+            newRows: frame["info"]["rows"].int() ?? terminal.rows
+        )
+        terminal.write(frame["screen"].str() ?? "")
+    case "state":
+        if let cols = frame["info"]["cols"].int(), let rows = frame["info"]["rows"].int() {
+            terminal.resize(newCols: cols, newRows: rows)
+        }
+    case "output":
+        terminal.write(frame["data"].str() ?? "")
+    default:
+        break
+    }
+}
 
 private extension String {
     var nilIfBlank: String? {

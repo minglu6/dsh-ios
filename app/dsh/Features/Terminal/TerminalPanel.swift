@@ -100,7 +100,7 @@ struct TerminalPanel: View {
         }
         .onChange(of: model.terminalMeta?.id) { _ in
             if model.terminalMeta?.sessionId == ownerSessionId {
-                opening = false
+                opening = model.terminalOpening
                 if let host = model.activeId, let chat = model.chat?.sessionId {
                     TerminalStore.setPanelOwner(hostId: host, contextSessionId: chat, ownerSessionId: ownerSessionId)
                 }

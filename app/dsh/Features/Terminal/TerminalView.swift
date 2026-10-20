@@ -6,8 +6,7 @@ struct TerminalView: View {
     @ObservedObject var model: AppModel
     var enabled: Bool
     var platform: String?
-    @FocusState private var inputFocused: Bool
-    @State private var ime = terminalImeAnchor
+    @State private var inputFocused = false
     @State private var pendingPaste: String?
     @State private var selectionGrid: TerminalGrid?
     @State private var selectionAnchor = 0
@@ -23,31 +22,9 @@ struct TerminalView: View {
             shortcuts
             Divider()
             ZStack(alignment: .topLeading) {
-                TextField("", text: $ime)
-                    .focused($inputFocused)
-                    .textInputAutocapitalization(.never)
-                    .disableAutocorrection(true)
-                    .keyboardType(.asciiCapable)
-                    .submitLabel(.return)
+                TerminalKeyboardInput(isFocused: $inputFocused, enabled: inputEnabled, onInput: receiveInput)
                     .frame(width: 1, height: 1)
                     .opacity(0.01)
-                    .accessibilityLabel(L.terminalKeyboardInput())
-                    .disabled(!inputEnabled)
-                    .onChange(of: ime) { next in
-                        guard inputEnabled else { return }
-                        let input = terminalCommittedInput(next)
-                        if input.count > 1, input.contains("\r") {
-                            pendingPaste = input
-                        } else if !input.isEmpty {
-                            model.writeTerminal(input)
-                        }
-                        ime = terminalImeAnchor
-                    }
-                    .onSubmit {
-                        // A single-line TextField submits Return instead of inserting
-                        // a newline, so onChange never forwards it to the PTY.
-                        send("\r")
-                    }
                 TerminalCanvas(
                     terminal: model.terminal,
                     revision: model.terminalRevision,
@@ -90,8 +67,9 @@ struct TerminalView: View {
         .onChange(of: enabled) { value in
             if !value {
                 inputFocused = false
-                ime = terminalImeAnchor
                 pendingPaste = nil
+            } else {
+                resizeToViewport()
             }
         }
         .alert(L.pasteMultilineTitle(), isPresented: Binding(
@@ -161,8 +139,16 @@ struct TerminalView: View {
             viewportHeight: Double(size.height),
             cellHeight: Double(face.cellHeight)
         )
-        if cols != model.terminal.cols || rows != model.terminal.rows {
-            model.resizeTerminal(cols: cols, rows: rows)
+        model.resizeTerminal(cols: cols, rows: rows)
+    }
+
+    private func receiveInput(_ text: String) {
+        guard inputEnabled else { return }
+        let input = terminalInputText(text)
+        if input.count > 1, input.contains("\r") {
+            pendingPaste = input
+        } else {
+            send(input)
         }
     }
 
@@ -182,8 +168,89 @@ struct TerminalView: View {
 
     private func paste() {
         guard inputEnabled, let text = UIPasteboard.general.string, !text.isEmpty else { return }
-        if text.contains("\n") || text.contains("\r") { pendingPaste = text }
-        else { send(text) }
+        let input = terminalInputText(text)
+        if input.contains("\r") { pendingPaste = input }
+        else { send(input) }
+    }
+}
+
+/// A terminal consumes key events, not an editable line. A SwiftUI TextField
+/// asynchronously resetting a sentinel can resend an accumulated prefix when
+/// typing quickly; UIKeyInput delivers each insertion/deletion exactly once.
+private struct TerminalKeyboardInput: UIViewRepresentable {
+    @Binding var isFocused: Bool
+    let enabled: Bool
+    let onInput: (String) -> Void
+
+    func makeUIView(context: Context) -> TerminalInputView {
+        let view = TerminalInputView()
+        view.accessibilityLabel = L.terminalKeyboardInput()
+        view.accessibilityIdentifier = "terminalKeyboardInput"
+        return view
+    }
+
+    func updateUIView(_ view: TerminalInputView, context: Context) {
+        view.inputEnabled = enabled
+        view.wantsFocus = isFocused
+        view.onInput = onInput
+        view.onFocusChanged = { focused in
+            DispatchQueue.main.async {
+                if isFocused != focused { isFocused = focused }
+            }
+        }
+        view.updateFocus()
+    }
+}
+
+private final class TerminalInputView: UIView, UIKeyInput {
+    var inputEnabled = false
+    var wantsFocus = false
+    var onInput: ((String) -> Void)?
+    var onFocusChanged: ((Bool) -> Void)?
+
+    // Always allow Delete: the text to delete lives in the remote shell.
+    var hasText: Bool { true }
+    var keyboardType: UIKeyboardType = .asciiCapable
+    var autocapitalizationType: UITextAutocapitalizationType = .none
+    var autocorrectionType: UITextAutocorrectionType = .no
+    var spellCheckingType: UITextSpellCheckingType = .no
+    var smartQuotesType: UITextSmartQuotesType = .no
+    var smartDashesType: UITextSmartDashesType = .no
+    var smartInsertDeleteType: UITextSmartInsertDeleteType = .no
+    var returnKeyType: UIReturnKeyType = .default
+    override var canBecomeFirstResponder: Bool { inputEnabled }
+
+    func insertText(_ text: String) {
+        if inputEnabled { onInput?(text) }
+    }
+
+    func deleteBackward() {
+        if inputEnabled { onInput?("\u{007f}") }
+    }
+
+    override func becomeFirstResponder() -> Bool {
+        let accepted = super.becomeFirstResponder()
+        if accepted { onFocusChanged?(true) }
+        return accepted
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let accepted = super.resignFirstResponder()
+        if accepted { onFocusChanged?(false) }
+        return accepted
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        updateFocus()
+    }
+
+    func updateFocus() {
+        if inputEnabled && wantsFocus && window != nil {
+            if !isFirstResponder { becomeFirstResponder() }
+        } else if isFirstResponder {
+            resignFirstResponder()
+        }
     }
 }
 
@@ -253,6 +320,8 @@ private struct TerminalCanvas: View {
             let inset = CGFloat(TerminalCellLayout.inset)
             let rows = selection?.rows ?? terminal.rows
             let cols = selection?.cols ?? terminal.cols
+            var cursorColumn = min(terminal.cursorX, cols - 1)
+            if terminal.cell(terminal.cursorY, cursorColumn).spacer { cursorColumn -= 1 }
             let foreground = TermRGB(r: T.ink.components.r, g: T.ink.components.g, b: T.ink.components.b, a: 1)
             let background = TermRGB(r: T.bg.components.r, g: T.bg.components.g, b: T.bg.components.b, a: 1)
             for r in 0..<rows {
@@ -278,7 +347,7 @@ private struct TerminalCanvas: View {
                     if bg != background {
                         context.fill(Path(rect), with: .color(color(bg)))
                     }
-                    let cursor = enabled && terminal.isCursorVisible() && terminal.cursorX == c && terminal.cursorY == r
+                    let cursor = enabled && terminal.isCursorVisible() && cursorColumn == c && terminal.cursorY == r
                     if cursor {
                         context.fill(Path(rect), with: .color(color(fg)))
                         fg = bg

@@ -1,6 +1,61 @@
 import SwiftUI
 import DSHProtocol
 
+/// One context row: editable drafts on landing, host-owned metadata in a conversation.
+struct ConversationContextRow: View {
+    @ObservedObject var model: AppModel
+    @Binding var showDirectoryPicker: Bool
+
+    var body: some View {
+        HStack(spacing: 10) {
+            if let chat = model.chat {
+                let workspace = SessionContextPolicy.workspaceLabel(
+                    sessionId: chat.sessionId,
+                    cwd: model.sessions.first { $0.sessionId == chat.sessionId }?.cwd,
+                    workspaces: model.workspaces,
+                    localizedDefault: L.defaultWorkspace()
+                )
+                contextLabel(
+                    workspace ?? SessionContextPolicy.unknownWorkspace(english: L.en),
+                    kind: .folderOpen,
+                    identifier: "conversationWorkspace"
+                )
+                contextLabel(
+                    SessionContextPolicy.presetName(
+                        id: chat.agentPreset, roster: model.presetRoster, english: L.en
+                    ) ?? SessionContextPolicy.unknownPreset(english: L.en),
+                    kind: .agentPreset,
+                    identifier: "conversationPreset"
+                )
+            } else {
+                Group {
+                    LandingWorkspaceChip(model: model, showDirectoryPicker: $showDirectoryPicker)
+                    AgentPresetSeat(model: model)
+                }
+                .disabled(firstPromptBlocksComposerActions(model.firstPrompt))
+            }
+            Spacer(minLength: 0)
+        }
+        .accessibilityIdentifier("conversationContext")
+    }
+
+    private func contextLabel(_ title: String, kind: OfficialGlyph.Kind, identifier: String) -> some View {
+        HStack(spacing: 4) {
+            OfficialGlyph(kind: kind, size: 14, color: T.caption)
+            Text(title)
+                .font(.system(size: CGFloat(agentPresetSeatFontSizePoints), weight: .medium))
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
+        .foregroundStyle(T.ink)
+        .padding(.horizontal, 8)
+        .frame(minHeight: CGFloat(agentPresetSeatMinHeightPoints))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityIdentifier(identifier)
+    }
+}
+
 /// Desktop `EmptyHero` `WorkspaceChip`: ghost trigger + WorkspacePicker MenuSurface.
 /// System `Menu` + capsule fill is not the desktop chip.
 struct LandingWorkspaceChip: View {
@@ -50,6 +105,8 @@ struct LandingWorkspaceChip: View {
         .disabled(!model.isOnline)
         .opacity(model.isOnline ? 1 : 0.45)
         .accessibilityLabel(landingChooseWorkspace(english: L.en))
+        .accessibilityValue(model.landingWorkspaceLabel ?? "")
+        .accessibilityIdentifier("draftWorkspace")
         .popover(
             isPresented: $open,
             attachmentAnchor: .rect(.bounds),
@@ -125,7 +182,7 @@ struct LandingWorkspaceChip: View {
     }
 }
 
-/// Desktop `AgentPresetSeat`: landing-only ghost chip, custom menu of name + description.
+/// New-task preset selection. Existing sessions display their projection in the context row.
 struct AgentPresetSeat: View {
     @ObservedObject var model: AppModel
     @State private var open = false
@@ -134,33 +191,28 @@ struct AgentPresetSeat: View {
         PresetPolicy.visibleRows(model.presetRoster, codingTools: model.showCodeWorkView)
     }
 
-    private var currentId: String {
-        let draft = model.draftPreset.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !draft.isEmpty { return draft }
-        return rows.first { $0["isDefault"].bool() == true }?["id"].str()
-            ?? rows.first?["id"].str()
-            ?? ""
+    private var currentId: String? {
+        SessionContextPolicy.draftPresetId(
+            pending: model.pendingCreatorPreset, draft: model.draftPreset, roster: model.presetRoster
+        )
     }
 
     private var currentLabel: String {
-        if let row = rows.first(where: { $0["id"].str() == currentId }) {
-            return PresetPolicy.name(row, english: L.en)
-        }
-        return L.agentPresets()
+        SessionContextPolicy.presetName(id: currentId, roster: model.presetRoster, english: L.en)
+            ?? (L.en ? "Choose work mode" : "选择工作模式")
     }
 
     var body: some View {
-        if rows.isEmpty {
-            EmptyView()
-        } else {
-            Button { if model.isOnline { open.toggle() } } label: {
+        Button { if model.isOnline && !rows.isEmpty { open.toggle() } } label: {
                 HStack(spacing: 4) {
                     OfficialGlyph(kind: .agentPreset, size: 14, color: T.ink)
                     Text(currentLabel)
                         .font(.system(size: CGFloat(agentPresetSeatFontSizePoints), weight: .medium))
                         .lineLimit(1)
-                    OfficialGlyph(kind: .chevronDown, size: 11, color: T.caption)
-                        .rotationEffect(.degrees(open ? 180 : 0))
+                    if !rows.isEmpty {
+                        OfficialGlyph(kind: .chevronDown, size: 11, color: T.caption)
+                            .rotationEffect(.degrees(open ? 180 : 0))
+                    }
                 }
                 .foregroundStyle(T.ink)
                 .padding(.horizontal, 8)
@@ -168,10 +220,11 @@ struct AgentPresetSeat: View {
                 .frame(maxWidth: CGFloat(agentPresetSeatMaxWidthPoints), alignment: .leading)
             }
             .buttonStyle(.plain)
-            .disabled(!model.isOnline)
-            .opacity(model.isOnline ? 1 : 0.45)
+            .disabled(!model.isOnline || rows.isEmpty)
+            .opacity(model.isOnline && !rows.isEmpty ? 1 : 0.45)
             .accessibilityLabel(currentLabel)
             .accessibilityHint(agentPresetSeatHint(english: L.en))
+            .accessibilityIdentifier("draftPreset")
             .popover(
                 isPresented: $open,
                 attachmentAnchor: .rect(.bounds),
@@ -182,6 +235,7 @@ struct AgentPresetSeat: View {
                         let id = row["id"].str() ?? ""
                         Button {
                             model.draftPreset = id
+                            model.pendingCreatorPreset = nil
                             open = false
                         } label: {
                             HStack(alignment: .top, spacing: 8) {
@@ -212,6 +266,5 @@ struct AgentPresetSeat: View {
                 .frame(minWidth: 156, maxWidth: 280)
                 .modifier(PopoverCompactAdaptation())
             }
-        }
     }
 }
