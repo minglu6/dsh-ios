@@ -837,6 +837,8 @@ public func buildTrajectory(_ items: [Item], steps: [StepRecord] = []) -> [TrajT
     var turns: [TrajTurn] = []
     var turnIdx = 0
     var rows: [TrajRow] = []
+    // Live chunks replace the last assistant with this key, even when tools follow it.
+    var assistantRowIndices: [String: Int] = [:]
     var pendingPrefix: [TrajRow] = []
     var emitted = Array(repeating: false, count: steps.count)
     var stepBySeq: [Int64: Int] = [:]
@@ -850,12 +852,18 @@ public func buildTrajectory(_ items: [Item], steps: [StepRecord] = []) -> [TrajT
         if rows.isEmpty { return }
         turns.append(TrajTurn(index: turnIdx, rows: rows))
         rows = []
+        assistantRowIndices.removeAll(keepingCapacity: true)
+    }
+
+    func appendAssistantRow(_ row: TrajRow) {
+        assistantRowIndices[row.key] = rows.count
+        rows.append(row)
     }
 
     func emitStep(_ i: Int) {
         guard i >= 0, i < steps.count, !emitted[i] else { return }
         emitted[i] = true
-        rows.append(assistantRow(steps[i]))
+        appendAssistantRow(assistantRow(steps[i]))
     }
 
     func emitBySeq(_ seq: Int64?) {
@@ -939,10 +947,10 @@ public func buildTrajectory(_ items: [Item], steps: [StepRecord] = []) -> [TrajT
                 let key = liveAssistantKey ?? reasoning.key
                 liveAssistantKey = key
                 let row = liveAssistantRow(key: key, reply: "", reasoning: reasoning.text)
-                if let idx = rows.lastIndex(where: { $0.key == key && $0.kind == TrajL.kindAssistant }) {
+                if let idx = assistantRowIndices[key] {
                     rows[idx] = row
                 } else {
-                    rows.append(row)
+                    appendAssistantRow(row)
                 }
             } else {
                 emitBySeq(itemSeq(item))
@@ -951,13 +959,13 @@ public func buildTrajectory(_ items: [Item], steps: [StepRecord] = []) -> [TrajT
             if text.live {
                 let key = liveAssistantKey ?? text.key
                 liveAssistantKey = key
-                let prev = rows.last(where: { $0.key == key && $0.kind == TrajL.kindAssistant })
-                let reasoning = prev?.thinkingDetail ?? ""
+                let idx = assistantRowIndices[key]
+                let reasoning = idx.flatMap { rows[$0].thinkingDetail } ?? ""
                 let row = liveAssistantRow(key: key, reply: text.text, reasoning: reasoning)
-                if let idx = rows.lastIndex(where: { $0.key == key && $0.kind == TrajL.kindAssistant }) {
+                if let idx {
                     rows[idx] = row
                 } else {
-                    rows.append(row)
+                    appendAssistantRow(row)
                 }
             } else {
                 let seq = itemSeq(item)
@@ -966,7 +974,7 @@ public func buildTrajectory(_ items: [Item], steps: [StepRecord] = []) -> [TrajT
                     emitStep(stepIdx)
                 } else if steps.isEmpty {
                     let (title, toolOnly) = assistantTitle(reply: text.text, reasoning: "")
-                    rows.append(TrajRow(
+                    appendAssistantRow(TrajRow(
                         key: text.key, depth: 0, kind: TrajL.kindAssistant, title: title,
                         think: "—",
                         outputDetail: text.text, rawDetail: text.text,

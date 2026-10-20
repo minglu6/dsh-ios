@@ -348,6 +348,182 @@ final class TrajectoryBuilderTests: XCTestCase {
     }
 }
 
+final class TrajectoryIndexTests: XCTestCase {
+    private func request(
+        _ number: Int, turn: Int? = 1, step: Int? = 1,
+        resultKey: String? = nil, purpose: TrajectoryRequest.Purpose = .assistant
+    ) -> TrajectoryRequest {
+        TrajectoryRequest(
+            number: number, identity: "request-\(number)", purpose: purpose,
+            turn: turn, step: step, group: "", status: .complete, resultKey: resultKey
+        )
+    }
+
+    private func row(_ key: String, _ kind: String, step: Int? = 1) -> TrajRow {
+        // Fallback uses the enclosing turn, not the row's optional turn metadata.
+        TrajRow(key: key, depth: 0, kind: kind, title: key, turn: 99, step: step)
+    }
+
+    func testResultKeysOverrideFallbackAcrossTurnsAndLaterRequestsWin() {
+        let turns = [
+            TrajTurn(index: 1, rows: [row("tool", TrajL.kindTool), row("assistant", TrajL.kindAssistant)]),
+            TrajTurn(index: 2, rows: [row("result", TrajL.kindSystem), row("cmp7", TrajL.kindCompacted)]),
+        ]
+        let requests = [
+            request(1, resultKey: "result"),
+            request(2, resultKey: "missing"),
+            request(3, turn: nil, step: nil, resultKey: "result"),
+            request(4, turn: nil, step: nil, resultKey: "cmp7", purpose: .compaction),
+            request(5, resultKey: "missing", purpose: .compaction),
+        ]
+        let boundaries = trajectoryRequestBoundaries(requests, turns: turns)
+        XCTAssertEqual(boundaries, ["result": requests[2], "assistant": requests[1], "cmp7": requests[3]])
+    }
+
+    func testFallbackPrefersFirstAssistantAndOnlyFirstMatchingTurn() {
+        let turns = [
+            TrajTurn(index: 1, rows: [
+                row("subtool", TrajL.kindSubtool), row("tool", TrajL.kindTool),
+                row("first-assistant", TrajL.kindAssistant), row("second-assistant", TrajL.kindAssistant),
+                row("step-two-subtool", TrajL.kindSubtool, step: 2),
+                row("step-two-tool", TrajL.kindTool, step: 2),
+                row("no-step", TrajL.kindAssistant, step: nil),
+            ]),
+            TrajTurn(index: 1, rows: [
+                row("later-turn-assistant", TrajL.kindAssistant, step: 2),
+                row("later-only-step", TrajL.kindAssistant, step: 3),
+            ]),
+            TrajTurn(index: 2, rows: []),
+            TrajTurn(index: 2, rows: [row("after-empty-turn", TrajL.kindAssistant)]),
+        ]
+        let requests = [
+            request(1), request(2, step: 2), request(3, step: 3),
+            request(4, turn: 2), request(5, turn: nil), request(6, step: nil),
+            request(7, turn: 3), request(8),
+            request(9, turn: nil, step: nil, resultKey: "later-only-step"),
+        ]
+        XCTAssertEqual(trajectoryRequestBoundaries(requests, turns: turns), [
+            "first-assistant": requests[7],
+            "step-two-subtool": requests[1],
+            "later-only-step": requests[8],
+        ])
+        XCTAssertTrue(trajectoryRequestBoundaries(requests, turns: []).isEmpty)
+        XCTAssertTrue(trajectoryRequestBoundaries([], turns: turns).isEmpty)
+    }
+
+    func testToolCountsKeepTurnStepGroupingDuplicatesAndCompactionOrder() {
+        func tool(_ key: String, turn: Int?, step: Int?, parent: String? = nil) -> Item {
+            .tool(Item.Tool(
+                key: key, callId: key, name: "read", arguments: "{}", status: .ok,
+                turn: turn, step: step, parentCallId: parent
+            ))
+        }
+        let items: [Item] = [
+            tool("root", turn: 1, step: 1), tool("root", turn: 1, step: 1),
+            tool("child", turn: 1, step: 1, parent: ""),
+            tool("next-turn", turn: 2, step: 1),
+            tool("next-step", turn: 1, step: 2, parent: "root"),
+            tool("missing-turn", turn: nil, step: 1), tool("missing-step", turn: 1, step: nil),
+            tool("unrecorded-step", turn: 1, step: 9),
+            .compacted(Item.Compacted(key: "cmp15", compactionId: "running", status: .running, turn: 1)),
+            .compacted(Item.Compacted(
+                key: "cmp25", compactionId: "failed", status: .error,
+                error: "stopped", interrupted: true, turn: 1
+            )),
+        ]
+        let steps = [
+            StepRecord(seq: 30, turn: 1, step: 1, usage: StepUsage(outputTokens: 3)),
+            StepRecord(seq: 10, turn: 1, step: 1, usage: StepUsage(outputTokens: 1)),
+            StepRecord(seq: 20, turn: 2, step: 1, usage: StepUsage(outputTokens: 2)),
+            StepRecord(seq: 40, turn: 1, step: 2),
+            StepRecord(seq: 50, turn: 3, step: 1),
+        ]
+        let requests = buildTrajectoryRequests(items: items, steps: steps)
+        XCTAssertEqual(requests.map(\.resultKey), ["a10", "cmp15", "a20", "cmp25", "a30", "a40", "a50"])
+        XCTAssertEqual(requests.map(\.number), Array(1...7))
+        XCTAssertEqual(requests.map(\.toolCallCount), [2, 0, 1, 0, 2, 0, 0])
+        XCTAssertEqual(requests.map(\.subtoolCallCount), [1, 0, 0, 0, 1, 1, 0])
+        XCTAssertEqual(requests.map { $0.cumulativeUsage?.outputTokens }, [1, 1, 3, 3, 6, 6, 6])
+        XCTAssertEqual(requests[1].status, .running)
+        XCTAssertEqual(requests[3].status, .error)
+        XCTAssertEqual(requests[3].error, "stopped")
+        XCTAssertEqual(requests[3].errorCode, "interrupted")
+        for request in requests where request.purpose == .assistant {
+            XCTAssertEqual(request.group, TrajL.groupStep(request.step!))
+        }
+    }
+
+    func testLiveUpdatesReplaceLastAssistantWithoutTouchingToolsOrOtherTurns() {
+        let turns = buildTrajectory([
+            .user(Item.User(key: "u1", text: "first")),
+            .text(Item.Text(key: "shared", text: "older", live: false)),
+            .text(Item.Text(key: "shared", text: "newer", live: false)),
+            .reasoning(Item.Reasoning(key: "shared", text: "full reasoning", live: true)),
+            .tool(Item.Tool(key: "shared", callId: "tool", name: "read", arguments: "{}", status: .ok)),
+            .text(Item.Text(key: "another-live-key", text: "full answer", live: true)),
+            .user(Item.User(key: "u2", text: "second")),
+            .text(Item.Text(key: "shared", text: "second answer", live: true)),
+        ])
+        XCTAssertEqual(turns.map(\.index), [1, 2])
+        XCTAssertEqual(turns[0].rows.map(\.kind), [
+            TrajL.kindUser, TrajL.kindAssistant, TrajL.kindAssistant, TrajL.kindTool,
+        ])
+        XCTAssertEqual(turns[0].rows[1].outputDetail, "older")
+        XCTAssertEqual(turns[0].rows[2].outputDetail, "full answer")
+        XCTAssertEqual(turns[0].rows[2].thinkingDetail, "full reasoning")
+        XCTAssertEqual(turns[0].rows[2].rawDetail, "full reasoning\n\nfull answer")
+        XCTAssertEqual(turns[1].rows.count, 2)
+        XCTAssertEqual(turns[1].rows[1].outputDetail, "second answer")
+        XCTAssertNil(turns[1].rows[1].thinkingDetail)
+    }
+
+    func testSettledStepDeduplicationAndLiveReplacementSurviveCompactionPrefix() {
+        let steps = [
+            StepRecord(seq: 10, turn: 1, step: 1, replyText: "superseded", toolCallIds: ["call"]),
+            StepRecord(seq: 10, turn: 1, step: 1, replyText: "settled"),
+            StepRecord(seq: 20, turn: 1, step: 2, replyText: "tool owner", toolCallIds: ["call"]),
+        ]
+        let turns = buildTrajectory([
+            .compacted(Item.Compacted(key: "cmp5", compactionId: "c5", status: .ok, summary: "full summary")),
+            .user(Item.User(key: "u1", text: "continue")),
+            .reasoning(Item.Reasoning(key: "r10", text: "settled reasoning", live: false)),
+            .text(Item.Text(key: "a10", text: "settled", live: false)),
+            .tool(Item.Tool(key: "t21", callId: "call", name: "read", arguments: "{}", status: .ok)),
+            .reasoning(Item.Reasoning(key: "a10", text: "live reasoning", live: true)),
+            .text(Item.Text(key: "live-text", text: "live answer", live: true)),
+        ], steps: steps)
+        XCTAssertEqual(turns.count, 1)
+        XCTAssertEqual(turns[0].rows.map(\.key), ["cmp5", "u1", "a10", "a20", "t21"])
+        XCTAssertEqual(turns[0].rows[0].outputDetail, "full summary")
+        XCTAssertEqual(turns[0].rows[2].outputDetail, "live answer")
+        XCTAssertEqual(turns[0].rows[2].thinkingDetail, "live reasoning")
+        XCTAssertEqual(turns[0].rows[3].outputDetail, "tool owner")
+    }
+
+    func testLongTrajectoryRetainsEveryStepBoundaryAndSearchableDetail() {
+        let count = 2_000
+        var items: [Item] = [.user(Item.User(key: "u1", text: "long session"))]
+        var steps: [StepRecord] = []
+        for index in 1...count {
+            let text = "complete reply \(index)\nunique-detail-\(index)"
+            steps.append(StepRecord(seq: Int64(index), turn: 1, step: index, replyText: text))
+            items.append(.text(Item.Text(key: "a\(index)", text: text, live: false)))
+        }
+        let turns = buildTrajectory(items, steps: steps)
+        let requests = buildTrajectoryRequests(items: items, steps: steps)
+        let boundaries = trajectoryRequestBoundaries(requests, turns: turns)
+        XCTAssertEqual(turns.count, 1)
+        XCTAssertEqual(turns[0].rows.count, count + 1)
+        XCTAssertEqual(requests.count, count)
+        XCTAssertEqual(boundaries.count, count)
+        for index in 1...count {
+            XCTAssertEqual(boundaries["a\(index)"]?.number, index)
+            XCTAssertEqual(turns[0].rows[index].outputDetail, steps[index - 1].replyText)
+        }
+        XCTAssertEqual(trajectorySearchMatches(turns, query: "unique-detail-2000"), ["a2000"])
+    }
+}
+
 private func XCTAssertEqual(
     _ a: [(Double, Double)],
     _ b: [(Double, Double)],

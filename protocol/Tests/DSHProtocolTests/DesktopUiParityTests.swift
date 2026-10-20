@@ -814,7 +814,6 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertEqual(settingsPresetsSymbol(), "official.agentPreset")
         XCTAssertEqual(settingsNavIconSizePoints, 16)
         XCTAssertEqual(settingsNavGapPoints, 18)
-        XCTAssertEqual(settingsNavTitleFontSizePoints, 16)
         XCTAssertEqual(settingsNavTitleLineHeightPoints, 24)
         XCTAssertEqual(settingsNavCellHeightPoints, 40)
         XCTAssertEqual(settingsNavCellPaddingTopPoints, 9)
@@ -822,7 +821,6 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertEqual(settingsNavCellPaddingLeadingPoints, 12)
         XCTAssertEqual(settingsNavCellPaddingTrailingPoints, 16)
         XCTAssertEqual(settingsNavCellGapPoints, 8)
-        XCTAssertEqual(settingsNavCellFontSizePoints, 14)
         XCTAssertEqual(settingsNavCellLineHeightPoints, 22)
         XCTAssertEqual(
             settingsNavCellPaddingTopPoints

@@ -234,6 +234,8 @@ extension AppModel {
             seedUITestSessionHeader()
         case "sessionHeaderCompactTeam":
             seedUITestSessionHeader(compactTeam: true)
+        case "trajectoryLarge":
+            seedUITestLargeTrajectory()
         case "contextActive", "contextBlank", "contextOffline", "contextUnknown", "contextNoRoster":
             draftWorkspaceId = "ws-android"
             draftPreset = "cordis"

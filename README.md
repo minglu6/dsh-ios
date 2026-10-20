@@ -35,11 +35,13 @@ Agent Team opens in a popover anchored to its header button and closes on an out
 
 The work-mode menu uses a desktop-style anchored overlay, up to 360pt wide, measured to its content and bounded by the viewport with 12pt margins. Overflow scrolls vertically while keeping mode names and descriptions intact.
 
-iOS uses the original interface font sizes and row heights again, with body/code/terminal defaults of 14/11/13pt and no app-wide enlargement. Explicit personal font choices are preserved and never written to the remote host.
+iOS retains the original typography system, with body/code/terminal defaults of 14/11/13pt and no app-wide enlargement. Settings-home navigation uses the same system body size as general settings (17pt by default), matching system headline titles and allowing rows to grow with Dynamic Type. Explicit personal font choices are preserved and never written to the remote host.
 
 Edited-file cards and comparisons use the same real Host snapshots as Android: file switching, old/new line numbers, wrapping and a 5,000-line display limit. Failed reads remain visible and retryable rather than hiding the card; previews and comparison caches are isolated by Host/session/file identity. Missing events, capabilities or expired Host comparisons never produce fabricated diffs from tool summaries.
 
 Source previews, including Python, retain Android's offline highlighting assets and the existing CSP isolation. Native delivery waits for an explicit renderer-ready message and only records a document as sent after its complete DOM text is acknowledged; WebView `didFinish` is not module readiness. Resource/script initialization failures expose an error and reload action instead of silently leaving a blank viewport.
+
+Long-conversation trajectories cache complete derivations by chat-update revision, index request boundaries once, and load ledger rows lazily. Selection, collapsing and detail navigation reuse the snapshot. Search still covers full content; same-count streaming replacements, earlier-history loading and session changes invalidate the cache. CI supports `run_ui_tests=true` with `ui_scope=settings-trajectory` for focused settings and multi-MB trajectory interaction checks; this does not replace the full UI suite.
 
 ## Architecture
 

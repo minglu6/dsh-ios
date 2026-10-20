@@ -3,6 +3,7 @@ import DSHProtocol
 
 struct TrajectoryView: View {
     @ObservedObject var model: AppModel
+    @StateObject private var ledgerCache = TrajectoryLedgerCache()
     @State private var selected: TrajRow?
     @State private var selectedRequest: TrajectoryRequest?
     @State private var requestTab: TrajRequestTab = .overview
@@ -11,24 +12,6 @@ struct TrajectoryView: View {
     @State private var turnsCollapsed = false
     @State private var callsCollapsed = false
     @State private var searchQuery = ""
-
-    private var turns: [TrajTurn] {
-        buildTrajectory(model.chat?.items ?? [], steps: model.chat?.steps ?? [])
-    }
-
-    private var requests: [TrajectoryRequest] {
-        buildTrajectoryRequests(items: model.chat?.items ?? [], steps: model.chat?.steps ?? [])
-    }
-
-    private var boundaryByRow: [String: TrajectoryRequest] {
-        var map: [String: TrajectoryRequest] = [:]
-        for request in requests {
-            if let key = requestBoundaryRowKey(request, turns: turns) {
-                map[key] = request
-            }
-        }
-        return map
-    }
 
     var body: some View {
         let loaded = model.chat?.loaded == true
@@ -41,26 +24,18 @@ struct TrajectoryView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            ledger
+            ledger(ledgerCache.snapshot(for: model))
         }
     }
 
-    private var ledger: some View {
-        let mode: TrajectoryTimelineMode = actualDuration ? .duration : .sequence
-        let cells = trajectoryTimelineCells(turns)
-        let timeline = deriveTrajectoryTimeline(cells, mode: mode)
-        let searchMatches = trajectorySearchMatches(turns, query: searchQuery)
+    private func ledger(_ snapshot: TrajectoryLedgerSnapshot) -> some View {
+        let timeline = actualDuration ? snapshot.durationTimeline : snapshot.sequenceTimeline
+        let projection = snapshot.project(query: searchQuery, callsCollapsed: callsCollapsed)
         return VStack(spacing: 0) {
             toolbar
             if let timeline {
                 SwimlaneChart(model: timeline, selectedKey: selected?.key) { key in
-                    for turn in turns {
-                        if let row = turn.rows.first(where: { $0.key == key }) {
-                            selected = row
-                            selectedTurn = turn.index
-                            return
-                        }
-                    }
+                    openRow(key, in: snapshot)
                 }
             }
             Divider()
@@ -78,39 +53,35 @@ struct TrajectoryView: View {
                         }
                         .disabled(model.chat?.loadingOlder == true || model.chat?.hasMore != true)
                     }
-                    ForEach(turns, id: \.index) { turn in
-                        let visible = turn.rows.filter { row in
-                            (searchMatches == nil || searchMatches!.contains(row.key)) &&
-                            !(callsCollapsed && (row.kind == TrajL.kindTool || row.kind == TrajL.kindSubtool))
-                        }
-                        if searchMatches != nil && visible.isEmpty {
-                            EmptyView()
-                        } else if turnsCollapsed {
+                    if turnsCollapsed {
+                        ForEach(projection.turns, id: \.self) { turn in
                             Button { turnsCollapsed = false } label: {
-                                Text(TrajL.turnLabel(turn.index))
+                                Text(TrajL.turnLabel(turn))
                                     .font(Font.caption)
                                     .foregroundStyle(T.text3)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 8)
                             }
-                        } else {
-                            ForEach(Array(visible.enumerated()), id: \.element.key) { index, row in
-                                let boundary = boundaryByRow[row.key]
-                                TrajRowView(
-                                    row: row,
-                                    highlighted: selected?.key == row.key,
-                                    turnStart: index == 0 ? turn.index : nil,
-                                    requestBoundary: boundary,
-                                    requestSelected: selectedRequest != nil && selectedRequest?.identity == boundary?.identity
-                                ) {
-                                    selected = row
-                                    selectedTurn = turn.index
-                                } onRequestClick: { req in
-                                    selected = nil
-                                    requestTab = .overview
-                                    selectedRequest = req
-                                }
+                        }
+                    } else {
+                        // A single ForEach keeps even a many-thousand-row turn lazy.
+                        ForEach(projection.rows) { entry in
+                            let row = entry.row
+                            let boundary = snapshot.boundaryByRow[row.key]
+                            TrajRowView(
+                                row: row,
+                                highlighted: selected?.key == row.key,
+                                turnStart: entry.turnStart ? entry.turn : nil,
+                                requestBoundary: boundary,
+                                requestSelected: selectedRequest != nil && selectedRequest?.identity == boundary?.identity
+                            ) {
+                                selected = row
+                                selectedTurn = entry.turn
+                            } onRequestClick: { req in
+                                selected = nil
+                                requestTab = .overview
+                                selectedRequest = req
                             }
                         }
                     }
@@ -121,7 +92,7 @@ struct TrajectoryView: View {
             TrajectoryDetailSheet(
                 row: row,
                 turnIndex: selectedTurn,
-                parentRequest: requestForRow(row, requests: requests),
+                parentRequest: requestForRow(row, requests: snapshot.requests),
                 onOpenRequest: { req in
                     selected = nil
                     requestTab = .overview
@@ -132,12 +103,9 @@ struct TrajectoryView: View {
                     requestTab = .timing
                     selectedRequest = req
                 },
-                toolCalls: toolCalls(for: row)
+                toolCalls: snapshot.toolCalls(for: row)
             ) { call in
-                selected = call
-                if let turn = turns.first(where: { $0.rows.contains(where: { $0.key == call.key }) }) {
-                    selectedTurn = turn.index
-                }
+                openRow(call.key, in: snapshot)
             }
         }
         .sheet(item: $selectedRequest) { req in
@@ -145,17 +113,11 @@ struct TrajectoryView: View {
                 request: req,
                 onOpenResult: { key in
                     selectedRequest = nil
-                    for turn in turns {
-                        if let row = turn.rows.first(where: { $0.key == key }) {
-                            selected = row
-                            selectedTurn = turn.index
-                            return
-                        }
-                    }
+                    openRow(key, in: snapshot)
                 },
                 initialTab: requestTab,
                 assistantRow: req.resultKey.flatMap { key in
-                    turns.flatMap(\.rows).first { $0.key == key && $0.kind == TrajL.kindAssistant }
+                    snapshot.assistantByKey[key]
                 },
                 onDismiss: { selectedRequest = nil }
             )
@@ -226,12 +188,123 @@ struct TrajectoryView: View {
         .accessibilityAddTraits(pressed ? .isSelected : [])
     }
 
-    private func toolCalls(for row: TrajRow) -> [TrajRow] {
+    private func openRow(_ key: String, in snapshot: TrajectoryLedgerSnapshot) {
+        guard let entry = snapshot.rowByKey[key] else { return }
+        selected = entry.row
+        selectedTurn = entry.turn
+    }
+}
+
+/// View-lifetime memoization only: no publication from body evaluation. Chat writes
+/// (not item counts) invalidate it, so streaming replacements and paging stay live.
+@MainActor
+private final class TrajectoryLedgerCache: ObservableObject {
+    private weak var source: AppModel?
+    private var revision: UInt64?
+    private var english = false
+    private var current: TrajectoryLedgerSnapshot?
+
+    func snapshot(for model: AppModel) -> TrajectoryLedgerSnapshot {
+        if source === model, revision == model.chatRevision,
+           english == TrajL.en, let current {
+            return current
+        }
+        let next = TrajectoryLedgerSnapshot(
+            items: model.chat?.items ?? [],
+            steps: model.chat?.steps ?? []
+        )
+        source = model
+        revision = model.chatRevision
+        english = TrajL.en
+        current = next
+        return next
+    }
+}
+
+private struct TrajectoryLedgerRow: Identifiable {
+    struct ID: Hashable {
+        let turn: Int
+        let key: String
+    }
+
+    let row: TrajRow
+    let turn: Int
+    let turnStart: Bool
+    var id: ID { ID(turn: turn, key: row.key) }
+}
+
+private struct TrajectoryLedgerProjection {
+    let rows: [TrajectoryLedgerRow]
+    let turns: [Int]
+}
+
+private final class TrajectoryLedgerSnapshot {
+    let turns: [TrajTurn]
+    let requests: [TrajectoryRequest]
+    let boundaryByRow: [String: TrajectoryRequest]
+    private(set) var rowByKey: [String: TrajectoryLedgerRow] = [:]
+    private(set) var assistantByKey: [String: TrajRow] = [:]
+    private var toolRows: [TrajRow] = []
+    private lazy var cells = trajectoryTimelineCells(turns)
+    lazy var sequenceTimeline = deriveTrajectoryTimeline(cells, mode: .sequence)
+    lazy var durationTimeline = deriveTrajectoryTimeline(cells, mode: .duration)
+    private var projection: TrajectoryLedgerProjection?
+    private var projectedQuery = ""
+    private var projectedCallsCollapsed = false
+    private var searchedQuery: String?
+    private var searchMatches: Set<String>?
+
+    init(items: [Item], steps: [StepRecord]) {
+        turns = buildTrajectory(items, steps: steps)
+        requests = buildTrajectoryRequests(items: items, steps: steps)
+        boundaryByRow = trajectoryRequestBoundaries(requests, turns: turns)
+        for turn in turns {
+            for (index, row) in turn.rows.enumerated() {
+                // Match the former first(where:) navigation even if keys repeat.
+                if rowByKey[row.key] == nil {
+                    rowByKey[row.key] = TrajectoryLedgerRow(row: row, turn: turn.index, turnStart: index == 0)
+                }
+                if row.kind == TrajL.kindAssistant, assistantByKey[row.key] == nil {
+                    assistantByKey[row.key] = row
+                }
+                if row.callId != nil { toolRows.append(row) }
+            }
+        }
+    }
+
+    func project(query: String, callsCollapsed: Bool) -> TrajectoryLedgerProjection {
+        if projectedQuery == query, projectedCallsCollapsed == callsCollapsed, let projection {
+            return projection
+        }
+        if searchedQuery != query {
+            searchMatches = trajectorySearchMatches(turns, query: query)
+            searchedQuery = query
+        }
+        let matches = searchMatches
+        var rows: [TrajectoryLedgerRow] = []
+        var visibleTurns: [Int] = []
+        for turn in turns {
+            var first = true
+            for row in turn.rows {
+                if let matches, !matches.contains(row.key) { continue }
+                if callsCollapsed && (row.kind == TrajL.kindTool || row.kind == TrajL.kindSubtool) { continue }
+                rows.append(TrajectoryLedgerRow(row: row, turn: turn.index, turnStart: first))
+                first = false
+            }
+            if matches == nil || !first { visibleTurns.append(turn.index) }
+        }
+        let next = TrajectoryLedgerProjection(rows: rows, turns: visibleTurns)
+        projectedQuery = query
+        projectedCallsCollapsed = callsCollapsed
+        projection = next
+        return next
+    }
+
+    func toolCalls(for row: TrajRow) -> [TrajRow] {
         let ids = Set(row.toolCallIds)
         guard !ids.isEmpty else { return [] }
-        return turns.flatMap(\.rows).filter { candidate in
-            if let callId = candidate.callId { return ids.contains(callId) }
-            return false
+        return toolRows.filter { candidate in
+            candidate.callId.map { ids.contains($0) } ?? false
         }
     }
 }

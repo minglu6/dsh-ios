@@ -664,7 +664,7 @@ final class TrajectoryRequestTests: XCTestCase {
         let turns = buildTrajectory(items, steps: steps)
         let requests = buildTrajectoryRequests(items: items, steps: steps)
         let req = requests[0]
-        XCTAssertEqual(requestBoundaryRowKey(req, turns: turns), "a10")
+        XCTAssertEqual(trajectoryRequestBoundaries(requests, turns: turns), ["a10": req])
         let assistant = try XCTUnwrap(turns[0].rows.first { $0.kind == TrajL.kindAssistant })
         XCTAssertEqual(requestForRow(assistant, requests: requests), req)
     }

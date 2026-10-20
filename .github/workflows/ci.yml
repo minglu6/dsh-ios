@@ -9,6 +9,11 @@ on:
         description: Run simulator screenshots and keyboard/IME UI tests
         type: boolean
         default: false
+      ui_scope:
+        description: UI verification scope
+        type: choice
+        options: [full, settings-trajectory]
+        default: full
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
@@ -125,11 +130,32 @@ jobs:
       - name: XCUITest screenshots
         env:
           DSH_SCREENSHOT_DIR: ${{ github.workspace }}/screenshots
+          UI_SCOPE: ${{ inputs.ui_scope }}
         run: |
           set -euo pipefail
           mkdir -p "$DSH_SCREENSHOT_DIR"
           export DSH_SCREENSHOT_DIR
           export TEST_RUNNER_DSH_SCREENSHOT_DIR="$DSH_SCREENSHOT_DIR"
+          if [ "$UI_SCOPE" = "settings-trajectory" ]; then
+            export TEST_RUNNER_DSH_SCREENSHOT_SCREENS="settingsShell,settings"
+            UI_TESTS=(
+              -only-testing:dshUITests/ScreenshotTests/testLightScreenshots
+              -only-testing:dshUITests/ScreenshotTests/testDarkScreenshots
+              -only-testing:dshUITests/TrajectoryUITests
+            )
+            MIN_SCREENSHOTS=4
+          else
+            UI_TESTS=(
+              -only-testing:dshUITests/ScreenshotTests
+              -only-testing:dshUITests/KeyboardDismissalTests
+              -only-testing:dshUITests/ComposerImeTests
+              -only-testing:dshUITests/SessionHeaderUITests
+              -only-testing:dshUITests/WorkspaceChangesUITests
+              -only-testing:dshUITests/CodePreviewUITests
+              -only-testing:dshUITests/TrajectoryUITests
+            )
+            MIN_SCREENSHOTS=20
+          fi
           xcodebuild \
             -project app/dsh.xcodeproj \
             -scheme dsh \
@@ -137,18 +163,13 @@ jobs:
             -sdk iphonesimulator \
             -destination "platform=iOS Simulator,id=${DEVICE}" \
             -derivedDataPath derived-ui \
-            -only-testing:dshUITests/ScreenshotTests \
-            -only-testing:dshUITests/KeyboardDismissalTests \
-            -only-testing:dshUITests/ComposerImeTests \
-            -only-testing:dshUITests/SessionHeaderUITests \
-            -only-testing:dshUITests/WorkspaceChangesUITests \
-            -only-testing:dshUITests/CodePreviewUITests \
+            "${UI_TESTS[@]}" \
             -resultBundlePath derived-ui/dsh-screenshots.xcresult \
             CODE_SIGN_IDENTITY=- \
             DEVELOPMENT_TEAM= \
             test
           find "$DSH_SCREENSHOT_DIR" -maxdepth 1 -name '*.png' | sort
-          test "$(find "$DSH_SCREENSHOT_DIR" -maxdepth 1 -name '*.png' | wc -l)" -ge 20
+          test "$(find "$DSH_SCREENSHOT_DIR" -maxdepth 1 -name '*.png' | wc -l)" -ge "$MIN_SCREENSHOTS"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

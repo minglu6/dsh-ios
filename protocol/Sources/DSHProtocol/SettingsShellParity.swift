@@ -7,13 +7,12 @@ import Foundation
 /// 800px two-pane dialog). Horizontal gutter stays the existing 16pt phone
 /// inset; do not copy overlay `.nav` `12px` / `.options` `24px`.
 ///
-/// Android `SettingsNavRow` (`48 / 15 / 18 / 12 / 16sp / 20`) is invented
-/// touch chrome — desktop wins.
+/// Phone text uses the same semantic body/headline fonts as general settings;
+/// desktop spacing remains the minimum layout budget.
 
 /// `.nav` `gap: 18px` — title cluster to first nav cell / phone card.
 public let settingsNavGapPoints: Double = 18
-/// `.navTitle` `font-size: 16px; font-weight: 500; line-height: 24px`.
-public let settingsNavTitleFontSizePoints: Double = 16
+/// Desktop title line-height, used as a minimum to allow Dynamic Type.
 public let settingsNavTitleLineHeightPoints: Double = 24
 /// `.navCell` `height: 40px` with `box-sizing: border-box`.
 public let settingsNavCellHeightPoints: Double = 40
@@ -24,8 +23,7 @@ public let settingsNavCellPaddingLeadingPoints: Double = 12
 public let settingsNavCellPaddingTrailingPoints: Double = 16
 /// `.navCell` `gap: 8px` (icon ↔ label).
 public let settingsNavCellGapPoints: Double = 8
-/// `.navCell` `font-size: 14px; font-weight: 400; line-height: 22px`.
-public let settingsNavCellFontSizePoints: Double = 14
+/// Desktop navigation line-height, used as a minimum to allow Dynamic Type.
 public let settingsNavCellLineHeightPoints: Double = 22
 
 /// Desktop `ui-theme` `base.css` `--dsw-radius-lg` (settings-card material).

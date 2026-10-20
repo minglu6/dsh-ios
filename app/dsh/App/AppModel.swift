@@ -129,7 +129,11 @@ final class AppModel: ObservableObject {
     @Published var jobsFailed = false
     @Published var jobsPanelError: String?
     @Published var jobDetail: JobDetailState?
-    @Published var chat: ChatState?
+    @Published var chat: ChatState? {
+        didSet { chatRevision &+= 1 }
+    }
+    /// Every snapshot write invalidates derived trajectory data, including same-count streaming edits.
+    private(set) var chatRevision: UInt64 = 0
     @Published var headerProjections: [String: SessionHeaderProjection] = [:]
     @Published var headerProjectionLoading: Set<String> = []
     @Published var headerProjectionErrors: [String: String] = [:]

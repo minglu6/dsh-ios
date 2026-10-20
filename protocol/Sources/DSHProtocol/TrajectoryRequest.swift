@@ -103,6 +103,11 @@ public func trajRequestTabs(_ request: TrajectoryRequest) -> [TrajRequestTab] {
     return tabs
 }
 
+private struct TrajectoryStepKey: Hashable {
+    var turn: Int
+    var step: Int
+}
+
 /// Build session-global numbered requests from settled steps + compaction items
 /// (desktop TrajectoryView `requestNumbers` memo).
 public func buildTrajectoryRequests(items: [Item], steps: [StepRecord]) -> [TrajectoryRequest] {
@@ -111,14 +116,19 @@ public func buildTrajectoryRequests(items: [Item], steps: [StepRecord]) -> [Traj
         var build: (Int, StepUsage?) -> TrajectoryRequest
     }
     var entries: [Entry] = []
+    var toolCounts: [TrajectoryStepKey: (tools: Int, subtools: Int)] = [:]
+    for item in items {
+        guard case .tool(let tool) = item, let turn = tool.turn, let step = tool.step else { continue }
+        let key = TrajectoryStepKey(turn: turn, step: step)
+        if tool.parentCallId == nil {
+            toolCounts[key, default: (0, 0)].tools += 1
+        } else {
+            toolCounts[key, default: (0, 0)].subtools += 1
+        }
+    }
 
     for step in steps {
-        let tools = items.compactMap { item -> Item.Tool? in
-            if case .tool(let tool) = item, tool.turn == step.turn, tool.step == step.step { return tool }
-            return nil
-        }
-        let toolCount = tools.filter { $0.parentCallId == nil }.count
-        let subCount = tools.filter { $0.parentCallId != nil }.count
+        let counts = toolCounts[TrajectoryStepKey(turn: step.turn, step: step.step)]
         let status: TrajectoryRecordState = step.interrupted ? .error : .complete
         entries.append(Entry(seq: step.seq) { number, cumulative in
             TrajectoryRequest(
@@ -136,8 +146,8 @@ public func buildTrajectoryRequests(items: [Item], steps: [StepRecord]) -> [Traj
                 requestConfigJson: step.requestConfigJson,
                 usage: step.usage,
                 cumulativeUsage: cumulative,
-                toolCallCount: toolCount,
-                subtoolCallCount: subCount,
+                toolCallCount: counts?.tools ?? 0,
+                subtoolCallCount: counts?.subtools ?? 0,
                 error: (step.interrupted || step.retry != nil) ? step.lastAttemptError : nil,
                 retry: step.retry,
                 maxRetries: step.maxRetries,
@@ -229,20 +239,41 @@ public func requestForRow(_ row: TrajRow, requests: [TrajectoryRequest]) -> Traj
     return nil
 }
 
-/// First ledger row key that should show the Request boundary control for `request`.
-public func requestBoundaryRowKey(_ request: TrajectoryRequest, turns: [TrajTurn]) -> String? {
-    if let key = request.resultKey, turns.contains(where: { $0.rows.contains(where: { $0.key == key }) }) {
-        return key
+/// Index all request boundaries in O(rows + requests), without changing ledger order.
+/// Result keys can occur in any turn; fallback rows only come from the first matching
+/// turn, with assistants preferred over tools. Later requests win key collisions.
+public func trajectoryRequestBoundaries(
+    _ requests: [TrajectoryRequest], turns: [TrajTurn]
+) -> [String: TrajectoryRequest] {
+    var rowKeys = Set<String>()
+    var indexedTurns = Set<Int>()
+    var assistants: [TrajectoryStepKey: String] = [:]
+    var tools: [TrajectoryStepKey: String] = [:]
+    for turn in turns {
+        let indexFallbacks = indexedTurns.insert(turn.index).inserted
+        for row in turn.rows {
+            rowKeys.insert(row.key)
+            guard indexFallbacks, let step = row.step else { continue }
+            let key = TrajectoryStepKey(turn: turn.index, step: step)
+            if row.kind == TrajL.kindAssistant {
+                if assistants[key] == nil { assistants[key] = row.key }
+            } else if row.kind == TrajL.kindTool || row.kind == TrajL.kindSubtool {
+                if tools[key] == nil { tools[key] = row.key }
+            }
+        }
     }
-    if request.purpose == .assistant {
-        guard let turn = request.turn, let step = request.step else { return nil }
-        let rows = turns.first(where: { $0.index == turn })?.rows ?? []
-        return rows.first(where: { $0.kind == TrajL.kindAssistant && $0.step == step })?.key
-            ?? rows.first(where: {
-                ($0.kind == TrajL.kindTool || $0.kind == TrajL.kindSubtool) && $0.step == step
-            })?.key
+    var boundaries: [String: TrajectoryRequest] = [:]
+    for request in requests {
+        if let key = request.resultKey, rowKeys.contains(key) {
+            boundaries[key] = request
+        } else if request.purpose == .assistant, let turn = request.turn, let step = request.step {
+            let stepKey = TrajectoryStepKey(turn: turn, step: step)
+            if let key = assistants[stepKey] ?? tools[stepKey] {
+                boundaries[key] = request
+            }
+        }
     }
-    return nil
+    return boundaries
 }
 
 public func requestLabel(_ request: TrajectoryRequest) -> String {

@@ -439,9 +439,8 @@ func header(_ title: String, back: @escaping () -> Void) -> some View {
     .background(T.surface)
 }
 
-/// Desktop `SettingsRoot` `.navTitle` 16/500/24. Phone keeps the back chevron
-/// (overlay close lives on the content pane). Identifier sits on a background
-/// fill so `navBack` stays addressable.
+/// Keep the settings-home title at the same semantic size as its detail pages.
+/// Identifier sits on a background fill so `navBack` stays addressable.
 func settingsShellHeader(back: @escaping () -> Void) -> some View {
     HStack(spacing: CGFloat(settingsNavCellGapPoints)) {
         Button(action: back) { OfficialGlyph(kind: .chevronLeft, size: 16, color: T.ink) }
@@ -449,8 +448,8 @@ func settingsShellHeader(back: @escaping () -> Void) -> some View {
             .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier("navBack")
         Text(L.settings())
-            .font(Font.system(size: CGFloat(settingsNavTitleFontSizePoints), weight: .medium))
-            .frame(height: CGFloat(settingsNavTitleLineHeightPoints), alignment: .leading)
+            .font(.headline)
+            .frame(minHeight: CGFloat(settingsNavTitleLineHeightPoints), alignment: .leading)
             .foregroundStyle(T.ink)
         Spacer(minLength: 0)
     }
@@ -527,8 +526,8 @@ func nav<Icon: View>(
                     )
                     .foregroundStyle(T.text2)
                 Text(title)
-                    .font(Font.system(size: CGFloat(settingsNavCellFontSizePoints)))
-                    .frame(height: CGFloat(settingsNavCellLineHeightPoints), alignment: .leading)
+                    .font(.body)
+                    .frame(minHeight: CGFloat(settingsNavCellLineHeightPoints), alignment: .leading)
                     .foregroundStyle(T.ink)
                 Spacer(minLength: 0)
                 if let value, !value.isEmpty {

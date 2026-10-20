@@ -113,7 +113,13 @@ final class ScreenshotTests: XCTestCase {
     private func capture(appearance: String) throws {
         let root = try screenshotRoot()
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        for screen in screens {
+        let requested = ProcessInfo.processInfo.environment["DSH_SCREENSHOT_SCREENS"]
+            .map { $0.split(separator: ",").map(String.init) }
+        if let requested {
+            XCTAssertFalse(requested.isEmpty)
+            XCTAssertTrue(requested.allSatisfy { screens.contains($0) }, "Unknown screenshot screen")
+        }
+        for screen in requested ?? screens {
             let app = XCUIApplication()
             app.launchArguments = [
                 "-UITestFixture",
@@ -1097,6 +1103,9 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertFalse(app.staticTexts["访问模式"].exists, "\(appearance) settings still presents Access-mode sheet")
                 XCTAssertFalse(app.staticTexts["默认权限"].exists, "\(appearance) settings still presents Default-permission sheet")
                 assertNoConnectionDiagnostics(app, appearance: appearance, screen: screen)
+                try app.screenshot().pngRepresentation.write(
+                    to: root.appendingPathComponent("\(appearance.lowercased())-settings-body.png")
+                )
                 app.descendants(matching: .any)["settingsPermissionSelect"].firstMatch.tap()
                 XCTAssertTrue(
                     app.descendants(matching: .any)["settingsPermissionMenu"].waitForExistence(timeout: 8),
