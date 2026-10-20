@@ -4,7 +4,7 @@ import DSHProtocol
 struct TerminalPanel: View {
     @ObservedObject var model: AppModel
     @State private var ownerSessionId: String
-    @State private var opening = true
+    private var opening: Bool { model.terminalOpening }
     @State private var attempt = 0
     @State private var forceNew = false
     @State private var requestedTerminalId: String?
@@ -100,14 +100,10 @@ struct TerminalPanel: View {
         }
         .onChange(of: model.terminalMeta?.id) { _ in
             if model.terminalMeta?.sessionId == ownerSessionId {
-                opening = model.terminalOpening
                 if let host = model.activeId, let chat = model.chat?.sessionId {
                     TerminalStore.setPanelOwner(hostId: host, contextSessionId: chat, ownerSessionId: ownerSessionId)
                 }
             }
-        }
-        .onChange(of: model.terminalOpening) { value in
-            if !value { opening = false }
         }
     }
 
@@ -366,12 +362,8 @@ struct TerminalPanel: View {
     }
 
     private func attach() {
-        if model.terminalAttachFrozen {
-            opening = false
-            return
-        }
+        guard !model.terminalAttachFrozen else { return }
         model.terminalExited = false
-        opening = model.isOnline
         if model.isOnline {
             model.openTerminal(sessionId: ownerSessionId, forceNew: forceNew, terminalId: requestedTerminalId)
         }

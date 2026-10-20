@@ -1960,6 +1960,8 @@ final class AppModel: ObservableObject {
     }
 
     func openTerminal(sessionId: String, forceNew: Bool = false, terminalId: String? = nil) {
+        guard !terminalAttachFrozen else { return }
+        terminalOpening = true
         terminalAttachTask?.cancel()
         terminalAttachTask = Task { await attachTerminal(sessionId: sessionId, forceNew: forceNew, terminalId: terminalId) }
     }
@@ -2010,6 +2012,8 @@ final class AppModel: ObservableObject {
         let client = self.client
         let old = terminalSubId
         terminalSubId = nil
+        terminalAttachTask?.cancel()
+        terminalAttachTask = nil
         resetTerminalAttachment(keepScreen: true)
         Task {
             if let client, let old { try? await client.unfollow(old) }
@@ -2933,7 +2937,7 @@ final class AppModel: ObservableObject {
     }
 
     private func attachTerminal(sessionId: String, forceNew: Bool, terminalId: String?) async {
-        if terminalAttachFrozen { return }
+        if terminalAttachFrozen || Task.isCancelled { return }
         terminalOpenEpoch += 1
         terminalCommandTask?.cancel()
         terminalCommandTask = nil

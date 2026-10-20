@@ -25,6 +25,41 @@ final class ScreenshotTests: XCTestCase {
         try capture(appearance: "Dark")
     }
 
+    func testTerminalImmediateFailureLeavesConnectingAndOffersRetry() {
+        let app = XCUIApplication()
+        // This fixture reaches the real attach path without a client. The
+        // failure can complete before SwiftUI observes the intermediate true.
+        app.launchArguments = ["-UITestFixture", "-UITestScreen", "terminal"]
+        app.launch()
+        XCTAssertTrue(app.descendants(matching: .any)["terminalError"].waitForExistence(timeout: 10))
+        let retry = app.buttons["重试"]
+        XCTAssertTrue(retry.waitForExistence(timeout: 5))
+        XCTAssertTrue(retry.isHittable)
+        XCTAssertFalse(app.staticTexts["正在连接..."].exists)
+        retry.tap()
+        XCTAssertTrue(retry.waitForExistence(timeout: 5))
+        XCTAssertTrue(retry.isHittable)
+    }
+
+    func testTerminalScreenRemainsVisibleWithKeyboard() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-UITestFixture", "-UITestScreen", "terminalSwitcher"]
+        app.launch()
+        let screen = app.descendants(matching: .any)["terminalScreen"].firstMatch
+        XCTAssertTrue(screen.waitForExistence(timeout: 10))
+        XCTAssertTrue((screen.value as? String)?.contains("switcher-shell-output") == true)
+        XCTAssertGreaterThan(screen.frame.height, 100)
+        screen.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertGreaterThan(screen.frame.height, 100)
+        XCTAssertLessThanOrEqual(screen.frame.maxY, app.keyboards.firstMatch.frame.minY + 1)
+        XCTAssertTrue((screen.value as? String)?.contains("switcher-shell-output") == true)
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "terminal-keyboard-screen"
+        shot.lifetime = .keepAlways
+        add(shot)
+    }
+
     func testConversationContextUsesSessionMetadataNotDraftSelections() {
         for screen in ["contextActive", "contextBlank", "contextOffline", "contextNoRoster", "contextUnknown"] {
             let app = XCUIApplication()
