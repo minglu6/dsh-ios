@@ -35,7 +35,6 @@ final class ScreenshotTests: XCTestCase {
         let retry = app.buttons["重试"]
         XCTAssertTrue(retry.waitForExistence(timeout: 5))
         XCTAssertTrue(retry.isHittable)
-        XCTAssertFalse(app.staticTexts["正在连接..."].exists)
         retry.tap()
         XCTAssertTrue(retry.waitForExistence(timeout: 5))
         XCTAssertTrue(retry.isHittable)

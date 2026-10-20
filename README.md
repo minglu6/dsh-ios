@@ -27,6 +27,8 @@ Host configuration is adopted from `plugins.settingsDescribe` and `settings.chan
 
 The terminal forwards native key events directly: Return sends `\r`, Delete sends DEL, and multiline paste still requires confirmation. Snapshots use the remote PTY dimensions; size changes are applied in output-stream order. Primary-screen resizing reflows soft-wrapped lines and preserves the cursor, retaining up to 1,000 rows above and below the viewport for size restoration (not a scrollback browser). Full-screen applications remain responsible for redrawing their grid. The Start card omits desktop shortcuts and decorative chevrons; the terminal's session switcher remains.
 
+The terminal page reads loading state directly from the attachment model, so an immediate failure leaves Connecting and exposes Retry without waiting for a mirrored view state. Leaving the page cancels pending attachment work and releases the subscription without closing the remote shell.
+
 Conversations show the current workspace and work mode below the Chat/Trajectory tabs, using the session's membership, directory and Agent preset rather than new-task drafts. Missing metadata is explicitly marked as unavailable. New tasks retain workspace and mode selectors, locked while the first message is being submitted; an unloaded preset catalog no longer hides the mode position.
 
 ## Architecture
