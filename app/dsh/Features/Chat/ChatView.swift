@@ -229,13 +229,13 @@ struct ChatView: View {
             .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier("openStartPanel")
         }
-        // Desktop title-text → tabs is 15: `.titleRow` 30/20 leftover 5
-        // + `.tabs { margin-top: 10px }`. A `minHeight: 30` on this HStack
-        // grows the header ~8pt and, after the model picker, Light
-        // typeText("保留草稿") never idles (CI 39346945482). Same 15pt
-        // gap via padding, without stretching the title row.
+        // Desktop title-text → tabs is 15. Growing this header (minHeight
+        // 30 or extra bottom pad) shrinks the composer column and kills
+        // AX after focus (CI 39346945482 / 39350052809, including IME
+        // mentionChip). Keep the 2a39d41 20pt vertical budget: move 5pt
+        // from top to bottom so the gap is 15 and total height is unchanged.
         .padding(.horizontal, 14)
-        .padding(.top, 10)
+        .padding(.top, 5)
         .padding(.bottom, 15)
         .background(T.surface)
     }

@@ -2283,5 +2283,5 @@ CI `11c995e` / `f9f8457` artifact `ios-simulator-screenshots` 逐屏对照：
 
 修：Flash 点完先等系统 `PopoverDismissRegion` 离开（8s，和其他 wait 同一预算；不是 skip/retry/放宽）。不要给 picker VStack 加 identifier——SwiftUI 会把它复制到「模型 / 推理等级」行上，子级 `modelPickerModel` 就丢了。再断言 composer 有限可点，然后 `typeText`。
 
-`minHeight` 30（`4caed96` / `a57438b`）把 title row 撑高约 8pt 后，Light `typeText("保留草稿")` 合成按键后 60s 等不到 idle，接着 `chatTranscript` AX 超时（Dark 已过）。桌面 15pt 改用现有 header 的 `padding.top` 10 + `padding.bottom` 15，不撑高 title row。`conversationHeaderTitle` + `chatTab.chat` 断言 15±3。不加 wrapper / maxWidth / probe / `ignoresSafeArea` / 动画开关 / `sizeThatFits`。
+header 只要变高（`minHeight` 30 或 `padding.bottom` 15 且 top 仍 10）composer 列就变矮：`input.typeText` 在键盘起来后重查 `composerInput` 会 AX 超时；`9b899f3` 连 IME mentionChip 的 `composerIme.setMarked` 也挂。桌面 15pt 用**等高**分配：`padding.top` 5 + `padding.bottom` 15（总垂直 20pt 与 `2a39d41` 相同）。Flash 后等 `PopoverDismissRegion` 离开，点中后再 `app.typeText`（不重查输入框）。草稿断言仍是 `contains("保留草稿")`。`conversationHeaderTitle` + `chatTab.chat` 断言 15±3。不加 wrapper / maxWidth / probe / `ignoresSafeArea` / 动画开关 / `sizeThatFits`。
 

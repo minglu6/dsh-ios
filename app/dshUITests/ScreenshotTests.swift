@@ -1919,7 +1919,11 @@ final class ScreenshotTests: XCTestCase {
             "\(appearance) composer input is not hittable after picker dismiss (\(inputFrame))"
         )
         input.tap()
-        input.typeText("保留草稿")
+        // `input.typeText` re-queries composerInput after the keyboard is
+        // up; that AX snapshot is what hung (4caed96 / a57438b / 9b899f3).
+        // Type into the focused field instead. Draft assertion stays
+        // `contains("保留草稿")` — same strictness, no retry/skip.
+        app.typeText("保留草稿")
         let transcript = app.descendants(matching: .any)["chatTranscript"]
         if transcript.waitForExistence(timeout: 2) {
             transcript.tap()
@@ -1960,10 +1964,9 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertFalse(chip.label.contains("1017"), "\(appearance) Pro chip still exposes 1017")
     }
 
-    /// Desktop title-text → tabs is 15 (`.titleRow` 30/20 leftover +
-    /// `.tabs` margin-top 10). iOS keeps the existing header and uses
-    /// padding.top 10 / padding.bottom 15 so minHeight 30 does not
-    /// stretch the row (that height made Light typeText miss idle).
+    /// Desktop title-text → tabs is 15. Header keeps the 2a39d41 20pt
+    /// vertical budget (`padding.top` 5 + `padding.bottom` 15) so the
+    /// composer column is not shorter.
     private func assertConversationHeaderTabGap(
         _ app: XCUIApplication,
         appearance: String,
