@@ -2149,6 +2149,11 @@ final class ScreenshotTests: XCTestCase {
             "用对话定制 DSH：让 Agent 编写插件，添加新功能或界面；也能组合工具和提示词，创建自己的模式。",
         ]
         let menuFrame = menu.frame
+        let windowFrame = app.windows.firstMatch.frame
+        XCTAssertGreaterThanOrEqual(menuFrame.minX, windowFrame.minX + 11)
+        XCTAssertLessThanOrEqual(menuFrame.maxX, windowFrame.maxX - 11)
+        XCTAssertGreaterThanOrEqual(menuFrame.minY, windowFrame.minY + 11)
+        XCTAssertLessThanOrEqual(menuFrame.maxY, windowFrame.maxY - 11)
         XCTAssertGreaterThan(menuFrame.height, 200, "\(appearance) landingPreset menu is too short to hold four rows (\(menuFrame))")
         XCTAssertLessThan(
             menuFrame.height,
@@ -2220,11 +2225,6 @@ final class ScreenshotTests: XCTestCase {
             lastBottom - firstTop,
             menuFrame.height + 1,
             "\(appearance) landingPreset rows overflow the card and would scroll (\(firstTop)–\(lastBottom) vs \(menuFrame))"
-        )
-        XCTAssertGreaterThan(
-            menu.frame.maxY,
-            seat.frame.maxY,
-            "\(appearance) landingPreset menu is not below the seat (desktop Menu side:bottom)"
         )
         XCTAssertTrue(
             app.descendants(matching: .any)["official.checkOutline"].waitForExistence(timeout: 4),

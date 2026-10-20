@@ -190,8 +190,6 @@ struct AgentPresetMenuLayer: View {
     var seatFrame: CGRect
     var onClose: () -> Void
 
-    @State private var menuSize: CGSize = .zero
-
     private var rows: [JSONValue] {
         PresetPolicy.visibleRows(model.presetRoster, codingTools: model.showCodeWorkView)
     }
@@ -205,38 +203,16 @@ struct AgentPresetMenuLayer: View {
     var body: some View {
         GeometryReader { canvas in
             let maxHeight = CGFloat(agentPresetMenuMaxHeight(viewportHeight: Double(canvas.size.height)))
-            let origin = agentPresetMenuOrigin(
-                seat: (
-                    x: Double(seatFrame.minX),
-                    y: Double(seatFrame.minY),
-                    width: Double(seatFrame.width),
-                    height: Double(seatFrame.height)
-                ),
-                menuSize: (width: Double(menuSize.width), height: Double(min(menuSize.height, maxHeight))),
-                viewport: (width: Double(canvas.size.width), height: Double(canvas.size.height))
+            let width = min(
+                CGFloat(agentPresetMenuMaxWidthPoints),
+                max(0, canvas.size.width - CGFloat(agentPresetMenuViewportMarginPoints * 2))
             )
-            ZStack(alignment: .topLeading) {
+            AnchoredPresetMenuLayout(seatFrame: seatFrame, viewport: canvas.size) {
                 Color.clear
-                    .frame(width: canvas.size.width, height: canvas.size.height)
                     .contentShape(Rectangle())
                     .onTapGesture(perform: onClose)
                     .accessibilityHidden(true)
-                menuCard(
-                    maxHeight: maxHeight,
-                    width: min(
-                        CGFloat(agentPresetMenuMaxWidthPoints),
-                        max(0, canvas.size.width - CGFloat(agentPresetMenuViewportMarginPoints * 2))
-                    )
-                )
-                    .background(
-                        GeometryReader { geo in
-                            Color.clear.preference(key: AgentPresetMenuSizeKey.self, value: geo.size)
-                        }
-                    )
-                    .onPreferenceChange(AgentPresetMenuSizeKey.self) { next in
-                        if next != menuSize { menuSize = next }
-                    }
-                    .offset(x: CGFloat(origin.x), y: CGFloat(origin.y))
+                menuCard(maxHeight: maxHeight, width: width)
             }
         }
     }
@@ -322,9 +298,32 @@ struct AgentPresetSeatFrameKey: PreferenceKey {
     }
 }
 
-private struct AgentPresetMenuSizeKey: PreferenceKey {
-    static var defaultValue: CGSize = .zero
-    static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
-        value = nextValue()
+/// Measure and place in one layout pass. A preference measured after `.offset`
+/// can leave the initial zero-size placement outside the phone viewport.
+private struct AnchoredPresetMenuLayout: Layout {
+    let seatFrame: CGRect
+    let viewport: CGSize
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        viewport
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard subviews.count == 2 else { return }
+        subviews[0].place(at: bounds.origin, anchor: .topLeading, proposal: ProposedViewSize(bounds.size))
+        let margin = CGFloat(agentPresetMenuViewportMarginPoints)
+        let width = min(CGFloat(agentPresetMenuMaxWidthPoints), max(0, bounds.width - 2 * margin))
+        let maxHeight = CGFloat(agentPresetMenuMaxHeight(viewportHeight: Double(bounds.height)))
+        let measured = subviews[1].sizeThatFits(ProposedViewSize(width: width, height: maxHeight))
+        let height = min(measured.height, maxHeight)
+        let origin = agentPresetMenuOrigin(
+            seat: (Double(seatFrame.minX), Double(seatFrame.minY), Double(seatFrame.width), Double(seatFrame.height)),
+            menuSize: (Double(width), Double(height)),
+            viewport: (Double(bounds.width), Double(bounds.height))
+        )
+        subviews[1].place(
+            at: CGPoint(x: bounds.minX + CGFloat(origin.x), y: bounds.minY + CGFloat(origin.y)),
+            anchor: .topLeading, proposal: ProposedViewSize(width: width, height: height)
+        )
     }
 }
