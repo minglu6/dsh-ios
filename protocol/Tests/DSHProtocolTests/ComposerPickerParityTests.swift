@@ -701,6 +701,50 @@ final class ComposerPickerParityTests: XCTestCase {
         XCTAssertEqual(agentPresetSeatMinHeightPoints, 28)
         XCTAssertEqual(agentPresetSeatFontSizePoints, 13)
         XCTAssertEqual(agentPresetSeatFontWeight, 500)
+        XCTAssertEqual(agentPresetSeatMaxWidthPoints, 240)
+    }
+
+    func testAgentPresetMenuMetricsComeFromDesktopPrimitivesMenu() {
+        XCTAssertTrue(agentPresetMenuOpensBelow)
+        XCTAssertTrue(composerPickerPopoverOpensAbove)
+        XCTAssertEqual(agentPresetMenuGapBelowSeatPoints, 4)
+        XCTAssertEqual(agentPresetMenuViewportMarginPoints, 12)
+        XCTAssertEqual(agentPresetMenuPaddingPoints, 4)
+        XCTAssertEqual(agentPresetMenuMinWidthPoints, 144)
+        XCTAssertEqual(agentPresetMenuMaxWidthPoints, 360)
+        XCTAssertEqual(agentPresetMenuItemMaxWidthPoints, 280)
+        XCTAssertEqual(agentPresetMenuAnchorMinWidthPoints, 54)
+        XCTAssertEqual(agentPresetMenuRowMinHeightPoints, 34)
+        XCTAssertEqual(agentPresetMenuRowPaddingVerticalPoints, 6)
+        XCTAssertEqual(agentPresetMenuRowPaddingHorizontalPoints, 8)
+        XCTAssertEqual(agentPresetMenuRowGapPoints, 6)
+        XCTAssertEqual(agentPresetMenuCheckSizePoints, 14)
+        XCTAssertEqual(agentPresetMenuItemCopyGapPoints, 2)
+        XCTAssertEqual(agentPresetMenuItemNameFontSizePoints, 13)
+        XCTAssertEqual(agentPresetMenuItemNameLineHeightPoints, 20)
+        XCTAssertEqual(agentPresetMenuItemDescFontSizePoints, 12)
+        XCTAssertEqual(agentPresetMenuItemDescLineHeightPoints, 16)
+        XCTAssertEqual(agentPresetSeatIdentifier(), "agentPresetSeat")
+        XCTAssertEqual(agentPresetMenuIdentifier(), "agentPresetMenu")
+        XCTAssertEqual(agentPresetRowIdentifier("minimal"), "agentPresetRow.minimal")
+        XCTAssertEqual(agentPresetMenuMaxHeight(viewportHeight: 0), 0)
+        XCTAssertEqual(agentPresetMenuMaxHeight(viewportHeight: 800), 776)
+        XCTAssertNotEqual(agentPresetMenuMaxHeight(viewportHeight: 800), mentionMenuMaxHeightPoints)
+        XCTAssertEqual(inputTriggerMenuCardMaxHeight(availableHeight: 800), 400)
+        let origin = agentPresetMenuOrigin(
+            seat: (x: 80, y: 400, width: 120, height: 28),
+            menuSize: (width: 280, height: 300),
+            viewport: (width: 390, height: 844)
+        )
+        XCTAssertEqual(origin.x, 80)
+        XCTAssertEqual(origin.y, 432)
+        let clamped = agentPresetMenuOrigin(
+            seat: (x: 80, y: 700, width: 120, height: 28),
+            menuSize: (width: 280, height: 300),
+            viewport: (width: 390, height: 844)
+        )
+        XCTAssertEqual(clamped.x, 80)
+        XCTAssertEqual(clamped.y, 532)
     }
 
     func testSubagentHeaderCrumbsFollowDesktopAncestry() {

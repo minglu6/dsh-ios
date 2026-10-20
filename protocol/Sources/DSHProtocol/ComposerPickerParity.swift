@@ -307,6 +307,75 @@ public let agentPresetSeatMaxWidthPoints: Double = 240
 public let agentPresetSeatFontSizePoints: Double = 13
 public let agentPresetSeatFontWeight: Double = 500
 
+/// Desktop `ui-primitives` `Menu` default `side` is `bottom` (card below the
+/// seat). Composer permission / model chips pass `side: 'top'` and must not
+/// be reused here. `AgentPresetSeat` portals the list (`portal: true`).
+public let agentPresetMenuOpensBelow = true
+
+/// Desktop `Menu.module.css` `.list` `top: calc(100% + 4px)` and portal
+/// `y = r.bottom + 4`.
+public let agentPresetMenuGapBelowSeatPoints: Double = 4
+
+/// Desktop `Menu.tsx` portal `MARGIN` / `.scrollable` inset 12px from each
+/// viewport edge. Top side widens via `overlayTopMargin`; landing has no
+/// conversation-header overlay inset.
+public let agentPresetMenuViewportMarginPoints: Double = 12
+
+/// Desktop `Menu.module.css` `.list` card bounds. This is primitives `Menu`,
+/// not `ui-input-trigger` `MenuView` (`max-height: 400px`). Slash / @ keep
+/// `inputTriggerMenuCardMaxHeight`.
+public let agentPresetMenuPaddingPoints: Double = 4
+public let agentPresetMenuMinWidthPoints: Double = 144
+public let agentPresetMenuMaxWidthPoints: Double = 360
+
+/// Desktop `AgentPresetSeat.module.css` `.item` `max-width: 280px` and
+/// `.menuAnchor` `min-width: 54px`.
+public let agentPresetMenuItemMaxWidthPoints: Double = 280
+public let agentPresetMenuAnchorMinWidthPoints: Double = 54
+
+/// Desktop `Menu.module.css` `.item` / `.check`.
+public let agentPresetMenuRowMinHeightPoints: Double = 34
+public let agentPresetMenuRowPaddingVerticalPoints: Double = 6
+public let agentPresetMenuRowPaddingHorizontalPoints: Double = 8
+public let agentPresetMenuRowGapPoints: Double = 6
+public let agentPresetMenuCheckSizePoints: Double = 14
+
+/// Desktop `AgentPresetSeat.module.css` `.item` / `.itemName` / `.itemDesc`.
+/// Description wraps (`white-space: normal`); no line-clamp.
+public let agentPresetMenuItemCopyGapPoints: Double = 2
+public let agentPresetMenuItemNameFontSizePoints: Double = 13
+public let agentPresetMenuItemNameLineHeightPoints: Double = 20
+public let agentPresetMenuItemDescFontSizePoints: Double = 12
+public let agentPresetMenuItemDescLineHeightPoints: Double = 16
+
+public func agentPresetSeatIdentifier() -> String { "agentPresetSeat" }
+public func agentPresetMenuIdentifier() -> String { "agentPresetMenu" }
+public func agentPresetRowIdentifier(_ id: String) -> String { "agentPresetRow.\(id)" }
+
+/// Desktop `.scrollable` `max-height: calc(100vh - 12px - max(12px, overlay-top))`.
+/// Four built-in rows hug well under this; do not apply MenuView's 400 cap.
+public func agentPresetMenuMaxHeight(viewportHeight: Double) -> Double {
+    precondition(viewportHeight >= 0, "agentPresetMenuMaxHeight viewportHeight must be >= 0")
+    return max(0, viewportHeight - agentPresetMenuViewportMarginPoints * 2)
+}
+
+/// Desktop portal `Menu`: prefer `side: bottom`, then clamp to the 12px
+/// viewport inset so the card stays on screen.
+public func agentPresetMenuOrigin(
+    seat: (x: Double, y: Double, width: Double, height: Double),
+    menuSize: (width: Double, height: Double),
+    viewport: (width: Double, height: Double)
+) -> (x: Double, y: Double) {
+    precondition(menuSize.width >= 0 && menuSize.height >= 0, "agentPresetMenuOrigin menuSize must be >= 0")
+    precondition(viewport.width >= 0 && viewport.height >= 0, "agentPresetMenuOrigin viewport must be >= 0")
+    let margin = agentPresetMenuViewportMarginPoints
+    var x = seat.x
+    var y = seat.y + seat.height + agentPresetMenuGapBelowSeatPoints
+    x = min(max(x, margin), viewport.width - menuSize.width - margin)
+    y = min(max(y, margin), viewport.height - menuSize.height - margin)
+    return (x, y)
+}
+
 // MARK: - Think / reasoning row (desktop ReasoningRow + DisclosureRow)
 
 /// Title is always `message.think`. Streaming vs done is TextShimmer, not a label swap.

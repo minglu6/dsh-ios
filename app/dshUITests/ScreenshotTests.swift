@@ -4,7 +4,7 @@ import XCTest
 /// screens parent / CI compare to desktop `@deepseek-ai/dsh-client-ui-*@0.2.1-alpha.5`.
 final class ScreenshotTests: XCTestCase {
     private let screens = [
-        "landing", "drawer", "viewOptions", "sessionActions", "chat", "chatLong", "changesCard", "planMode", "mention",
+        "landing", "landingPreset", "drawer", "viewOptions", "sessionActions", "chat", "chatLong", "changesCard", "planMode", "mention",
         "landingMention", "mentionFiltered", "mentionChip", "mentionSent",
         "turnTrigger", "filePreview",
         "models", "permission", "start", "startLanding", "browser", "inspector",
@@ -231,11 +231,11 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) inspector type-filter skip lost; do not invent a filter SVG"
                 )
             }
-            if screen == "landing" || screen == "landingMention" || screen == "drawer" {
+            if screen == "landing" || screen == "landingPreset" || screen == "landingMention" || screen == "drawer" {
                 XCTAssertFalse(app.images["folder.fill"].exists, "\(appearance) \(screen) still exposes SF folder.fill")
                 XCTAssertFalse(app.images["folder"].exists, "\(appearance) \(screen) still exposes SF folder")
             }
-            if screen == "landing" || screen == "landingMention" {
+            if screen == "landing" || screen == "landingPreset" || screen == "landingMention" {
                 let officialOpen = app.descendants(matching: .any)["official.folderOpen"]
                 let officialClose = app.descendants(matching: .any)["official.folderClose"]
                 XCTAssertTrue(
@@ -324,7 +324,7 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertGreaterThanOrEqual(hostFrame.height, 44, "\(appearance) host hit shorter than 44pt")
                 assertNoConnectionDiagnostics(app, appearance: appearance, screen: screen)
             }
-            if screen == "landing" || screen == "landingMention" || screen == "chat" || screen == "chatLong" || screen == "changesCard" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
+            if screen == "landing" || screen == "landingPreset" || screen == "landingMention" || screen == "chat" || screen == "chatLong" || screen == "changesCard" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
                 XCTAssertFalse(app.images["sidebar.left"].exists, "\(appearance) \(screen) still exposes SF sidebar.left")
                 XCTAssertFalse(app.images["sidebar.right"].exists, "\(appearance) \(screen) still exposes SF sidebar.right")
                 XCTAssertTrue(
@@ -332,13 +332,13 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) \(screen) missing official panel-left glyph"
                 )
             }
-            if screen == "landing" || screen == "landingMention" || screen == "chat" || screen == "chatLong" || screen == "changesCard" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
+            if screen == "landing" || screen == "landingPreset" || screen == "landingMention" || screen == "chat" || screen == "chatLong" || screen == "changesCard" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" || screen == "turnTrigger" || screen == "composerStop" || screen == "slash" || screen == "models" || screen == "permission" || screen == "trajectory" {
                 XCTAssertTrue(
                     app.descendants(matching: .any)["official.panelRight"].waitForExistence(timeout: 8),
                     "\(appearance) \(screen) missing official panel-right glyph"
                 )
             }
-            if screen == "landing" || screen == "landingMention" {
+            if screen == "landing" || screen == "landingPreset" || screen == "landingMention" {
                 XCTAssertTrue(
                     app.descendants(matching: .any)["openStartPanel"].waitForExistence(timeout: 8),
                     "\(appearance) \(screen) missing openStartPanel"
@@ -360,7 +360,7 @@ final class ScreenshotTests: XCTestCase {
                     "\(appearance) landing panelRight is not on the right"
                 )
             }
-            if screen == "landing" || screen == "landingMention" || screen == "chat" || screen == "chatLong" || screen == "changesCard" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" {
+            if screen == "landing" || screen == "landingPreset" || screen == "landingMention" || screen == "chat" || screen == "chatLong" || screen == "changesCard" || screen == "planMode" || screen == "mention" || screen == "mentionFiltered" || screen == "mentionChip" || screen == "mentionSent" {
                 XCTAssertFalse(app.images["plus"].exists, "\(appearance) \(screen) still exposes SF plus")
                 XCTAssertTrue(
                     app.descendants(matching: .any)["official.plusOutline"].waitForExistence(timeout: 8),
@@ -445,7 +445,7 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertGreaterThanOrEqual(tipFrame.minY, window.minY, "\(appearance) tooltip clipped top")
                 XCTAssertLessThanOrEqual(tipFrame.maxY, window.maxY, "\(appearance) tooltip clipped bottom")
             }
-            if screen == "landing" || screen == "landingMention" {
+            if screen == "landing" || screen == "landingPreset" || screen == "landingMention" {
                 XCTAssertFalse(app.images["fish"].exists, "\(appearance) landing still exposes SF fish")
                 XCTAssertFalse(app.images["fish.fill"].exists, "\(appearance) landing still exposes SF fish.fill")
                 XCTAssertFalse(app.images["fish.circle"].exists, "\(appearance) landing still exposes SF fish.circle")
@@ -502,6 +502,9 @@ final class ScreenshotTests: XCTestCase {
                     40,
                     "\(appearance) landing composer floated off the bottom (gap \(gap))"
                 )
+            }
+            if screen == "landingPreset" {
+                try assertLandingAgentPresetMenu(app, appearance: appearance)
             }
             if screen == "chat" || screen == "chatLong" || screen == "trajectory" {
                 assertConversationHeaderTabGap(app, appearance: appearance, screen: screen)
@@ -2115,6 +2118,117 @@ final class ScreenshotTests: XCTestCase {
         attachment.name = "\(appearance.lowercased())-\(name)"
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+
+    private func assertLandingAgentPresetMenu(_ app: XCUIApplication, appearance: String) throws {
+        var seat = app.descendants(matching: .any)["agentPresetSeat"].firstMatch
+        if !seat.waitForExistence(timeout: 8) {
+            seat = app.buttons["极简模式"].firstMatch
+        }
+        XCTAssertTrue(seat.waitForExistence(timeout: 8), "\(appearance) landingPreset missing agentPresetSeat")
+        XCTAssertTrue(
+            seat.label.contains("极简模式") || app.staticTexts["极简模式"].exists || app.buttons["极简模式"].exists,
+            "\(appearance) landingPreset seat is not 极简模式 (got \(seat.label))"
+        )
+        seat.tap()
+        let menu = app.descendants(matching: .any)["agentPresetMenu"].firstMatch
+        XCTAssertTrue(menu.waitForExistence(timeout: 8), "\(appearance) landingPreset missing agentPresetMenu")
+        XCTAssertFalse(
+            app.sheets.firstMatch.exists || app.alerts.firstMatch.exists,
+            "\(appearance) landingPreset opened a system sheet/ActionSheet"
+        )
+        XCTAssertFalse(app.buttons["取消"].exists, "\(appearance) landingPreset still exposes system Cancel")
+        let ids = ["standard", "ptc", "minimal", "cordis"]
+        let titles = ["标准模式", "PTC 模式", "极简模式", "创造模式"]
+        let descriptions = [
+            "处理代码、文件和资料，适合大多数任务。Agent 会按需使用检索、编辑和终端等工具。",
+            "包含标准模式的所有能力，更适合批量调用工具，并对结果进行筛选、整理、去重、统计或汇总的任务。",
+            "Agent 仅使用终端工具完成任务，适合测试和对比其基础表现。",
+            "用对话定制 DSH：让 Agent 编写插件，添加新功能或界面；也能组合工具和提示词，创建自己的模式。",
+        ]
+        let menuFrame = menu.frame
+        XCTAssertGreaterThan(menuFrame.height, 200, "\(appearance) landingPreset menu is too short to hold four rows (\(menuFrame))")
+        XCTAssertLessThan(
+            menuFrame.height,
+            app.windows.firstMatch.frame.height - 20,
+            "\(appearance) landingPreset menu stretched to the window (\(menuFrame))"
+        )
+        var firstTop = CGFloat.greatestFiniteMagnitude
+        var lastBottom: CGFloat = 0
+        for (index, id) in ids.enumerated() {
+            let row = app.descendants(matching: .any)["agentPresetRow.\(id)"].firstMatch
+            XCTAssertTrue(row.waitForExistence(timeout: 4), "\(appearance) landingPreset missing row \(id)")
+            var title = app.descendants(matching: .any)["agentPresetTitle.\(id)"].firstMatch
+            if !title.waitForExistence(timeout: 2) {
+                title = app.staticTexts[titles[index]].firstMatch
+            }
+            var desc = app.descendants(matching: .any)["agentPresetDesc.\(id)"].firstMatch
+            if !desc.waitForExistence(timeout: 2) {
+                desc = app.staticTexts[descriptions[index]].firstMatch
+            }
+            XCTAssertTrue(title.waitForExistence(timeout: 2), "\(appearance) landingPreset missing title \(id)")
+            XCTAssertTrue(desc.waitForExistence(timeout: 2), "\(appearance) landingPreset missing description \(id)")
+            XCTAssertTrue(
+                title.label.contains(titles[index])
+                    || title.label == titles[index]
+                    || app.staticTexts[titles[index]].exists,
+                "\(appearance) landingPreset title \(id) is not \(titles[index]) (got \(title.label))"
+            )
+            let descText = desc.label.isEmpty ? (desc.value as? String ?? "") : desc.label
+            XCTAssertTrue(
+                descText == descriptions[index] || app.staticTexts[descriptions[index]].exists,
+                "\(appearance) landingPreset description \(id) was truncated (got \(descText))"
+            )
+            XCTAssertFalse(title.frame.isEmpty, "\(appearance) landingPreset title \(id) has an empty frame")
+            XCTAssertFalse(desc.frame.isEmpty, "\(appearance) landingPreset description \(id) has an empty frame")
+            XCTAssertGreaterThanOrEqual(
+                title.frame.minY,
+                menuFrame.minY - 1,
+                "\(appearance) landingPreset title \(id) is clipped above the card (\(title.frame) vs \(menuFrame))"
+            )
+            XCTAssertLessThanOrEqual(
+                title.frame.maxY,
+                menuFrame.maxY + 1,
+                "\(appearance) landingPreset title \(id) is clipped below the card (\(title.frame) vs \(menuFrame))"
+            )
+            XCTAssertGreaterThanOrEqual(
+                desc.frame.minY,
+                menuFrame.minY - 1,
+                "\(appearance) landingPreset description \(id) is clipped above the card (\(desc.frame) vs \(menuFrame))"
+            )
+            XCTAssertLessThanOrEqual(
+                desc.frame.maxY,
+                menuFrame.maxY + 1,
+                "\(appearance) landingPreset description \(id) is clipped below the card (\(desc.frame) vs \(menuFrame))"
+            )
+            XCTAssertGreaterThanOrEqual(
+                title.frame.minX,
+                menuFrame.minX - 1,
+                "\(appearance) landingPreset title \(id) is clipped on the left (\(title.frame) vs \(menuFrame))"
+            )
+            XCTAssertLessThanOrEqual(
+                desc.frame.maxX,
+                menuFrame.maxX + 1,
+                "\(appearance) landingPreset description \(id) is clipped on the right (\(desc.frame) vs \(menuFrame))"
+            )
+            firstTop = min(firstTop, title.frame.minY)
+            lastBottom = max(lastBottom, desc.frame.maxY)
+        }
+        XCTAssertLessThanOrEqual(
+            lastBottom - firstTop,
+            menuFrame.height + 1,
+            "\(appearance) landingPreset rows overflow the card and would scroll (\(firstTop)–\(lastBottom) vs \(menuFrame))"
+        )
+        XCTAssertGreaterThan(
+            menu.frame.maxY,
+            seat.frame.maxY,
+            "\(appearance) landingPreset menu is not below the seat (desktop Menu side:bottom)"
+        )
+        XCTAssertTrue(
+            app.descendants(matching: .any)["official.checkOutline"].waitForExistence(timeout: 4),
+            "\(appearance) landingPreset missing official check on 极简模式"
+        )
+        XCTAssertFalse(app.images["checkmark"].exists, "\(appearance) landingPreset still exposes SF checkmark")
     }
 
     private func assertInputTriggerMenuHugsContent(
