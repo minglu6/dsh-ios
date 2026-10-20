@@ -2,7 +2,7 @@ import Foundation
 import DSHProtocol
 
 extension AppModel {
-    func seedUITestSessionHeader() {
+    func seedUITestSessionHeader(compactTeam: Bool = false) {
         guard uiTestFixture, let id = chat?.sessionId else { return }
         chat?.agentPreset = "standard"
         chat?.loaded = true
@@ -24,9 +24,10 @@ extension AppModel {
         let team = jsonObject([
             "members": .array([
                 jsonObject(["id": .string(id), "name": .string("Lead"), "role": .string("lead"), "phase": .string("active")]),
+            ] + (compactTeam ? [] : [
                 jsonObject(["id": .string("header-child-1"), "name": .string("Worker 1"), "role": .string("teammate"), "phase": .string("active")]),
-            ]),
-            "tasks": .array([
+            ])),
+            "tasks": .array(compactTeam ? [] : [
                 jsonObject([
                     "id": .string("task-1"), "revision": .number(1),
                     "subject": .string("Review session header"),

@@ -128,7 +128,7 @@ struct FilesPanel: View {
     @ViewBuilder
     private var content: some View {
         if cwd == nil || cwd?.isEmpty == true {
-            Text(L.noWorkspaceHint()).font(PhoneTypography.font(size: 13)).foregroundStyle(T.text3).padding(20)
+            Text(L.noWorkspaceHint()).font(Font.system(size: 13)).foregroundStyle(T.text3).padding(20)
         } else if tree.levels[""] == nil && !canList {
             EmptyView()
         } else {
@@ -157,7 +157,7 @@ struct FilesPanel: View {
                 HStack(spacing: 8) {
                     FileTypeIcon(path: row.name, type: row.type, openable: enabled, expanded: expanded)
                     Text(row.name)
-                        .font(PhoneTypography.font(size: 13))
+                        .font(Font.system(size: 13))
                         .foregroundStyle(enabled ? T.ink : T.text3)
                         .lineLimit(1)
                     Spacer()
@@ -180,7 +180,7 @@ struct FilesPanel: View {
                 HStack(spacing: 8) {
                     FileTypeIcon(path: row.name, type: row.type, openable: enabled)
                     Text(row.name)
-                        .font(PhoneTypography.font(size: 13))
+                        .font(Font.system(size: 13))
                         .foregroundStyle(enabled ? T.ink : T.text3)
                         .lineLimit(1)
                     Spacer()
@@ -198,7 +198,7 @@ struct FilesPanel: View {
             HStack(spacing: 8) {
                 FileTypeIcon(path: row.name, type: row.type, openable: false)
                 Text(row.name)
-                    .font(PhoneTypography.font(size: 13))
+                    .font(Font.system(size: 13))
                     .foregroundStyle(T.text3)
                     .lineLimit(1)
                 Spacer()
@@ -214,7 +214,7 @@ struct FilesPanel: View {
 
     private func noteRow(_ text: String, depth: Int, error: Bool = false) -> some View {
         Text(text)
-            .font(PhoneTypography.font(size: 12))
+            .font(Font.system(size: 12))
             .foregroundStyle(error ? T.err : T.text3)
             .padding(.leading, 40 + CGFloat(depth) * 18)
             .padding(.trailing, 20)

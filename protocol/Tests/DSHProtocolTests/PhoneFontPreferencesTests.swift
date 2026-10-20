@@ -9,10 +9,10 @@ final class PhoneFontPreferencesTests: XCTestCase {
         (.terminal, "dsh.terminalFontSize"),
     ]
 
-    func testUnconfiguredInstallUsesLargerDefaultsWithoutPersistingThem() {
+    func testUnconfiguredInstallUsesThemeDefaultsWithoutPersistingThem() {
         withDefaults { defaults, _ in
             for (role, key) in roles {
-                let expected = PhoneFontPreferences.defaultSize(role)
+                let expected = themeFontSizeSpec(role).default
                 XCTAssertNil(defaults.object(forKey: key))
                 XCTAssertEqual(PhoneFontPreferences.size(role, defaults: defaults), expected)
                 XCTAssertNil(defaults.object(forKey: key), "Reading a default must not pin it for future upgrades")
@@ -35,16 +35,16 @@ final class PhoneFontPreferencesTests: XCTestCase {
         }
     }
 
-    func testExplicitChoiceAtNewDefaultPersistsAcrossPreferenceInstances() {
+    func testExplicitChoiceAtThemeDefaultPersistsAcrossPreferenceInstances() {
         withDefaults { defaults, suite in
             for (role, key) in roles {
-                let value = PhoneFontPreferences.defaultSize(role)
+                let value = themeFontSizeSpec(role).default
                 PhoneFontPreferences.setSize(value, for: role, defaults: defaults)
                 XCTAssertEqual(defaults.object(forKey: key) as? Int, value)
             }
             let reopened = UserDefaults(suiteName: suite)!
             for (role, _) in roles {
-                let value = PhoneFontPreferences.defaultSize(role)
+                let value = themeFontSizeSpec(role).default
                 XCTAssertEqual(PhoneFontPreferences.size(role, defaults: reopened), value)
             }
         }
@@ -53,7 +53,7 @@ final class PhoneFontPreferencesTests: XCTestCase {
     func testEachRoleCanStepBothWaysAndClampsAtExistingBounds() {
         withDefaults { defaults, _ in
             for (role, key) in roles {
-                let initial = PhoneFontPreferences.defaultSize(role)
+                let initial = themeFontSizeSpec(role).default
                 XCTAssertTrue(themeFontSizeCanIncrease(role, value: initial))
                 XCTAssertTrue(themeFontSizeCanDecrease(role, value: initial))
                 for delta in [-1, 1] {
@@ -82,7 +82,7 @@ final class PhoneFontPreferencesTests: XCTestCase {
             XCTAssertNil(defaults.object(forKey: "dsh.codeFontSize"))
             XCTAssertNil(defaults.object(forKey: "dsh.terminalFontSize"))
             defaults.removeObject(forKey: "dsh.fontSize")
-            XCTAssertEqual(PhoneFontPreferences.size(.text, defaults: defaults), PhoneFontPreferences.defaultSize(.text))
+            XCTAssertEqual(PhoneFontPreferences.size(.text, defaults: defaults), themeFontSizeSpec(.text).default)
             XCTAssertNil(defaults.object(forKey: "dsh.fontSize"))
         }
     }
@@ -91,17 +91,16 @@ final class PhoneFontPreferencesTests: XCTestCase {
         withDefaults { defaults, suite in
             for (role, key) in roles {
                 let oldPhoneSize = role == .text ? 16 : role == .code ? 13 : 14
-                XCTAssertGreaterThan(PhoneFontPreferences.size(role, defaults: defaults), oldPhoneSize)
                 PhoneFontPreferences.setSize(oldPhoneSize, for: role, defaults: defaults)
                 let reopened = UserDefaults(suiteName: suite)!
                 XCTAssertEqual(PhoneFontPreferences.size(role, defaults: reopened), oldPhoneSize)
                 defaults.removeObject(forKey: key)
-                XCTAssertEqual(PhoneFontPreferences.size(role, defaults: defaults), PhoneFontPreferences.defaultSize(role))
+                XCTAssertEqual(PhoneFontPreferences.size(role, defaults: defaults), themeFontSizeSpec(role).default)
             }
         }
     }
 
-    func testReadingOrReapplyingAContentSizeNeverAddsTheInterfaceEnlargement() {
+    func testReadingOrReapplyingAContentSizePreservesTheExactChoice() {
         withDefaults { defaults, _ in
             for (role, _) in roles {
                 for chosen in themeFontSizeSpec(role).range {
@@ -120,7 +119,7 @@ final class PhoneFontPreferencesTests: XCTestCase {
         withDefaults { defaults, _ in
             for (role, key) in roles {
                 defaults.set("not-a-size", forKey: key)
-                XCTAssertEqual(PhoneFontPreferences.size(role, defaults: defaults), PhoneFontPreferences.defaultSize(role))
+                XCTAssertEqual(PhoneFontPreferences.size(role, defaults: defaults), themeFontSizeSpec(role).default)
                 XCTAssertEqual(defaults.string(forKey: key), "not-a-size")
                 PhoneFontPreferences.setSize(themeFontSizeSpec(role).min, for: role, defaults: defaults)
                 XCTAssertEqual(PhoneFontPreferences.size(role, defaults: defaults), themeFontSizeSpec(role).min)

@@ -111,7 +111,7 @@ struct GeneralSettingsView: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(L.t("权限", "Permission")).foregroundStyle(T.ink)
                                     Text(permissionDefaultDescription(english: L.en))
-                                        .font(PhoneTypography.font(size: 14))
+                                        .font(.caption)
                                         .foregroundStyle(T.text3)
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -203,7 +203,7 @@ struct GeneralSettingsView: View {
                             VStack(alignment: .leading) {
                                 Text(L.t("显示代码工作视图", "Show coding view")).foregroundStyle(T.ink)
                                 Text(L.t("开启后，显示轨迹、本轮代码差异，可选择完整的 Agent 预设切换", "Shows trajectory, code diffs, and all Agent presets"))
-                                    .font(PhoneTypography.font(size: 14)).foregroundStyle(T.text3)
+                                    .font(.caption).foregroundStyle(T.text3)
                             }
                             Spacer()
                             Toggle("", isOn: Binding(
@@ -232,7 +232,7 @@ struct GeneralSettingsView: View {
                             HStack {
                                 VStack(alignment: .leading) {
                                     Text(sessionLogUploadLabel(english: L.en)).foregroundStyle(T.ink)
-                                    Text(L.t("帮助改进 DeepSeek 模型与产品", "Help improve DeepSeek models and products.")).font(PhoneTypography.font(size: 14)).foregroundStyle(T.text3)
+                                    Text(L.t("帮助改进 DeepSeek 模型与产品", "Help improve DeepSeek models and products.")).font(.caption).foregroundStyle(T.text3)
                                 }
                                 Spacer()
                                 Toggle("", isOn: Binding(
@@ -266,7 +266,7 @@ struct GeneralSettingsView: View {
                         .padding(.vertical, 12)
                     }
                     Text("\(L.currentVersion())：\(AppModel.appVersion)")
-                        .font(PhoneTypography.caption)
+                        .font(Font.caption)
                         .foregroundStyle(T.caption)
                         .frame(maxWidth: .infinity)
                         .padding(16)
@@ -306,7 +306,7 @@ struct GeneralSettingsView: View {
             VStack(spacing: 8) {
                 OfficialGlyph(kind: icon, size: 18, color: T.ink)
                 Text(title)
-                    .font(PhoneTypography.font(size: 14))
+                    .font(.caption)
                     .foregroundStyle(T.ink)
             }
             .frame(maxWidth: .infinity)
@@ -400,12 +400,12 @@ func preferenceRow(
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title).foregroundStyle(T.ink)
                     if let description, !description.isEmpty {
-                        Text(description).font(PhoneTypography.font(size: 14)).foregroundStyle(T.text3)
+                        Text(description).font(.caption).foregroundStyle(T.text3)
                     }
                 }
                 Spacer()
                 if let value, !value.isEmpty {
-                    Text(value).font(PhoneTypography.subheadline).foregroundStyle(T.text3).lineLimit(2)
+                    Text(value).font(Font.subheadline).foregroundStyle(T.text3).lineLimit(2)
                 }
                 OfficialGlyph(kind: .chevronDown, size: 12, color: T.text2)
             }
@@ -420,7 +420,7 @@ func preferenceRow(
 
 func settingsMessage(_ text: String, error: Bool = false) -> some View {
     Text(text)
-        .font(PhoneTypography.footnote)
+        .font(Font.footnote)
         .foregroundStyle(error ? T.err : T.text3)
         .padding(.horizontal, 22)
 }
@@ -431,7 +431,7 @@ func header(_ title: String, back: @escaping () -> Void) -> some View {
             .accessibilityElement(children: .contain)
             .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier("navBack")
-        Text(title).font(PhoneTypography.headline).foregroundStyle(T.ink)
+        Text(title).font(Font.headline).foregroundStyle(T.ink)
         Spacer()
     }
     .padding(.horizontal, 16)
@@ -449,8 +449,8 @@ func settingsShellHeader(back: @escaping () -> Void) -> some View {
             .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier("navBack")
         Text(L.settings())
-            .font(PhoneTypography.font(size: CGFloat(settingsNavTitleFontSizePoints), weight: .medium))
-            .frame(minHeight: CGFloat(settingsNavTitleLineHeightPoints) + 2, alignment: .leading)
+            .font(Font.system(size: CGFloat(settingsNavTitleFontSizePoints), weight: .medium))
+            .frame(height: CGFloat(settingsNavTitleLineHeightPoints), alignment: .leading)
             .foregroundStyle(T.ink)
         Spacer(minLength: 0)
     }
@@ -527,12 +527,12 @@ func nav<Icon: View>(
                     )
                     .foregroundStyle(T.text2)
                 Text(title)
-                    .font(PhoneTypography.font(size: CGFloat(settingsNavCellFontSizePoints)))
-                    .frame(minHeight: CGFloat(settingsNavCellLineHeightPoints) + 2, alignment: .leading)
+                    .font(Font.system(size: CGFloat(settingsNavCellFontSizePoints)))
+                    .frame(height: CGFloat(settingsNavCellLineHeightPoints), alignment: .leading)
                     .foregroundStyle(T.ink)
                 Spacer(minLength: 0)
                 if let value, !value.isEmpty {
-                    Text(value).font(PhoneTypography.subheadline).foregroundStyle(T.text3).lineLimit(1)
+                    Text(value).font(Font.subheadline).foregroundStyle(T.text3).lineLimit(1)
                 }
                 OfficialGlyph(kind: .chevronRight, size: 12, color: T.text3)
             }
@@ -597,13 +597,13 @@ struct SettingsFontSizeRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(themeFontSizeTitle(role, english: L.en)).foregroundStyle(T.ink)
                     Text(themeFontSizeDescription(role, english: L.en))
-                        .font(PhoneTypography.font(size: 14))
+                        .font(.caption)
                         .foregroundStyle(T.text3)
                 }
                 Spacer(minLength: 8)
                 HStack(spacing: 0) {
                     Text("\(value)")
-                        .font(PhoneTypography.subheadline)
+                        .font(Font.subheadline)
                         .foregroundStyle(T.ink)
                         .frame(maxWidth: .infinity)
                     VStack(spacing: 0) {
@@ -615,7 +615,7 @@ struct SettingsFontSizeRow: View {
                 .frame(width: 72, height: 36)
                 .background(T.fill2, in: RoundedRectangle(cornerRadius: 8))
                 Text(themeFontSizeUnit)
-                    .font(PhoneTypography.subheadline)
+                    .font(Font.subheadline)
                     .foregroundStyle(T.text2)
                 if let onToggle {
                     Button(action: onToggle) {
@@ -669,7 +669,7 @@ struct SettingsFontFamilyRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(themeFontFamilyTitle(role, english: L.en)).foregroundStyle(T.ink)
                     Text(themeFontFamilyDescription(role, english: L.en))
-                        .font(PhoneTypography.font(size: 14))
+                        .font(.caption)
                         .foregroundStyle(T.text3)
                 }
                 TextField(themeFontFamilyPlaceholder(english: L.en), text: $draft)

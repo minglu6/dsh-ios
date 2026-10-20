@@ -46,7 +46,7 @@ struct ScheduleScreen: View {
         VStack(spacing: 0) {
             HStack {
                 Button { model.pop() } label: { OfficialGlyph(kind: .chevronLeft, size: 16, color: T.ink) }
-                Text(L.automation()).font(PhoneTypography.headline).foregroundStyle(T.ink)
+                Text(L.automation()).font(Font.headline).foregroundStyle(T.ink)
                 Spacer()
                 Button(SchedulePagePolicy.headerNewLabel(english: L.en)) { newTask() }
                     .foregroundStyle(T.ink)
@@ -69,7 +69,7 @@ struct ScheduleScreen: View {
                         TextField(L.t("搜索自动化任务", "Search automation tasks"), text: $query)
                         if !query.isEmpty {
                             Button(L.clearSearch()) { query = "" }
-                                .font(PhoneTypography.caption)
+                                .font(Font.caption)
                                 .foregroundStyle(T.text3)
                         }
                     }
@@ -88,7 +88,7 @@ struct ScheduleScreen: View {
                         VStack(spacing: 10) {
                             OfficialGlyph(kind: .clockOutline, size: 36, color: T.caption)
                             Text(emptyText)
-                                .font(PhoneTypography.subheadline)
+                                .font(Font.subheadline)
                                 .foregroundStyle(T.text3)
                                 .multilineTextAlignment(.center)
                             Button(SchedulePagePolicy.emptyActionLabel(english: L.en)) { newTask() }
@@ -102,11 +102,11 @@ struct ScheduleScreen: View {
                         Button { selected = row } label: {
                             VStack(alignment: .leading, spacing: 5) {
                                 Text(row["title"].str() ?? "").foregroundStyle(T.ink).lineLimit(2)
-                                Text(scheduleSummary(row)).font(PhoneTypography.caption).foregroundStyle(T.text3)
+                                Text(scheduleSummary(row)).font(Font.caption).foregroundStyle(T.text3)
                                 Text(row["status"].str() == "active"
                                      ? L.t("下次计划时间：", "Next scheduled time: ") + scheduleNext(row["scheduledAt"].str(), zone: row["timeZone"].str(), now: now)
                                      : L.t("已结束", "Inactive"))
-                                .font(PhoneTypography.caption).foregroundStyle(T.text3)
+                                .font(Font.caption).foregroundStyle(T.text3)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 24)
@@ -138,7 +138,7 @@ struct ScheduleScreen: View {
     private func tab(_ value: String, _ label: String) -> some View {
         Button(label) { filter = value }
             .foregroundStyle(filter == value ? T.ink : T.text3)
-            .font(PhoneTypography.subheadline.weight(filter == value ? .semibold : .regular))
+            .font(Font.subheadline.weight(filter == value ? .semibold : .regular))
     }
 
     private func newTask() {
@@ -208,7 +208,7 @@ private struct ScheduleDetailView: View {
         VStack(spacing: 0) {
             HStack {
                 Button(action: onBack) { OfficialGlyph(kind: .chevronLeft, size: 16, color: T.ink) }
-                Text(row["title"].str() ?? "").font(PhoneTypography.headline).foregroundStyle(T.ink).lineLimit(1)
+                Text(row["title"].str() ?? "").font(Font.headline).foregroundStyle(T.ink).lineLimit(1)
                 Spacer()
                 if editing {
                     Button(busy ? L.saving() : L.save(), action: save)
@@ -239,7 +239,7 @@ private struct ScheduleDetailView: View {
                             TextEditor(text: $prompt).frame(minHeight: 80).disabled(!canEdit)
                             timingEditor
                         } else {
-                            Text(L.t("自动化任务内容", "Automation task instruction")).font(PhoneTypography.caption).foregroundStyle(T.text3)
+                            Text(L.t("自动化任务内容", "Automation task instruction")).font(Font.caption).foregroundStyle(T.text3)
                             Text(row["prompt"].str() ?? "").foregroundStyle(T.ink)
                             Button(L.t("编辑", "Edit")) {
                                 editing = true
@@ -251,7 +251,7 @@ private struct ScheduleDetailView: View {
                             .disabled(!model.isOnline || !authoritative || !isActive || loading || !model.ops.contains("schedule.update"))
                         }
                         Text(L.t("下次计划时间：", "Next scheduled time: ") + scheduleNext(row["scheduledAt"].str(), zone: row["timeZone"].str(), now: now))
-                            .font(PhoneTypography.caption).foregroundStyle(T.text3)
+                            .font(Font.caption).foregroundStyle(T.text3)
                         Button {
                             if let sessionId = row["sessionId"].str() {
                                 model.openSession(sessionId)
@@ -315,7 +315,7 @@ private struct ScheduleDetailView: View {
                         draft = draft.copy(weekdays: days)
                     } label: {
                         Text(weekdayLabel(day))
-                            .font(PhoneTypography.caption)
+                            .font(Font.caption)
                             .foregroundStyle(draft.weekdays.contains(day) ? T.onPrimary : T.ink)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 6)
@@ -389,7 +389,7 @@ private struct ScheduleHistoryView: View {
             ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                 VStack(alignment: .leading) {
                     Text(item["status"].str() ?? item["outcome"].str() ?? "").foregroundStyle(T.ink)
-                    Text(scheduleStamp(item["scheduledAt"].str() ?? item["at"].str(), zone: zone)).font(PhoneTypography.caption).foregroundStyle(T.text3)
+                    Text(scheduleStamp(item["scheduledAt"].str() ?? item["at"].str(), zone: zone)).font(Font.caption).foregroundStyle(T.text3)
                 }
             }
         }

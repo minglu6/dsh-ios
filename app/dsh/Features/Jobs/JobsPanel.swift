@@ -27,7 +27,7 @@ struct JobsAction: View {
                             Circle().fill(T.accent).frame(width: 6, height: 6)
                         }
                         Text(JobsActionLabel.text(chip, en: L.en))
-                            .font(PhoneTypography.font(size: 12))
+                            .font(Font.system(size: 12))
                             .lineLimit(1)
                         OfficialGlyph(
                             kind: .jobsChevron,
@@ -144,7 +144,7 @@ struct JobsPanel: View {
             }
             if !liveRows.isEmpty {
                 Text(jobSectionLive(english: L.en))
-                    .font(PhoneTypography.caption)
+                    .font(Font.caption)
                     .foregroundStyle(T.text3)
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
@@ -171,7 +171,7 @@ struct JobsPanel: View {
                             ))
                             Text(jobSectionSettled(count: settledRows.count, english: L.en))
                         }
-                        .font(PhoneTypography.caption)
+                        .font(Font.caption)
                         .foregroundStyle(T.text3)
                     }
                     .buttonStyle(.plain)
@@ -185,7 +185,7 @@ struct JobsPanel: View {
                             model.clearJobSelection()
                         }
                     }
-                    .font(PhoneTypography.caption)
+                    .font(Font.caption)
                     .foregroundStyle(T.text2)
                 }
                 .padding(.horizontal, 16)
@@ -254,10 +254,10 @@ struct JobsPanel: View {
                     Text(job.title).foregroundStyle(T.ink).lineLimit(1)
                     HStack(spacing: 6) {
                         if !job.kind.isEmpty {
-                            Text(job.kind).font(PhoneTypography.caption).foregroundStyle(T.text3)
+                            Text(job.kind).font(Font.caption).foregroundStyle(T.text3)
                         }
-                        Text(status).font(PhoneTypography.caption).foregroundStyle(T.text3).lineLimit(1)
-                        Text(duration).font(PhoneTypography.caption.monospacedDigit()).foregroundStyle(T.text3)
+                        Text(status).font(Font.caption).foregroundStyle(T.text3).lineLimit(1)
+                        Text(duration).font(Font.caption.monospacedDigit()).foregroundStyle(T.text3)
                     }
                 } else {
                     settledHeadline(job, status: status, duration: duration)
@@ -283,13 +283,13 @@ struct JobsPanel: View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 6) {
                 if !job.kind.isEmpty {
-                    Text(job.kind).font(PhoneTypography.caption).foregroundStyle(T.text3)
+                    Text(job.kind).font(Font.caption).foregroundStyle(T.text3)
                 }
                 Text(job.title).foregroundStyle(T.ink).lineLimit(1)
-                Text(duration).font(PhoneTypography.caption.monospacedDigit()).foregroundStyle(T.text3)
+                Text(duration).font(Font.caption.monospacedDigit()).foregroundStyle(T.text3)
             }
             Text(status)
-                .font(PhoneTypography.caption)
+                .font(Font.caption)
                 .foregroundStyle(T.text3)
                 .lineLimit(jobsPopoverSettledDetailWraps ? nil : 1)
                 .fixedSize(horizontal: false, vertical: jobsPopoverSettledDetailWraps)
@@ -317,7 +317,7 @@ struct JobsPanel: View {
             HStack(spacing: 4) {
                 OfficialGlyph(kind: .stopFill, size: 9, color: phase.stateName == "failed" ? T.err : T.text2)
                 if case .armed = phase {
-                    Text(jobKillConfirmAction(english: L.en)).font(PhoneTypography.caption)
+                    Text(jobKillConfirmAction(english: L.en)).font(Font.caption)
                 }
             }
             .foregroundStyle(phase.stateName == "failed" ? T.err : T.text2)
@@ -344,7 +344,7 @@ struct JobsPanel: View {
             } else {
                 ForEach(Array(detail.output.enumerated()), id: \.offset) { _, line in
                     Text(line.isEmpty ? " " : line)
-                        .font(LocalFonts.code())
+                        .font(.system(.footnote, design: .monospaced))
                         .foregroundStyle(T.text2)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .textSelection(.enabled)

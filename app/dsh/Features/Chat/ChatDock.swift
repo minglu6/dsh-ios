@@ -42,7 +42,7 @@ struct UserQuestionCard: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text(isPlan ? L.planReview() : "\(item.header ?? askRowTitle(english: L.en)) · \(currentIndex + 1)/\(question.questions.count)")
-                    .font(PhoneTypography.subheadline)
+                    .font(Font.subheadline)
                     .foregroundStyle(T.text2)
                 Spacer()
                 Button(questionCollapseLabel(english: L.en), action: onDismiss).disabled(busy)
@@ -51,7 +51,7 @@ struct UserQuestionCard: View {
             .padding(.top, 10)
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(item.question).font(PhoneTypography.title3).foregroundStyle(T.ink)
+                    Text(item.question).font(Font.title3).foregroundStyle(T.ink)
                     if let detail = item.detail, !detail.isEmpty {
                         MarkdownView(source: detail, wrapCode: AppModel.shared.codeWordWrap)
                     }
@@ -80,11 +80,11 @@ struct UserQuestionCard: View {
                 .padding(.vertical, 8)
             }
             VStack(alignment: .leading, spacing: 8) {
-                if let err { Text(err).font(LocalFonts.secondaryText()).foregroundStyle(T.err) }
+                if let err { Text(err).font(.caption).foregroundStyle(T.err) }
                 if busy { Text(questionSubmitting(english: L.en)).foregroundStyle(T.text3) }
                 else if question.state == "continued" {
                     Text(questionWaitContinued(english: L.en))
-                        .font(LocalFonts.secondaryText())
+                        .font(.caption)
                         .foregroundStyle(T.text3)
                 }
                 if isPlan {
@@ -151,11 +151,11 @@ struct UserQuestionCard: View {
                     Text(display.label).foregroundStyle(T.ink)
                     if display.recommended {
                         Text(questionRecommendedBadge(english: L.en))
-                            .font(PhoneTypography.caption)
+                            .font(Font.caption)
                             .foregroundStyle(T.accent)
                     }
                     if let description = opt.description, !description.isEmpty {
-                        Text(description).font(LocalFonts.secondaryText()).foregroundStyle(T.text3)
+                        Text(description).font(.caption).foregroundStyle(T.text3)
                     }
                 }
                 Spacer()
@@ -255,7 +255,7 @@ struct QuestionReplyRow: View {
                             OfficialGlyph(kind: .chevronDown, size: 12, color: T.text3)
                                 .rotationEffect(.degrees(open ? 0 : -90))
                             Text(questionReplyLabel(english: L.en))
-                                .font(PhoneTypography.font(size: 13))
+                                .font(Font.system(size: 13))
                                 .foregroundStyle(T.text3)
                         }
                         if !open {
@@ -291,7 +291,7 @@ struct QuestionReplyRow: View {
             HStack(spacing: 8) {
                 if let at = item.at {
                     Text(formatMessageClock(at, english: L.en))
-                        .font(PhoneTypography.font(size: 13))
+                        .font(Font.system(size: 13))
                         .foregroundStyle(T.text3)
                 }
                 Button {
@@ -325,24 +325,24 @@ struct QuestionReplyRow: View {
         let values = replyAnswerValues(answers: item.answers, id: question.id)
         return VStack(alignment: .leading, spacing: 4) {
             if let header = question.header, !header.isEmpty, header != question.question {
-                Text(header).font(LocalFonts.secondaryText()).foregroundStyle(T.text3)
+                Text(header).font(.system(size: 11)).foregroundStyle(T.text3)
             }
             Text(question.question).font(LocalFonts.text()).foregroundStyle(T.ink)
             if let detail = question.detail, !detail.isEmpty {
-                Text(detail).font(LocalFonts.secondaryText()).foregroundStyle(T.text3)
+                Text(detail).font(.system(size: 11)).foregroundStyle(T.text3)
             }
             if !question.options.isEmpty {
                 VStack(alignment: .leading, spacing: 2) {
                     ForEach(Array(question.options.enumerated()), id: \.offset) { _, option in
                         Text(option.description.map { "\(option.label) — \($0)" } ?? option.label)
-                            .font(LocalFonts.secondaryText())
+                            .font(.system(size: 11))
                             .foregroundStyle(T.text3)
                     }
                 }
             }
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(questionReplyAnswerLabel(english: L.en))
-                    .font(LocalFonts.secondaryText())
+                    .font(.system(size: 11))
                     .foregroundStyle(T.text3)
                 Text(values.isEmpty ? questionReplySkipped(english: L.en) : values.joined(separator: ", "))
                     .font(LocalFonts.text())
@@ -372,7 +372,7 @@ struct ApprovalCard: View {
             .background(T.warnTint)
             VStack(alignment: .leading, spacing: 8) {
                 Text(L.t("工具 \(approval.toolName) 请求越权执行", "Tool \(approval.toolName) requested elevated execution"))
-                    .font(PhoneTypography.title3)
+                    .font(Font.title3)
                     .foregroundStyle(T.ink)
                 if let command = approvalCommand(approval, items: items) ?? approval.reason {
                     Text(command)
@@ -381,7 +381,7 @@ struct ApprovalCard: View {
                         .textSelection(.enabled)
                 }
                 if let reason = approval.reason, reason != approvalCommand(approval, items: items) {
-                    Text(reason).font(PhoneTypography.footnote).foregroundStyle(T.warnText)
+                    Text(reason).font(Font.footnote).foregroundStyle(T.warnText)
                 }
                 HStack(spacing: 10) {
                     Button(L.reject()) { answer("rejected") }
@@ -426,9 +426,9 @@ struct TodoPanel: View {
                 Button { expanded.toggle() } label: {
                     HStack(spacing: 10) {
                         OfficialGlyph(kind: .checklistOutline, size: 14, color: T.text3)
-                        Text(L.t("任务", "To-dos")).font(PhoneTypography.subheadline.weight(.medium)).foregroundStyle(T.ink)
+                        Text(L.t("任务", "To-dos")).font(Font.subheadline.weight(.medium)).foregroundStyle(T.ink)
                         Text(todoProgressLabel(todos, en: L.en))
-                            .font(PhoneTypography.subheadline)
+                            .font(Font.subheadline)
                             .foregroundStyle(T.text3)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         OfficialGlyph(kind: .chevronDown, size: 14, color: T.text3)
@@ -443,7 +443,7 @@ struct TodoPanel: View {
                         ForEach(todos) { item in
                             HStack(spacing: 10) {
                                 todoDot(item.status)
-                                Text(item.content).font(PhoneTypography.subheadline).foregroundStyle(T.text2).lineLimit(1)
+                                Text(item.content).font(Font.subheadline).foregroundStyle(T.text2).lineLimit(1)
                             }
                         }
                     }
@@ -489,10 +489,10 @@ struct GoalBar: View {
                     OfficialGlyph(kind: .goalOutline, size: 16, color: T.text3)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(goalPhaseLabel(phase: goal["phase"].str(), activation: activation, english: L.en))
-                            .font(PhoneTypography.caption)
+                            .font(Font.caption)
                             .foregroundStyle(T.text3)
                         Text(goal["objective"].str() ?? "")
-                            .font(PhoneTypography.subheadline)
+                            .font(Font.subheadline)
                             .foregroundStyle(T.text2)
                             .lineLimit(1)
                     }
@@ -524,7 +524,7 @@ struct GoalSheet: View {
                 VStack(alignment: .leading, spacing: 12) {
                     if let goal {
                         Text(goalPhaseLabel(phase: goal["phase"].str(), activation: model.goalActivation, english: L.en))
-                            .font(PhoneTypography.caption)
+                            .font(Font.caption)
                             .foregroundStyle(T.text3)
                         if let reason = goal["blockedReason"]["message"].str() {
                             Text(reason).foregroundStyle(T.warnText)
@@ -622,7 +622,7 @@ struct PromptQueue: View {
                         HStack(spacing: 10) {
                             OfficialGlyph(kind: .queueOutline, size: 14, color: T.text3)
                             Text(L.en ? "\(prompts.count) queued messages" : "\(prompts.count) 条排队消息")
-                                .font(PhoneTypography.subheadline.weight(.medium))
+                                .font(Font.subheadline.weight(.medium))
                                 .foregroundStyle(T.text2)
                             Spacer()
                             if !expanded && prompts.contains(where: \.sending) {
@@ -690,13 +690,13 @@ struct PromptQueue: View {
                         .frame(maxWidth: 180)
                     }
                     if !preview.isEmpty {
-                        Text(preview).font(PhoneTypography.subheadline).foregroundStyle(T.text2).lineLimit(1)
+                        Text(preview).font(Font.subheadline).foregroundStyle(T.text2).lineLimit(1)
                     }
                 }
             }
             Spacer(minLength: 4)
             if prompt.sending {
-                Text(L.t("发送中…", "Sending…")).font(PhoneTypography.subheadline).foregroundStyle(T.text3)
+                Text(L.t("发送中…", "Sending…")).font(Font.subheadline).foregroundStyle(T.text3)
             }
             if editing {
                 icon(.checkOutline, enabled: actionable && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, label: L.t("保存排队消息", "Save queued message")) {
@@ -764,12 +764,12 @@ struct PromptQueue: View {
             HStack(spacing: 4) {
                 FileTypeIcon(path: attachment.name ?? "", type: "file", openable: true)
                 Text(attachment.name ?? "")
-                    .font(PhoneTypography.caption)
+                    .font(Font.caption)
                     .foregroundStyle(T.text2)
                     .lineLimit(1)
                 if let bytes = attachment.bytes {
                     Text(fileSizeText(bytes))
-                        .font(PhoneTypography.font(size: 10))
+                        .font(Font.system(size: 10))
                         .foregroundStyle(T.text3)
                 }
             }
@@ -990,26 +990,26 @@ struct CommandMenuOverlay: View {
         if let error { errorRow(error) }
         if let collision {
             Text(commandContributionCollisionMessage(collision, english: L.en))
-                .font(PhoneTypography.caption)
+                .font(Font.caption)
                 .foregroundStyle(T.err)
                 .padding(12)
         }
         if !loading && error == nil && rows.isEmpty {
-            Text(L.noOptions()).font(PhoneTypography.caption).foregroundStyle(T.text3).padding(12)
+            Text(L.noOptions()).font(Font.caption).foregroundStyle(T.text3).padding(12)
         }
     }
 
     private var loadingRow: some View {
         HStack {
             ProgressView().controlSize(.mini)
-            Text(commandMenuStatusLoading(english: L.en)).font(PhoneTypography.caption).foregroundStyle(T.text3)
+            Text(commandMenuStatusLoading(english: L.en)).font(Font.caption).foregroundStyle(T.text3)
         }
         .padding(12)
     }
 
     private func errorRow(_ message: String) -> some View {
         HStack(alignment: .top, spacing: 8) {
-            Text(message).font(PhoneTypography.caption).foregroundStyle(T.err)
+            Text(message).font(Font.caption).foregroundStyle(T.err)
             Button(L.retry()) { attempt += 1 }.disabled(!model.isOnline)
         }
         .padding(12)
@@ -1053,7 +1053,7 @@ struct CommandMenuOverlay: View {
         switch item {
         case .section(let title):
             Text(title)
-                .font(PhoneTypography.caption)
+                .font(Font.caption)
                 .foregroundStyle(T.text3)
                 .padding(.horizontal, 12)
                 .padding(.top, 10)
@@ -1130,12 +1130,12 @@ struct CommandMenuOverlay: View {
                 HStack {
                     Text(title).foregroundStyle(enabled ? T.ink : T.text3)
                     if let alias {
-                        Text(alias).font(PhoneTypography.caption).foregroundStyle(T.text3)
+                        Text(alias).font(Font.caption).foregroundStyle(T.text3)
                     }
                 }
                 if let detail, !detail.isEmpty {
                     Text(detail)
-                        .font(PhoneTypography.caption)
+                        .font(Font.caption)
                         .foregroundStyle(T.text3)
                         .lineLimit(commandMenuDescriptionLineLimit)
                 }

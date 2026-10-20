@@ -184,12 +184,12 @@ struct ChatView: View {
                         ForEach(Array(headerCrumbs.enumerated()), id: \.element.sessionId) { index, crumb in
                             if index > 0 {
                                 Text("/")
-                                    .font(PhoneTypography.headline)
+                                    .font(Font.headline)
                                     .foregroundStyle(T.text3)
                             }
                             if crumb.current {
                                 Text(crumb.title)
-                                    .font(PhoneTypography.headline)
+                                    .font(Font.headline)
                                     .foregroundStyle(crumb.subagent ? T.text2 : T.ink)
                                     .lineLimit(1)
                             } else {
@@ -197,7 +197,7 @@ struct ChatView: View {
                                     model.openSession(crumb.sessionId)
                                 } label: {
                                     Text(crumb.title)
-                                        .font(PhoneTypography.headline)
+                                        .font(Font.headline)
                                         .foregroundStyle(T.text2)
                                         .lineLimit(1)
                                 }
@@ -211,7 +211,7 @@ struct ChatView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 Text(headerTitle)
-                    .font(PhoneTypography.headline)
+                    .font(Font.headline)
                     .foregroundStyle(T.ink)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -264,7 +264,7 @@ struct ChatView: View {
     private func tabChip(_ index: Int, _ title: String) -> some View {
         Button { tab = index } label: {
             Text(title)
-                .font(PhoneTypography.subheadline.weight(tab == index ? .semibold : .regular))
+                .font(Font.subheadline.weight(tab == index ? .semibold : .regular))
                 .foregroundStyle(tab == index ? T.ink : T.text3)
                 .padding(.bottom, 6)
                 .overlay(alignment: .bottom) {
@@ -326,7 +326,7 @@ struct ChatView: View {
             if !questionVisible && sessionApproval == nil {
                 if firstPromptBlocksComposerActions(model.firstPrompt) {
                     Text(firstPromptSendingLabel(english: L.en))
-                        .font(PhoneTypography.caption)
+                        .font(Font.caption)
                         .foregroundStyle(T.text3)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 20)
@@ -337,7 +337,7 @@ struct ChatView: View {
                     Text(address.mode == "one-shot"
                          ? L.t("一次性任务不支持后续消息，可在这里查看完整执行记录。", "One-shot tasks do not accept follow-up messages. Their full execution record is available here.")
                          : L.t("读取子会话后才能确定是否可继续。", "Read the child session to determine whether it can be continued."))
-                        .font(PhoneTypography.font(size: 14))
+                        .font(Font.system(size: 14))
                         .foregroundStyle(T.text2)
                         .padding(16)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -688,7 +688,7 @@ private struct RunningStatusRow: View {
             HStack(alignment: .center, spacing: 8) {
                 RunningWhaleTail()
                 TextShimmer(text: label, active: true)
-                    .font(PhoneTypography.subheadline)
+                    .font(Font.subheadline)
                     .foregroundStyle(T.accent)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -720,7 +720,7 @@ private struct ToolInspectSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text(summary.title).font(PhoneTypography.headline).foregroundStyle(T.ink)
+                    Text(summary.title).font(Font.headline).foregroundStyle(T.ink)
                     if let summary = summary.summary { Text(summary).foregroundStyle(T.text2) }
                     if !tool.arguments.isEmpty {
                         Text(tool.arguments).font(LocalFonts.code()).foregroundStyle(T.text3).textSelection(.enabled)
@@ -766,7 +766,7 @@ struct ChatRowView: View {
                 TurnMaxTokensRow()
             case .stopped:
                 Text(messageStopped(english: L.en))
-                    .font(PhoneTypography.footnote)
+                    .font(Font.footnote)
                     .foregroundStyle(T.warnText)
             case .generic:
                 MessageRow(item: .notice(notice), model: model, onOpenFeedback: onOpenFeedback)
@@ -940,7 +940,7 @@ private struct CommandRow: View {
             header(title: title, summary: summary, expandable: expandable, running: running, color: summaryColor)
             if open, let text = item.outcomeText {
                 Text(text)
-                    .font(LocalFonts.code())
+                    .font(.system(size: 12, design: .monospaced))
                     .foregroundStyle(error ? T.err : T.ink)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, maxHeight: 260, alignment: .topLeading)
@@ -1125,12 +1125,12 @@ private struct TurnTriggerRow: View {
                         color: T.text3
                     )
                     Text(title)
-                        .font(PhoneTypography.font(size: CGFloat(turnTriggerTitleFontSizePoints)))
+                        .font(Font.system(size: CGFloat(turnTriggerTitleFontSizePoints)))
                         .foregroundStyle(T.text2)
                     Spacer(minLength: 8)
                     if let at = item.at {
                         Text(formatMessageClock(at, english: L.en))
-                            .font(PhoneTypography.font(size: CGFloat(turnTriggerTimeFontSizePoints)))
+                            .font(Font.system(size: CGFloat(turnTriggerTimeFontSizePoints)))
                             .foregroundStyle(T.text3)
                     }
                     OfficialGlyph(
@@ -1148,10 +1148,10 @@ private struct TurnTriggerRow: View {
             if open {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(turnTriggerExplanation(english: L.en))
-                        .font(PhoneTypography.caption)
+                        .font(Font.caption)
                         .foregroundStyle(T.text3)
                     if !item.text.isEmpty {
-                        Text(item.text).font(PhoneTypography.subheadline).foregroundStyle(T.ink)
+                        Text(item.text).font(Font.subheadline).foregroundStyle(T.ink)
                     }
                 }
                 .padding(.leading, CGFloat(turnTriggerBodyPaddingLeadingPoints))
@@ -1463,7 +1463,7 @@ struct MessageRow: View {
                         }
                         if let summary = referenceSummaryText(labels: user.referenceLabels, english: L.en) {
                             Text(summary)
-                                .font(PhoneTypography.font(size: 13))
+                                .font(Font.system(size: 13))
                                 .foregroundStyle(T.text3)
                                 .multilineTextAlignment(.trailing)
                         }
@@ -1508,15 +1508,15 @@ struct MessageRow: View {
         case .tool(let tool):
             ToolCard(tool: tool, onTap: {})
         case .notice(let notice):
-            Text(noticeChatTitle(notice, english: L.en)).font(PhoneTypography.footnote).foregroundStyle(T.warnText)
+            Text(noticeChatTitle(notice, english: L.en)).font(Font.footnote).foregroundStyle(T.warnText)
         case .deliverable(let deliverable):
             VStack(alignment: .leading, spacing: 6) {
-                Text(L.presentFiles()).font(PhoneTypography.caption).foregroundStyle(T.text3)
+                Text(L.presentFiles()).font(Font.caption).foregroundStyle(T.text3)
                 ForEach(deliverable.files, id: \.path) { file in
                     Button {
                         model.openFilePreview(path: file.path)
                     } label: {
-                        Text(file.path).font(PhoneTypography.footnote.monospaced()).foregroundStyle(T.link)
+                        Text(file.path).font(Font.footnote.monospaced()).foregroundStyle(T.link)
                     }
                     .disabled(!model.canShowFiles)
                 }
@@ -1596,7 +1596,7 @@ private struct MessageActions: View {
         HStack(spacing: 0) {
             if clock == .start, let timeMs {
                 Text(formatMessageClock(timeMs, english: L.en))
-                    .font(PhoneTypography.font(size: 13))
+                    .font(Font.system(size: 13))
                     .foregroundStyle(T.text3)
                     .padding(.trailing, 8)
             }
@@ -1642,7 +1642,7 @@ private struct MessageActions: View {
             Spacer(minLength: 0)
             if clock == .end, let timeMs {
                 Text(formatMessageClock(timeMs, english: L.en))
-                    .font(PhoneTypography.font(size: 12))
+                    .font(Font.system(size: 12))
                     .foregroundStyle(T.text3)
                     .padding(.leading, 8)
             }
@@ -1769,7 +1769,7 @@ struct ComposerView: View {
                     english: L.en
                 ) {
                     Text(hint)
-                        .font(PhoneTypography.font(size: 13))
+                        .font(Font.system(size: 13))
                         .foregroundStyle(T.text3)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -1845,7 +1845,7 @@ struct ComposerView: View {
                                     color: T.accent
                                 )
                                 Text(L.planChip())
-                                    .font(PhoneTypography.font(size: CGFloat(planChipFontSizePoints), weight: .medium))
+                                    .font(Font.system(size: CGFloat(planChipFontSizePoints), weight: .medium))
                             }
                             .foregroundStyle(T.accent)
                             .padding(.horizontal, 8)
@@ -1940,7 +1940,7 @@ struct ComposerView: View {
                     }
                     .accessibilityIdentifier("composerIme.unmark")
                 }
-                .font(PhoneTypography.font(size: 12))
+                .font(Font.system(size: 12))
                 .padding(6)
                 .background(T.fill2, in: RoundedRectangle(cornerRadius: 6))
             }
@@ -1949,18 +1949,18 @@ struct ComposerView: View {
 
     @ViewBuilder
     private var attachList: some View {
-        Text(L.pendingFiles()).font(PhoneTypography.caption).foregroundStyle(T.text3)
+        Text(L.pendingFiles()).font(Font.caption).foregroundStyle(T.text3)
         ForEach(model.pendingAttaches) { attach in
             HStack {
-                Text(attach.name).font(PhoneTypography.subheadline).foregroundStyle(T.ink).lineLimit(1)
+                Text(attach.name).font(Font.subheadline).foregroundStyle(T.ink).lineLimit(1)
                 Spacer()
                 switch attach.status {
                 case .uploading, .pending:
-                    Text(L.uploading()).font(PhoneTypography.caption).foregroundStyle(T.caption)
+                    Text(L.uploading()).font(Font.caption).foregroundStyle(T.caption)
                 case .failed:
-                    Button(L.uploadFailed()) { model.retryAttach(attach.id) }.font(PhoneTypography.caption).foregroundStyle(T.err)
+                    Button(L.uploadFailed()) { model.retryAttach(attach.id) }.font(Font.caption).foregroundStyle(T.err)
                 case .ready:
-                    Button(L.removeFile(attach.name)) { model.removeAttach(attach.id) }.font(PhoneTypography.caption).foregroundStyle(T.text3)
+                    Button(L.removeFile(attach.name)) { model.removeAttach(attach.id) }.font(Font.caption).foregroundStyle(T.text3)
                 }
             }
         }
@@ -2497,9 +2497,9 @@ private struct ImageBubble: View {
         VStack(alignment: .trailing, spacing: 6) {
             Group {
                 if loading {
-                    Text(L.imageLoading()).font(PhoneTypography.caption).foregroundStyle(T.text3)
+                    Text(L.imageLoading()).font(Font.caption).foregroundStyle(T.text3)
                 } else if failed {
-                    Button(L.imageLoadFailed()) { attempt += 1 }.font(PhoneTypography.caption).foregroundStyle(T.err)
+                    Button(L.imageLoadFailed()) { attempt += 1 }.font(Font.caption).foregroundStyle(T.err)
                 } else if let image {
                     Image(uiImage: image)
                         .resizable()
@@ -2507,7 +2507,7 @@ private struct ImageBubble: View {
                         .frame(maxWidth: 220, maxHeight: 220)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .onTapGesture { preview = true }
-                    Button(L.viewOriginal()) { preview = true }.font(PhoneTypography.caption).foregroundStyle(T.accent)
+                    Button(L.viewOriginal()) { preview = true }.font(Font.caption).foregroundStyle(T.accent)
                 }
             }
         }

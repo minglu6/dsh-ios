@@ -232,6 +232,8 @@ extension AppModel {
         switch screen {
         case "sessionHeader":
             seedUITestSessionHeader()
+        case "sessionHeaderCompactTeam":
+            seedUITestSessionHeader(compactTeam: true)
         case "contextActive", "contextBlank", "contextOffline", "contextUnknown", "contextNoRoster":
             draftWorkspaceId = "ws-android"
             draftPreset = "cordis"

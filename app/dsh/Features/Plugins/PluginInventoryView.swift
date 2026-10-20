@@ -19,7 +19,7 @@ struct PluginInventoryView: View {
                 Button { model.pop() } label: { OfficialGlyph(kind: .chevronLeft, size: 16, color: T.ink) }
                     .accessibilityElement(children: .contain)
                     .accessibilityAddTraits(.isButton)
-                Text(L.builtinPluginsNav()).font(PhoneTypography.headline).foregroundStyle(T.ink)
+                Text(L.builtinPluginsNav()).font(Font.headline).foregroundStyle(T.ink)
                 Spacer()
                 Button { refresh += 1 } label: {
                     OfficialGlyph(kind: .refreshOutline, size: 16, color: T.text2)
@@ -79,7 +79,7 @@ struct PluginInventoryView: View {
             Image(systemName: "magnifyingglass").foregroundStyle(T.text3)
             TextField(L.t("搜索插件", "Search plugins"), text: $query)
                 .textInputAutocapitalization(.never)
-                .font(PhoneTypography.font(size: 13))
+                .font(Font.system(size: 13))
         }
         .padding(.horizontal, 12)
         .frame(height: 36)
@@ -198,7 +198,7 @@ struct PluginInventoryView: View {
                     HStack(spacing: 8) {
                         OfficialGlyph(kind: .chevronDown, size: 10, color: T.ink)
                             .rotationEffect(.degrees(open ? 0 : -90))
-                        Text(title).foregroundStyle(T.ink).font(PhoneTypography.font(size: 14))
+                        Text(title).foregroundStyle(T.ink).font(Font.system(size: 14))
                     }
                     .frame(minHeight: 36)
                 }
@@ -207,7 +207,7 @@ struct PluginInventoryView: View {
                 action()
             }
             Text("\(subtitle) · \(count) \(L.t("个", "plugins"))")
-                .font(PhoneTypography.font(size: 12))
+                .font(Font.system(size: 12))
                 .foregroundStyle(T.text3)
                 .padding(.leading, 20)
         }
@@ -232,7 +232,7 @@ struct PluginInventoryView: View {
             Button(action: onToggle) {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 8) {
-                        Text(title).font(PhoneTypography.font(size: 14, weight: .medium)).foregroundStyle(T.ink).lineLimit(1)
+                        Text(title).font(Font.system(size: 14, weight: .medium)).foregroundStyle(T.ink).lineLimit(1)
                         Spacer()
                         if row["enabled"].bool() == true {
                             switch row["fiberPhase"].str() {
@@ -246,7 +246,7 @@ struct PluginInventoryView: View {
                         }
                         if state != "enabled" {
                             Text(stateLabel(state))
-                                .font(PhoneTypography.font(size: 11))
+                                .font(Font.system(size: 11))
                                 .foregroundStyle(stateColor(state))
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
@@ -256,11 +256,11 @@ struct PluginInventoryView: View {
                             .rotationEffect(.degrees(expanded ? 180 : 0))
                     }
                     if let description = pluginLocalized(row["meta"]["description"], english: english), !description.isEmpty {
-                        Text(description).font(PhoneTypography.font(size: 12)).foregroundStyle(T.text3).lineLimit(expanded ? nil : 2)
+                        Text(description).font(Font.system(size: 12)).foregroundStyle(T.text3).lineLimit(expanded ? nil : 2)
                     }
                     if let entry = row["entryId"].str()?.replacingOccurrences(of: "include:", with: "", options: [.anchored]), entry != title {
                         Text(entry)
-                            .font(PhoneTypography.font(size: 12, design: .monospaced))
+                            .font(Font.system(size: 12, design: .monospaced))
                             .foregroundStyle(T.text2)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 1)
@@ -279,7 +279,7 @@ struct PluginInventoryView: View {
                 Divider()
                 VStack(alignment: .leading, spacing: 8) {
                     if let entry = row["entryId"].str() {
-                        Text(entry).font(PhoneTypography.font(size: 12, design: .monospaced)).foregroundStyle(T.ink)
+                        Text(entry).font(Font.system(size: 12, design: .monospaced)).foregroundStyle(T.ink)
                     }
                     fact(L.t("完整名称", "Module"), row["moduleName"].str() ?? "")
                     if let preset { fact(L.t("来自", "From"), PresetPolicy.name(preset, english: english)) }
@@ -311,8 +311,8 @@ struct PluginInventoryView: View {
 
     private func fact(_ label: String, _ value: String) -> some View {
         HStack(alignment: .top, spacing: 10) {
-            Text(label).foregroundStyle(T.text3).font(PhoneTypography.font(size: 12)).frame(width: 76, alignment: .leading)
-            Text(value).foregroundStyle(T.ink).font(PhoneTypography.font(size: 12)).frame(maxWidth: .infinity, alignment: .leading)
+            Text(label).foregroundStyle(T.text3).font(Font.system(size: 12)).frame(width: 76, alignment: .leading)
+            Text(value).foregroundStyle(T.ink).font(Font.system(size: 12)).frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 

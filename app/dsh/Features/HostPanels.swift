@@ -194,8 +194,8 @@ struct StartPanel: View {
                 OfficialGlyph(kind: icon, size: 22, color: tint)
                     .frame(width: 26)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(title).font(PhoneTypography.font(size: 14)).foregroundStyle(T.ink).lineLimit(1)
-                    Text(description).font(PhoneTypography.font(size: 11)).foregroundStyle(T.text3).lineLimit(1)
+                    Text(title).font(Font.system(size: 14)).foregroundStyle(T.ink).lineLimit(1)
+                    Text(description).font(Font.system(size: 11)).foregroundStyle(T.text3).lineLimit(1)
                 }
                 Spacer()
             }

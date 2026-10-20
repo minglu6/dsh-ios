@@ -22,7 +22,7 @@ struct TrajectoryDetailSheet: View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 0) {
                 Text(trajDetailLocation(row, turnIndex: turnIndex))
-                    .font(PhoneTypography.caption)
+                    .font(Font.caption)
                     .foregroundStyle(T.text3)
                     .padding(.horizontal, 14)
                     .padding(.top, 8)
@@ -60,7 +60,7 @@ struct TrajectoryDetailSheet: View {
             tab = candidate
         } label: {
             Text(candidate.label)
-                .font(PhoneTypography.subheadline.weight(activeTab == candidate ? .semibold : .regular))
+                .font(Font.subheadline.weight(activeTab == candidate ? .semibold : .regular))
                 .foregroundStyle(activeTab == candidate ? T.ink : T.text3)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
@@ -100,7 +100,7 @@ struct TrajectoryDetailSheet: View {
                 let program = codeProgram(toolName: row.toolName, inputDetail: row.inputDetail, schemaDetail: row.schemaDetail)
                 if program != nil && row.outputDetail == nil && row.running {
                     Text(TrajL.codeRunning)
-                        .font(PhoneTypography.subheadline)
+                        .font(Font.subheadline)
                         .foregroundStyle(T.text3)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
@@ -212,8 +212,8 @@ private struct TrajOverview: View {
             onClick?()
         } label: {
             HStack(alignment: .top) {
-                Text(label).font(PhoneTypography.caption).foregroundStyle(T.text3).frame(width: 88, alignment: .leading)
-                Text(value).font(PhoneTypography.caption).foregroundStyle(valueColor)
+                Text(label).font(Font.caption).foregroundStyle(T.text3).frame(width: 88, alignment: .leading)
+                Text(value).font(Font.caption).foregroundStyle(valueColor)
                 Spacer()
             }
             .padding(.vertical, 4)
@@ -230,7 +230,7 @@ private struct TrajOverview: View {
         VStack(alignment: .leading, spacing: 6) {
             Button(action: { onOpen?() }) {
                 HStack {
-                    Text(title).font(PhoneTypography.caption.weight(.semibold)).foregroundStyle(T.ink)
+                    Text(title).font(Font.caption.weight(.semibold)).foregroundStyle(T.ink)
                     Spacer()
                     if onOpen != nil {
                         OfficialGlyph(
@@ -265,8 +265,8 @@ struct AssistantTimingRows: View {
 
     private func line(_ label: String, _ value: String) -> some View {
         HStack {
-            Text(label).font(PhoneTypography.caption).foregroundStyle(T.text3).frame(width: 88, alignment: .leading)
-            Text(value).font(PhoneTypography.caption).foregroundStyle(T.ink)
+            Text(label).font(Font.caption).foregroundStyle(T.text3).frame(width: 88, alignment: .leading)
+            Text(value).font(Font.caption).foregroundStyle(T.ink)
             Spacer()
         }
     }
@@ -289,8 +289,8 @@ private struct TrajTiming: View {
 
     private func line(_ label: String, _ value: String) -> some View {
         HStack {
-            Text(label).font(PhoneTypography.caption).foregroundStyle(T.text3).frame(width: 88, alignment: .leading)
-            Text(value).font(PhoneTypography.caption).foregroundStyle(T.ink)
+            Text(label).font(Font.caption).foregroundStyle(T.text3).frame(width: 88, alignment: .leading)
+            Text(value).font(Font.caption).foregroundStyle(T.ink)
             Spacer()
         }
     }
@@ -317,7 +317,7 @@ private struct TrajPreview: View {
                         .rotationEffect(.degrees(
                             thinkingExpanded ? trajectoryThinkingChevronExpandedRotationDegrees : 0
                         ))
-                        Text(TrajL.recordThinking).font(PhoneTypography.caption).foregroundStyle(T.text3)
+                        Text(TrajL.recordThinking).font(Font.caption).foregroundStyle(T.text3)
                     }
                 }
                 .buttonStyle(.plain)
@@ -325,7 +325,7 @@ private struct TrajPreview: View {
                 .accessibilityAddTraits(.isButton)
                 if thinkingExpanded {
                     if rendered {
-                        Text(thinking).font(PhoneTypography.footnote).foregroundStyle(T.text2)
+                        Text(thinking).font(Font.footnote).foregroundStyle(T.text2)
                     } else {
                         TrajCodeBlock(thinking)
                     }
@@ -334,7 +334,7 @@ private struct TrajPreview: View {
             let body = row.kind == TrajL.kindAssistant ? row.outputDetail : row.rawDetail
             if let body, !body.isEmpty {
                 if rendered {
-                    Text(body).font(PhoneTypography.footnote).foregroundStyle(T.ink).textSelection(.enabled)
+                    Text(body).font(Font.footnote).foregroundStyle(T.ink).textSelection(.enabled)
                 } else {
                     TrajCodeBlock(body)
                 }
@@ -344,7 +344,7 @@ private struct TrajPreview: View {
                     HStack(spacing: 4) {
                         OfficialGlyph(kind: .toolWrench, size: 12, color: T.caption)
                         Text(call.title)
-                            .font(PhoneTypography.font(size: 12, design: .monospaced))
+                            .font(Font.system(size: 12, design: .monospaced))
                             .foregroundStyle(T.text3)
                             .lineLimit(compact ? 1 : nil)
                     }
@@ -354,7 +354,7 @@ private struct TrajPreview: View {
                 .accessibilityAddTraits(.isButton)
             }
             if (body ?? "").isEmpty && (row.thinkingDetail ?? "").isEmpty && toolCalls.isEmpty {
-                Text(TrajL.recordNoContent).font(PhoneTypography.subheadline).foregroundStyle(T.text3)
+                Text(TrajL.recordNoContent).font(Font.subheadline).foregroundStyle(T.text3)
             }
         }
         .padding(.horizontal, compact ? 0 : 14)
@@ -389,13 +389,13 @@ private struct TrajSchema: View {
         VStack(alignment: .leading, spacing: 6) {
             if let parsed = json.flatMap({ try? JSONValue.parse($0) }),
                let name = parsed["name"].str() {
-                Text(name).font(PhoneTypography.footnote.monospaced().weight(.semibold)).foregroundStyle(T.ink)
+                Text(name).font(Font.footnote.monospaced().weight(.semibold)).foregroundStyle(T.ink)
                 if let description = parsed["description"].str() {
-                    Text(description).font(PhoneTypography.font(size: 12, design: .monospaced)).foregroundStyle(T.text2)
+                    Text(description).font(Font.system(size: 12, design: .monospaced)).foregroundStyle(T.text2)
                 }
             } else {
                 Text(json ?? TrajL.recordSchemaUnavailable)
-                    .font(PhoneTypography.font(size: 12, design: .monospaced))
+                    .font(Font.system(size: 12, design: .monospaced))
                     .foregroundStyle(T.text3)
             }
         }
@@ -407,16 +407,16 @@ private struct TrajSystemDiff: View {
     let row: TrajRow
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(TrajL.recordSystemPrompt).font(PhoneTypography.caption).foregroundStyle(T.text3)
+            Text(TrajL.recordSystemPrompt).font(Font.caption).foregroundStyle(T.text3)
             let prev = row.previousText ?? ""
             let curr = row.rawDetail ?? ""
             if prev.isEmpty && curr.isEmpty {
-                Text(TrajL.recordSystemPromptMissing).font(PhoneTypography.subheadline).foregroundStyle(T.text3)
+                Text(TrajL.recordSystemPromptMissing).font(Font.subheadline).foregroundStyle(T.text3)
             } else {
                 TrajCodeBlock("— previous —\n\(prev)\n\n— current —\n\(curr)")
             }
             if let diff = toolCatalogDiff(previousJson: row.previousToolsJson, currentJson: row.toolsJson) {
-                Text(TrajL.recordTools).font(PhoneTypography.caption).foregroundStyle(T.text3).padding(.top, 8)
+                Text(TrajL.recordTools).font(Font.caption).foregroundStyle(T.text3).padding(.top, 8)
                 TrajCodeBlock(diff)
             }
         }
@@ -438,10 +438,10 @@ private struct TrajCodeBlock: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             if let language {
-                Text(language).font(PhoneTypography.caption).foregroundStyle(T.text3)
+                Text(language).font(Font.caption).foregroundStyle(T.text3)
             }
             Text(text)
-                .font(PhoneTypography.font(size: 12, design: .monospaced))
+                .font(Font.system(size: 12, design: .monospaced))
                 .foregroundStyle(error ? T.err : T.ink)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)

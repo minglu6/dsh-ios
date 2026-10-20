@@ -37,7 +37,7 @@ struct ModelChipMenu: View {
                     name: displayName,
                     badge: modelReleaseBadge(provider: current?.provider, model: current?.model, name: current?.name),
                     color: T.text2,
-                    font: PhoneTypography.font(size: 13, weight: .regular)
+                    font: Font.system(size: 13, weight: .regular)
                 )
                 .layoutPriority(1)
                 if let effort = modelEffortLabel(
@@ -47,7 +47,7 @@ struct ModelChipMenu: View {
                     effort: current?.effort
                 ) {
                     Text(effort)
-                        .font(PhoneTypography.font(size: 13))
+                        .font(Font.system(size: 13))
                         .foregroundStyle(T.caption)
                         .lineLimit(1)
                         .fixedSize()
@@ -168,7 +168,7 @@ struct ModelPicker: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if let selectionError {
-                Text(selectionError).font(PhoneTypography.font(size: 11)).foregroundStyle(T.err).padding(8)
+                Text(selectionError).font(Font.system(size: 11)).foregroundStyle(T.err).padding(8)
             }
             if pane == .root {
                 cell(
@@ -199,7 +199,7 @@ struct ModelPicker: View {
                     HStack {
                         TextField(modelPickerSearchPlaceholder(english: L.en), text: $query)
                             .textFieldStyle(.plain)
-                            .font(PhoneTypography.font(size: 12))
+                            .font(Font.system(size: 12))
                             .disabled(busy != nil)
                         if !query.isEmpty {
                             Button { query = "" } label: {
@@ -218,7 +218,7 @@ struct ModelPicker: View {
                 }
                 if groups.isEmpty && !loading && error == nil {
                     Text(count == 0 ? modelPickerEmptyModels(english: L.en) : modelPickerSearchEmpty(english: L.en))
-                        .font(PhoneTypography.font(size: 12))
+                        .font(Font.system(size: 12))
                         .foregroundStyle(T.text3)
                         .padding(8)
                 }
@@ -226,7 +226,7 @@ struct ModelPicker: View {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(groups) { group in
                             Text(modelPickerProviderLabel(group.id, hostName: group.name, english: L.en))
-                                .font(PhoneTypography.font(size: 12))
+                                .font(Font.system(size: 12))
                                 .foregroundStyle(T.text3)
                                 .padding(.horizontal, 7)
                                 .padding(.vertical, 6)
@@ -248,7 +248,7 @@ struct ModelPicker: View {
             if pane == .effort {
                 if selectedModel == nil || selectedModel?.hasReasoning != true || (selectedModel?.efforts.isEmpty == true && selectedModel?.defaultEffort == nil) {
                     Text(modelPickerEmptyEfforts(english: L.en))
-                        .font(PhoneTypography.font(size: 12))
+                        .font(Font.system(size: 12))
                         .foregroundStyle(T.text3)
                         .padding(8)
                 } else if let current = resolvedCurrent, let selectedModel {
@@ -290,10 +290,10 @@ struct ModelPicker: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 Text(label)
-                    .font(PhoneTypography.font(size: 13))
+                    .font(Font.system(size: 13))
                     .foregroundStyle(T.ink)
                 Spacer(minLength: 6)
-                ModelLabel(name: value, badge: badge, color: T.text3, font: PhoneTypography.font(size: 13))
+                ModelLabel(name: value, badge: badge, color: T.text3, font: Font.system(size: 13))
                     .frame(minWidth: 0, maxWidth: .infinity, alignment: .trailing)
                 OfficialGlyph(kind: .chevronRight, size: 12, color: T.caption)
             }
@@ -313,7 +313,7 @@ struct ModelPicker: View {
                     name: label,
                     badge: badge,
                     color: enabled || selected ? T.ink : T.text3,
-                    font: PhoneTypography.font(size: 13)
+                    font: Font.system(size: 13)
                 )
                 .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
                 if pending { ProgressView().controlSize(.mini) }
@@ -333,9 +333,9 @@ struct ModelPicker: View {
 
     private func notice(_ message: String) -> some View {
         HStack {
-            Text(message).font(PhoneTypography.font(size: 11)).foregroundStyle(T.err)
+            Text(message).font(Font.system(size: 11)).foregroundStyle(T.err)
             Spacer()
-            Button(modelPickerReloadAction(english: L.en), action: onReload).disabled(loading).font(PhoneTypography.font(size: 11, weight: .semibold))
+            Button(modelPickerReloadAction(english: L.en), action: onReload).disabled(loading).font(Font.system(size: 11, weight: .semibold))
         }
         .padding(7)
         .background(T.fill2, in: RoundedRectangle(cornerRadius: 8))

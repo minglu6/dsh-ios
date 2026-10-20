@@ -31,8 +31,17 @@ final class SessionHeaderUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Review session header"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["agentTeamMember_header-child-1"].exists)
         XCTAssertFalse(app.buttons["agentTeamMember_header-child-6"].exists)
+        let popover = app.descendants(matching: .any)["agentTeamPopover"].firstMatch
+        XCTAssertTrue(popover.exists)
+        XCTAssertFalse(app.sheets.firstMatch.exists)
+        XCTAssertFalse(app.buttons["关闭"].exists)
+        XCTAssertFalse(app.buttons["刷新"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["agentTeamCurrentTag"].firstMatch.exists)
+        XCTAssertLessThan(popover.frame.height, app.frame.height * 0.8)
         try capture(app, name: "session-header-team")
-        app.buttons["关闭"].tap()
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.9)).tap()
+        expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: popover)
+        waitForExpectations(timeout: 5)
 
         count.tap()
         let oneShot = app.buttons["subagentSession.header-child-6"]
@@ -47,6 +56,27 @@ final class SessionHeaderUITests: XCTestCase {
         XCTAssertTrue(main.isEnabled)
         main.tap()
         XCTAssertFalse(app.descendants(matching: .any)["subagentReadOnly"].exists)
+    }
+
+    func testSingleMemberTeamRemainsACompactDismissiblePopover() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-UITestFixture", "-UITestScreen", "sessionHeaderCompactTeam"]
+        app.launch()
+        let team = app.buttons["conversationTeam"]
+        XCTAssertTrue(team.waitForExistence(timeout: 10))
+        team.tap()
+        let popover = app.descendants(matching: .any)["agentTeamPopover"].firstMatch
+        XCTAssertTrue(popover.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["agentTeamCurrentTag"].firstMatch.exists)
+        XCTAssertFalse(app.sheets.firstMatch.exists)
+        XCTAssertFalse(app.buttons["关闭"].exists)
+        XCTAssertFalse(app.buttons["刷新"].exists)
+        XCTAssertLessThan(popover.frame.height, app.frame.height * 0.5)
+        XCTAssertLessThan(popover.frame.width, app.frame.width)
+        try capture(app, name: "session-header-compact-team")
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.9)).tap()
+        expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: popover)
+        waitForExpectations(timeout: 5)
     }
 
     private func capture(_ app: XCUIApplication, name: String) throws {

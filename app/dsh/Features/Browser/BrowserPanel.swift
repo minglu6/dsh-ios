@@ -98,7 +98,7 @@ private struct BrowserSelectedPage: View {
             }
             if let error = state.error {
                 Text(error)
-                    .font(PhoneTypography.font(size: 12))
+                    .font(Font.system(size: 12))
                     .foregroundStyle(T.err)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(12)
@@ -129,8 +129,8 @@ private struct BrowserSelectedPage: View {
                 TextField("", text: Binding(
                     get: { state.address },
                     set: { if $0.count <= maxBrowserURLLength { state.address = $0 } }
-                ), prompt: Text(L.t("输入 HTTP(S) 地址", "Enter an HTTP(S) address")).foregroundColor(T.text3).font(PhoneTypography.font(size: 12)))
-                .font(PhoneTypography.font(size: 12))
+                ), prompt: Text(L.t("输入 HTTP(S) 地址", "Enter an HTTP(S) address")).foregroundColor(T.text3).font(Font.system(size: 12)))
+                .font(Font.system(size: 12))
                 .foregroundStyle(T.ink)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
@@ -162,12 +162,12 @@ private struct BrowserSelectedPage: View {
             Spacer()
             if state.url.isEmpty {
                 Text(L.t("输入 HTTP(S) 地址开始浏览", "Enter an HTTP(S) address to start browsing"))
-                    .font(PhoneTypography.font(size: 13))
+                    .font(Font.system(size: 13))
                     .foregroundStyle(T.text3)
             } else {
-                Text(L.t("上次打开", "Previously opened")).font(PhoneTypography.font(size: 12)).foregroundStyle(T.text3)
-                Text(state.title).font(PhoneTypography.font(size: 14)).foregroundStyle(T.ink).padding(.top, 8)
-                Text(state.url).font(PhoneTypography.font(size: 12)).foregroundStyle(T.text3).padding(.vertical, 8)
+                Text(L.t("上次打开", "Previously opened")).font(Font.system(size: 12)).foregroundStyle(T.text3)
+                Text(state.title).font(Font.system(size: 14)).foregroundStyle(T.ink).padding(.top, 8)
+                Text(state.url).font(Font.system(size: 12)).foregroundStyle(T.text3).padding(.vertical, 8)
                 Button {
                     state.navigate(state.url)
                 } label: {
@@ -221,7 +221,7 @@ private struct BrowserTabChip: View {
                 tabs.select(page)
             } label: {
                 Text(page.title.isEmpty ? L.t("浏览器", "Browser") : page.title)
-                    .font(PhoneTypography.font(size: 12))
+                    .font(Font.system(size: 12))
                     .foregroundStyle(selected ? T.ink : T.text3)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)

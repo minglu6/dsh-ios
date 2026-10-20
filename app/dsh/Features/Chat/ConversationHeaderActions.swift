@@ -29,6 +29,10 @@ struct ConversationHeaderActions: View {
                     }
                     .accessibilityLabel(L.t("智能体团队", "Agent Team"))
                     .accessibilityIdentifier("conversationTeam")
+                    .popover(isPresented: $teamOpen, attachmentAnchor: .rect(.bounds), arrowEdge: .top) {
+                        AgentTeamPopover(model: model, sessionId: chat.sessionId, leadSessionId: parent)
+                            .modifier(PopoverCompactAdaptation())
+                    }
                 }
                 if let preset = SessionContextPolicy.presetName(
                     id: chat.agentPreset, roster: model.presetRoster, english: L.en
@@ -69,15 +73,12 @@ struct ConversationHeaderActions: View {
                 }
             }
             .buttonStyle(.plain)
-            .font(PhoneTypography.font(size: 14))
+            .font(Font.system(size: 14))
             .foregroundStyle(T.text2)
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
             .frame(minHeight: 28, alignment: .trailing)
             .accessibilityElement(children: .contain)
-            .sheet(isPresented: $teamOpen) {
-                AgentTeamSheet(model: model, sessionId: chat.sessionId, leadSessionId: parent)
-            }
             .onChange(of: chat.sessionId) { _ in
                 teamOpen = false
                 catalogOpen = false
@@ -120,7 +121,7 @@ private struct SubagentCatalogMenu: View {
             .padding(6)
         }
         .frame(width: min(360, UIScreen.main.bounds.width - 32))
-        .font(PhoneTypography.font(size: 14))
+        .font(Font.system(size: 14))
         .foregroundStyle(T.ink)
         .buttonStyle(.plain)
         .task(id: parentSessionId) { await model.loadHeaderProjection(sessionId: parentSessionId) }
@@ -147,7 +148,7 @@ private struct SubagentCatalogRows: View {
         VStack(alignment: .leading, spacing: 0) {
             if model.headerProjectionLoading.contains(parentSessionId) { ProgressView().padding(8) }
             if let error = model.headerProjectionErrors[parentSessionId] {
-                Text(error).foregroundStyle(T.err).font(PhoneTypography.font(size: 14)).padding(8)
+                Text(error).foregroundStyle(T.err).font(Font.system(size: 14)).padding(8)
                 Button(L.docRetry()) {
                     Task { await model.loadHeaderProjection(sessionId: parentSessionId) }
                 }

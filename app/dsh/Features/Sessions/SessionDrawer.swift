@@ -78,7 +78,7 @@ struct SessionDrawer: View {
 
             HStack {
                 Text(model.sessionGroupBy == .flat ? L.sectionSessions() : L.sectionWorkspaces())
-                    .font(PhoneTypography.font(size: 13))
+                    .font(Font.system(size: 13))
                     .foregroundStyle(T.text3)
                 Spacer()
                 Button { viewOptions.toggle() } label: {
@@ -120,7 +120,7 @@ struct SessionDrawer: View {
                         sessionRows(presented.rows, groupKey: nil, cap: false)
                         if presented.hasMore {
                             Text(L.searchHasMore(SessionSearch.resultLimit))
-                                .font(PhoneTypography.caption)
+                                .font(Font.caption)
                                 .foregroundStyle(T.text3)
                                 .padding(16)
                         }
@@ -138,7 +138,7 @@ struct SessionDrawer: View {
                     } else {
                         if !pinnedRows.isEmpty {
                             Text(L.pinned())
-                                .font(PhoneTypography.font(size: 12))
+                                .font(Font.system(size: 12))
                                 .foregroundStyle(T.text3)
                                 .padding(.horizontal, 22)
                                 .padding(.vertical, 4)
@@ -283,7 +283,7 @@ struct SessionDrawer: View {
                         model.setArchivedFilter(.hide)
                     }
                 }
-                .font(PhoneTypography.font(size: 14, weight: .medium))
+                .font(Font.system(size: 14, weight: .medium))
                 .foregroundStyle(T.accent)
             }
         }
@@ -332,7 +332,7 @@ struct SessionDrawer: View {
                 overflow[groupKey] = slice.2 == 0 ? 5 : (slice.2 <= 5 ? Int.max : slice.3 + 5)
             } label: {
                 Text(slice.2 == 0 ? L.showLess() : L.showMoreSessions(slice.2))
-                    .font(PhoneTypography.font(size: 13))
+                    .font(Font.system(size: 13))
                     .foregroundStyle(T.text3)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.leading, 48)
@@ -395,7 +395,7 @@ struct SessionDrawer: View {
                             Spacer(minLength: 0)
                             if SessionRowChromePolicy.timeSharesTitleLine, let trailing {
                                 Text(trailing)
-                                    .font(PhoneTypography.font(size: 12))
+                                    .font(Font.system(size: 12))
                                     .foregroundStyle(T.text3)
                                     .lineLimit(1)
                                     .layoutPriority(1)
@@ -404,12 +404,12 @@ struct SessionDrawer: View {
                         }
                         if searching, searchResultShowsWorkspaceContext {
                             Text(workspaceContext(for: session.sessionId))
-                                .font(PhoneTypography.caption)
+                                .font(Font.caption)
                                 .foregroundStyle(T.text3)
                                 .lineLimit(1)
                         }
                         if let snippet = session.searchSnippet, searching {
-                            Text(snippet).font(PhoneTypography.caption).foregroundStyle(T.text2).lineLimit(2)
+                            Text(snippet).font(Font.caption).foregroundStyle(T.text2).lineLimit(2)
                         }
                     }
                 }
@@ -642,7 +642,7 @@ struct SessionDrawer: View {
                     .fill(dotColor)
                     .frame(width: 8, height: 8)
                 Text(footerHostName)
-                    .font(PhoneTypography.font(size: CGFloat(sidebarFooterHostNameFontSizePoints)))
+                    .font(Font.system(size: CGFloat(sidebarFooterHostNameFontSizePoints)))
                     .foregroundStyle(T.text2)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -672,7 +672,7 @@ struct SessionDrawer: View {
                     color: T.ink
                 )
                 Text(L.settings())
-                    .font(PhoneTypography.font(size: CGFloat(sidebarSettingsTriggerFontSizePoints)))
+                    .font(Font.system(size: CGFloat(sidebarSettingsTriggerFontSizePoints)))
                     .lineLimit(1)
             }
             .foregroundStyle(T.ink)
@@ -767,7 +767,7 @@ struct ViewOptionsMenu: View {
     private func section(_ section: ViewOptionsSection) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(ViewOptionsMenuPolicy.title(section, english: L.en))
-                .font(PhoneTypography.font(size: 12))
+                .font(Font.system(size: 12))
                 .foregroundStyle(T.text3)
                 .padding(.horizontal, 12)
                 .padding(.top, 8)
@@ -780,7 +780,7 @@ struct ViewOptionsMenu: View {
                         leadingIcon(row)
                             .frame(width: 16, height: 16)
                         Text(ViewOptionsMenuPolicy.label(row, english: L.en))
-                            .font(PhoneTypography.font(size: 14))
+                            .font(Font.system(size: 14))
                             .foregroundStyle(T.ink)
                             .lineLimit(2)
                             .multilineTextAlignment(.leading)

@@ -150,7 +150,7 @@ struct ConnectionsView: View {
                 .accessibilityAddTraits(.isButton)
                 .accessibilityIdentifier("navBack")
             Text(L.connections())
-                .font(PhoneTypography.headline)
+                .font(Font.headline)
                 .foregroundStyle(T.ink)
                 .accessibilityIdentifier("connectionsTitle")
             Spacer()
@@ -167,9 +167,9 @@ struct ConnectionsView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(title)
-                .font(PhoneTypography.font(size: CGFloat(connectionsSectionTitleFontSizePoints)))
+                .font(Font.system(size: CGFloat(connectionsSectionTitleFontSizePoints)))
                 .foregroundStyle(T.ink)
-                .frame(minHeight: CGFloat(connectionsSectionTitleLineHeightPoints) + 2, alignment: .leading)
+                .frame(height: CGFloat(connectionsSectionTitleLineHeightPoints), alignment: .leading)
                 .padding(.horizontal, 22)
                 .padding(.top, CGFloat(connectionsSectionTitlePaddingTopPoints))
                 .padding(.bottom, CGFloat(connectionsSectionTitlePaddingBottomPoints))
@@ -246,14 +246,14 @@ struct ConnectionsView: View {
             }
             if renaming {
                 Text(L.rename())
-                    .font(PhoneTypography.font(size: CGFloat(connectionsSheetTitleFontSizePoints), weight: .semibold))
+                    .font(Font.system(size: CGFloat(connectionsSheetTitleFontSizePoints), weight: .semibold))
                     .foregroundStyle(T.ink)
                     .padding(.horizontal, CGFloat(connectionsSheetContentPaddingPoints))
                     .padding(.vertical, 6)
                 TextField(L.rename(), text: $renameDraft)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
-                    .font(PhoneTypography.font(size: CGFloat(connectionsFieldFontSizePoints)))
+                    .font(Font.system(size: CGFloat(connectionsFieldFontSizePoints)))
                     .padding(.horizontal, CGFloat(connectionsFieldHorizontalPaddingPoints))
                     .padding(.vertical, CGFloat(connectionsFieldVerticalPaddingPoints))
                     .background(
@@ -269,7 +269,7 @@ struct ConnectionsView: View {
                 HStack(spacing: 10) {
                     Button(L.cancel()) { renaming = false }
                         .buttonStyle(.plain)
-                        .font(PhoneTypography.font(size: CGFloat(dswButtonFontSizePoints)))
+                        .font(Font.system(size: CGFloat(dswButtonFontSizePoints)))
                         .frame(maxWidth: .infinity)
                         .frame(height: CGFloat(connectionsPairLinkButtonHeightPoints))
                         .foregroundStyle(T.ink)
@@ -286,7 +286,7 @@ struct ConnectionsView: View {
                         }
                     } label: {
                         Text(L.save())
-                            .font(PhoneTypography.font(size: CGFloat(dswButtonFontSizePoints)))
+                            .font(Font.system(size: CGFloat(dswButtonFontSizePoints)))
                             .frame(maxWidth: .infinity)
                             .frame(height: CGFloat(connectionsPairLinkButtonHeightPoints))
                             .foregroundStyle(T.onPrimary)
@@ -309,7 +309,7 @@ struct ConnectionsView: View {
                 HStack(spacing: 10) {
                     StatusDot(color: dotColor(model.status[profile.id]))
                     Text(profile.name)
-                        .font(PhoneTypography.font(size: CGFloat(connectionsSheetTitleFontSizePoints), weight: .semibold))
+                        .font(Font.system(size: CGFloat(connectionsSheetTitleFontSizePoints), weight: .semibold))
                         .foregroundStyle(T.ink)
                 }
                 .padding(.horizontal, CGFloat(connectionsSheetContentPaddingPoints))
@@ -321,13 +321,13 @@ struct ConnectionsView: View {
                         current: profile.id == model.activeId ? L.currentDevice() : nil
                     )
                 )
-                .font(PhoneTypography.font(size: 12))
+                .font(Font.system(size: 12))
                 .foregroundStyle(T.text3)
                 .padding(.horizontal, CGFloat(connectionsSheetContentPaddingPoints))
                 .padding(.vertical, 4)
                 if !profile.needsRepair {
                     Text(profile.subtitle)
-                        .font(PhoneTypography.font(size: 12, design: .monospaced))
+                        .font(Font.system(size: 12, design: .monospaced))
                         .foregroundStyle(T.caption)
                         .padding(.horizontal, CGFloat(connectionsSheetContentPaddingPoints))
                         .padding(.bottom, 4)
@@ -394,7 +394,7 @@ struct ConnectionsView: View {
                 HStack(spacing: 14) {
                     Color.clear.frame(width: 18, height: 18)
                     Text(title)
-                        .font(PhoneTypography.font(size: 16))
+                        .font(Font.system(size: 16))
                         .foregroundStyle(T.ink)
                     Spacer()
                 }
@@ -493,11 +493,11 @@ struct ConnectionsView: View {
         identifier: String? = nil
     ) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(label).font(PhoneTypography.caption).foregroundStyle(T.text3)
+            Text(label).font(Font.caption).foregroundStyle(T.text3)
             TextField(hint, text: text)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
-                .font(mono ? PhoneTypography.body.monospaced() : PhoneTypography.body)
+                .font(mono ? Font.body.monospaced() : Font.body)
                 .padding(12)
                 .background(T.input, in: RoundedRectangle(cornerRadius: 12))
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 0.5))
@@ -568,16 +568,16 @@ private struct ConnDeviceRow<Leading: View>: View {
                 Button(action: onClick) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(name)
-                            .font(PhoneTypography.font(size: 16))
+                            .font(Font.system(size: 16))
                             .foregroundStyle(warn ? T.warnText : T.ink)
                             .lineLimit(1)
                         Text(statusLine)
-                            .font(PhoneTypography.font(size: 12))
+                            .font(Font.system(size: 12))
                             .foregroundStyle(T.text3)
                             .lineLimit(1)
                         if let detail {
                             Text(detail)
-                                .font(PhoneTypography.font(size: 12, design: .monospaced))
+                                .font(Font.system(size: 12, design: .monospaced))
                                 .foregroundStyle(T.caption)
                                 .lineLimit(1)
                         }
@@ -588,7 +588,7 @@ private struct ConnDeviceRow<Leading: View>: View {
                 .accessibilityIdentifier(rowIdentifier)
                 if let onSwitch {
                     Button(L.switchDevice(), action: onSwitch)
-                        .font(PhoneTypography.subheadline)
+                        .font(Font.subheadline)
                         .foregroundStyle(T.ink)
                         .disabled(warn)
                         .opacity(warn ? 0.4 : 1)
@@ -635,7 +635,7 @@ private struct ConnActionRow: View {
                 }
                 .frame(width: 18, height: 18)
                 Text(title)
-                    .font(PhoneTypography.font(size: 16))
+                    .font(Font.system(size: 16))
                     .foregroundStyle(T.ink)
                 Spacer()
                 OfficialGlyph(kind: .chevronRight, size: 14, color: T.caption)
@@ -685,18 +685,18 @@ private struct PairLinkSheet: View {
         VStack(alignment: .leading, spacing: 0) {
             connSheetCancel(identifier: connectionsPairLinkCancelIdentifier(), action: onDismiss)
             Text(L.pairingLink())
-                .font(PhoneTypography.font(size: CGFloat(connectionsSheetTitleFontSizePoints), weight: .semibold))
+                .font(Font.system(size: CGFloat(connectionsSheetTitleFontSizePoints), weight: .semibold))
                 .foregroundStyle(T.ink)
                 .padding(.horizontal, CGFloat(connectionsSheetContentPaddingPoints))
                 .padding(.vertical, 6)
             Text(L.pairingLinkHint())
-                .font(PhoneTypography.font(size: CGFloat(connectionsSheetHintFontSizePoints)))
+                .font(Font.system(size: CGFloat(connectionsSheetHintFontSizePoints)))
                 .foregroundStyle(T.text3)
                 .padding(.horizontal, CGFloat(connectionsSheetContentPaddingPoints))
                 .padding(.vertical, 8)
             VStack(alignment: .leading, spacing: 4) {
                 Text(L.pairingLink())
-                    .font(PhoneTypography.font(size: CGFloat(connectionsFieldLabelFontSizePoints)))
+                    .font(Font.system(size: CGFloat(connectionsFieldLabelFontSizePoints)))
                     .foregroundStyle(T.text3)
                 // `$text` (not a custom Binding that also writes `pasted`):
                 // XCUI typeText talks to the UITextField; an extra @State
@@ -706,7 +706,7 @@ private struct PairLinkSheet: View {
                 TextField(L.pairingLinkFieldHint(), text: $text)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
-                    .font(PhoneTypography.font(size: CGFloat(connectionsFieldFontSizePoints), design: .monospaced))
+                    .font(Font.system(size: CGFloat(connectionsFieldFontSizePoints), design: .monospaced))
                     .padding(.horizontal, CGFloat(connectionsFieldHorizontalPaddingPoints))
                     .padding(.vertical, CGFloat(connectionsFieldVerticalPaddingPoints))
                     .background(
@@ -742,7 +742,7 @@ private struct PairLinkSheet: View {
             .padding(.vertical, 4)
             if showInvalid {
                 Text(L.invalidPairingLink())
-                    .font(PhoneTypography.font(size: 12))
+                    .font(Font.system(size: 12))
                     .foregroundStyle(T.err)
                     .padding(.horizontal, CGFloat(connectionsSheetContentPaddingPoints))
                     .padding(.vertical, 8)
@@ -751,7 +751,7 @@ private struct PairLinkSheet: View {
             HStack(spacing: 10) {
                 Button(action: pasteLink) {
                     Text(L.pastePairingLink())
-                        .font(PhoneTypography.font(size: CGFloat(dswButtonFontSizePoints)))
+                        .font(Font.system(size: CGFloat(dswButtonFontSizePoints)))
                         .frame(maxWidth: .infinity)
                         .frame(height: CGFloat(connectionsPairLinkButtonHeightPoints))
                         .foregroundStyle(T.ink)
@@ -764,7 +764,7 @@ private struct PairLinkSheet: View {
                 .accessibilityIdentifier(connectionsPastePairingLinkIdentifier())
                 Button(action: continuePairing) {
                     Text(L.reviewPairingLink())
-                        .font(PhoneTypography.font(size: CGFloat(dswButtonFontSizePoints)))
+                        .font(Font.system(size: CGFloat(dswButtonFontSizePoints)))
                         .frame(maxWidth: .infinity)
                         .frame(height: CGFloat(connectionsPairLinkButtonHeightPoints))
                         .foregroundStyle(T.onPrimary)
@@ -813,7 +813,7 @@ private struct PairLinkSheet: View {
 private func connSheetCancel(identifier: String, action: @escaping () -> Void) -> some View {
     Button(L.cancel(), action: action)
         .buttonStyle(.plain)
-        .font(PhoneTypography.font(size: CGFloat(dswButtonFontSizePoints)))
+        .font(Font.system(size: CGFloat(dswButtonFontSizePoints)))
         .foregroundStyle(T.ink)
         .padding(.horizontal, CGFloat(connectionsSheetContentPaddingPoints))
         .frame(minHeight: CGFloat(connectionsSheetCancelMinHeightPoints), alignment: .leading)

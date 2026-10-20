@@ -285,7 +285,7 @@ private struct TerminalKey: View {
                 if let glyph {
                     OfficialGlyph(kind: glyph, size: CGFloat(terminalKeyGlyphSizePoints), color: color)
                 } else {
-                    Text(label).font(PhoneTypography.font(size: 13)).lineLimit(1)
+                    Text(label).font(Font.system(size: 13)).lineLimit(1)
                 }
             }
             .frame(maxWidth: .infinity, minHeight: CGFloat(terminalKeyMinHeightPoints))

@@ -16,7 +16,7 @@ struct FeedbackCategorySheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     Text(L.feedbackCategory())
-                        .font(PhoneTypography.caption)
+                        .font(Font.caption)
                         .foregroundStyle(T.text3)
                         .padding(.horizontal, 22)
                     VStack(spacing: 0) {
@@ -51,7 +51,7 @@ struct FeedbackCategorySheet: View {
                     .padding(.horizontal, 16)
 
                     Text(L.feedbackDetail())
-                        .font(PhoneTypography.caption)
+                        .font(Font.caption)
                         .foregroundStyle(T.text3)
                         .padding(.horizontal, 22)
                     TextField(hint, text: $note, axis: .vertical)
@@ -64,7 +64,7 @@ struct FeedbackCategorySheet: View {
 
                     if error {
                         Text(L.feedbackSubmitFailed())
-                            .font(PhoneTypography.footnote)
+                            .font(Font.footnote)
                             .foregroundStyle(T.err)
                             .padding(.horizontal, 22)
                     }
@@ -80,7 +80,7 @@ struct FeedbackCategorySheet: View {
                         }
                     } label: {
                         Text(L.submitFeedback())
-                            .font(PhoneTypography.body.weight(.medium))
+                            .font(Font.body.weight(.medium))
                             .foregroundStyle(T.onPrimary)
                             .frame(maxWidth: .infinity)
                             .frame(height: 50)

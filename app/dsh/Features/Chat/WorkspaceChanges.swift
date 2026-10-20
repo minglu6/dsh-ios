@@ -39,14 +39,14 @@ private struct ChangesCardContent: View {
                     )
                     if !model.ops.contains("workspaceChanges.diff") {
                         Text(L.t("主机未提供文件差异预览，请更新 Pocket 桥接", "The host does not support file comparisons; update the Pocket bridge"))
-                            .font(PhoneTypography.footnote)
+                            .font(Font.footnote)
                             .foregroundStyle(T.text3)
                     }
                 }
             } else if let failure {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(L.t("读取本轮改动失败", "Failed to load turn changes"))
-                        .font(PhoneTypography.headline)
+                        .font(Font.headline)
                     Text(failure).foregroundStyle(T.err)
                     Button(L.docRetry()) { retry += 1 }
                         .accessibilityIdentifier("changesSummaryRetry")
@@ -140,7 +140,7 @@ struct ChangesSummaryCard: View {
                         .frame(width: 44, height: 44)
                         VStack(alignment: .leading, spacing: 3) {
                             Text(single == nil ? L.editedCount(summary.total) : L.editedName(single!.display.split(whereSeparator: { $0 == "/" || $0 == "\\" }).last.map(String.init) ?? single!.display))
-                                .font(PhoneTypography.font(size: 15, weight: .medium))
+                                .font(Font.system(size: 15, weight: .medium))
                                 .foregroundStyle(T.ink)
                                 .lineLimit(2)
                                 .accessibilityLabel(single?.display ?? L.editedCount(summary.total))
@@ -167,7 +167,7 @@ struct ChangesSummaryCard: View {
                         } label: {
                             HStack {
                                 Text(file.display)
-                                    .font(PhoneTypography.font(size: 14))
+                                    .font(Font.system(size: 14))
                                     .foregroundStyle(T.text3)
                                     .lineLimit(1)
                                     .accessibilityLabel(file.display)
@@ -188,7 +188,7 @@ struct ChangesSummaryCard: View {
                         } label: {
                             HStack(spacing: 6) {
                                 Text(expanded ? L.t("收起", "Collapse") : L.t("全部 \(summary.files.count) 个文件", "All \(summary.files.count) files"))
-                                    .font(PhoneTypography.font(size: 14))
+                                    .font(Font.system(size: 14))
                                     .foregroundStyle(T.text3)
                                 OfficialGlyph(kind: .chevronDown, size: 12, color: T.text3)
                                     .rotationEffect(.degrees(expanded ? 180 : 0))
@@ -217,13 +217,13 @@ private struct ChangeCounts: View {
 
     var body: some View {
         if file?.binary == true {
-            Text(L.t("二进制", "Binary")).font(PhoneTypography.font(size: 12)).foregroundStyle(T.text3)
+            Text(L.t("二进制", "Binary")).font(Font.system(size: 12)).foregroundStyle(T.text3)
         } else if file?.oversized == true {
-            Text(L.t("过大", "Too large")).font(PhoneTypography.font(size: 12)).foregroundStyle(T.text3)
+            Text(L.t("过大", "Too large")).font(Font.system(size: 12)).foregroundStyle(T.text3)
         } else {
             HStack(spacing: 8) {
-                Text("+\(added)").font(PhoneTypography.font(size: 12, design: .monospaced)).foregroundStyle(T.ok)
-                Text("−\(deleted)").font(PhoneTypography.font(size: 12, design: .monospaced)).foregroundStyle(T.err)
+                Text("+\(added)").font(Font.system(size: 12, design: .monospaced)).foregroundStyle(T.ok)
+                Text("−\(deleted)").font(Font.system(size: 12, design: .monospaced)).foregroundStyle(T.err)
             }
         }
     }
@@ -361,11 +361,11 @@ private struct ChangesDiffBody: View {
                         let tint: Color = mark == "+" ? T.ok : mark == "-" ? T.err : T.text3
                         HStack(alignment: .top, spacing: 0) {
                             Text(line.old.map(String.init) ?? "")
-                                .font(LocalFonts.code())
+                                .font(.system(size: 11, design: .monospaced))
                                 .foregroundStyle(T.text3)
                                 .frame(width: 38, alignment: .trailing)
                             Text(line.new.map(String.init) ?? "")
-                                .font(LocalFonts.code())
+                                .font(.system(size: 11, design: .monospaced))
                                 .foregroundStyle(T.text3)
                                 .frame(width: 38, alignment: .trailing)
                             Text(line.text)

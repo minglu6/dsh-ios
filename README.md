@@ -31,9 +31,11 @@ The terminal page reads loading state directly from the attachment model, so an 
 
 Conversation actions share the title row above the Chat/Trajectory tabs: Agent Team, current work mode, and the subagent catalog. There is no separate working-directory row; workspace selection remains on new tasks. Narrow screens compact labels while preserving controls and their full accessibility names. The Team roster/task board comes from `agentTeam`, separately from `subagentCatalog`; ordinary forks are not counted as subagents. Members and nested children can be opened, with navigation back to the lead; one-shot children are read-only. Complete live updates and catalog-only child navigation require the matching `dsh-android/plugin` update (`sessions.projections`, parent-address routing and projection forwarding). Installing an IPA does not update the running desktop plugin.
 
+Agent Team opens in a popover anchored to its header button and closes on an outside tap, not in a separate page. There are no extra Close or Refresh buttons. The current-session marker uses the desktop tinted-blue capsule; a lone member has no count, and an empty task board shows only its notice.
+
 The work-mode menu uses a desktop-style anchored overlay, up to 360pt wide, measured to its content and bounded by the viewport with 12pt margins. Overflow scrolls vertically while keeping mode names and descriptions intact.
 
-App-wide interface text uses `PhoneTypography` at two points above the original desktop baseline, including toolbars, menus, drawers, settings, trajectory and preview labels; icon sizes are unchanged. Unconfigured body/code/terminal defaults are 18/15/16pt. Content fonts do not apply the interface increment twice, explicit user sizes are preserved, and these preferences are never written to the remote host.
+iOS uses the original interface font sizes and row heights again, with body/code/terminal defaults of 14/11/13pt and no app-wide enlargement. Explicit personal font choices are preserved and never written to the remote host.
 
 Edited-file cards and comparisons use the same real Host snapshots as Android: file switching, old/new line numbers, wrapping and a 5,000-line display limit. Failed reads remain visible and retryable rather than hiding the card; previews and comparison caches are isolated by Host/session/file identity. Missing events, capabilities or expired Host comparisons never produce fabricated diffs from tool summaries.
 

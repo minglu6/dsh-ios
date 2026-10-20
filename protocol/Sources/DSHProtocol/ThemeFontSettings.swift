@@ -25,20 +25,11 @@ public func themeFontSizeSpec(_ role: ThemeFontRole) -> ThemeFontSizeSpec {
     }
 }
 
-/// Phone-local defaults are larger than desktop without changing its settings contract.
-/// An absent key means "use the current default"; reads must never persist that default.
-/// Existing keys were written only by explicit local edits, including edits to the old default.
+/// Phone-local font preferences use the original shared defaults.
+/// An absent key follows the theme; reads never persist or overwrite user choices.
 public enum PhoneFontPreferences {
-    public static func defaultSize(_ role: ThemeFontRole) -> Int {
-        switch role {
-        case .text: return 18
-        case .code: return 15
-        case .terminal: return 16
-        }
-    }
-
     public static func size(_ role: ThemeFontRole, defaults: UserDefaults = .standard) -> Int {
-        let value = defaults.object(forKey: key(role)) as? Int ?? defaultSize(role)
+        let value = defaults.object(forKey: key(role)) as? Int ?? themeFontSizeSpec(role).default
         let range = themeFontSizeSpec(role).range
         return min(max(value, range.lowerBound), range.upperBound)
     }

@@ -36,7 +36,7 @@ struct TrajectoryView: View {
             VStack(spacing: 8) {
                 ProgressView()
                 Text(TrajL.historyLoadingTrajectory)
-                    .font(PhoneTypography.subheadline)
+                    .font(Font.subheadline)
                     .foregroundStyle(T.caption)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -71,7 +71,7 @@ struct TrajectoryView: View {
                             model.loadOlderHistory()
                         } label: {
                             Text(model.chat?.loadingOlder == true ? TrajL.historyLoadingEarlier : TrajL.historyLoadEarlier)
-                                .font(PhoneTypography.caption)
+                                .font(Font.caption)
                                 .foregroundStyle(model.chat?.loadingOlder == true ? T.text2 : T.accent)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 10)
@@ -88,7 +88,7 @@ struct TrajectoryView: View {
                         } else if turnsCollapsed {
                             Button { turnsCollapsed = false } label: {
                                 Text(TrajL.turnLabel(turn.index))
-                                    .font(PhoneTypography.caption)
+                                    .font(Font.caption)
                                     .foregroundStyle(T.text3)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .padding(.horizontal, 12)
@@ -191,18 +191,18 @@ struct TrajectoryView: View {
                     color: T.caption
                 )
                 TextField(TrajL.toolbarSearchPlaceholder, text: $searchQuery)
-                    .font(PhoneTypography.caption)
+                    .font(Font.caption)
                     .textInputAutocapitalization(.never)
                     .accessibilityLabel(TrajL.toolbarSearch)
             }
             .padding(.horizontal, 6)
             .frame(maxWidth: 176)
-            .frame(minHeight: 28)
+            .frame(height: 24)
             .background(T.surface, in: RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(T.border, lineWidth: 0.5))
         }
         .padding(.horizontal, 6)
-        .frame(minHeight: 36)
+        .frame(height: 32)
         .overlay(alignment: .bottom) { Divider() }
     }
 
@@ -215,7 +215,7 @@ struct TrajectoryView: View {
         Button(action: action) {
             HStack(spacing: 4) {
                 icon()
-                Text(label).font(PhoneTypography.caption).foregroundStyle(pressed ? T.ink : T.text3)
+                Text(label).font(Font.caption).foregroundStyle(pressed ? T.ink : T.text3)
             }
             .padding(.horizontal, 5)
             .padding(.vertical, 2)
@@ -256,15 +256,15 @@ private struct TrajRowView: View {
                         KindBadge(kind: row.kind)
                         HStack(spacing: 0) {
                             Text(displayTitle)
-                                .font(isTool ? PhoneTypography.font(size: 12, design: .monospaced) : PhoneTypography.font(size: 12))
+                                .font(isTool ? Font.system(size: 12, design: .monospaced) : Font.system(size: 12))
                                 .foregroundStyle(row.toolCallOnly ? T.text3 : T.ink)
                                 .lineLimit(1)
                             if let preview = row.resultPreview {
                                 Text(" → ")
-                                    .font(PhoneTypography.font(size: 12, design: .monospaced))
+                                    .font(Font.system(size: 12, design: .monospaced))
                                     .foregroundStyle(T.caption)
                                 Text(preview)
-                                    .font(PhoneTypography.font(size: 12, design: .monospaced))
+                                    .font(Font.system(size: 12, design: .monospaced))
                                     .foregroundStyle(row.isError ? T.err : T.text2)
                                     .lineLimit(1)
                             }
@@ -275,7 +275,7 @@ private struct TrajRowView: View {
                     .padding(.trailing, 8)
                     if let turnStart {
                         Text("\(turnStart)")
-                            .font(PhoneTypography.font(size: 8))
+                            .font(Font.system(size: 8))
                             .foregroundStyle(T.text3)
                             .padding(.horizontal, 3)
                             .background(T.fill)
@@ -389,9 +389,9 @@ private struct SwimlaneChart: View {
             VStack(alignment: .trailing, spacing: 0) {
                 ForEach([TrajL.columnInput, TrajL.columnModel, TrajL.columnTools], id: \.self) { label in
                     Text(label)
-                        .font(PhoneTypography.font(size: 10))
+                        .font(Font.system(size: 10))
                         .foregroundStyle(T.caption)
-                        .frame(minHeight: 16, alignment: .center)
+                        .frame(height: 14, alignment: .center)
                 }
             }
             .frame(width: 44)
@@ -399,8 +399,8 @@ private struct SwimlaneChart: View {
             .padding(.top, 4)
             GeometryReader { geo in
                 Canvas { context, size in
-                    let topPad: CGFloat = 8
-                    let laneH: CGFloat = 16
+                    let topPad: CGFloat = 7
+                    let laneH: CGFloat = 14
                     let barH: CGFloat = 8
                     let minSpan: CGFloat = 2
                     for b in model.turnBoundaries {
@@ -438,14 +438,14 @@ private struct SwimlaneChart: View {
                 })
             }
         }
-        .frame(height: 56)
+        .frame(height: 50)
         .background(T.surface)
     }
 
     private func spanAt(x: CGFloat, y: CGFloat, width: CGFloat) -> String? {
         let domain = max(model.end - model.start, 1.0)
-        let topPad: CGFloat = 8
-        let laneH: CGFloat = 16
+        let topPad: CGFloat = 7
+        let laneH: CGFloat = 14
         let barH: CGFloat = 8
         let minSpan: CGFloat = 2
         if y < topPad { return nil }

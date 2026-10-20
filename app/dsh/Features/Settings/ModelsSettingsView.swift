@@ -129,13 +129,13 @@ struct ModelsSettingsView: View {
                     if expanded {
                         HStack(spacing: 8) {
                             Text(providerDisplayName(row, route: route, english: L.en)).foregroundStyle(T.ink)
-                            Text(route).font(PhoneTypography.font(size: 12)).foregroundStyle(T.text3).lineLimit(1)
+                            Text(route).font(Font.system(size: 12)).foregroundStyle(T.text3).lineLimit(1)
                         }
                     } else {
                         HStack {
                             Text(providerDisplayName(row, route: route, english: L.en)).foregroundStyle(T.ink)
                             if row["declared"].bool() == true {
-                                Text(L.t("自定义", "Custom")).font(PhoneTypography.caption2).foregroundStyle(T.text2)
+                                Text(L.t("自定义", "Custom")).font(Font.caption2).foregroundStyle(T.text2)
                                     .padding(.horizontal, 6).overlay(RoundedRectangle(cornerRadius: 4).stroke(T.border))
                             }
                             if route != "deepseek-account" {
@@ -148,7 +148,7 @@ struct ModelsSettingsView: View {
                             }
                         }
                     }
-                    if let err = row["error"].str() { Text(err).font(PhoneTypography.caption).foregroundStyle(T.err) }
+                    if let err = row["error"].str() { Text(err).font(Font.caption).foregroundStyle(T.err) }
                 }
                 Spacer()
                 if !expanded {
@@ -269,8 +269,8 @@ private struct AddModelProviderView: View {
             Text(custom
                  ? L.t("连接中转站、自部署服务或其他兼容 OpenAI / Anthropic 协议的接口，需填写 API 地址、协议和模型。", "Connect a gateway, self-hosted service, or another OpenAI / Anthropic-compatible endpoint; provide its URL, protocol, and models.")
                  : L.t("从内置目录中选择模型提供商，填入其 API 密钥即可使用。", "Choose a model provider from the installed catalog and enter its API key."))
-            .font(PhoneTypography.caption).foregroundStyle(T.text3)
-            if let error { Text(error).foregroundStyle(T.err).font(PhoneTypography.caption) }
+            .font(Font.caption).foregroundStyle(T.text3)
+            if let error { Text(error).foregroundStyle(T.err).font(Font.caption) }
             if !custom, !catalog.isEmpty {
                 Picker(L.t("模型提供商", "Model provider"), selection: Binding(
                     get: { target?["provider"]["provider"].str() ?? catalog.first?["provider"].str() ?? "" },
@@ -360,23 +360,23 @@ struct ProviderSettingsEditorView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if let err = initial?["provider"]["error"].str() { Text(err).foregroundStyle(T.err).font(PhoneTypography.caption) }
-            if let error { Text(error).foregroundStyle(T.err).font(PhoneTypography.caption) }
+            if let err = initial?["provider"]["error"].str() { Text(err).foregroundStyle(T.err).font(Font.caption) }
+            if let error { Text(error).foregroundStyle(T.err).font(Font.caption) }
             if !knownLayout {
-                Text(L.t("此提供商由远程主机配置管理。", "This provider is managed in remote host configuration.")).font(PhoneTypography.caption).foregroundStyle(T.text3)
+                Text(L.t("此提供商由远程主机配置管理。", "This provider is managed in remote host configuration.")).font(Font.caption).foregroundStyle(T.text3)
             }
             if initial == nil {
                 field(L.t("Provider ID", "Provider ID")) {
                     TextField("acme-gateway", text: $route).textInputAutocapitalization(.never).disabled(!profileEditable)
-                    Text(L.t("以小写字母开头，仅含小写字母、数字和连字符。", "Start with a lowercase letter; use lowercase letters, numbers, and hyphens.")).font(PhoneTypography.caption).foregroundStyle(T.text3)
-                    if !route.isEmpty, let failure = routeFailure { Text(failure).font(PhoneTypography.caption).foregroundStyle(T.err) }
+                    Text(L.t("以小写字母开头，仅含小写字母、数字和连字符。", "Start with a lowercase letter; use lowercase letters, numbers, and hyphens.")).font(Font.caption).foregroundStyle(T.text3)
+                    if !route.isEmpty, let failure = routeFailure { Text(failure).font(Font.caption).foregroundStyle(T.err) }
                 }
                 field(L.t("显示名称", "Display name")) {
                     TextField(route, text: $displayName).disabled(!profileEditable)
                 }
                 field(L.t("API 地址", "Base URL")) {
                     TextField("https://gateway.example/v1", text: $baseURL).textInputAutocapitalization(.never).disabled(!profileEditable)
-                    if let endpointFailure { Text(endpointFailure).font(PhoneTypography.caption).foregroundStyle(T.err) }
+                    if let endpointFailure { Text(endpointFailure).font(Font.caption).foregroundStyle(T.err) }
                 }
                 field(L.t("API 协议", "API protocol")) {
                     Picker("", selection: $api) {
@@ -395,7 +395,7 @@ struct ProviderSettingsEditorView: View {
                         .disabled(!keyWritable || !model.isOnline)
                         Button(showKey ? L.t("隐藏", "Hide") : L.t("显示", "Show")) { showKey.toggle() }
                     }
-                    if let keyFailure, !keyDraft.isEmpty { Text(L.t("请只粘贴有效的 API 密钥", "Paste only a valid API key")).font(PhoneTypography.caption).foregroundStyle(T.err); Text(keyFailure).hidden() }
+                    if let keyFailure, !keyDraft.isEmpty { Text(L.t("请只粘贴有效的 API 密钥", "Paste only a valid API key")).font(Font.caption).foregroundStyle(T.err); Text(keyFailure).hidden() }
                 }
             }
             if knownLayout && (initial == nil || overridden || modelsTouched) {
@@ -411,7 +411,7 @@ struct ProviderSettingsEditorView: View {
                         modelsTouched = true
                         overridden = true
                     }.disabled(!profileEditable)
-                    if let modelFailure { Text(modelFailure).font(PhoneTypography.caption).foregroundStyle(T.err) }
+                    if let modelFailure { Text(modelFailure).font(Font.caption).foregroundStyle(T.err) }
                 }
             }
             HStack {

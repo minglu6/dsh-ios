@@ -37,7 +37,6 @@ struct RootView: View {
                 }
             }
         }
-        .font(PhoneTypography.body)
         .preferredColorScheme(preferred)
         .onAppear { theme.resolve(appearance: model.appearance, systemDark: colorScheme == .dark) }
         .onChange(of: model.appearance) { _ in theme.resolve(appearance: model.appearance, systemDark: colorScheme == .dark) }
@@ -45,7 +44,7 @@ struct RootView: View {
         .overlay(alignment: .top) {
             if let message = model.errorMessage ?? model.toast {
                 Text(message)
-                    .font(PhoneTypography.footnote)
+                    .font(Font.footnote)
                     .foregroundStyle(T.onPrimary)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
@@ -400,14 +399,14 @@ struct RootView: View {
             }
             HStack(alignment: .top, spacing: 10) {
                 Text(L.landingHeadline())
-                    .font(PhoneTypography.font(size: CGFloat(landingHeroHeadlineSizePoints), weight: .medium))
+                    .font(Font.system(size: CGFloat(landingHeroHeadlineSizePoints), weight: .medium))
                     .foregroundStyle(T.ink)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityIdentifier("landingHeadline")
                 Text(L.landingPreview())
-                    .font(LocalFonts.code(size: CGFloat(landingHeroPreviewFontSizePoints) + 2))
+                    .font(LocalFonts.code(size: CGFloat(landingHeroPreviewFontSizePoints)))
                     .foregroundStyle(T.bluish)
                     .padding(.top, 1)
                     .padding(.horizontal, 7)

@@ -34,7 +34,7 @@ struct QoderConnectionCard: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center, spacing: 8) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(qoderCopy("Qoder CN", "Qoder CN")).foregroundStyle(T.ink).font(PhoneTypography.font(size: 14, weight: .medium))
+                    Text(qoderCopy("Qoder CN", "Qoder CN")).foregroundStyle(T.ink).font(Font.system(size: 14, weight: .medium))
                     hint(patStatus)
                 }
                 Spacer()
@@ -47,7 +47,7 @@ struct QoderConnectionCard: View {
                         advanced = false
                     }
                     .disabled(!fieldsEnabled)
-                    .font(PhoneTypography.font(size: 13))
+                    .font(Font.system(size: 13))
                 }
             }
             hint(qoderCopy("使用个人访问令牌连接。VPC 实例留空时使用公网服务", "Connect with a personal access token. Leave the VPC instance empty to use the public service."))
@@ -56,7 +56,7 @@ struct QoderConnectionCard: View {
             }
             if credentialFailed {
                 Text(qoderCopy("无法读取令牌状态，请重试后再保存新令牌", "Could not read the token status. Retry before saving a new token."))
-                    .font(PhoneTypography.font(size: 12))
+                    .font(Font.system(size: 12))
                     .foregroundStyle(T.err)
                 Button(L.retry()) { refresh += 1 }
                     .disabled(!online || busy)
@@ -70,7 +70,7 @@ struct QoderConnectionCard: View {
                 Text(effective.fields.vpcInstance.isEmpty
                      ? qoderCopy("公网服务", "Public service")
                      : effective.fields.vpcInstance)
-                    .font(PhoneTypography.font(size: 12))
+                    .font(Font.system(size: 12))
                     .foregroundStyle(T.text2)
             }
         }
@@ -112,7 +112,7 @@ struct QoderConnectionCard: View {
         } label: {
             HStack(spacing: 6) {
                 Text(advanced ? "▾" : "▸").font(.body).foregroundStyle(T.text2)
-                Text(qoderCopy("高级端点覆盖", "Advanced endpoint overrides")).foregroundStyle(T.text2).font(PhoneTypography.font(size: 14))
+                Text(qoderCopy("高级端点覆盖", "Advanced endpoint overrides")).foregroundStyle(T.text2).font(Font.system(size: 14))
             }
             .padding(.vertical, 6)
         }
@@ -138,7 +138,7 @@ struct QoderConnectionCard: View {
             hint(qoderCopy("留空时根据 VPC 实例或公网服务自动生成端点", "Leave empty to derive the endpoints from the VPC instance or public service."))
         }
         if let failure {
-            Text(qoderFailure(failure)).font(PhoneTypography.font(size: 12)).foregroundStyle(T.err)
+            Text(qoderFailure(failure)).font(Font.system(size: 12)).foregroundStyle(T.err)
         }
         if partial {
             hint(qoderCopy("连接设置已保存，但令牌未保存；关闭编辑器不会撤销已保存的设置", "Connection settings were saved, but the token was not. Closing will not undo the saved settings."))
@@ -161,7 +161,7 @@ struct QoderConnectionCard: View {
     }
 
     private func hint(_ text: String) -> some View {
-        Text(text).font(PhoneTypography.font(size: 12)).foregroundStyle(T.text2).lineSpacing(4)
+        Text(text).font(Font.system(size: 12)).foregroundStyle(T.text2).lineSpacing(4)
     }
 
     private func patch(_ current: QoderConnectionDraft, pat: String? = nil, fields: QoderConnectionFields? = nil) -> QoderConnectionDraft {
