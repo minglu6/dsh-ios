@@ -228,6 +228,10 @@ extension AppModel {
         case "landing", "startLanding":
             chat = nil
             firstPrompt = nil
+        case "landingPreset":
+            chat = nil
+            firstPrompt = nil
+            seedUITestAgentPresets()
         case "landingMention":
             chat = nil
             firstPrompt = nil
@@ -649,5 +653,15 @@ extension AppModel {
                 startedAt: Int64(Date().timeIntervalSince1970 * 1000) - 12_000
             )
         ]
+    }
+
+    /// Built-in roster so landing can open `AgentPresetSeat`. Regular
+    /// `landing` / `landingMention` stay empty so those screenshots do not
+    /// pick up the chip.
+    fileprivate func seedUITestAgentPresets() {
+        presetRoster = ["standard", "ptc", "minimal", "cordis"].map { id in
+            .object(["id": .string(id)])
+        }
+        draftPreset = "minimal"
     }
 }

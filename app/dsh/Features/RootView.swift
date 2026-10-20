@@ -18,6 +18,8 @@ struct RootView: View {
     @State private var showFileImporter = false
     @State private var composerFocus = 0
     @State private var landingComposerHeight: CGFloat = 0
+    @State private var agentPresetMenuOpen = false
+    @State private var agentPresetSeatFrame: CGRect = .zero
 
     var body: some View {
         ZStack {
@@ -198,17 +200,36 @@ struct RootView: View {
                         .frame(width: geo.size.width, height: geo.size.height, alignment: .bottom)
                     }
                 }
+                if agentPresetMenuOpen {
+                    AgentPresetMenuLayer(
+                        model: model,
+                        seatFrame: agentPresetSeatFrame,
+                        onClose: { agentPresetMenuOpen = false }
+                    )
+                    .zIndex(2)
+                }
             }
+            .coordinateSpace(name: "landingCanvas")
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onPreferenceChange(LandingComposerHeightKey.self) { landingComposerHeight = $0 }
+            .onPreferenceChange(AgentPresetSeatFrameKey.self) { agentPresetSeatFrame = $0 }
         }
         .background(T.bg)
         .onChange(of: model.composerText) { _ in
             slashMenu.track(trigger: landingSlashTrigger)
             mentionMenu.track(trigger: landingMentionTrigger)
+            if landingCommandMenuVisible || landingMentionMenuVisible {
+                agentPresetMenuOpen = false
+            }
         }
         .onChange(of: model.composerCursor) { _ in
             mentionMenu.track(trigger: landingMentionTrigger)
+        }
+        .onChange(of: landingCommandMenuVisible) { visible in
+            if visible { agentPresetMenuOpen = false }
+        }
+        .onChange(of: landingMentionMenuVisible) { visible in
+            if visible { agentPresetMenuOpen = false }
         }
         .onAppear {
             slashMenu.track(trigger: landingSlashTrigger)
@@ -400,7 +421,11 @@ struct RootView: View {
     private var landingWorkspaceRow: some View {
         HStack(spacing: 10) {
             LandingWorkspaceChip(model: model, showDirectoryPicker: $showWorkspacePicker)
-            AgentPresetSeat(model: model)
+            AgentPresetSeat(
+                model: model,
+                open: $agentPresetMenuOpen,
+                coordinateSpace: "landingCanvas"
+            )
             Spacer()
         }
         .padding(.horizontal, 14)

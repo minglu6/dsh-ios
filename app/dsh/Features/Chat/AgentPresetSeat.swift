@@ -125,10 +125,13 @@ struct LandingWorkspaceChip: View {
     }
 }
 
-/// Desktop `AgentPresetSeat`: landing-only ghost chip, custom menu of name + description.
+/// Desktop `AgentPresetSeat`: landing-only ghost chip. The list is a
+/// primitives `Menu` portal (`side: bottom`, 4px gap), not a system
+/// popover and not `ui-input-trigger` MenuView.
 struct AgentPresetSeat: View {
     @ObservedObject var model: AppModel
-    @State private var open = false
+    @Binding var open: Bool
+    var coordinateSpace: String
 
     private var rows: [JSONValue] {
         PresetPolicy.visibleRows(model.presetRoster, codingTools: model.showCodeWorkView)
@@ -164,6 +167,7 @@ struct AgentPresetSeat: View {
                 }
                 .foregroundStyle(T.ink)
                 .padding(.horizontal, 8)
+                .frame(minWidth: CGFloat(agentPresetMenuAnchorMinWidthPoints))
                 .frame(minHeight: CGFloat(agentPresetSeatMinHeightPoints))
                 .frame(maxWidth: CGFloat(agentPresetSeatMaxWidthPoints), alignment: .leading)
             }
@@ -172,46 +176,154 @@ struct AgentPresetSeat: View {
             .opacity(model.isOnline ? 1 : 0.45)
             .accessibilityLabel(currentLabel)
             .accessibilityHint(agentPresetSeatHint(english: L.en))
-            .popover(
-                isPresented: $open,
-                attachmentAnchor: .rect(.bounds),
-                arrowEdge: composerPickerPopoverOpensAbove ? .bottom : .top
-            ) {
-                VStack(alignment: .leading, spacing: 0) {
-                    ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                        let id = row["id"].str() ?? ""
-                        Button {
-                            model.draftPreset = id
-                            open = false
-                        } label: {
-                            HStack(alignment: .top, spacing: 8) {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(PresetPolicy.name(row, english: L.en))
-                                        .font(.system(size: 13))
-                                        .foregroundStyle(T.ink)
-                                    Text(PresetPolicy.description(row, english: L.en).flatMap { $0.isEmpty ? nil : $0 }
-                                         ?? agentPresetNoDescription(english: L.en))
-                                        .font(.system(size: 12))
-                                        .foregroundStyle(T.caption)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                }
-                                Spacer(minLength: 8)
-                                if currentId == id {
-                                    OfficialGlyph(kind: .checkOutline, size: 12, color: T.ink)
-                                }
-                            }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 6)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                    }
+            .accessibilityIdentifier(agentPresetSeatIdentifier())
+            .background(
+                GeometryReader { geo in
+                    Color.clear.preference(
+                        key: AgentPresetSeatFrameKey.self,
+                        value: geo.frame(in: .named(coordinateSpace))
+                    )
                 }
-                .padding(CGFloat(permissionMenuPaddingPoints))
-                .frame(minWidth: 156, maxWidth: 280)
-                .modifier(PopoverCompactAdaptation())
+            )
+        }
+    }
+}
+
+/// Desktop portal `Menu` + `AgentPresetSeat` name/description rows.
+struct AgentPresetMenuLayer: View {
+    @ObservedObject var model: AppModel
+    var seatFrame: CGRect
+    var onClose: () -> Void
+
+    @State private var menuSize: CGSize = .zero
+
+    private var rows: [JSONValue] {
+        PresetPolicy.visibleRows(model.presetRoster, codingTools: model.showCodeWorkView)
+    }
+
+    private var currentId: String {
+        let draft = model.draftPreset.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !draft.isEmpty { return draft }
+        return rows.first { $0["isDefault"].bool() == true }?["id"].str()
+            ?? rows.first?["id"].str()
+            ?? ""
+    }
+
+    var body: some View {
+        GeometryReader { canvas in
+            let maxHeight = CGFloat(agentPresetMenuMaxHeight(viewportHeight: Double(canvas.size.height)))
+            let origin = agentPresetMenuOrigin(
+                seat: (
+                    x: Double(seatFrame.minX),
+                    y: Double(seatFrame.minY),
+                    width: Double(seatFrame.width),
+                    height: Double(seatFrame.height)
+                ),
+                menuSize: (width: Double(menuSize.width), height: Double(min(menuSize.height, maxHeight))),
+                viewport: (width: Double(canvas.size.width), height: Double(canvas.size.height))
+            )
+            ZStack(alignment: .topLeading) {
+                Color.clear
+                    .frame(width: canvas.size.width, height: canvas.size.height)
+                    .contentShape(Rectangle())
+                    .onTapGesture(perform: onClose)
+                    .accessibilityHidden(true)
+                menuCard
+                    .background(
+                        GeometryReader { geo in
+                            Color.clear.preference(key: AgentPresetMenuSizeKey.self, value: geo.size)
+                        }
+                    )
+                    .onPreferenceChange(AgentPresetMenuSizeKey.self) { next in
+                        if next != menuSize { menuSize = next }
+                    }
+                    .offset(x: CGFloat(origin.x), y: CGFloat(origin.y))
             }
         }
+    }
+
+    private var menuCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                let id = row["id"].str() ?? ""
+                Button {
+                    model.draftPreset = id
+                    onClose()
+                } label: {
+                    HStack(alignment: .top, spacing: CGFloat(agentPresetMenuRowGapPoints)) {
+                        VStack(alignment: .leading, spacing: CGFloat(agentPresetMenuItemCopyGapPoints)) {
+                            Text(PresetPolicy.name(row, english: L.en))
+                                .font(.system(size: CGFloat(agentPresetMenuItemNameFontSizePoints)))
+                                .foregroundStyle(T.ink)
+                                .frame(
+                                    minHeight: CGFloat(agentPresetMenuItemNameLineHeightPoints),
+                                    alignment: .leading
+                                )
+                                .fixedSize(horizontal: false, vertical: true)
+                                .accessibilityIdentifier("agentPresetTitle.\(id)")
+                            Text(PresetPolicy.description(row, english: L.en).flatMap { $0.isEmpty ? nil : $0 }
+                                 ?? agentPresetNoDescription(english: L.en))
+                                .font(.system(size: CGFloat(agentPresetMenuItemDescFontSizePoints)))
+                                .foregroundStyle(T.caption)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .accessibilityIdentifier("agentPresetDesc.\(id)")
+                        }
+                        .frame(maxWidth: CGFloat(agentPresetMenuItemMaxWidthPoints), alignment: .leading)
+                        Spacer(minLength: 0)
+                        if currentId == id {
+                            OfficialGlyph(
+                                kind: .checkOutline,
+                                size: CGFloat(agentPresetMenuCheckSizePoints),
+                                color: T.ink
+                            )
+                        }
+                    }
+                    .padding(.horizontal, CGFloat(agentPresetMenuRowPaddingHorizontalPoints))
+                    .padding(.vertical, CGFloat(agentPresetMenuRowPaddingVerticalPoints))
+                    .frame(minHeight: CGFloat(agentPresetMenuRowMinHeightPoints), alignment: .top)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityIdentifier(agentPresetRowIdentifier(id))
+            }
+        }
+        .padding(CGFloat(agentPresetMenuPaddingPoints))
+        .frame(
+            minWidth: CGFloat(agentPresetMenuMinWidthPoints),
+            maxWidth: CGFloat(agentPresetMenuMaxWidthPoints),
+            alignment: .topLeading
+        )
+        .fixedSize(horizontal: false, vertical: true)
+        .background(T.settingsCard)
+        .overlay(
+            RoundedRectangle(cornerRadius: CGFloat(mentionMenuSurfaceRadiusPoints), style: .circular)
+                .stroke(T.borderL1, lineWidth: CGFloat(mentionMenuStrokeWidthPoints))
+        )
+        .clipShape(RoundedRectangle(cornerRadius: CGFloat(mentionMenuSurfaceRadiusPoints), style: .circular))
+        .shadow(
+            color: Color.black.opacity(mentionMenuShadowOpacity),
+            radius: CGFloat(mentionMenuShadowRadiusPoints),
+            y: CGFloat(mentionMenuShadowYPoints)
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(agentPresetMenuIdentifier())
+    }
+}
+
+struct AgentPresetSeatFrameKey: PreferenceKey {
+    static var defaultValue: CGRect = .zero
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        let next = nextValue()
+        if next != .zero { value = next }
+    }
+}
+
+private struct AgentPresetMenuSizeKey: PreferenceKey {
+    static var defaultValue: CGSize = .zero
+    static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
+        value = nextValue()
     }
 }
