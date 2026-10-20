@@ -25,6 +25,8 @@ Available surfaces depend on the Host version and enabled plugins. The phone mir
 
 Host configuration is adopted from `plugins.settingsDescribe` and `settings.changed`. Normal use does not show a manual sync control.
 
+The terminal forwards the software keyboard's Return submit event as `\r` to the remote PTY; multiline paste still requires confirmation. The Start page's new-terminal card opens the terminal directly, without desktop shortcuts or a decorative dropdown chevron. The terminal header retains its working session switcher.
+
 ## Architecture
 
 ```

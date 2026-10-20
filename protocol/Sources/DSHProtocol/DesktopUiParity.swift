@@ -183,13 +183,6 @@ public enum StartPanelPolicy {
         }
     }
 
-    /// Touch Start rows never append desktop chords (⌘P / ⌥⌘P / ^`).
-    public static func shortcut(_: StartPanelEntry) -> String? { nil }
-
-    public static func showsChevron(_ entry: StartPanelEntry) -> Bool {
-        entry == .newTerminal
-    }
-
     /// Desktop Guide is the right-sidebar default page, never a grabber sheet.
     public static var usesSystemSheet: Bool { false }
     /// Desktop Guide cards have no ornamental globe above the list.

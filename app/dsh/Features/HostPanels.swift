@@ -144,8 +144,6 @@ struct StartPanel: View {
                                 L.workspaceFilesHint(),
                                 .folderClose,
                                 tint: Color(hex: 0xFFF5B942),
-                                shortcut: StartPanelPolicy.shortcut(entry),
-                                chevron: StartPanelPolicy.showsChevron(entry),
                                 action: onFiles
                             )
                         case .newTerminal:
@@ -154,8 +152,6 @@ struct StartPanel: View {
                                 L.terminalHint(),
                                 .terminalPrompt,
                                 tint: T.ink,
-                                shortcut: StartPanelPolicy.shortcut(entry),
-                                chevron: StartPanelPolicy.showsChevron(entry),
                                 action: onTerminal
                             )
                         case .browser:
@@ -164,8 +160,6 @@ struct StartPanel: View {
                                 L.browserHint(),
                                 .globe,
                                 tint: T.ink,
-                                shortcut: StartPanelPolicy.shortcut(entry),
-                                chevron: StartPanelPolicy.showsChevron(entry),
                                 action: onBrowser
                             )
                         case .sessionInspector:
@@ -174,8 +168,6 @@ struct StartPanel: View {
                                 L.sessionInspectorHint(),
                                 .slidersTwo,
                                 tint: T.ink,
-                                shortcut: StartPanelPolicy.shortcut(entry),
-                                chevron: StartPanelPolicy.showsChevron(entry),
                                 action: onInspector
                             )
                         }
@@ -195,8 +187,6 @@ struct StartPanel: View {
         _ description: String,
         _ icon: OfficialGlyph.Kind,
         tint: Color,
-        shortcut: String?,
-        chevron: Bool,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
@@ -208,14 +198,6 @@ struct StartPanel: View {
                     Text(description).font(.system(size: 11)).foregroundStyle(T.text3).lineLimit(1)
                 }
                 Spacer()
-                if let shortcut {
-                    Text(shortcut)
-                        .font(.system(size: 12).weight(.medium))
-                        .foregroundStyle(T.caption)
-                }
-                if chevron {
-                    OfficialGlyph(kind: .chevronDown, size: 14, color: T.caption)
-                }
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 14)

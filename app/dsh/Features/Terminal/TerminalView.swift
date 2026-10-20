@@ -32,9 +32,9 @@ struct TerminalView: View {
                     .frame(width: 1, height: 1)
                     .opacity(0.01)
                     .accessibilityLabel(L.terminalKeyboardInput())
-                    .disabled(!enabled || selecting)
+                    .disabled(!inputEnabled)
                     .onChange(of: ime) { next in
-                        guard enabled, !selecting else { return }
+                        guard inputEnabled else { return }
                         let input = terminalCommittedInput(next)
                         if input.count > 1, input.contains("\r") {
                             pendingPaste = input
@@ -42,6 +42,11 @@ struct TerminalView: View {
                             model.writeTerminal(input)
                         }
                         ime = terminalImeAnchor
+                    }
+                    .onSubmit {
+                        // A single-line TextField submits Return instead of inserting
+                        // a newline, so onChange never forwards it to the PTY.
+                        send("\r")
                     }
                 TerminalCanvas(
                     terminal: model.terminal,
