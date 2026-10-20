@@ -3,7 +3,7 @@ import XCTest
 final class WorkspaceChangesUITests: XCTestCase {
     override class var runsForEachTargetApplicationUIConfiguration: Bool { false }
 
-    func testChangesCardOpensComparisonAndSwitchesFileSemantics() {
+    func testChangesCardOpensComparisonAndSwitchesFileSemantics() throws {
         let app = launch("changesReview")
         let card = app.buttons["changesCard"]
         XCTAssertTrue(card.waitForExistence(timeout: 10))
@@ -36,6 +36,11 @@ final class WorkspaceChangesUITests: XCTestCase {
         screenshot.name = "workspace-changes-wrapped-diff"
         screenshot.lifetime = .keepAlways
         add(screenshot)
+        if let root = ProcessInfo.processInfo.environment["DSH_SCREENSHOT_DIR"] {
+            let directory = URL(fileURLWithPath: root, isDirectory: true)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try app.screenshot().pngRepresentation.write(to: directory.appendingPathComponent("workspace-changes-wrapped-diff.png"))
+        }
     }
 
     func testSummaryAndDiffFailuresRemainVisibleAndRetryable() {

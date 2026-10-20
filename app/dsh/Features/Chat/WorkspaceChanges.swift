@@ -54,6 +54,7 @@ private struct ChangesCardContent: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(14)
                 .background(T.fill2, in: RoundedRectangle(cornerRadius: 16))
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("changesSummaryError")
             }
         }
@@ -153,6 +154,7 @@ struct ChangesSummaryCard: View {
                 .buttonStyle(.plain)
                 .disabled(onOpen == nil)
                 .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(.isButton)
                 .accessibilityIdentifier(changesCardIdentifier())
                 .accessibilityHint(L.t("查看本轮改动", "Review turn changes"))
 
