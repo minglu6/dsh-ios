@@ -1960,9 +1960,10 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertFalse(chip.label.contains("1017"), "\(appearance) Pro chip still exposes 1017")
     }
 
-    /// Desktop `ConversationRoot.module.css` `.titleRow` min-height 30 with
-    /// 14/20 title, then `.tabs { margin-top: 10px }`. Title maxY → tab minY
-    /// is (30-20)/2 + 10 = 15. Uses the existing title/tab identifiers.
+    /// Desktop title-text → tabs is 15 (`.titleRow` 30/20 leftover +
+    /// `.tabs` margin-top 10). iOS keeps the existing header and uses
+    /// padding.top 10 / padding.bottom 15 so minHeight 30 does not
+    /// stretch the row (that height made Light typeText miss idle).
     private func assertConversationHeaderTabGap(
         _ app: XCUIApplication,
         appearance: String,

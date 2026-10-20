@@ -2281,5 +2281,7 @@ CI `11c995e` / `f9f8457` artifact `ios-simulator-screenshots` 逐屏对照：
 
 根因（`4caed96` `*-models.png`）：model picker 叠在 composer 上（占位字从菜单后露出）。`modelChip` / `modelReleaseBadge` 在菜单开着时就在树上，等它们存在并不等于 popover 已关。title row 加高 8pt 把 chip（以及锚在它上面的菜单）往下推，盖住输入框，tap/`typeText` 跟拆除抢 AX（`{{inf, inf},{0,0}}` / Timed out while evaluating UI query）。
 
-修：Flash 点完先等系统 `PopoverDismissRegion` 离开（8s，和其他 wait 同一预算；不是 skip/retry/放宽）。不要给 picker VStack 加 identifier——SwiftUI 会把它复制到「模型 / 推理等级」行上，子级 `modelPickerModel` 就丢了。再断言 composer 有限可点，然后 `typeText`。header 只加回桌面 `.titleRow` min-height 30；`.tabs` margin-top 10 仍是原 `padding.vertical` 10。`conversationHeaderTitle` + `chatTab.chat` 断言 title-text→tabs 15±3。不加 wrapper / maxWidth / probe / `ignoresSafeArea` / 动画开关 / `sizeThatFits`。
+修：Flash 点完先等系统 `PopoverDismissRegion` 离开（8s，和其他 wait 同一预算；不是 skip/retry/放宽）。不要给 picker VStack 加 identifier——SwiftUI 会把它复制到「模型 / 推理等级」行上，子级 `modelPickerModel` 就丢了。再断言 composer 有限可点，然后 `typeText`。
+
+`minHeight` 30（`4caed96` / `a57438b`）把 title row 撑高约 8pt 后，Light `typeText("保留草稿")` 合成按键后 60s 等不到 idle，接着 `chatTranscript` AX 超时（Dark 已过）。桌面 15pt 改用现有 header 的 `padding.top` 10 + `padding.bottom` 15，不撑高 title row。`conversationHeaderTitle` + `chatTab.chat` 断言 15±3。不加 wrapper / maxWidth / probe / `ignoresSafeArea` / 动画开关 / `sizeThatFits`。
 

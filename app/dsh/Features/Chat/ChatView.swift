@@ -229,13 +229,14 @@ struct ChatView: View {
             .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier("openStartPanel")
         }
-        // Desktop ConversationRoot.module.css `.titleRow { min-height: 30px }`
-        // then `.tabs { margin-top: 10px }`. The 10pt tab gap is the existing
-        // padding.vertical; minHeight 30 is the leftover above/below the
-        // 14/20 title so title-text → tabs is 15.
-        .frame(minHeight: 30)
+        // Desktop title-text → tabs is 15: `.titleRow` 30/20 leftover 5
+        // + `.tabs { margin-top: 10px }`. A `minHeight: 30` on this HStack
+        // grows the header ~8pt and, after the model picker, Light
+        // typeText("保留草稿") never idles (CI 39346945482). Same 15pt
+        // gap via padding, without stretching the title row.
         .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.top, 10)
+        .padding(.bottom, 15)
         .background(T.surface)
     }
 
