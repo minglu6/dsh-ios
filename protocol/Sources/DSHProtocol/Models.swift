@@ -18,6 +18,7 @@ public struct PocketError: Error, LocalizedError, Equatable {
 
 public enum Auth: Sendable {
     case token(String)
+    /// `deviceName` is this phone's identity (Android `Build.MODEL`). Never the local remote-host remark.
     case pair(code: String, deviceName: String)
 }
 
