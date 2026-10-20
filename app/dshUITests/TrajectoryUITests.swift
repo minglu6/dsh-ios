@@ -39,7 +39,11 @@ final class TrajectoryUITests: XCTestCase {
         let result = app.buttons.matching(NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "结果", "助手消息")).firstMatch
         XCTAssertTrue(result.waitForExistence(timeout: 5))
         result.tap()
-        XCTAssertTrue(app.navigationBars["助手"].waitForExistence(timeout: 5))
+        let rawResult = app.buttons["原始内容"].firstMatch
+        XCTAssertTrue(rawResult.waitForExistence(timeout: 5), "Result navigation opens assistant content, not the request inspector")
+        rawResult.tap()
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "trajectory-final-needle")).firstMatch.waitForExistence(timeout: 5))
+        try capture(app, name: "trajectory-large-request-result")
         XCTAssertTrue(app.staticTexts["第 1 轮 · 第 128 步"].waitForExistence(timeout: 5))
         closeDetail(app)
 
@@ -55,7 +59,7 @@ final class TrajectoryUITests: XCTestCase {
         app.buttons["时长"].tap()
         XCTAssertTrue(last.isHittable)
 
-        search.tap()
+        search.coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0.5)).tap()
         search.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: "trajectory-final-needle".count))
         XCTAssertTrue(first.waitForExistence(timeout: 5))
         app.buttons["chatTab.chat"].tap()

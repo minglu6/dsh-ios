@@ -4,10 +4,7 @@ import DSHProtocol
 struct TrajectoryView: View {
     @ObservedObject var model: AppModel
     @StateObject private var ledgerCache = TrajectoryLedgerCache()
-    @State private var selected: TrajRow?
-    @State private var selectedRequest: TrajectoryRequest?
-    @State private var requestTab: TrajRequestTab = .overview
-    @State private var selectedTurn = 0
+    @State private var selection: TrajectorySelection?
     @State private var actualDuration = false
     @State private var turnsCollapsed = false
     @State private var callsCollapsed = false
@@ -31,10 +28,12 @@ struct TrajectoryView: View {
     private func ledger(_ snapshot: TrajectoryLedgerSnapshot) -> some View {
         let timeline = actualDuration ? snapshot.durationTimeline : snapshot.sequenceTimeline
         let projection = snapshot.project(query: searchQuery, callsCollapsed: callsCollapsed)
+        let selectedKey = selection?.rowKey
+        let selectedRequestId = selection?.requestId
         return VStack(spacing: 0) {
             toolbar
             if let timeline {
-                SwimlaneChart(model: timeline, selectedKey: selected?.key) { key in
+                SwimlaneChart(model: timeline, selectedKey: selectedKey) { key in
                     openRow(key, in: snapshot)
                 }
             }
@@ -71,56 +70,42 @@ struct TrajectoryView: View {
                             let boundary = snapshot.boundaryByRow[row.key]
                             TrajRowView(
                                 row: row,
-                                highlighted: selected?.key == row.key,
+                                highlighted: selectedKey == row.key,
                                 turnStart: entry.turnStart ? entry.turn : nil,
                                 requestBoundary: boundary,
-                                requestSelected: selectedRequest != nil && selectedRequest?.identity == boundary?.identity
+                                requestSelected: selectedRequestId != nil && selectedRequestId == boundary?.identity
                             ) {
-                                selected = row
-                                selectedTurn = entry.turn
+                                selection = .row(row, turn: entry.turn)
                             } onRequestClick: { req in
-                                selected = nil
-                                requestTab = .overview
-                                selectedRequest = req
+                                selection = .request(req, tab: .overview)
                             }
                         }
                     }
                 }
             }
         }
-        .sheet(item: $selected) { row in
-            TrajectoryDetailSheet(
-                row: row,
-                turnIndex: selectedTurn,
-                parentRequest: requestForRow(row, requests: snapshot.requests),
-                onOpenRequest: { req in
-                    selected = nil
-                    requestTab = .overview
-                    selectedRequest = req
-                },
-                onOpenRequestTiming: { req in
-                    selected = nil
-                    requestTab = .timing
-                    selectedRequest = req
-                },
-                toolCalls: snapshot.toolCalls(for: row)
-            ) { call in
-                openRow(call.key, in: snapshot)
+        .sheet(item: $selection) { detail in
+            switch detail {
+            case .row(let row, let turn):
+                TrajectoryDetailSheet(
+                    row: row,
+                    turnIndex: turn,
+                    parentRequest: requestForRow(row, requests: snapshot.requests),
+                    onOpenRequest: { selection = .request($0, tab: .overview) },
+                    onOpenRequestTiming: { selection = .request($0, tab: .timing) },
+                    toolCalls: snapshot.toolCalls(for: row)
+                ) { call in
+                    openRow(call.key, in: snapshot)
+                }
+            case .request(let request, let tab):
+                TrajectoryRequestSheet(
+                    request: request,
+                    onOpenResult: { openRow($0, in: snapshot) },
+                    initialTab: tab,
+                    assistantRow: request.resultKey.flatMap { snapshot.assistantByKey[$0] },
+                    onDismiss: { selection = nil }
+                )
             }
-        }
-        .sheet(item: $selectedRequest) { req in
-            TrajectoryRequestSheet(
-                request: req,
-                onOpenResult: { key in
-                    selectedRequest = nil
-                    openRow(key, in: snapshot)
-                },
-                initialTab: requestTab,
-                assistantRow: req.resultKey.flatMap { key in
-                    snapshot.assistantByKey[key]
-                },
-                onDismiss: { selectedRequest = nil }
-            )
         }
     }
 
@@ -190,8 +175,35 @@ struct TrajectoryView: View {
 
     private func openRow(_ key: String, in snapshot: TrajectoryLedgerSnapshot) {
         guard let entry = snapshot.rowByKey[key] else { return }
-        selected = entry.row
-        selectedTurn = entry.turn
+        selection = .row(entry.row, turn: entry.turn)
+    }
+}
+
+/// A single presentation owner prevents competing row/request sheets during navigation.
+private enum TrajectorySelection: Identifiable {
+    case row(TrajRow, turn: Int)
+    case request(TrajectoryRequest, tab: TrajRequestTab)
+
+    enum ID: Hashable {
+        case row(Int, String)
+        case request(String)
+    }
+
+    var id: ID {
+        switch self {
+        case .row(let row, let turn): return .row(turn, row.key)
+        case .request(let request, _): return .request(request.identity)
+        }
+    }
+
+    var rowKey: String? {
+        if case .row(let row, _) = self { return row.key }
+        return nil
+    }
+
+    var requestId: String? {
+        if case .request(let request, _) = self { return request.identity }
+        return nil
     }
 }
 
