@@ -93,6 +93,7 @@ struct TrajectoryInspectorFrame<Tab: Hashable, Content: View>: View {
             .padding(.trailing, 8)
             .frame(height: 42)
             .overlay(alignment: .bottom) { T.border.frame(height: 0.5) }
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("trajectoryInspector.header")
 
             ScrollView(.horizontal, showsIndicators: false) {
