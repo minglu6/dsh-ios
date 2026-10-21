@@ -20,7 +20,7 @@ extension AppModel {
                 guard let self, self.uiTestFixture else { return }
                 switch action {
                 case "output":
-                    guard let jobId = self.selectedJobId else { return }
+                    guard let jobId = self.jobDetail?.jobId else { return }
                     self.receiveUITestJobFrame(jobId: jobId, frame: JobsLifecycleFrames.output)
                 case "settle", "stopping":
                     self.receiveUITestJobFrame(jobId: "jobs-live", frame: JobsLifecycleFrames.status(stopping: action == "stopping"))
