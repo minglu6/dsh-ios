@@ -278,9 +278,12 @@ extension AppModel {
             }
             if screen == "contextNoRoster" { presetRoster = [] }
             if screen == "contextChild" {
+                guard let parentSessionId = chat?.sessionId else {
+                    fatalError("UITestLaunch contextChild requires a parent session")
+                }
                 sessions.append(SessionSummary(
                     sessionId: "context-child", title: "子会话",
-                    parentSessionId: chatId, origin: "subagent"
+                    parentSessionId: parentSessionId, origin: "subagent"
                 ))
                 chat = ChatState(sessionId: "context-child", title: "子会话", loaded: true, agentPreset: "ptc")
             }

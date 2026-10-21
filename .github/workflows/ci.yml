@@ -145,7 +145,12 @@ jobs:
             )
             MIN_SCREENSHOTS=4
           elif [ "$UI_SCOPE" = "session-header" ]; then
-            UI_TESTS=(-only-testing:dshUITests/SessionHeaderUITests)
+            UI_TESTS=(
+              -only-testing:dshUITests/SessionHeaderUITests
+              -only-testing:dshUITests/ScreenshotTests/testConversationContextUsesSessionMetadataNotDraftSelection
+              -only-testing:dshUITests/ScreenshotTests/testConversationContextFollowsSessionSwitchWithoutRetainingPreviousPreset
+              -only-testing:dshUITests/ScreenshotTests/testLongConversationContextKeepsBothValuesReadableAboveComposer
+            )
             MIN_SCREENSHOTS=4
           elif [ "$UI_SCOPE" = "conversation" ]; then
             export TEST_RUNNER_DSH_SCREENSHOT_SCREENS="landing"
