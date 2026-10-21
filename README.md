@@ -57,6 +57,8 @@ Trajectory record/request details follow the official desktop inspector, not And
 
 History pagination no longer shows a Load earlier button. Pull down at the top of Chat, Trajectory or Session Inspector to fetch the preceding page; the refresh indicator awaits the actual request. Existing records and reading anchors are retained, failed pulls can be retried, and exhausted histories make no further requests. The session drawer progressively reveals each group's remaining sessions as its visible boundary is reached, without Show more/less paging controls. Workspace collapsing, action menus and search-limit notices are unchanged. CI's `ui_scope=pagination` exercises history gestures and automatic roster expansion.
 
+Chat's refresh control is a directly owned native subview rather than SwiftUI's reconciled `refreshControl` property. It stays attached while transcript measurements change and stops only after the actual page request completes. CI `ui_scope=reading` isolates native history loading and landing-toolbar screenshots; `ui_scope=conversation` also covers titles, navigation, trajectory and chat paging regressions.
+
 ## Architecture
 
 ```

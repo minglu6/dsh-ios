@@ -180,7 +180,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Official locales | `TrajectoryLocales.kt` ← `ui-trajectory` `locales.ts` | `TrajL` | **present** | **A** |
 | Chat / 轨迹 entry | session header + more sheet | session header tabs 对话 / 轨迹 | **present** | **A** |
 
-2026-10-21：重新以官方 `ui-trajectory/TrajectoryTable.tsx` 和 `.module.css` 为权威。`TrajectoryInspectorLayout` 在轨迹区域内切换详情：窄屏 `min(92%, 420pt)` 右侧覆盖、宽屏分栏与拖动调宽，不使用 Android 的全屏 Dialog，也不使用 iOS sheet。记录页签保留最近兼容选择，请求入口按官方重置概述／计时；Markdown 预览与原文分离，请求选项不再截取前四行，Schema 展示真实 parameters。已完成 Swift 语法检查、协议构建，并在 macOS NSHostingView 运行真实共享布局／标题／tabs／概览组件，在 393pt 浅色、320pt 深色及 1024pt 分栏宽度验证指针切换页签和关闭。未运行 iOS XCUITest：本机无完整 Xcode／iOS SDK／模拟器；需 CI 或真机继续验收，不能将原生 macOS 烟测称为 iOS UI 通过。
+2026-10-21：重新以官方 `ui-trajectory/TrajectoryTable.tsx` 和 `.module.css` 为权威。`TrajectoryInspectorLayout` 在轨迹区域内切换详情：窄屏 `min(92%, 420pt)` 右侧覆盖、宽屏分栏与拖动调宽，不使用 Android 的全屏 Dialog，也不使用 iOS sheet。记录页签保留最近兼容选择，请求入口按官方重置概述／计时；Markdown 预览与原文分离，请求选项不再截取前四行，Schema 展示真实 parameters。已完成本机 Swift 语法检查／协议构建与共享原生组件烟测；GitHub iOS 模拟器已实际验证轨迹详情、长轨迹请求跳转、标题完整弹层、历史名称滚动、轮次导航、尾部跟随及手动阅读。新建会话顶栏不再重复显示品牌字标，浅深主题截图通过。`TranscriptScrollHost` 直接管理原生刷新子视图，避免 SwiftUI 更新清空 `refreshControl` 属性；CI `39579724518` 的连续分页、旧 Host 分页锚点与首页浅深截图通过。尚未安装新版到用户 iPhone；模拟器通过不代表真机验收。
 
 ## 3. Terminal
 

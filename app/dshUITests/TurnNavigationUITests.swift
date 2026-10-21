@@ -24,7 +24,6 @@ final class TurnNavigationUITests: XCTestCase {
         let preview = app.descendants(matching: .any)["transcriptTurnPreview"].firstMatch
         let appeared = preview.waitForExistence(timeout: 5)
         capture(app, "turn-preview-touch")
-        if !appeared { diagnose(app, elements: [mark, preview]) }
         XCTAssertTrue(appeared)
         waitValue(app, "activeTurn=21")
         waitValue(app, "follow=true")
@@ -108,10 +107,7 @@ final class TurnNavigationUITests: XCTestCase {
     private func waitValue(_ app: XCUIApplication, _ fragment: String, file: StaticString = #filePath, line: UInt = #line) {
         let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value CONTAINS %@", fragment), object: app.scrollViews["chatTranscript"])
         let result = XCTWaiter.wait(for: [expectation], timeout: 10)
-        if result != .completed {
-            capture(app, "turn-navigation-state-failure-\(line)")
-            diagnose(app, elements: [])
-        }
+        if result != .completed { capture(app, "turn-navigation-state-failure-\(line)") }
         XCTAssertEqual(result, .completed, fragment, file: file, line: line)
     }
 
@@ -125,22 +121,9 @@ final class TurnNavigationUITests: XCTestCase {
         }, object: prompt)
         let result = XCTWaiter.wait(for: [visible], timeout: 5)
         capture(app, screenshot)
-        if result != .completed { diagnose(app, elements: [prompt, app.buttons["transcript-turn-\(turn)"]]) }
         XCTAssertEqual(result, .completed, "The actual Host prompt must be fully readable inside the viewport after landing", file: file, line: line)
     }
 
-    private func diagnose(_ app: XCUIApplication, elements: [XCUIElement]) {
-        let transcript = app.scrollViews["chatTranscript"]
-        print("Transcript frame: \(transcript.frame); state: \(transcript.value as? String ?? "")")
-        for element in elements {
-            if element.exists {
-                print("Element \(element.identifier): frame=\(element.frame); hittable=\(element.isHittable)")
-            } else {
-                print("Element does not exist")
-            }
-        }
-        print(app.debugDescription)
-    }
 
     private func appendHostTurn() {
         CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),

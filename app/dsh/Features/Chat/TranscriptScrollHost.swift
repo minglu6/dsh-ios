@@ -6,10 +6,9 @@ struct TranscriptScrollHost: UIViewRepresentable {
     let onBegan: () -> Void
     let onEnded: () -> Void
     let onRefresh: () async -> Void
-    let onDiagnostic: (String) -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onBegan: onBegan, onEnded: onEnded, onRefresh: onRefresh, onDiagnostic: onDiagnostic)
+        Coordinator(onBegan: onBegan, onEnded: onEnded, onRefresh: onRefresh)
     }
 
     func makeUIView(context: Context) -> Probe {
@@ -24,7 +23,6 @@ struct TranscriptScrollHost: UIViewRepresentable {
         context.coordinator.onBegan = onBegan
         context.coordinator.onEnded = onEnded
         context.coordinator.onRefresh = onRefresh
-        context.coordinator.onDiagnostic = onDiagnostic
         context.coordinator.attach(from: view)
     }
 
@@ -47,17 +45,15 @@ struct TranscriptScrollHost: UIViewRepresentable {
         var onBegan: () -> Void
         var onEnded: () -> Void
         var onRefresh: () async -> Void
-        var onDiagnostic: (String) -> Void
         private weak var scrollView: UIScrollView?
         private let refreshControl = UIRefreshControl()
         private var refreshTask: Task<Void, Never>?
         private var previousBounce = false
 
-        init(onBegan: @escaping () -> Void, onEnded: @escaping () -> Void, onRefresh: @escaping () async -> Void, onDiagnostic: @escaping (String) -> Void) {
+        init(onBegan: @escaping () -> Void, onEnded: @escaping () -> Void, onRefresh: @escaping () async -> Void) {
             self.onBegan = onBegan
             self.onEnded = onEnded
             self.onRefresh = onRefresh
-            self.onDiagnostic = onDiagnostic
             super.init()
             refreshControl.addTarget(self, action: #selector(refreshChanged), for: .valueChanged)
         }
@@ -95,12 +91,10 @@ struct TranscriptScrollHost: UIViewRepresentable {
         }
 
         @objc private func refreshChanged() {
-            diagnose("action")
             guard refreshTask == nil else { return }
             refreshTask = Task { @MainActor [weak self] in
                 guard let self else { return }
                 guard !Task.isCancelled else { return }
-                self.diagnose("task")
                 await self.onRefresh()
                 guard !Task.isCancelled else { return }
                 self.refreshControl.endRefreshing()
@@ -114,12 +108,7 @@ struct TranscriptScrollHost: UIViewRepresentable {
             case .ended, .cancelled, .failed: onEnded()
             default: break
             }
-            if recognizer.state == .began || recognizer.state == .ended { diagnose("pan\(recognizer.state.rawValue)") }
         }
 
-        private func diagnose(_ phase: String) {
-            guard UITestLaunch.isEnabled, let scroll = scrollView else { return }
-            onDiagnostic("phase=\(phase);parented=\(refreshControl.superview === scroll);attached=\(refreshControl.window != nil);targets=\(refreshControl.allTargets.count);refreshing=\(refreshControl.isRefreshing);offset=\(scroll.contentOffset.y);control=\(refreshControl.frame)")
-        }
     }
 }
