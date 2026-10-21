@@ -16,20 +16,23 @@ final class SessionHeaderUITests: XCTestCase {
         let title = app.descendants(matching: .any)["conversationHeaderTitle"].firstMatch
         let preset = app.descendants(matching: .any)["conversationPreset"].firstMatch
         let tabs = app.buttons["chatTab.chat"]
-        XCTAssertLessThanOrEqual(
-            preset.frame.width, team.frame.width,
-            "The phone work-mode indicator stays icon-only, preserving title space"
-        )
-        XCTAssertGreaterThan(title.frame.width, 24, "Long titles retain a visible navigation label")
-        XCTAssertGreaterThanOrEqual(team.frame.minX, title.frame.maxX)
-        XCTAssertGreaterThanOrEqual(preset.frame.minX, team.frame.maxX)
-        XCTAssertGreaterThanOrEqual(count.frame.minX, preset.frame.maxX)
-        for control in [team, preset, count] {
-            XCTAssertLessThan(control.frame.maxY, tabs.frame.minY, "Header actions belong above the tab strip")
-            XCTAssertLessThan(abs(control.frame.midY - title.frame.midY), 8, "Header actions share the title row")
+        try capture(app, name: "session-header-actions")
+        XCTAssertTrue(team.isHittable)
+        XCTAssertTrue(count.isHittable)
+        let panel = app.buttons["openStartPanel"]
+        XCTAssertTrue(panel.isHittable)
+        XCTAssertGreaterThanOrEqual(panel.frame.width, 44, "The panel needs a separate touch target")
+        XCTAssertGreaterThanOrEqual(panel.frame.height, 44)
+        XCTAssertGreaterThan(title.frame.width, 24, "Header actions must leave a readable title")
+        let controls = [title, team, preset, count, panel]
+        for (left, right) in zip(controls, controls.dropFirst()) {
+            XCTAssertLessThanOrEqual(left.frame.maxX, right.frame.minX, "Header targets must not overlap")
+            XCTAssertLessThan(abs(left.frame.midY - right.frame.midY), 8, "Keep a single header row")
+        }
+        for control in controls {
+            XCTAssertLessThanOrEqual(control.frame.maxY, tabs.frame.minY)
             XCTAssertLessThanOrEqual(control.frame.maxX, app.frame.maxX)
         }
-        try capture(app, name: "session-header-actions")
 
         team.tap()
         XCTAssertTrue(app.staticTexts["Review session header"].waitForExistence(timeout: 5))

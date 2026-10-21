@@ -186,12 +186,14 @@ struct ChatView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 0) {
             Button {
                 Keyboard.dismiss()
                 model.showDrawer = true
             } label: {
                 OfficialGlyph(kind: .panelLeft, size: 16, color: T.ink)
+                    .frame(width: 48, height: 48)
+                    .contentShape(Rectangle())
             }
             .accessibilityElement(children: .contain)
             .accessibilityAddTraits(.isButton)
@@ -232,18 +234,16 @@ struct ChatView: View {
                 ConversationTitle(sessionId: model.chat?.sessionId ?? "", title: headerTitle)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            ConversationHeaderActions(
-                model: model,
-                compact: UIScreen.main.bounds.width < 480,
-                minimal: UIScreen.main.bounds.width < 375
-            )
-            .layoutPriority(1)
+            ConversationHeaderActions(model: model)
+                .layoutPriority(1)
             Button {
                 Keyboard.dismiss()
                 if case .panel(.start) = model.currentRoute { return }
                 model.push(.panel(.start))
             } label: {
-                OfficialGlyph(kind: .panelRight, size: 16, color: T.ink)
+                OfficialGlyph(kind: .panelRight, size: 15, color: T.text2)
+                    .frame(width: 48, height: 48)
+                    .contentShape(Rectangle())
             }
             .disabled(firstPromptBlocksComposerActions(model.firstPrompt))
             .accessibilityLabel(L.startPanel())
@@ -251,12 +251,10 @@ struct ChatView: View {
             .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier("openStartPanel")
         }
-        // Desktop actions share the title row; tabs remain below it. Narrow
-        // layouts reduce labels instead of creating another metadata row.
-        .padding(.horizontal, 14)
-        .padding(.top, 5)
-        .padding(.bottom, 15)
+        .padding(.horizontal, 6)
+        .frame(height: 56)
         .background(T.surface)
+        .buttonStyle(.plain)
     }
 
     private var tabs: some View {
@@ -281,6 +279,7 @@ struct ChatView: View {
             Text(title)
                 .font(Font.subheadline.weight(tab == index ? .semibold : .regular))
                 .foregroundStyle(tab == index ? T.ink : T.text3)
+                .lineLimit(1)
                 .padding(.bottom, 6)
                 .overlay(alignment: .bottom) {
                     if tab == index { T.accent.frame(height: 2) }

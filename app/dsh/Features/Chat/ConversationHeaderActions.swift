@@ -1,87 +1,97 @@
 import SwiftUI
 import DSHProtocol
 
-/// Desktop header action order: Team (-20), preset (-10), child catalog (10).
-/// Workspace selection belongs to the new-task page, not the conversation header.
+/// Android header order and spacing; workspace selection stays on new tasks.
 struct ConversationHeaderActions: View {
     @ObservedObject var model: AppModel
-    var compact: Bool
-    var minimal: Bool
+
     @State private var teamOpen = false
-    @State private var catalogOpen = false
 
     var body: some View {
         if let chat = model.chat {
             let parent = model.currentSubagentAddress?.parentSessionId ?? chat.sessionId
             let projection = model.headerProjections[parent]
-            let children = sessionHeaderSubagents(
-                parentSessionId: parent, catalog: projection?.subagents, sessions: model.sessions
+            let preset = SessionContextPolicy.presetName(
+                id: chat.agentPreset, roster: model.presetRoster, english: L.en
             )
             HStack(spacing: 8) {
                 if projection?.team != nil || projection?.errors["agentTeam"] != nil {
                     Button { teamOpen = true } label: {
-                        HStack(spacing: 5) {
-                            OfficialGlyph(kind: .usersOutline, size: 14, color: T.text2)
-                            if !compact { Text(L.t("智能体团队", "Agent Team")) }
-                        }
-                        .frame(minWidth: 28, minHeight: 28)
-                        .contentShape(Rectangle())
+                        OfficialGlyph(kind: .usersOutline, size: 14, color: T.text2)
+                            .frame(width: 28, height: 28)
+                            .contentShape(Rectangle())
                     }
                     .accessibilityLabel(L.t("智能体团队", "Agent Team"))
                     .accessibilityIdentifier("conversationTeam")
+                    .fixedSize(horizontal: true, vertical: false)
                     .popover(isPresented: $teamOpen, attachmentAnchor: .rect(.bounds), arrowEdge: .top) {
                         AgentTeamPopover(model: model, sessionId: chat.sessionId, leadSessionId: parent)
                             .modifier(PopoverCompactAdaptation())
                     }
                 }
-                if let preset = SessionContextPolicy.presetName(
-                    id: chat.agentPreset, roster: model.presetRoster, english: L.en
-                ) {
-                    HStack(spacing: 5) {
-                        OfficialGlyph(kind: .agentPreset, size: 14, color: T.text2)
-                        if !compact {
-                            Text(preset)
-                                .frame(maxWidth: 180, alignment: .leading)
-                                .truncationMode(.tail)
-                        }
-                    }
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(preset)
-                    .accessibilityIdentifier("conversationPreset")
+                if let preset {
+                    OfficialGlyph(kind: .agentPreset, size: 14, color: T.text2)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(preset)
+                        .accessibilityIdentifier("conversationPreset")
                 }
-                if !children.isEmpty {
-                    Button { catalogOpen.toggle() } label: {
-                        HStack(spacing: 5) {
-                            if children.contains(where: { $0.running == true }) {
-                                Circle().fill(T.accent).frame(width: 6, height: 6)
-                            }
-                            Text(minimal ? "\(children.count)" : sessionHeaderSubagentCount(children.count, english: L.en))
-                            OfficialGlyph(kind: .chevronDown, size: 12, color: T.text2)
-                                .rotationEffect(.degrees(catalogOpen ? 180 : 0))
-                        }
-                        .frame(minHeight: 28)
-                        .contentShape(Rectangle())
-                    }
-                    .accessibilityLabel(sessionHeaderSubagentCount(children.count, english: L.en))
-                    .accessibilityIdentifier("conversationSubagents")
-                    .popover(isPresented: $catalogOpen, attachmentAnchor: .rect(.bounds), arrowEdge: .top) {
-                        SubagentCatalogMenu(model: model, parentSessionId: parent, currentSessionId: chat.sessionId) {
-                            catalogOpen = false
-                        }
-                        .modifier(PopoverCompactAdaptation())
-                    }
-                }
+                ConversationSubagentAction(model: model)
             }
             .buttonStyle(.plain)
-            .font(Font.system(size: 14))
+            .font(Font.system(size: 12))
             .foregroundStyle(T.text2)
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
-            .frame(minHeight: 28, alignment: .trailing)
+            .frame(minHeight: 28)
             .accessibilityElement(children: .contain)
             .onChange(of: chat.sessionId) { _ in
                 teamOpen = false
-                catalogOpen = false
+            }
+        }
+    }
+}
+
+private struct ConversationSubagentAction: View {
+    @ObservedObject var model: AppModel
+    @State private var catalogOpen = false
+
+    var body: some View {
+        if let chat = model.chat {
+            let parent = model.currentSubagentAddress?.parentSessionId ?? chat.sessionId
+            let children = sessionHeaderSubagents(
+                parentSessionId: parent,
+                catalog: model.headerProjections[parent]?.subagents,
+                sessions: model.sessions
+            )
+            if !children.isEmpty {
+                Button { catalogOpen.toggle() } label: {
+                    HStack(spacing: 4) {
+                        if children.contains(where: { $0.running == true }) {
+                            Circle().fill(T.accent).frame(width: 6, height: 6)
+                        }
+                        Text(sessionHeaderSubagentCount(children.count, english: L.en))
+                            .frame(height: 18)
+                        OfficialGlyph(kind: .chevronDown, size: 14, color: T.text3)
+                            .rotationEffect(.degrees(catalogOpen ? 180 : 0))
+                    }
+                    .padding(.horizontal, 2)
+                    .padding(.vertical, 3)
+                    .frame(minHeight: 28)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .font(Font.system(size: 12))
+                .foregroundStyle(T.text3)
+                .lineLimit(1)
+                .accessibilityLabel(sessionHeaderSubagentCount(children.count, english: L.en))
+                .accessibilityIdentifier("conversationSubagents")
+                .popover(isPresented: $catalogOpen, attachmentAnchor: .rect(.bounds), arrowEdge: .top) {
+                    SubagentCatalogMenu(model: model, parentSessionId: parent, currentSessionId: chat.sessionId) {
+                        catalogOpen = false
+                    }
+                    .modifier(PopoverCompactAdaptation())
+                }
+                .onChange(of: chat.sessionId) { _ in catalogOpen = false }
             }
         }
     }
