@@ -1,4 +1,5 @@
 import XCTest
+import CoreFoundation
 
 final class SessionTitleUITests: XCTestCase {
     override class var runsForEachTargetApplicationUIConfiguration: Bool { false }
@@ -21,6 +22,35 @@ final class SessionTitleUITests: XCTestCase {
         row.tap()
         XCTAssertFalse(app.scrollViews["sessionList"].exists, "A title remains part of the row's open-session action")
         try assertFullTitle(english, in: app, screenshot: "session-title-english")
+    }
+
+    func testMixedTitleKeepsTextInsideBubble() throws {
+        let app = launch(reduceMotion: true)
+        app.buttons["openDrawer"].tap()
+        let row = app.buttons["sessionRow.title-mixed"]
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        row.tap()
+        let mixed = "地面洞察报告生成逻辑梳理与 Agent Skill 准备"
+        try assertFullTitle(mixed, in: app, screenshot: "session-title-mixed")
+    }
+
+    func testTitleMetadataUpdatesWhilePopoverStaysOpen() throws {
+        let app = launch(reduceMotion: true)
+        app.buttons["conversationHeaderTitle"].tap()
+        let status = app.staticTexts["conversationTitleStatus"]
+        XCTAssertTrue(status.waitForExistence(timeout: 5))
+        XCTAssertEqual(status.label, "空闲")
+        for expected in ["运行中", "空闲"] {
+            CFNotificationCenterPostNotification(
+                CFNotificationCenterGetDarwinNotifyCenter(),
+                CFNotificationName(rawValue: "dev.dsh.uitest.sessionTitle.toggleRunning" as CFString),
+                nil, nil, true
+            )
+            waitForLabel(expected, element: status)
+            XCTAssertEqual(app.staticTexts["conversationTitleTime"].label, "更新于刚刚")
+            XCTAssertEqual(app.staticTexts["conversationTitleFull"].label, chinese)
+        }
+        try capture(app, name: "session-title-live-metadata")
     }
 
     func testOnlyOverflowingHistoryTitlesRevealWithoutRelayingOutRows() throws {
@@ -115,9 +145,27 @@ final class SessionTitleUITests: XCTestCase {
         XCTAssertTrue(full.isHittable, "The complete title must be visible in the anchored popover")
         let popover = app.descendants(matching: .any)["conversationTitlePopover"].firstMatch
         XCTAssertTrue(popover.exists)
+        let status = app.staticTexts["conversationTitleStatus"]
+        XCTAssertTrue(status.exists)
+        XCTAssertEqual(status.label, "空闲")
+        XCTAssertGreaterThanOrEqual(status.frame.minY, full.frame.maxY)
+        XCTAssertGreaterThanOrEqual(popover.frame.maxY - status.frame.maxY, 11)
+        let time = app.staticTexts["conversationTitleTime"]
+        if expected == "地面洞察报告生成逻辑梳理与 Agent Skill 准备" {
+            XCTAssertFalse(time.exists, "Missing timestamps must not become an epoch date")
+        } else {
+            XCTAssertTrue(time.exists)
+            XCTAssertGreaterThanOrEqual(time.frame.minY, full.frame.maxY)
+            XCTAssertGreaterThanOrEqual(status.frame.minY, time.frame.maxY)
+        }
         XCTAssertFalse(app.sheets.firstMatch.exists)
         XCTAssertLessThan(popover.frame.height, app.frame.height * 0.8)
         XCTAssertLessThan(popover.frame.width, app.frame.width)
+        XCTAssertGreaterThanOrEqual(full.frame.minX - popover.frame.minX, 15)
+        XCTAssertGreaterThanOrEqual(popover.frame.maxX - full.frame.maxX, 15)
+        XCTAssertGreaterThanOrEqual(full.frame.minY - popover.frame.minY, 11, "Text must clear the popover arrow and top padding")
+        XCTAssertGreaterThanOrEqual(popover.frame.maxY - full.frame.maxY, 11)
+        XCTAssertTrue(app.frame.contains(popover.frame), "The full-title bubble must remain inside the screen")
         XCTAssertFalse(app.buttons["关闭"].exists)
         XCTAssertFalse(app.buttons["刷新"].exists)
         try capture(app, name: screenshot)

@@ -185,6 +185,28 @@ struct ChatView: View {
         )
     }
 
+    private func conversationTitle(sessionId: String, title: String, color: Color = T.ink) -> some View {
+        TimelineView(.periodic(from: .now, by: 30)) { timeline in
+            let summary = model.sessions.first { $0.sessionId == sessionId }
+            let current = model.chat.flatMap { $0.sessionId == sessionId && $0.loaded ? $0 : nil }
+            let metadata = ConversationTitleMetadata(
+                updatedAt: summary?.updatedAt,
+                blank: summary?.blank ?? false,
+                running: current?.running ?? summary?.running,
+                pending: sessionPendingInteraction(
+                    awaitingApproval: model.approvals.contains { $0.sessionId == sessionId },
+                    planReview: model.userQuestions.contains {
+                        $0.sessionId == sessionId && $0.questions.contains { $0.intentKind == "plan-review" }
+                    },
+                    awaitingAnswer: model.userQuestions.contains { $0.sessionId == sessionId }
+                ),
+                now: Int64(timeline.date.timeIntervalSince1970 * 1000),
+                english: L.en
+            )
+            ConversationTitle(sessionId: sessionId, title: title, metadata: metadata, color: color)
+        }
+    }
+
     private var header: some View {
         HStack(spacing: 0) {
             Button {
@@ -208,7 +230,7 @@ struct ChatView: View {
                                     .foregroundStyle(T.text3)
                             }
                             if crumb.current {
-                                ConversationTitle(
+                                conversationTitle(
                                     sessionId: crumb.sessionId,
                                     title: crumb.title,
                                     color: crumb.subagent ? T.text2 : T.ink
@@ -231,7 +253,7 @@ struct ChatView: View {
                 .accessibilityLabel(sessionHierarchyAria(english: L.en))
                 .frame(maxWidth: .infinity, alignment: .leading)
             } else {
-                ConversationTitle(sessionId: model.chat?.sessionId ?? "", title: headerTitle)
+                conversationTitle(sessionId: model.chat?.sessionId ?? "", title: headerTitle)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             ConversationHeaderActions(model: model)

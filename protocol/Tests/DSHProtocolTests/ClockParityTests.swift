@@ -67,6 +67,35 @@ final class ClockParityTests: XCTestCase {
         )
     }
 
+    func testTitleMetadataUsesPendingStateBeforeRunningAndDoesNotInventIdle() {
+        func metadata(_ running: Bool?, _ pending: SessionPendingInteraction? = nil) -> ConversationTitleMetadata {
+            ConversationTitleMetadata(updatedAt: nil, blank: false, running: running, pending: pending, now: 1_000, english: false)
+        }
+        XCTAssertNil(metadata(nil).status)
+        XCTAssertNotEqual(metadata(true).status, metadata(false).status)
+        for pending in [SessionPendingInteraction.approval, .planReview, .question] {
+            XCTAssertEqual(metadata(true, pending).status, metadata(false, pending).status)
+            XCTAssertEqual(metadata(nil, pending).status, metadata(true, pending).status)
+            XCTAssertNotEqual(metadata(true, pending).status, metadata(true).status)
+        }
+        XCTAssertEqual(Set([metadata(true).status, metadata(false).status, metadata(true, .approval).status,
+                            metadata(true, .planReview).status, metadata(true, .question).status]).count, 5)
+    }
+
+    func testTitleTimeHidesMissingAndBlankDatesAndAdvancesAtMinuteBoundary() {
+        let now: Int64 = 2_000_000_000_000
+        func metadata(_ timestamp: Int64?, blank: Bool = false, now: Int64) -> ConversationTitleMetadata {
+            ConversationTitleMetadata(updatedAt: timestamp, blank: blank, running: false, pending: nil, now: now, english: false)
+        }
+        for absent: Int64? in [nil, 0, -1] { XCTAssertNil(metadata(absent, now: now).time) }
+        XCTAssertNil(metadata(now, blank: true, now: now).time)
+        let initial = metadata(now, now: now)
+        XCTAssertEqual(initial.time, metadata(now, now: now + 59_999).time)
+        XCTAssertEqual(initial.time, metadata(now + 60_000, now: now).time)
+        XCTAssertNotEqual(initial.time, metadata(now, now: now + 60_000).time)
+        XCTAssertEqual(initial.status, metadata(now, now: now + 60_000).status)
+    }
+
     func testMessageClockMatchesDesktopLocalCalendarRules() {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 8 * 3600)!

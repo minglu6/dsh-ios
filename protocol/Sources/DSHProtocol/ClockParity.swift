@@ -80,6 +80,33 @@ public func sessionRowTrailingLabel(
     }
 }
 
+/// Title detail uses the same elapsed buckets as the desktop session hover card.
+public struct ConversationTitleMetadata: Equatable, Sendable {
+    public let time: String?
+    public let status: String?
+
+    public init(
+        updatedAt: Int64?, blank: Bool, running: Bool?,
+        pending: SessionPendingInteraction?, now: Int64, english: Bool
+    ) {
+        if !blank, let updatedAt, updatedAt > 0 {
+            let relative = formatSessionTime(at: updatedAt, now: now, english: english)
+            let elapsed = relativeTime(at: updatedAt, now: now).unit == .now
+                ? relative : (english ? "\(relative) ago" : "\(relative)前")
+            time = english ? "Updated \(elapsed)" : "更新于\(elapsed)"
+        } else {
+            time = nil
+        }
+        switch pending {
+        case .approval: status = english ? "Waiting for approval" : "等待审批"
+        case .planReview: status = english ? "Plan awaiting review" : "计划待审"
+        case .question: status = english ? "Waiting for answer" : "等待回答"
+        case nil:
+            status = running.map { $0 ? (english ? "Running" : "运行中") : (english ? "Idle" : "空闲") }
+        }
+    }
+}
+
 /// Desktop `ui-chat` `locale.ts` `clock.md`.
 public func messageClockMd(month: Int, day: Int, english: Bool) -> String {
     english ? "\(month)/\(day)" : "\(month)月\(day)日"
