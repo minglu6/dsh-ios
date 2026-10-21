@@ -250,7 +250,14 @@ final class AppModel: ObservableObject {
         Task { @MainActor in self?.publishChat() }
     }
     private var subId: String?
-    private var followEpoch: Int64 = 0
+    private var historyPageTask: Task<Bool, Never>?
+    private var followEpoch: Int64 = 0 {
+        didSet {
+            historyPageTask?.cancel()
+            historyPageTask = nil
+            chat?.loadingOlder = false
+        }
+    }
     private var backoffMs: Int64 = ReconnectBackoffPolicy.reset()
     private var reconnectWake = false
     private var terminalSubId: String?
@@ -879,38 +886,48 @@ final class AppModel: ObservableObject {
               ) else { return false }
         let epoch = followEpoch
         let target = reducer
+        let request = HistoryPagingPolicy.pageRequest(cursor: target.cursor, firstSeq: state.firstSeq)
         state.loadingOlder = true
         chat = state
-        defer {
-            if followEpoch == epoch, reducer === target, chat?.sessionId == sessionId {
-                chat?.loadingOlder = false
+        // A native refresh action can be cancelled when SwiftUI republishes the
+        // scroll view. The session owns this read; the refresh action only waits.
+        // Changing the follow epoch explicitly cancels the owned task instead.
+        let task = Task { @MainActor in
+            defer {
+                if followEpoch == epoch, reducer === target, chat?.sessionId == sessionId {
+                    chat?.loadingOlder = false
+                    historyPageTask = nil
+                }
+            }
+            do {
+                try Task.checkCancellation()
+                let page = try await client.historyPage(
+                    sessionId: sessionId,
+                    throughSeq: request.throughSeq,
+                    beforeSeq: request.beforeSeq,
+                    maxMessages: request.maxMessages,
+                    address: subagentAddress(for: sessionId)
+                )
+                guard !Task.isCancelled, followEpoch == epoch, reducer === target,
+                      self.client === client, chat?.sessionId == sessionId else { return false }
+                _ = target.prepend(records: page["records"], pageHasMore: page["hasMore"].bool() ?? false)
+                inspectorLog.prepend(page["records"])
+                publishChat()
+                return true
+            } catch {
+                guard !Task.isCancelled, !(error is CancellationError),
+                      followEpoch == epoch, reducer === target, self.client === client,
+                      chat?.sessionId == sessionId else { return false }
+                if SessionNotFoundPolicy.matches(error) {
+                    absorbMissingSession(sessionId)
+                } else {
+                    emit(error.localizedDescription)
+                }
+                return false
             }
         }
-        do {
-            let req = HistoryPagingPolicy.pageRequest(cursor: target.cursor, firstSeq: state.firstSeq)
-            let page = try await client.historyPage(
-                sessionId: sessionId,
-                throughSeq: req.throughSeq,
-                beforeSeq: req.beforeSeq,
-                maxMessages: req.maxMessages,
-                address: subagentAddress(for: sessionId)
-            )
-            guard !Task.isCancelled, followEpoch == epoch, reducer === target,
-                  chat?.sessionId == sessionId else { return false }
-            _ = target.prepend(records: page["records"], pageHasMore: page["hasMore"].bool() ?? false)
-            inspectorLog.prepend(page["records"])
-            publishChat()
-            return true
-        } catch {
-            guard !Task.isCancelled, !(error is CancellationError),
-                  followEpoch == epoch, reducer === target, chat?.sessionId == sessionId else { return false }
-            if SessionNotFoundPolicy.matches(error) {
-                absorbMissingSession(sessionId)
-            } else {
-                emit(error.localizedDescription)
-            }
-            return false
-        }
+        historyPageTask = task
+        return await task.value
     }
 
     /// Installs only the opening snapshot; subsequent pages use the normal network loader.

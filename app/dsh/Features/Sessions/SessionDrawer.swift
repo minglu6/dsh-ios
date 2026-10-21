@@ -163,6 +163,15 @@ struct SessionDrawer: View {
             }
             .onPreferenceChange(DrawerPagingGeometryKey.self, perform: revealVisiblePages)
             .dshDismissesKeyboardOnScrollAndTap()
+            // A new projection has different row geometry and cannot inherit
+            // the previous lazy stack's scroll offset. Pagination within the
+            // same projection keeps its identity; workspace collapse lives in
+            // the model and is deliberately not reset here.
+            .id(DrawerListContext(
+                groupBy: model.sessionGroupBy,
+                archived: model.archivedFilter,
+                searching: searching
+            ))
             footer
         }
         .background(T.drawer.ignoresSafeArea())
@@ -747,6 +756,12 @@ struct SessionDrawer: View {
         default: return L.offline()
         }
     }
+}
+
+private struct DrawerListContext: Hashable {
+    let groupBy: SessionGroupBy
+    let archived: ArchivedFilter
+    let searching: Bool
 }
 
 private struct DrawerPagingBoundary: Equatable {

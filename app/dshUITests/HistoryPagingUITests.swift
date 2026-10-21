@@ -3,6 +3,11 @@ import XCTest
 final class HistoryPagingUITests: XCTestCase {
     override class var runsForEachTargetApplicationUIConfiguration: Bool { false }
 
+    override func setUp() {
+        super.setUp()
+        continueAfterFailure = false
+    }
+
     func testChatPullsConsecutivePagesAndStopsAtEnd() {
         exercise(.chat, failFirst: false)
     }
@@ -56,12 +61,12 @@ final class HistoryPagingUITests: XCTestCase {
         waitForStatus(scroll, requests: 0, responses: 0, failures: 0)
         let original = record(21, in: scroll, screen: screen)
         XCTAssertTrue(original.waitForExistence(timeout: 5))
-        XCTAssertTrue(original.isHittable)
+        XCTAssertTrue(isVisible(original, in: scroll))
 
         if failFirst {
             pull(scroll)
             waitForStatus(scroll, requests: 1, responses: 0, failures: 1)
-            XCTAssertTrue(original.isHittable, "Failed loading must not discard the current transcript")
+            XCTAssertTrue(isVisible(original, in: scroll), "Failed loading must not discard the current transcript")
             XCTAssertFalse(record(11, in: scroll, screen: screen).exists)
         }
 
@@ -70,7 +75,9 @@ final class HistoryPagingUITests: XCTestCase {
         waitForStatus(scroll, requests: firstRequest, responses: 1, failures: failFirst ? 1 : 0)
         // The UI intentionally restores the old leading row instead of jumping
         // to the newly prepended page or to the bottom.
-        let retained = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: original)
+        let retained = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            self.isVisible(original, in: scroll)
+        }, object: original)
         XCTAssertEqual(XCTWaiter.wait(for: [retained], timeout: 5), .completed)
 
         // The old anchor is now below the new first page. Scroll toward the top
@@ -83,7 +90,7 @@ final class HistoryPagingUITests: XCTestCase {
         }
         waitForStatus(scroll, requests: secondRequest, responses: 2, failures: failFirst ? 1 : 0)
         reveal(record(1, in: scroll, screen: screen), in: scroll, towardTop: true)
-        XCTAssertTrue(record(1, in: scroll, screen: screen).isHittable)
+        XCTAssertTrue(isVisible(record(1, in: scroll, screen: screen), in: scroll))
         XCTAssertEqual(recordMatches(1, in: scroll, screen: screen).count, 1, "A page must not append duplicate rows")
         reveal(record(11, in: scroll, screen: screen), in: scroll, towardTop: false)
         XCTAssertEqual(recordMatches(11, in: scroll, screen: screen).count, 1, "The intermediate page must survive another prepend")
@@ -91,7 +98,7 @@ final class HistoryPagingUITests: XCTestCase {
         for _ in 0..<3 { pull(scroll) }
         waitForStatus(scroll, requests: secondRequest, responses: 2, failures: failFirst ? 1 : 0)
         reveal(record(23, in: scroll, screen: screen), in: scroll, towardTop: false)
-        XCTAssertTrue(record(23, in: scroll, screen: screen).isHittable, "The latest original content must remain available")
+        XCTAssertTrue(isVisible(record(23, in: scroll, screen: screen), in: scroll), "The latest original content must remain available")
         XCTAssertEqual(recordMatches(23, in: scroll, screen: screen).count, 1)
         capture(app, name: "history-paging-\(screen.rawValue)-\(failFirst ? "retry" : "success")")
     }
@@ -131,9 +138,18 @@ final class HistoryPagingUITests: XCTestCase {
         start.press(forDuration: 0.1, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.1)
     }
 
+    private func isVisible(_ element: XCUIElement, in scroll: XCUIElement) -> Bool {
+        guard element.exists, scroll.exists else { return false }
+        let frame = element.frame
+        let viewport = scroll.frame
+        guard !frame.isEmpty, !viewport.isEmpty else { return false }
+        let visible = frame.intersection(viewport)
+        return !visible.isNull && !visible.isEmpty
+    }
+
     private func reveal(_ element: XCUIElement, in scroll: XCUIElement, towardTop: Bool) {
         for _ in 0..<8 {
-            if element.isHittable { return }
+            if isVisible(element, in: scroll) { return }
             if towardTop { scroll.swipeDown() } else { scroll.swipeUp() }
         }
     }
