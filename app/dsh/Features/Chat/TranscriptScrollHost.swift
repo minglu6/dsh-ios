@@ -66,13 +66,16 @@ struct TranscriptScrollHost: UIViewRepresentable {
             var ancestor = view.superview
             while let current = ancestor {
                 if let scroll = current as? UIScrollView {
-                    guard scroll !== scrollView else { return }
-                    detach()
-                    scrollView = scroll
-                    previousBounce = scroll.alwaysBounceVertical
+                    if scroll !== scrollView {
+                        detach()
+                        scrollView = scroll
+                        previousBounce = scroll.alwaysBounceVertical
+                        scroll.panGestureRecognizer.addTarget(self, action: #selector(panChanged(_:)))
+                    }
                     scroll.alwaysBounceVertical = true
-                    scroll.refreshControl = refreshControl
-                    scroll.panGestureRecognizer.addTarget(self, action: #selector(panChanged(_:)))
+                    // SwiftUI resets its refreshControl property during reconciliation.
+                    // A directly owned native subview survives those property updates.
+                    if refreshControl.superview !== scroll { scroll.insertSubview(refreshControl, at: 0) }
                     return
                 }
                 ancestor = current.superview
@@ -85,7 +88,7 @@ struct TranscriptScrollHost: UIViewRepresentable {
             refreshControl.endRefreshing()
             if let scroll = scrollView {
                 scroll.panGestureRecognizer.removeTarget(self, action: #selector(panChanged(_:)))
-                if scroll.refreshControl === refreshControl { scroll.refreshControl = nil }
+                refreshControl.removeFromSuperview()
                 scroll.alwaysBounceVertical = previousBounce
             }
             scrollView = nil
@@ -116,7 +119,7 @@ struct TranscriptScrollHost: UIViewRepresentable {
 
         private func diagnose(_ phase: String) {
             guard UITestLaunch.isEnabled, let scroll = scrollView else { return }
-            onDiagnostic("phase=\(phase);owned=\(scroll.refreshControl === refreshControl);attached=\(refreshControl.window != nil);targets=\(refreshControl.allTargets.count);refreshing=\(refreshControl.isRefreshing);offset=\(scroll.contentOffset.y);control=\(refreshControl.frame)")
+            onDiagnostic("phase=\(phase);parented=\(refreshControl.superview === scroll);attached=\(refreshControl.window != nil);targets=\(refreshControl.allTargets.count);refreshing=\(refreshControl.isRefreshing);offset=\(scroll.contentOffset.y);control=\(refreshControl.frame)")
         }
     }
 }
