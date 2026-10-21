@@ -142,7 +142,9 @@ final class SessionDrawerPagingUITests: XCTestCase {
 
     private func choose(_ label: String, in app: XCUIApplication) {
         app.buttons["viewOptionsButton"].tap()
-        let option = app.buttons[label]
+        let option = app.buttons.matching(NSPredicate(
+            format: "label == %@ OR label BEGINSWITH %@", label, label + ", "
+        )).firstMatch
         XCTAssertTrue(option.waitForExistence(timeout: 5))
         option.tap()
         XCTAssertTrue(option.isSelected, "The requested view option must actually be selected")

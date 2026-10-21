@@ -52,6 +52,9 @@ final class HistoryPagingUITests: XCTestCase {
         if failFirst { app.launchArguments.append("-UITestHistoryFailFirst") }
         app.launch()
         if screen == .trajectory {
+            let initialTranscript = app.scrollViews["chatTranscript"]
+            XCTAssertTrue(initialTranscript.waitForExistence(timeout: 10))
+            waitForStatus(initialTranscript, requests: 0, responses: 0, failures: 0)
             let tab = app.buttons["chatTab.trajectory"]
             XCTAssertTrue(tab.waitForExistence(timeout: 10))
             tab.tap()
