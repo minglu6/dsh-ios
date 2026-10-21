@@ -32,7 +32,7 @@ final class TurnNavigationUITests: XCTestCase {
         waitValue(app, "activeTurn=8")
         waitValue(app, "follow=false")
         waitValue(app, "landing=false")
-        assertPromptHittable(app, turn: 8, screenshot: "loaded-turn-jump")
+        assertPromptVisible(app, turn: 8, screenshot: "loaded-turn-jump")
     }
 
     func testUnloadedHostTurnPagesThenLandsAndCanReturnToTail() {
@@ -44,7 +44,7 @@ final class TurnNavigationUITests: XCTestCase {
         waitValue(app, "requests=1;responses=1;failures=0")
         waitValue(app, "activeTurn=3")
         waitValue(app, "landing=false")
-        assertPromptHittable(app, turn: 3, screenshot: "unloaded-turn-paged-and-landed")
+        assertPromptVisible(app, turn: 3, screenshot: "unloaded-turn-paged-and-landed")
         app.buttons["transcriptScrollToBottom"].tap()
         waitValue(app, "follow=true")
         waitValue(app, "activeTurn=21")
@@ -84,7 +84,7 @@ final class TurnNavigationUITests: XCTestCase {
         app.buttons["transcript-turn-8"].tap()
         waitValue(app, "activeTurn=8")
         waitValue(app, "landing=false")
-        assertPromptHittable(app, turn: 8, screenshot: "legacy-host-before-pull")
+        assertPromptVisible(app, turn: 8, screenshot: "legacy-host-before-pull")
         let transcript = app.scrollViews["chatTranscript"]
         let start = transcript.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2))
         let end = transcript.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9))
@@ -93,7 +93,7 @@ final class TurnNavigationUITests: XCTestCase {
         XCTAssertTrue(app.buttons["transcript-turn-3"].waitForExistence(timeout: 5))
         waitValue(app, "firstSeq=300;loading=false")
         waitValue(app, "landing=false")
-        assertPromptHittable(app, turn: 8, screenshot: "legacy-host-pull-refresh-anchor")
+        assertPromptVisible(app, turn: 8, screenshot: "legacy-host-pull-refresh-anchor")
     }
 
     private func launch(_ screen: String = "turnNavigation") -> XCUIApplication {
@@ -115,23 +115,29 @@ final class TurnNavigationUITests: XCTestCase {
         XCTAssertEqual(result, .completed, fragment, file: file, line: line)
     }
 
-    private func assertPromptHittable(_ app: XCUIApplication, turn: Int, screenshot: String,
+    private func assertPromptVisible(_ app: XCUIApplication, turn: Int, screenshot: String,
                                      file: StaticString = #filePath, line: UInt = #line) {
         let prompt = app.staticTexts["Navigation prompt \(turn)"]
         let visible = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            prompt.exists && prompt.isHittable
+            guard prompt.exists else { return false }
+            let frame = prompt.frame
+            return !frame.isEmpty && app.scrollViews["chatTranscript"].frame.insetBy(dx: -1, dy: -1).contains(frame)
         }, object: prompt)
         let result = XCTWaiter.wait(for: [visible], timeout: 5)
         capture(app, screenshot)
         if result != .completed { diagnose(app, elements: [prompt, app.buttons["transcript-turn-\(turn)"]]) }
-        XCTAssertEqual(result, .completed, "The actual Host prompt must be hittable after landing", file: file, line: line)
+        XCTAssertEqual(result, .completed, "The actual Host prompt must be fully readable inside the viewport after landing", file: file, line: line)
     }
 
     private func diagnose(_ app: XCUIApplication, elements: [XCUIElement]) {
         let transcript = app.scrollViews["chatTranscript"]
         print("Transcript frame: \(transcript.frame); state: \(transcript.value as? String ?? "")")
         for element in elements {
-            print("Element \(element.identifier): exists=\(element.exists); frame=\(element.frame); hittable=\(element.isHittable)")
+            if element.exists {
+                print("Element \(element.identifier): frame=\(element.frame); hittable=\(element.isHittable)")
+            } else {
+                print("Element does not exist")
+            }
         }
         print(app.debugDescription)
     }

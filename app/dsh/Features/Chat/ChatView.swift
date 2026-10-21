@@ -667,28 +667,13 @@ struct ChatView: View {
                     historyScrollAnchor = HistoryScrollAnchor(sessionId: sessionId, rowKey: key)
                 }
             }
-            .task(id: historyScrollAnchor.map { TranscriptScrollLayout(anchor: $0, viewport: transcriptViewport) }) {
-                guard let anchor = historyScrollAnchor else { return }
-                let generation = navigationGeneration
-                // LazyVStack re-estimates heights after a prepend. Layout changes
-                // cancel this task; finish only when the real leading edge settles.
-                await Task.yield()
-                guard !Task.isCancelled, historyScrollAnchor == anchor,
-                      model.chat?.sessionId == anchor.sessionId,
-                      navigationGeneration == generation else { return }
+            .onChange(of: historyScrollAnchor) { anchor in
+                guard let anchor else { return }
+                historyScrollAnchor = nil
+                guard model.chat?.sessionId == anchor.sessionId else { return }
                 let rows = chatRows
                 let index = inspectorRowIndex(rows, itemKey: anchor.rowKey)
-                guard index >= 0 else { return }
-                let key = rows[index].key
-                proxy.scrollTo(key, anchor: anchor.point)
-                do { try await Task.sleep(nanoseconds: 50_000_000) }
-                catch { return }
-                guard !Task.isCancelled, historyScrollAnchor == anchor,
-                      navigationGeneration == generation,
-                      let frame = transcriptViewport.rows[key] else { return }
-                let leadingEdgeVisible = frame.minY >= -1 && frame.minY < viewport.size.height
-                let fits = frame.maxY <= viewport.size.height + 1 || frame.minY <= 14
-                if leadingEdgeVisible && fits { historyScrollAnchor = nil }
+                if index >= 0 { proxy.scrollTo(rows[index].key, anchor: anchor.point) }
             }
             .dshDismissesKeyboardOnScrollAndTap()
             .onAppear {

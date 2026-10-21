@@ -81,7 +81,6 @@ struct TurnNavigator: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
                 .padding(.trailing, 12)
-                .accessibilityIdentifier("transcriptTurnNavigator")
             }
         }
     }
@@ -94,10 +93,6 @@ struct TranscriptViewport: Equatable {
     var bottom: CGFloat?
 }
 
-struct TranscriptScrollLayout: Equatable {
-    let anchor: HistoryScrollAnchor
-    let viewport: TranscriptViewport
-}
 
 struct TranscriptViewportKey: PreferenceKey {
     static let defaultValue = TranscriptViewport()

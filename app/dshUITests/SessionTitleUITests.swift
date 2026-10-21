@@ -101,7 +101,7 @@ final class SessionTitleUITests: XCTestCase {
         waitForValue("resting", element: reused)
         app.buttons["sessionRow.s-hello"].tap()
         try assertFullTitle("短标题", in: app, screenshot: "session-title-reused-short")
-        input.tap()
+        input.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.15)).tap()
         input.typeText(" english")
         waitForLabel(english, element: header)
         try assertFullTitle(english, in: app, screenshot: "session-title-reused-english")
