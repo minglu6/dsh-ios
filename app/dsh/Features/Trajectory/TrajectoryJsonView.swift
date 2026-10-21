@@ -12,25 +12,24 @@ struct TrajectoryJsonValue: View {
         let document = trajectoryJsonDocument(source)
         let rows = document.root.map { trajectoryJsonRows($0, expanded: expanded) }
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Spacer()
-                TrajectoryCopyButton(source: source, value: document.root)
-            }
             if let rows {
                 ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                     rowView(row)
                 }
             } else {
-                Text(source)
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundStyle(error ? T.err : T.ink)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .textSelection(.enabled)
+                HStack(alignment: .top, spacing: 4) {
+                    Text(source)
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundStyle(error ? T.err : T.ink)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .textSelection(.enabled)
+                    TrajectoryCopyButton(source: source)
+                }
             }
         }
-        .padding(8)
+        .padding(.vertical, 2)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(error ? T.err.opacity(0.06) : T.fill2, in: RoundedRectangle(cornerRadius: 12))
+        .background(T.surface)
         .onChange(of: source) { _ in expanded = [""] }
     }
 
@@ -48,26 +47,43 @@ struct TrajectoryJsonValue: View {
                         color: T.text3
                     )
                     .rotationEffect(.degrees(open ? trajectoryThinkingChevronExpandedRotationDegrees : 0))
-                    .frame(width: 28, height: 28)
+                    .frame(width: 12, height: 16)
                 }
                 .buttonStyle(.plain)
                 .accessibilityElement(children: .contain)
                 .accessibilityAddTraits(.isButton)
                 .accessibilityLabel(open ? L.t("收起", "Collapse") : L.t("展开", "Expand"))
             } else {
-                Color.clear.frame(width: 28, height: 28)
+                Color.clear.frame(width: 12, height: 16)
             }
-            Text(trajectoryJsonRowText(row, expanded: open))
+            rowText(row, expanded: open)
                 .font(.system(size: 12, design: .monospaced))
-                .foregroundStyle(error ? T.err : T.ink)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 4)
+                .padding(.vertical, 1)
                 .textSelection(.enabled)
-            if !row.closing && !row.path.isEmpty {
+            if !row.closing {
                 TrajectoryCopyButton(source: source, value: row.value, path: row.copyPath)
             }
         }
         .padding(.leading, CGFloat(min(row.depth, 10) * 10))
+    }
+
+    private func rowText(_ row: TrajectoryJsonRow, expanded: Bool) -> Text {
+        var valueRow = row
+        valueRow.label = nil
+        let value = trajectoryJsonRowText(valueRow, expanded: expanded)
+        let dark = ThemeStateHolder.shared.dark
+        let valueColor: Color
+        switch row.value {
+        case .string: valueColor = Color(hex: dark ? 0xFFF28B82 : 0xFFC41A16)
+        case .number, .bool, .null: valueColor = Color(hex: dark ? 0xFF99C8FF : 0xFF1C00CF)
+        default: valueColor = Color(hex: dark ? 0xFFE8EAED : 0xFF202124)
+        }
+        let label = row.label.map {
+            Text($0).foregroundColor(error ? T.err : Color(hex: dark ? 0xFF5DB0D7 : 0xFF881391))
+                + Text(": ").foregroundColor(error ? T.err : T.ink)
+        } ?? Text("")
+        return label + Text(value).foregroundColor(error ? T.err : valueColor)
     }
 }
 
@@ -92,7 +108,7 @@ private struct TrajectoryCopyButton: View {
                 size: 12,
                 color: T.text3
             )
-            .frame(width: 28, height: 28)
+            .frame(width: 20, height: 16)
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .contain)

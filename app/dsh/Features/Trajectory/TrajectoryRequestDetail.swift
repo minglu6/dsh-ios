@@ -1,11 +1,12 @@
 import SwiftUI
 import DSHProtocol
 
-struct TrajectoryRequestSheet: View {
+struct TrajectoryRequestInspector: View {
     let request: TrajectoryRequest
     var onOpenResult: (String) -> Void = { _ in }
     var initialTab: TrajRequestTab = .overview
     var assistantRow: TrajRow? = nil
+    @Binding var tabHistory: [TrajDetailTab]
     var onDismiss: () -> Void
 
     @State private var tab: TrajRequestTab?
@@ -18,54 +19,28 @@ struct TrajectoryRequestSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 0) {
-                Text(location)
-                    .font(Font.caption)
-                    .foregroundStyle(T.text3)
-                    .padding(.horizontal, 14)
-                    .padding(.top, 8)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 0) {
-                        ForEach(tabs, id: \.self) { candidate in
-                            Button {
-                                tab = candidate
-                            } label: {
-                                Text(candidate.label)
-                                    .font(Font.subheadline.weight(activeTab == candidate ? .semibold : .regular))
-                                    .foregroundStyle(activeTab == candidate ? T.ink : T.text3)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 8)
-                                    .overlay(alignment: .bottom) {
-                                        if activeTab == candidate { T.accent.frame(height: 2) }
-                                    }
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(.horizontal, 8)
-                }
-                .padding(.top, 8)
-                Divider()
-                ScrollView {
-                    tabBody
-                        .padding(14)
-                        .padding(.bottom, 24)
-                }
-            }
-            .background(T.bg)
-            .navigationTitle(requestLabel(request))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(TrajL.detailsClose, action: onDismiss)
-                }
-            }
+        TrajectoryInspectorFrame(
+            title: requestLabel(request),
+            location: location,
+            tabs: tabs,
+            selection: activeTab,
+            label: { $0.label },
+            onSelect: selectTab,
+            onDismiss: onDismiss
+        ) {
+            tabBody.padding(.horizontal, 14)
         }
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
-        .onAppear { tab = initialTab }
-        .onChange(of: request.identity) { _ in tab = initialTab }
+        .onAppear { selectTab(initialTab) }
+        .onChange(of: request.identity) { _ in selectTab(initialTab) }
+    }
+
+    private func selectTab(_ value: TrajRequestTab) {
+        let shared: TrajDetailTab? = value == .overview ? .overview : value == .timing ? .timing : nil
+        if let shared {
+            tabHistory.removeAll { $0 == shared }
+            tabHistory.append(shared)
+        }
+        tab = value
     }
 
     private var location: String {
@@ -74,8 +49,7 @@ struct TrajectoryRequestSheet: View {
             let section = request.turn.map(TrajL.turnLabel) ?? TrajL.sectionBetweenTurns
             return TrajL.requestCompactionSection(section)
         case .assistant:
-            let turn = request.turn.map(TrajL.turnLabel) ?? TrajL.sectionBetweenTurns
-            return "\(turn) · \(request.group)"
+            return request.turn.map(TrajL.turnLabel) ?? TrajL.sectionBetweenTurns
         }
     }
 
@@ -83,7 +57,7 @@ struct TrajectoryRequestSheet: View {
     private var tabBody: some View {
         switch activeTab {
         case .overview:
-            RequestOverview(request: request, tabs: tabs, assistantRow: assistantRow, onOpenResult: onOpenResult) { tab = $0 }
+            RequestOverview(request: request, tabs: tabs, assistantRow: assistantRow, onOpenResult: onOpenResult) { selectTab($0) }
         case .options:
             RequestOptions(configJson: request.requestConfigJson)
         case .usage:
@@ -142,10 +116,7 @@ private struct RequestOverview: View {
             Spacer().frame(height: 8)
             if tabs.contains(.options), let json = request.requestConfigJson {
                 section(TrajL.tabOptions, onOpen: { onOpen(.options) }) {
-                    Text(prettyRequestJson(json).split(separator: "\n").prefix(4).joined(separator: "\n"))
-                        .font(Font.system(size: 11, design: .monospaced))
-                        .foregroundStyle(T.text2)
-                        .lineLimit(4)
+                    TrajectoryJsonValue(source: json)
                 }
             }
             section(TrajL.tabUsage, onOpen: { onOpen(.usage) }) {
@@ -157,41 +128,13 @@ private struct RequestOverview: View {
         }
     }
 
-    private func line(_ label: String, _ value: String, valueColor: Color = T.text2, onClick: (() -> Void)? = nil) -> some View {
-        Button {
-            onClick?()
-        } label: {
-            HStack(alignment: .top) {
-                Text(label).font(Font.caption).foregroundStyle(T.text3).frame(width: 88, alignment: .leading)
-                Text(value).font(Font.caption).foregroundStyle(valueColor)
-                Spacer()
-            }
-            .padding(.vertical, 4)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .disabled(onClick == nil)
+    private func line(_ label: String, _ value: String, valueColor: Color = T.ink, onClick: (() -> Void)? = nil) -> some View {
+        TrajectoryOverviewLine(label: label, value: value, valueColor: valueColor, onOpen: onClick)
     }
 
     private func section<Content: View>(_ title: String, onOpen: @escaping () -> Void, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Button(action: onOpen) {
-                HStack {
-                    Text(title).font(Font.caption.weight(.semibold)).foregroundStyle(T.ink)
-                    Spacer()
-                    OfficialGlyph(
-                        kind: .chevronRight,
-                        size: CGFloat(trajectoryDetailChevronIconSizePoints),
-                        color: T.caption
-                    )
-                }
-            }
-            .buttonStyle(.plain)
-            .accessibilityElement(children: .contain)
-            .accessibilityAddTraits(.isButton)
-            content()
-        }
-        .padding(.vertical, 8)
+        TrajectoryOverviewSection(title: title, onOpen: onOpen, content: content)
+            .padding(.vertical, 4)
     }
 }
 
@@ -200,10 +143,7 @@ private struct RequestOptions: View {
 
     var body: some View {
         if let configJson, !configJson.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(TrajL.optionsJson).font(Font.system(size: 12)).foregroundStyle(T.text3)
-                TrajectoryJsonValue(source: configJson)
-            }
+            TrajectoryJsonValue(source: configJson)
         } else {
             Text(TrajL.optionsNotRecorded).font(Font.subheadline).foregroundStyle(T.text3)
         }
@@ -244,12 +184,7 @@ private struct UsageBlock: View {
     }
 
     private func line(_ label: String, _ value: String) -> some View {
-        HStack {
-            Text(label).font(Font.caption).foregroundStyle(T.text3).frame(width: 88, alignment: .leading)
-            Text(value).font(Font.caption).foregroundStyle(T.ink)
-            Spacer()
-        }
-        .padding(.vertical, 4)
+        TrajectoryOverviewLine(label: label, value: value)
     }
 }
 
@@ -287,15 +222,6 @@ private struct RequestTiming: View {
     }
 
     private func line(_ label: String, _ value: String) -> some View {
-        HStack {
-            Text(label).font(Font.caption).foregroundStyle(T.text3).frame(width: 88, alignment: .leading)
-            Text(value).font(Font.caption).foregroundStyle(T.ink)
-            Spacer()
-        }
-        .padding(.vertical, 4)
+        TrajectoryOverviewLine(label: label, value: value)
     }
-}
-
-private func prettyRequestJson(_ text: String) -> String {
-    (try? JSONValue.parse(text).prettyString()) ?? text
 }

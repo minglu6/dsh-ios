@@ -174,11 +174,13 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Compact ledger (事件 + 内容) | `Trajectory.kt` | `TrajRowView` | **present** | **A** |
 | Toolbar 时长 / 轮次 / 调用 + search | `TrajectoryToolbar` port | same chips + search field | **present** | **A** |
 | Swimlane overview | `TrajectoryTimeline.kt` | `TrajectoryTimeline.swift` + `SwimlaneChart` | **present** | **A** |
-| Inspector tabs 概述 / 参数 / 结果 / Schema / 计时 | `TrajectoryDetail.kt` | `TrajectoryDetailSheet`。吞吐窗口 ≤0 用官方 `timingNotAvailable`「不可用」，不再自撰「时长过短」 | **present** | **A** / **R12** |
-| JSON tree expand / copy | `TrajectoryJson.kt` | `TrajectoryJsonView` + protocol `TrajectoryJson.swift` | **missing** → **present** | **H** |
-| Request inspector | `TrajectoryRequest.kt` | ledger boundary chip + Request sheet 概述/选项/用量/计时; overview parentRequest | **missing** → **present** | **F** |
+| Inspector tabs 概述 / 参数 / 结果 / Schema / 计时 | `TrajectoryDetail.kt` | `TrajectoryRecordInspector` + `TrajectoryInspectorFrame`；桌面 42pt 标题 / 34pt tabs / 概览 94pt 标签列。吞吐窗口 ≤0 用官方 `timingNotAvailable`「不可用」 | **present** | **A** / **R12** |
+| JSON tree expand / copy | `TrajectoryJson.kt` | `TrajectoryJsonView` + protocol `TrajectoryJson.swift`；官方浅深主题属性／字符串／数字配色，无灰底圆角卡片 | **missing** → **present** | **H** |
+| Request inspector | `TrajectoryRequest.kt` | ledger boundary chip + `TrajectoryRequestInspector` 概述/选项/用量/计时；与记录详情共用原位详情栏 | **missing** → **present** | **F** |
 | Official locales | `TrajectoryLocales.kt` ← `ui-trajectory` `locales.ts` | `TrajL` | **present** | **A** |
 | Chat / 轨迹 entry | session header + more sheet | session header tabs 对话 / 轨迹 | **present** | **A** |
+
+2026-10-21：重新以官方 `ui-trajectory/TrajectoryTable.tsx` 和 `.module.css` 为权威。`TrajectoryInspectorLayout` 在轨迹区域内切换详情：窄屏 `min(92%, 420pt)` 右侧覆盖、宽屏分栏与拖动调宽，不使用 Android 的全屏 Dialog，也不使用 iOS sheet。记录页签保留最近兼容选择，请求入口按官方重置概述／计时；Markdown 预览与原文分离，请求选项不再截取前四行，Schema 展示真实 parameters。已完成 Swift 语法检查、协议构建，并在 macOS NSHostingView 运行真实共享布局／标题／tabs／概览组件，在 393pt 浅色、320pt 深色及 1024pt 分栏宽度验证指针切换页签和关闭。未运行 iOS XCUITest：本机无完整 Xcode／iOS SDK／模拟器；需 CI 或真机继续验收，不能将原生 macOS 烟测称为 iOS UI 通过。
 
 ## 3. Terminal
 

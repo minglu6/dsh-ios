@@ -5,6 +5,7 @@ import DSHProtocol
 enum MarkdownVariant {
     case body
     case compact
+    case trajectory
 }
 
 struct MarkdownView: View {
@@ -24,7 +25,7 @@ struct MarkdownView: View {
         }
         .font(variant == .compact
             ? LocalFonts.text(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize)))
-            : LocalFonts.text())
+            : LocalFonts.text(size: variant == .trajectory ? 13 : nil))
         .environment(\.openURL, OpenURLAction { url in
             if url.scheme == "dshfile",
                let path = URLComponents(url: url, resolvingAgainstBaseURL: false)?
@@ -71,6 +72,8 @@ private struct MdBlockView: View {
                 wraps(spans)
                     .font(LocalFonts.text(size: compactSize).weight(.semibold))
                     .lineSpacing(compactLineSpacing)
+            } else if variant == .trajectory {
+                wraps(spans).font(LocalFonts.text(size: level == 1 ? 16 : level == 2 ? 15 : 14).weight(.semibold))
             } else {
                 wraps(spans).font(level <= 1 ? LocalFonts.text().weight(.semibold) : Font.headline)
             }
@@ -81,7 +84,7 @@ private struct MdBlockView: View {
                         Circle()
                             .fill(T.text3)
                             .frame(width: 5, height: 5)
-                            .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + CGFloat(AppPrefs.fontSize) * 0.35 }
+                            .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + (variant == .trajectory ? 13 : CGFloat(AppPrefs.fontSize)) * 0.35 }
                         nested(item)
                     }
                 }
@@ -108,14 +111,14 @@ private struct MdBlockView: View {
                 Group {
                     if wrapCode {
                         Text(literal)
-                            .font(LocalFonts.code())
+                            .font(LocalFonts.code(size: variant == .trajectory ? 12 : nil))
                             .foregroundStyle(T.ink)
                             .textSelection(.enabled)
                             .fixedSize(horizontal: false, vertical: true)
                     } else {
                         ScrollView(.horizontal, showsIndicators: false) {
                             Text(literal)
-                                .font(LocalFonts.code())
+                                .font(LocalFonts.code(size: variant == .trajectory ? 12 : nil))
                                 .foregroundStyle(T.ink)
                                 .textSelection(.enabled)
                         }
@@ -196,7 +199,7 @@ private struct MdBlockView: View {
             if italic { text = text.italic() }
             return text
         case .code(let value):
-            return Text(value).font(LocalFonts.code()).foregroundColor(bodyColor)
+            return Text(value).font(LocalFonts.code(size: variant == .trajectory ? 12 : nil)).foregroundColor(bodyColor)
         case .link(let text, let dest):
             if let path = parseFileLink(dest) {
                 return fileChip(path: path, label: text)

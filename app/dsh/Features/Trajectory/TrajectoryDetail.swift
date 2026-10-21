@@ -1,13 +1,14 @@
 import SwiftUI
 import DSHProtocol
 
-struct TrajectoryDetailSheet: View {
+struct TrajectoryRecordInspector: View {
     let row: TrajRow
     let turnIndex: Int
     var parentRequest: TrajectoryRequest? = nil
     var onOpenRequest: (TrajectoryRequest) -> Void = { _ in }
     var onOpenRequestTiming: (TrajectoryRequest) -> Void = { _ in }
     var toolCalls: [TrajRow] = []
+    @Binding var tabHistory: [TrajDetailTab]
     let onDismiss: () -> Void
     var onOpenTool: (TrajRow) -> Void = { _ in }
     @State private var tab: TrajDetailTab?
@@ -15,62 +16,30 @@ struct TrajectoryDetailSheet: View {
     private var tabs: [TrajDetailTab] { trajDetailTabs(row) }
 
     private var activeTab: TrajDetailTab {
-        tab.flatMap { tabs.contains($0) ? $0 : nil } ?? tabs.first ?? .overview
+        tab.flatMap { tabs.contains($0) ? $0 : nil }
+            ?? tabHistory.reversed().first(where: tabs.contains)
+            ?? tabs.first ?? .overview
     }
 
     var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 0) {
-                Text(trajDetailLocation(row, turnIndex: turnIndex))
-                    .font(Font.caption)
-                    .foregroundStyle(T.text3)
-                    .padding(.horizontal, 14)
-                    .padding(.top, 8)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 0) {
-                        ForEach(tabs, id: \.self) { tab in
-                            tabButton(tab)
-                        }
-                    }
-                    .padding(.horizontal, 8)
-                }
-                .padding(.top, 8)
-                Divider()
-                ScrollView {
-                    tabBody
-                        .padding(.top, 8)
-                        .padding(.bottom, 24)
-                }
-            }
-            .background(T.bg)
-            .navigationTitle(trajDetailKindLabel(row.kind))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(TrajL.detailsClose, action: onDismiss)
-                }
-            }
+        TrajectoryInspectorFrame(
+            title: trajDetailKindLabel(row.kind),
+            location: trajDetailLocation(row, turnIndex: turnIndex),
+            kind: row.kind,
+            tabs: tabs,
+            selection: activeTab,
+            label: { $0.label },
+            onSelect: selectTab,
+            onDismiss: onDismiss
+        ) {
+            tabBody
         }
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
     }
 
-    private func tabButton(_ candidate: TrajDetailTab) -> some View {
-        Button {
-            tab = candidate
-        } label: {
-            Text(candidate.label)
-                .font(Font.subheadline.weight(activeTab == candidate ? .semibold : .regular))
-                .foregroundStyle(activeTab == candidate ? T.ink : T.text3)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .overlay(alignment: .bottom) {
-                    if activeTab == candidate {
-                        T.accent.frame(height: 2)
-                    }
-                }
-        }
-        .buttonStyle(.plain)
+    private func selectTab(_ value: TrajDetailTab) {
+        tabHistory.removeAll { $0 == value }
+        tabHistory.append(value)
+        tab = value
     }
 
     @ViewBuilder
@@ -85,12 +54,13 @@ struct TrajectoryDetailSheet: View {
                 onOpenRequestTiming: onOpenRequestTiming,
                 toolCalls: toolCalls,
                 onOpenTool: onOpenTool
-            ) { tab = $0 }
+            ) { selectTab($0) }
         case .input, .code:
             Group {
                 let program = codeProgram(toolName: row.toolName, inputDetail: row.inputDetail, schemaDetail: row.schemaDetail)
                 if let program, activeTab == .code {
                     TrajCodeBlock(program.source, language: program.language)
+                        .padding(.horizontal, 14)
                 } else {
                     TrajPayload(row.inputDetail, missing: TrajL.recordNoPayload)
                 }
@@ -174,7 +144,12 @@ private struct TrajOverview: View {
             if tabs.contains(.input) || tabs.contains(.code) {
                 let inputTab: TrajDetailTab = tabs.contains(.code) ? .code : .input
                 overviewSection(inputTab.label, onOpen: { onOpen(inputTab) }) {
-                    TrajectoryJsonValue(source: pretty(row.inputDetail) ?? TrajL.recordNoPayload)
+                    if inputTab == .code,
+                       let program = codeProgram(toolName: row.toolName, inputDetail: row.inputDetail, schemaDetail: row.schemaDetail) {
+                        TrajCodeBlock(program.source, language: program.language)
+                    } else {
+                        TrajectoryJsonValue(source: pretty(row.inputDetail) ?? TrajL.recordNoPayload)
+                    }
                 }
             }
             if tabs.contains(.output) {
@@ -184,7 +159,7 @@ private struct TrajOverview: View {
             }
             if tabs.contains(.schema) {
                 overviewSection(TrajL.tabSchema, onOpen: { onOpen(.schema) }) {
-                    TrajSchema(row.schemaDetail)
+                    TrajSchema(row.schemaDetail, inset: false)
                 }
             }
             if row.kind == TrajL.kindAssistant {
@@ -207,19 +182,8 @@ private struct TrajOverview: View {
         .padding(.horizontal, 14)
     }
 
-    private func overviewLine(_ label: String, _ value: String, valueColor: Color = T.text2, onClick: (() -> Void)? = nil) -> some View {
-        Button {
-            onClick?()
-        } label: {
-            HStack(alignment: .top) {
-                Text(label).font(Font.caption).foregroundStyle(T.text3).frame(width: 88, alignment: .leading)
-                Text(value).font(Font.caption).foregroundStyle(valueColor)
-                Spacer()
-            }
-            .padding(.vertical, 4)
-        }
-        .buttonStyle(.plain)
-        .disabled(onClick == nil)
+    private func overviewLine(_ label: String, _ value: String, valueColor: Color = T.ink, onClick: (() -> Void)? = nil) -> some View {
+        TrajectoryOverviewLine(label: label, value: value, valueColor: valueColor, onOpen: onClick)
     }
 
     private func overviewSection<Content: View>(
@@ -227,34 +191,15 @@ private struct TrajOverview: View {
         onOpen: (() -> Void)?,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Button(action: { onOpen?() }) {
-                HStack {
-                    Text(title).font(Font.caption.weight(.semibold)).foregroundStyle(T.ink)
-                    Spacer()
-                    if onOpen != nil {
-                        OfficialGlyph(
-                            kind: .chevronRight,
-                            size: CGFloat(trajectoryDetailChevronIconSizePoints),
-                            color: T.caption
-                        )
-                    }
-                }
-            }
-            .buttonStyle(.plain)
-            .accessibilityElement(children: .contain)
-            .accessibilityAddTraits(.isButton)
-            .disabled(onOpen == nil)
-            content()
-        }
-        .padding(.vertical, 8)
+        TrajectoryOverviewSection(title: title, onOpen: onOpen, content: content)
+            .padding(.vertical, 4)
     }
 }
 
 struct AssistantTimingRows: View {
     let row: TrajRow
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 0) {
             line(TrajL.timingStarted, formatStartedAt(row.startedAt))
             line(TrajL.timingTotalDuration, row.running ? TrajL.statusPending : formatAssistantDuration(row.timeSeconds))
             line(TrajL.timingTtft, formatTtft(row))
@@ -264,18 +209,14 @@ struct AssistantTimingRows: View {
     }
 
     private func line(_ label: String, _ value: String) -> some View {
-        HStack {
-            Text(label).font(Font.caption).foregroundStyle(T.text3).frame(width: 88, alignment: .leading)
-            Text(value).font(Font.caption).foregroundStyle(T.ink)
-            Spacer()
-        }
+        TrajectoryOverviewLine(label: label, value: value)
     }
 }
 
 private struct TrajTiming: View {
     let row: TrajRow
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 0) {
             if row.kind == TrajL.kindAssistant {
                 AssistantTimingRows(row: row)
             } else {
@@ -288,11 +229,7 @@ private struct TrajTiming: View {
     }
 
     private func line(_ label: String, _ value: String) -> some View {
-        HStack {
-            Text(label).font(Font.caption).foregroundStyle(T.text3).frame(width: 88, alignment: .leading)
-            Text(value).font(Font.caption).foregroundStyle(T.ink)
-            Spacer()
-        }
+        TrajectoryOverviewLine(label: label, value: value)
     }
 }
 
@@ -325,7 +262,9 @@ private struct TrajPreview: View {
                 .accessibilityAddTraits(.isButton)
                 if thinkingExpanded {
                     if rendered {
-                        Text(thinking).font(Font.footnote).foregroundStyle(T.text2)
+                        MarkdownView(source: thinking, wrapCode: true, bodyColor: T.text2, variant: .compact,
+                                     onFile: { AppModel.shared.openFilePreview(path: $0) },
+                                     onLink: { AppModel.shared.openChatLink($0) })
                     } else {
                         TrajCodeBlock(thinking)
                     }
@@ -334,7 +273,9 @@ private struct TrajPreview: View {
             let body = row.kind == TrajL.kindAssistant ? row.outputDetail : row.rawDetail
             if let body, !body.isEmpty {
                 if rendered {
-                    Text(body).font(Font.footnote).foregroundStyle(T.ink).textSelection(.enabled)
+                    MarkdownView(source: body, wrapCode: true, variant: .trajectory,
+                                 onFile: { AppModel.shared.openFilePreview(path: $0) },
+                                 onLink: { AppModel.shared.openChatLink($0) })
                 } else {
                     TrajCodeBlock(body)
                 }
@@ -380,18 +321,24 @@ private struct TrajPayload: View {
 
 private struct TrajSchema: View {
     let json: String?
+    let inset: Bool
 
-    init(_ json: String?) {
+    init(_ json: String?, inset: Bool = true) {
         self.json = json
+        self.inset = inset
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             if let parsed = json.flatMap({ try? JSONValue.parse($0) }),
                let name = parsed["name"].str() {
-                Text(name).font(Font.footnote.monospaced().weight(.semibold)).foregroundStyle(T.ink)
+                Text(name).font(.system(size: 12, weight: .semibold, design: .monospaced)).foregroundStyle(T.ink)
                 if let description = parsed["description"].str() {
-                    Text(description).font(Font.system(size: 12, design: .monospaced)).foregroundStyle(T.text2)
+                    Text(description).font(.system(size: 13)).foregroundStyle(T.text2)
+                }
+                if let parameters = parsed.obj()?["parameters"], let json = parameters.prettyString() {
+                    Text(TrajL.tabPayload).font(.system(size: 12)).foregroundStyle(T.text3)
+                    TrajectoryJsonValue(source: json)
                 }
             } else {
                 Text(json ?? TrajL.recordSchemaUnavailable)
@@ -399,7 +346,7 @@ private struct TrajSchema: View {
                     .foregroundStyle(T.text3)
             }
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, inset ? 14 : 0)
     }
 }
 
@@ -445,8 +392,6 @@ private struct TrajCodeBlock: View {
                 .foregroundStyle(error ? T.err : T.ink)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(14)
-                .background(T.fill2, in: RoundedRectangle(cornerRadius: 12))
         }
     }
 }

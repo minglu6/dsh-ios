@@ -5,6 +5,7 @@ struct TrajectoryView: View {
     @ObservedObject var model: AppModel
     @StateObject private var ledgerCache = TrajectoryLedgerCache()
     @State private var selection: TrajectorySelection?
+    @State private var detailTabHistory: [TrajDetailTab] = []
     @State private var actualDuration = false
     @State private var turnsCollapsed = false
     @State private var callsCollapsed = false
@@ -39,98 +40,103 @@ struct TrajectoryView: View {
                 }
             }
             Divider()
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 0) {
-                        if turnsCollapsed {
-                            ForEach(projection.turns, id: \.self) { turn in
-                                Button { turnsCollapsed = false } label: {
-                                    Text(TrajL.turnLabel(turn))
-                                        .font(Font.caption)
-                                        .foregroundStyle(T.text3)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 8)
+            TrajectoryInspectorLayout(isPresented: selection != nil) {
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 0) {
+                            if turnsCollapsed {
+                                ForEach(projection.turns, id: \.self) { turn in
+                                    Button { turnsCollapsed = false } label: {
+                                        Text(TrajL.turnLabel(turn))
+                                            .font(Font.caption)
+                                            .foregroundStyle(T.text3)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 8)
+                                    }
+                                    .id(turn)
                                 }
-                                .id(turn)
+                            } else {
+                                // A single ForEach keeps even a many-thousand-row turn lazy.
+                                ForEach(projection.rows) { entry in
+                                    let row = entry.row
+                                    let boundary = snapshot.boundaryByRow[row.key]
+                                    TrajRowView(
+                                        row: row,
+                                        highlighted: selectedKey == row.key,
+                                        turnStart: entry.turnStart ? entry.turn : nil,
+                                        requestBoundary: boundary,
+                                        requestSelected: selectedRequestId != nil && selectedRequestId == boundary?.identity
+                                    ) {
+                                        selection = .row(row, turn: entry.turn)
+                                    } onRequestClick: { req in
+                                        selection = .request(req, tab: .overview)
+                                    }
+                                    .id(entry.id)
+                                }
                             }
-                        } else {
-                            // A single ForEach keeps even a many-thousand-row turn lazy.
-                            ForEach(projection.rows) { entry in
-                                let row = entry.row
-                                let boundary = snapshot.boundaryByRow[row.key]
-                                TrajRowView(
-                                    row: row,
-                                    highlighted: selectedKey == row.key,
-                                    turnStart: entry.turnStart ? entry.turn : nil,
-                                    requestBoundary: boundary,
-                                    requestSelected: selectedRequestId != nil && selectedRequestId == boundary?.identity
-                                ) {
-                                    selection = .row(row, turn: entry.turn)
-                                } onRequestClick: { req in
-                                    selection = .request(req, tab: .overview)
-                                }
-                                .id(entry.id)
+                        }
+                    }
+                    .accessibilityIdentifier("trajectoryLedger")
+                    .accessibilityValue(model.uiTestFixture ? model.uiTestHistoryPagingAccessibilityValue : "")
+                    .refreshable {
+                        guard let sessionId = model.chat?.sessionId else { return }
+                        let key = projection.rows.first?.row.key
+                        let applied = await model.loadOlderHistory(sessionId: sessionId)
+                        if applied, model.chat?.sessionId == sessionId, let key {
+                            historyScrollAnchor = HistoryScrollAnchor(sessionId: sessionId, rowKey: key)
+                        }
+                    }
+                    .onChange(of: historyScrollAnchor) { anchor in
+                        guard let anchor else { return }
+                        historyScrollAnchor = nil
+                        guard model.chat?.sessionId == anchor.sessionId else { return }
+                        let current = ledgerCache.snapshot(for: model)
+                        if let entry = current.rowByKey[anchor.rowKey] {
+                            if turnsCollapsed {
+                                proxy.scrollTo(entry.turn, anchor: anchor.point)
+                            } else {
+                                proxy.scrollTo(entry.id, anchor: anchor.point)
                             }
                         }
                     }
                 }
-                .accessibilityIdentifier("trajectoryLedger")
-                .accessibilityValue(model.uiTestFixture ? model.uiTestHistoryPagingAccessibilityValue : "")
-                .refreshable {
-                    guard let sessionId = model.chat?.sessionId else { return }
-                    let key = projection.rows.first?.row.key
-                    let applied = await model.loadOlderHistory(sessionId: sessionId)
-                    if applied, model.chat?.sessionId == sessionId, let key {
-                        historyScrollAnchor = HistoryScrollAnchor(sessionId: sessionId, rowKey: key)
-                    }
-                }
-                .onChange(of: historyScrollAnchor) { anchor in
-                    guard let anchor else { return }
-                    historyScrollAnchor = nil
-                    guard model.chat?.sessionId == anchor.sessionId else { return }
-                    let current = ledgerCache.snapshot(for: model)
-                    if let entry = current.rowByKey[anchor.rowKey] {
-                        if turnsCollapsed {
-                            proxy.scrollTo(entry.turn, anchor: anchor.point)
-                        } else {
-                            proxy.scrollTo(entry.id, anchor: anchor.point)
-                        }
-                    }
-                }
+            } detail: {
+                inspector(snapshot)
             }
         }
-        .sheet(isPresented: Binding(
-            get: { selection != nil },
-            set: { if !$0 { selection = nil } }
-        )) {
-            if let detail = selection {
-                Group {
-                    switch detail {
-                    case .row(let row, let turn):
-                        TrajectoryDetailSheet(
-                            row: row,
-                            turnIndex: turn,
-                            parentRequest: requestForRow(row, requests: snapshot.requests),
-                            onOpenRequest: { selection = .request($0, tab: .overview) },
-                            onOpenRequestTiming: { selection = .request($0, tab: .timing) },
-                            toolCalls: snapshot.toolCalls(for: row),
-                            onDismiss: { selection = nil }
-                        ) { call in
-                            openRow(call.key, in: snapshot)
-                        }
-                    case .request(let request, let tab):
-                        TrajectoryRequestSheet(
-                            request: request,
-                            onOpenResult: { openRow($0, in: snapshot) },
-                            initialTab: tab,
-                            assistantRow: request.resultKey.flatMap { snapshot.assistantByKey[$0] },
-                            onDismiss: { selection = nil }
-                        )
+    }
+
+    @ViewBuilder
+    private func inspector(_ snapshot: TrajectoryLedgerSnapshot) -> some View {
+        if let detail = selection {
+            Group {
+                switch detail {
+                case .row(let row, let turn):
+                    TrajectoryRecordInspector(
+                        row: row,
+                        turnIndex: turn,
+                        parentRequest: requestForRow(row, requests: snapshot.requests),
+                        onOpenRequest: { selection = .request($0, tab: .overview) },
+                        onOpenRequestTiming: { selection = .request($0, tab: .timing) },
+                        toolCalls: snapshot.toolCalls(for: row),
+                        tabHistory: $detailTabHistory,
+                        onDismiss: { selection = nil }
+                    ) { call in
+                        openRow(call.key, in: snapshot)
                     }
+                case .request(let request, let tab):
+                    TrajectoryRequestInspector(
+                        request: request,
+                        onOpenResult: { openRow($0, in: snapshot) },
+                        initialTab: tab,
+                        assistantRow: request.resultKey.flatMap { snapshot.assistantByKey[$0] },
+                        tabHistory: $detailTabHistory,
+                        onDismiss: { selection = nil }
+                    )
                 }
-                .id(detail.id)
             }
+            .id(detail.id)
         }
     }
 
@@ -204,7 +210,7 @@ struct TrajectoryView: View {
     }
 }
 
-/// A single presentation owner prevents competing row/request sheets during navigation.
+/// One selection owner keeps record/request navigation inside the same inspector.
 private enum TrajectorySelection: Identifiable {
     case row(TrajRow, turn: Int)
     case request(TrajectoryRequest, tab: TrajRequestTab)
