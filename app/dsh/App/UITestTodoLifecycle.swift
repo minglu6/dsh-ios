@@ -36,8 +36,8 @@ final class UITestTodoLifecycleDriver: @unchecked Sendable {
                 { _, observer, name, _, _ in
                     guard let observer, let name else { return }
                     let driver = Unmanaged<UITestTodoLifecycleDriver>.fromOpaque(observer).takeUnretainedValue()
-                    let name = name.rawValue as String
-                    driver.receive(String(name.dropFirst(UITestTodoLifecycleDriver.prefix.count)))
+                    let notificationName = name.rawValue as String
+                    driver.receive(String(notificationName.dropFirst(UITestTodoLifecycleDriver.prefix.count)))
                 },
                 (Self.prefix + action) as CFString,
                 nil,
