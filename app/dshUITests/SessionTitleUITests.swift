@@ -5,10 +5,32 @@ final class SessionTitleUITests: XCTestCase {
 
     private let chinese = "会话标题完整阅读：核对多端交互、代码修改、历史记录复用与无障碍表现，确保最后一段内容仍然可以清楚阅读【中文末尾】"
     private let english = "Review conversation title overflow, history row reuse, accessibility and desktop parity without losing the final words [English tail]"
+    private var launchedApp: XCUIApplication?
 
     override func setUp() {
         super.setUp()
         continueAfterFailure = false
+    }
+
+    override func tearDown() {
+        if let app = launchedApp, (testRun?.failureCount ?? 0) > 0 {
+            let name = "session-title-failure-\(self.name.replacingOccurrences(of: "/", with: "-"))"
+            try? capture(app, name: name)
+            let hierarchy = app.debugDescription
+            let attachment = XCTAttachment(string: hierarchy)
+            attachment.name = "\(name)-hierarchy"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+            if let root = ProcessInfo.processInfo.environment["DSH_SCREENSHOT_DIR"] {
+                try? hierarchy.write(
+                    to: URL(fileURLWithPath: root, isDirectory: true).appendingPathComponent("\(name)-hierarchy.txt"),
+                    atomically: true,
+                    encoding: .utf8
+                )
+            }
+        }
+        launchedApp = nil
+        super.tearDown()
     }
 
     func testFullChineseAndEnglishTitlesStayAnchoredAndDismissOutside() throws {
@@ -93,6 +115,7 @@ final class SessionTitleUITests: XCTestCase {
 
     private func launch(reduceMotion: Bool = false, changing: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
+        launchedApp = app
         app.launchArguments = ["-UITestFixture", "-UITestScreen", changing ? "sessionTitlesChanging" : "sessionTitles"]
         if reduceMotion { app.launchArguments.append("-UITestTitleReduceMotion") }
         app.launch()
@@ -111,6 +134,7 @@ final class SessionTitleUITests: XCTestCase {
         let full = app.staticTexts["conversationTitleFull"]
         XCTAssertTrue(full.waitForExistence(timeout: 5))
         XCTAssertEqual(full.label, expected)
+        XCTAssertTrue(full.isHittable, "The complete title must be visible in the anchored popover")
         let popover = app.descendants(matching: .any)["conversationTitlePopover"].firstMatch
         XCTAssertTrue(popover.exists)
         XCTAssertFalse(app.sheets.firstMatch.exists)

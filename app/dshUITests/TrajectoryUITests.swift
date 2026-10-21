@@ -85,27 +85,27 @@ final class TrajectoryUITests: XCTestCase {
             let location = app.staticTexts["trajectoryInspector.location"]
             XCTAssertGreaterThan(location.frame.minX, ledger.frame.minX, "The narrow inspector leaves the ledger edge visible")
             XCTAssertTrue(app.buttons["chatTab.chat"].isHittable, "Inspecting a record must not present a modal over the conversation")
-            let tabs = app.scrollViews["trajectoryInspector.tabs"]
-            XCTAssertTrue(tabs.buttons["参数"].isHittable)
+            let tabs = app.buttons
+            XCTAssertTrue(tabs["参数"].firstMatch.isHittable)
             try capture(app, name: "\(appearance)-trajectory-tool-overview")
-            tabs.buttons["参数"].tap()
+            tabs["参数"].firstMatch.tap()
             XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "README.md")).firstMatch.waitForExistence(timeout: 5))
-            tabs.buttons["计时"].tap()
+            tabs["计时"].firstMatch.tap()
             XCTAssertTrue(app.staticTexts["开始时间"].waitForExistence(timeout: 5))
             closeDetail(app)
             XCTAssertTrue(tool.isHittable, "Closing a detail must restore the same ledger")
 
             app.buttons["trajRow.a1"].tap()
-            let previewTabs = app.scrollViews["trajectoryInspector.tabs"]
-            previewTabs.buttons["预览"].tap()
+            let previewTabs = app.buttons
+            previewTabs["预览"].firstMatch.tap()
             XCTAssertTrue(app.staticTexts["第一项"].waitForExistence(timeout: 5), "Preview renders Markdown list content")
             try capture(app, name: "\(appearance)-trajectory-markdown-preview")
-            previewTabs.buttons["原始内容"].tap()
+            previewTabs["原始内容"].firstMatch.tap()
             XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "- 第一项")).firstMatch.waitForExistence(timeout: 5), "Raw content retains Markdown source")
             closeDetail(app)
             XCTAssertTrue(app.buttons["trajRow.a1"].isHittable)
             app.buttons["trajRow.a1"].tap()
-            let restoredRaw = app.scrollViews["trajectoryInspector.tabs"].buttons["原始内容"]
+            let restoredRaw = app.buttons["原始内容"].firstMatch
             XCTAssertTrue(restoredRaw.waitForExistence(timeout: 5))
             XCTAssertTrue(restoredRaw.isSelected, "Reopening a record retains the last compatible detail tab")
             closeDetail(app)

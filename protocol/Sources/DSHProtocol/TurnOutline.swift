@@ -37,7 +37,10 @@ final class TurnOutlineProjectionStore {
         guard let values = projections["values"].obj() else { return }
         let seq = projections["asOfSeq"].long() ?? fallbackSeq
         if let value = values["turnOutline"] { apply(value, seq: seq) }
-        else if sequence.map({ $0 <= seq }) ?? true { clear() }
+        else if sequence.map({ $0 <= seq }) ?? true {
+            sequence = seq
+            entries = []
+        }
     }
 
     func clear() { sequence = nil; entries = [] }

@@ -20,6 +20,7 @@ struct TrajectoryInspectorLayout<Rows: View, Detail: View>: View {
                 if isPresented {
                     detail()
                         .frame(width: width)
+                        .compositingGroup()
                         .shadow(color: narrow ? .black.opacity(0.14) : .clear, radius: 16, x: -12)
                         .overlay(alignment: .leading) {
                             if !narrow {

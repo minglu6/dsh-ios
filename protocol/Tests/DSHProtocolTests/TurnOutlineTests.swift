@@ -31,6 +31,8 @@ final class TurnOutlineTests: XCTestCase {
         reducer.apply(.object(["type": .string("resume"), "cursor": .number(11),
             "records": .array([]), "projections": .object(["asOfSeq": .number(11), "values": .object([:])])]))
         XCTAssertTrue(reducer.turnOutline().isEmpty)
+        XCTAssertFalse(reducer.apply(projection(seq: 10, value: .array([entry(3, 300)]))))
+        XCTAssertTrue(reducer.turnOutline().isEmpty, "An omitted baseline must retain its sequence watermark")
         reducer.apply(snapshot(outline: .array([entry(8, 800)])))
         XCTAssertEqual(reducer.turnOutline().map(\.turn), [8])
     }

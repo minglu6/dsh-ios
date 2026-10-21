@@ -381,7 +381,7 @@ extension AppModel {
             ops.insert("plugins.inventory")
             showDrawer = false
             push(.builtinPlugins)
-        case "models", "permission":
+        case "models", "permission", "sessionTitles", "sessionTitlesChanging":
             break
         case "connections":
             showDrawer = false
