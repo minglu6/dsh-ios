@@ -97,7 +97,10 @@ struct TranscriptScrollHost: UIViewRepresentable {
                 guard !Task.isCancelled else { return }
                 await self.onRefresh()
                 guard !Task.isCancelled else { return }
-                self.refreshControl.endRefreshing()
+                UIView.performWithoutAnimation {
+                    self.refreshControl.endRefreshing()
+                    self.scrollView?.layoutIfNeeded()
+                }
                 self.refreshTask = nil
             }
         }

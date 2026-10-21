@@ -645,7 +645,13 @@ struct ChatView: View {
                     let applied = await model.loadOlderHistory(sessionId: sessionId)
                     if applied, !Task.isCancelled, model.chat?.sessionId == sessionId,
                        navigationGeneration == generation, let key {
-                        historyScrollAnchor = HistoryScrollAnchor(sessionId: sessionId, rowKey: key)
+                        let anchor = HistoryScrollAnchor(sessionId: sessionId, rowKey: key)
+                        // The native owner ends refresh immediately after this action returns.
+                        DispatchQueue.main.async {
+                            guard model.chat?.sessionId == sessionId,
+                                  navigationGeneration == generation else { return }
+                            historyScrollAnchor = anchor
+                        }
                     }
                 }))
             }
