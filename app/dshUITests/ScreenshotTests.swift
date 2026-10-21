@@ -80,6 +80,45 @@ final class ScreenshotTests: XCTestCase {
         }
     }
 
+    func testNewSessionEntriesOpenSelectableDraftWithoutCreatingBlankChat() {
+        for (entry, expectedWorkspace) in [
+            ("newSession", "dsh-android"),
+            ("newSession.ws-ios", "dsh-ios"),
+        ] {
+            let app = XCUIApplication()
+            app.launchArguments = ["-UITestFixture", "-UITestScreen", "contextActive"]
+            app.launch()
+            XCTAssertTrue(app.buttons["openDrawer"].waitForExistence(timeout: 15))
+            app.buttons["openDrawer"].tap()
+            let newSession = app.buttons[entry]
+            XCTAssertTrue(newSession.waitForExistence(timeout: 5))
+            newSession.tap()
+
+            let workspace = app.buttons["draftWorkspace"]
+            let preset = app.buttons["agentPresetSeat"]
+            XCTAssertTrue(workspace.waitForExistence(timeout: 5))
+            // The global entry preserves the last draft; the workspace entry overrides it.
+            XCTAssertEqual(workspace.value as? String, expectedWorkspace)
+            XCTAssertTrue(preset.isEnabled)
+            XCTAssertFalse(app.descendants(matching: .any)["chatTab.chat"].exists)
+            preset.tap()
+            let standard = app.buttons["agentPresetRow.standard"]
+            XCTAssertTrue(standard.waitForExistence(timeout: 5))
+            standard.tap()
+            XCTAssertEqual(preset.label, "标准模式")
+            workspace.tap()
+            let ios = app.buttons.containing(.staticText, identifier: "dsh-ios").firstMatch
+            XCTAssertTrue(ios.waitForExistence(timeout: 5))
+            ios.tap()
+            XCTAssertEqual(workspace.value as? String, "dsh-ios")
+            let shot = XCTAttachment(screenshot: app.screenshot())
+            shot.name = "new-session-selectable-context-\(entry)"
+            shot.lifetime = .keepAlways
+            add(shot)
+            app.terminate()
+        }
+    }
+
     func testLandingContextRemainsSelectableAndVisibleWithoutMetadata() {
         let app = XCUIApplication()
         app.launchArguments = ["-UITestFixture", "-UITestScreen", "landing"]

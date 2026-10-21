@@ -588,6 +588,36 @@ final class AppModel: ObservableObject {
         }
     }
 
+    func openNewSession(workspaceId: String? = nil) {
+        guard !firstPromptBlocksComposerActions(firstPrompt) else { return }
+        clearFirstPrompt()
+        followEpoch += 1
+        let oldSubscription = subId
+        detachFollow()
+        transcriptPublisher.cancel()
+        chat = nil
+        routeStack = []
+        showDrawer = false
+        if let workspaceId { draftWorkspaceId = workspaceId }
+        pendingCreatorPreset = nil
+        composerText = ""
+        composerCursor = 0
+        pendingAttaches = []
+        mentionQuery = nil
+        mentionDrilled = false
+        fileMentions = []
+        sessionMentions = []
+        commandEntries = []
+        skillEntries = []
+        sessionPermission = nil
+        modelChoice = draftModel
+        if let catalog { applyCatalog(catalog) }
+        setViewedSession(nil)
+        if let client, let oldSubscription {
+            Task { try? await client.unfollow(oldSubscription) }
+        }
+    }
+
     func createAndOpenSession(workspaceId: String? = nil, preset: String? = nil, then: (() -> Void)? = nil) {
         Task {
             guard let client else { return }

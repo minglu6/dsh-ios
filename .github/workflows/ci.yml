@@ -155,6 +155,7 @@ jobs:
               -only-testing:dshUITests/TrajectoryUITests
               -only-testing:dshUITests/ScreenshotTests/testLightScreenshots
               -only-testing:dshUITests/ScreenshotTests/testDarkScreenshots
+              -only-testing:dshUITests/ScreenshotTests/testNewSessionEntriesOpenSelectableDraftWithoutCreatingBlankChat
               -only-testing:dshUITests/HistoryPagingUITests/testChatPullsConsecutivePagesAndStopsAtEnd
               -only-testing:dshUITests/HistoryPagingUITests/testChatFailedPullCanRetryWithoutLosingContent
             )

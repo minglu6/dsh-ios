@@ -39,6 +39,8 @@ Agent Team opens in a popover anchored to its header button and closes on an out
 
 The new-session toolbar has no wordmark, matching Android and desktop. The centered hero and the drawer's branding remain unchanged.
 
+New Session in the drawer header or a workspace row opens the draft landing page with selectable workspace and work mode, rather than immediately creating an empty remote session. A workspace row preselects its workspace; the header entry preserves the draft selection. The first message uses the existing creation flow. Leaving the previous conversation releases its subscription and clears its input and attachments without stopping remote work; new-session actions are disabled while the first message is sending.
+
 Long conversation titles open their complete text in a header-anchored popover; ancestor breadcrumbs retain navigation. History names reveal overflowing text once at 30pt/s and hold the tail, without changing row geometry or intercepting the row/menu actions. Reduce Motion reveals the tail without animation; session, title and width changes reset the reveal.
 
 The transcript has a right-side turn rail and the desktop chevron return-to-bottom control. Marks retain Host turn identities, including sparse numbers; a supplied `turnOutline` exposes unloaded turns that can be paged in before jumping. Legacy Hosts show only known loaded turns. Long press previews a turn on touch screens. Manual reading and turn jumps stop tail following; returning to the bottom restores it. Showing the rail on phone widths is an intentional touch adaptation—the desktop hides it below its container breakpoint. CI `ui_scope=conversation` runs title, navigation and trajectory UI checks.

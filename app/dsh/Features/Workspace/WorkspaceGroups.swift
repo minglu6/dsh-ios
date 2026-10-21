@@ -229,7 +229,7 @@ struct WorkspaceGroupHeader: View {
                         .accessibilityIdentifier("workspaceOverflow")
                     }
                     Button {
-                        model.createAndOpenSession(workspaceId: workspace.workspaceId)
+                        model.openNewSession(workspaceId: workspace.workspaceId)
                     } label: {
                         OfficialGlyph(
                             kind: .newChat,
@@ -238,8 +238,10 @@ struct WorkspaceGroupHeader: View {
                         )
                         .frame(width: 48, height: 48)
                     }
-                    .disabled(!(model.isOnline && model.ops.contains("sessions.create")))
+                    .disabled(!(model.isOnline && model.ops.contains("sessions.create"))
+                              || firstPromptBlocksComposerActions(model.firstPrompt))
                     .accessibilityLabel(L.newSession())
+                    .accessibilityIdentifier("newSession.\(workspace.workspaceId)")
                 }
             }
         }

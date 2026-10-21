@@ -33,7 +33,7 @@ struct SessionDrawer: View {
                     BrandWordmark(height: 16)
                 }
                 Spacer(minLength: 8)
-                Button { model.createAndOpenSession() } label: {
+                Button { model.openNewSession() } label: {
                     OfficialGlyph(
                         kind: .newChat,
                         size: CGFloat(sidebarNewChatIconSizePoints),
@@ -41,6 +41,8 @@ struct SessionDrawer: View {
                     )
                 }
                 .accessibilityLabel(L.newSession())
+                .disabled(firstPromptBlocksComposerActions(model.firstPrompt))
+                .accessibilityIdentifier("newSession")
             }
             .padding(.horizontal, 16)
             .padding(.top, 14)
