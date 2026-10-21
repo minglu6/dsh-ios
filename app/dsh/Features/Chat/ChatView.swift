@@ -32,7 +32,6 @@ struct ChatView: View {
     @State private var transcriptViewport = TranscriptViewport()
     @State private var pendingTurn: Int?
     @State private var navigationError: String?
-    @State private var nativeScrollDiagnostic = ""
 
     /// Android: Screen.Chat + drawer closed + focused + RESUMED. Otherwise completion.view gets null.
     private var desiredViewedSession: String? {
@@ -626,7 +625,7 @@ struct ChatView: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
-                .background(TranscriptPanObserver(onBegan: {
+                .background(TranscriptScrollHost(onBegan: {
                     navigationGeneration += 1
                     transcriptDragging = true
                     followingTail = false
@@ -637,7 +636,18 @@ struct ChatView: View {
                 }, onEnded: {
                     transcriptDragging = false
                     followingTail = atTranscriptBottom
-                }, onDiagnostic: { nativeScrollDiagnostic = $0 }))
+                }, onRefresh: {
+                    guard let sessionId = model.chat?.sessionId else { return }
+                    followingTail = false
+                    manualTranscriptScroll = false
+                    let key = firstVisibleTranscriptKey ?? chatRows.first.map(inspectorPickKey)
+                    let generation = navigationGeneration
+                    let applied = await model.loadOlderHistory(sessionId: sessionId)
+                    if applied, !Task.isCancelled, model.chat?.sessionId == sessionId,
+                       navigationGeneration == generation, let key {
+                        historyScrollAnchor = HistoryScrollAnchor(sessionId: sessionId, rowKey: key)
+                    }
+                }))
             }
             .coordinateSpace(name: "chatTranscriptViewport")
             .onPreferenceChange(TranscriptViewportKey.self) { value in
@@ -655,19 +665,8 @@ struct ChatView: View {
             }
             .accessibilityIdentifier("chatTranscript")
             .accessibilityValue(model.uiTestFixture
-                ? "\(model.uiTestHistoryPagingAccessibilityValue);follow=\(followingTail);activeTurn=\(activeTranscriptTurn.map(String.init) ?? "none");landing=\(pendingTurn != nil || historyScrollAnchor != nil);native=\(nativeScrollDiagnostic)"
+                ? "\(model.uiTestHistoryPagingAccessibilityValue);follow=\(followingTail);activeTurn=\(activeTranscriptTurn.map(String.init) ?? "none");landing=\(pendingTurn != nil || historyScrollAnchor != nil)"
                 : "")
-            .refreshable {
-                guard let sessionId = model.chat?.sessionId else { return }
-                followingTail = false
-                manualTranscriptScroll = false
-                let key = firstVisibleTranscriptKey ?? chatRows.first.map(inspectorPickKey)
-                let generation = navigationGeneration
-                let applied = await model.loadOlderHistory(sessionId: sessionId)
-                if applied, model.chat?.sessionId == sessionId, navigationGeneration == generation, let key {
-                    historyScrollAnchor = HistoryScrollAnchor(sessionId: sessionId, rowKey: key)
-                }
-            }
             .onChange(of: historyScrollAnchor) { anchor in
                 guard let anchor else { return }
                 historyScrollAnchor = nil

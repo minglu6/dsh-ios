@@ -1,14 +1,14 @@
 import SwiftUI
 import UIKit
 
-/// Observe the native pan without installing a second recognizer over pull-to-refresh.
-struct TranscriptPanObserver: UIViewRepresentable {
+/// A stable native owner keeps refresh and pan observation independent of layout updates.
+struct TranscriptScrollHost: UIViewRepresentable {
     let onBegan: () -> Void
     let onEnded: () -> Void
-    let onDiagnostic: (String) -> Void
+    let onRefresh: () async -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onBegan: onBegan, onEnded: onEnded, onDiagnostic: onDiagnostic)
+        Coordinator(onBegan: onBegan, onEnded: onEnded, onRefresh: onRefresh)
     }
 
     func makeUIView(context: Context) -> Probe {
@@ -22,7 +22,7 @@ struct TranscriptPanObserver: UIViewRepresentable {
     func updateUIView(_ view: Probe, context: Context) {
         context.coordinator.onBegan = onBegan
         context.coordinator.onEnded = onEnded
-        context.coordinator.onDiagnostic = onDiagnostic
+        context.coordinator.onRefresh = onRefresh
         context.coordinator.attach(from: view)
     }
 
@@ -41,16 +41,21 @@ struct TranscriptPanObserver: UIViewRepresentable {
         }
     }
 
-    final class Coordinator: NSObject {
+    @MainActor final class Coordinator: NSObject {
         var onBegan: () -> Void
         var onEnded: () -> Void
-        var onDiagnostic: (String) -> Void
+        var onRefresh: () async -> Void
         private weak var scrollView: UIScrollView?
+        private let refreshControl = UIRefreshControl()
+        private var refreshTask: Task<Void, Never>?
+        private var previousBounce = false
 
-        init(onBegan: @escaping () -> Void, onEnded: @escaping () -> Void, onDiagnostic: @escaping (String) -> Void) {
+        init(onBegan: @escaping () -> Void, onEnded: @escaping () -> Void, onRefresh: @escaping () async -> Void) {
             self.onBegan = onBegan
             self.onEnded = onEnded
-            self.onDiagnostic = onDiagnostic
+            self.onRefresh = onRefresh
+            super.init()
+            refreshControl.addTarget(self, action: #selector(refreshChanged), for: .valueChanged)
         }
 
         func attach(from view: UIView) {
@@ -60,6 +65,9 @@ struct TranscriptPanObserver: UIViewRepresentable {
                     guard scroll !== scrollView else { return }
                     detach()
                     scrollView = scroll
+                    previousBounce = scroll.alwaysBounceVertical
+                    scroll.alwaysBounceVertical = true
+                    scroll.refreshControl = refreshControl
                     scroll.panGestureRecognizer.addTarget(self, action: #selector(panChanged(_:)))
                     return
                 }
@@ -68,8 +76,27 @@ struct TranscriptPanObserver: UIViewRepresentable {
         }
 
         func detach() {
-            scrollView?.panGestureRecognizer.removeTarget(self, action: #selector(panChanged(_:)))
+            refreshTask?.cancel()
+            refreshTask = nil
+            refreshControl.endRefreshing()
+            if let scroll = scrollView {
+                scroll.panGestureRecognizer.removeTarget(self, action: #selector(panChanged(_:)))
+                if scroll.refreshControl === refreshControl { scroll.refreshControl = nil }
+                scroll.alwaysBounceVertical = previousBounce
+            }
             scrollView = nil
+        }
+
+        @objc private func refreshChanged() {
+            guard refreshTask == nil else { return }
+            refreshTask = Task { @MainActor [weak self] in
+                guard let self else { return }
+                guard !Task.isCancelled else { return }
+                await self.onRefresh()
+                guard !Task.isCancelled else { return }
+                self.refreshControl.endRefreshing()
+                self.refreshTask = nil
+            }
         }
 
         @objc private func panChanged(_ recognizer: UIPanGestureRecognizer) {
@@ -77,9 +104,6 @@ struct TranscriptPanObserver: UIViewRepresentable {
             case .began: onBegan()
             case .ended, .cancelled, .failed: onEnded()
             default: break
-            }
-            if UITestLaunch.isEnabled, recognizer.state == .began || recognizer.state == .ended, let scroll = scrollView {
-                onDiagnostic("refresh=\(scroll.refreshControl != nil);refreshing=\(scroll.refreshControl?.isRefreshing ?? false);offset=\(scroll.contentOffset.y);height=\(scroll.contentSize.height);bounds=\(scroll.bounds.height);bounce=\(scroll.alwaysBounceVertical)")
             }
         }
     }
