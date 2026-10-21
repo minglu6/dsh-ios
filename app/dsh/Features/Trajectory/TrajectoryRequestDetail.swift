@@ -132,7 +132,7 @@ private struct RequestOverview: View {
         TrajectoryOverviewLine(label: label, value: value, valueColor: valueColor, onOpen: onClick)
     }
 
-    private func section<Content: View>(_ title: String, onOpen: @escaping () -> Void, @ViewBuilder content: () -> Content) -> some View {
+    private func section<Content: View>(_ title: String, onOpen: @escaping () -> Void, @ViewBuilder content: @escaping () -> Content) -> some View {
         TrajectoryOverviewSection(title: title, onOpen: onOpen, content: content)
             .padding(.vertical, 4)
     }

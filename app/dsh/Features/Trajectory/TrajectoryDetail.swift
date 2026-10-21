@@ -189,7 +189,7 @@ private struct TrajOverview: View {
     private func overviewSection<Content: View>(
         _ title: String,
         onOpen: (() -> Void)?,
-        @ViewBuilder content: () -> Content
+        @ViewBuilder content: @escaping () -> Content
     ) -> some View {
         TrajectoryOverviewSection(title: title, onOpen: onOpen, content: content)
             .padding(.vertical, 4)
