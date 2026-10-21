@@ -37,6 +37,8 @@ Conversation actions share the title row above the Chat/Trajectory tabs: Agent T
 
 Agent Team opens in a popover anchored to its header button and closes on an outside tap, not in a separate page. There are no extra Close or Refresh buttons. The current-session marker uses the desktop tinted-blue capsule; a lone member has no count, and an empty task board shows only its notice.
 
+The new-session toolbar has no wordmark, matching Android and desktop. The centered hero and the drawer's branding remain unchanged.
+
 Long conversation titles open their complete text in a header-anchored popover; ancestor breadcrumbs retain navigation. History names reveal overflowing text once at 30pt/s and hold the tail, without changing row geometry or intercepting the row/menu actions. Reduce Motion reveals the tail without animation; session, title and width changes reset the reveal.
 
 The transcript has a right-side turn rail and the desktop chevron return-to-bottom control. Marks retain Host turn identities, including sparse numbers; a supplied `turnOutline` exposes unloaded turns that can be paged in before jumping. Legacy Hosts show only known loaded turns. Long press previews a turn on touch screens. Manual reading and turn jumps stop tail following; returning to the bottom restores it. Showing the rail on phone widths is an intentional touch adaptation—the desktop hides it below its container breakpoint. CI `ui_scope=conversation` runs title, navigation and trajectory UI checks.

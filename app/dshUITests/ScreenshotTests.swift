@@ -448,6 +448,7 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertLessThanOrEqual(tipFrame.maxY, window.maxY, "\(appearance) tooltip clipped bottom")
             }
             if screen == "landing" || screen == "landingPreset" || screen == "landingMention" {
+                XCTAssertFalse(app.images["deepseek HARNESS"].exists, "\(appearance) landing must not duplicate the drawer wordmark in its toolbar")
                 XCTAssertFalse(app.images["fish"].exists, "\(appearance) landing still exposes SF fish")
                 XCTAssertFalse(app.images["fish.fill"].exists, "\(appearance) landing still exposes SF fish.fill")
                 XCTAssertFalse(app.images["fish.circle"].exists, "\(appearance) landing still exposes SF fish.circle")

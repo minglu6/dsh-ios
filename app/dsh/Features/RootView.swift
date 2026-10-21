@@ -155,7 +155,6 @@ struct RootView: View {
                 .accessibilityElement(children: .contain)
                 .accessibilityAddTraits(.isButton)
                 .accessibilityIdentifier("openDrawer")
-                BrandWordmark(height: 20)
                 Spacer()
                 Button {
                     Keyboard.dismiss()

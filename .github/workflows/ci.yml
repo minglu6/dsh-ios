@@ -148,10 +148,13 @@ jobs:
             UI_TESTS=(-only-testing:dshUITests/SessionHeaderUITests)
             MIN_SCREENSHOTS=4
           elif [ "$UI_SCOPE" = "conversation" ]; then
+            export TEST_RUNNER_DSH_SCREENSHOT_SCREENS="landing"
             UI_TESTS=(
               -only-testing:dshUITests/SessionTitleUITests
               -only-testing:dshUITests/TurnNavigationUITests
               -only-testing:dshUITests/TrajectoryUITests
+              -only-testing:dshUITests/ScreenshotTests/testLightScreenshots
+              -only-testing:dshUITests/ScreenshotTests/testDarkScreenshots
               -only-testing:dshUITests/HistoryPagingUITests/testChatPullsConsecutivePagesAndStopsAtEnd
               -only-testing:dshUITests/HistoryPagingUITests/testChatFailedPullCanRetryWithoutLosingContent
             )
