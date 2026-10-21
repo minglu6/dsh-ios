@@ -51,6 +51,59 @@ final class ComposerPickerParityTests: XCTestCase {
         XCTAssertNil(SessionContextPolicy.workspaceLabel(sessionId: "unlisted", cwd: " ", workspaces: [], localizedDefault: "默认"))
     }
 
+    func testSubagentWorkspaceResolvesActualParentChainWithoutUsingForksOrDrafts() {
+        let workspaces = [
+            WorkspaceView(workspaceId: "draft", path: "/draft", title: "Draft", sessionIds: []),
+            WorkspaceView(workspaceId: "main", path: "/main", title: "Main", sessionIds: ["main"]),
+            WorkspaceView(workspaceId: "child", path: "/child", title: "Child", sessionIds: ["owned-child"]),
+        ]
+        let sessions = [
+            SessionSummary(sessionId: "main"),
+            SessionSummary(sessionId: "child", parentSessionId: "main", origin: "subagent"),
+            SessionSummary(sessionId: "nested", parentSessionId: "child", origin: "subagent"),
+            SessionSummary(sessionId: "owned-child", parentSessionId: "main", origin: "subagent"),
+            SessionSummary(sessionId: "cwd-child", cwd: "/actual/child", parentSessionId: "main", origin: "subagent"),
+            SessionSummary(sessionId: "fork", parentSessionId: "main", origin: "fork"),
+            SessionSummary(sessionId: "cycle-a", parentSessionId: "cycle-b", origin: "subagent"),
+            SessionSummary(sessionId: "cycle-b", parentSessionId: "cycle-a", origin: "subagent"),
+        ]
+        func label(_ id: String, parent: String? = nil) -> String? {
+            SessionContextPolicy.workspaceLabel(
+                sessionId: id, parentSessionId: parent, sessions: sessions,
+                workspaces: workspaces, localizedDefault: "默认"
+            )
+        }
+        XCTAssertEqual(label("main"), "Main")
+        XCTAssertEqual(label("child"), "Main")
+        XCTAssertEqual(label("nested"), "Main")
+        XCTAssertEqual(label("catalog-only", parent: "child"), "Main")
+        XCTAssertEqual(label("owned-child", parent: "main"), "Child")
+        XCTAssertEqual(label("cwd-child"), "/actual/child")
+        XCTAssertNil(label("fork"))
+        XCTAssertNil(label("unknown"))
+        XCTAssertNil(label("orphan", parent: "missing"))
+        XCTAssertNil(label("cycle-a"))
+        XCTAssertNil(label("self", parent: "self"))
+    }
+
+    func testContextResolutionChangesWithSessionAndKeepsUnknownModeExplicit() {
+        let workspaces = [
+            WorkspaceView(workspaceId: "one", path: "/one", title: "One", sessionIds: ["a"]),
+            WorkspaceView(workspaceId: "two", path: "/two", title: "Two", sessionIds: ["b"]),
+        ]
+        for (session, expected) in [("a", "One"), ("b", "Two"), ("a", "One")] {
+            XCTAssertEqual(SessionContextPolicy.workspaceLabel(
+                sessionId: session, parentSessionId: nil, sessions: [],
+                workspaces: workspaces, localizedDefault: "默认"
+            ), expected)
+        }
+        let roster = [jsonObject(["id": .string("standard"), "isDefault": .bool(true)])]
+        XCTAssertEqual(SessionContextPolicy.presetName(id: "ptc", roster: roster, english: false), "PTC 模式")
+        XCTAssertNil(SessionContextPolicy.presetName(id: nil, roster: roster, english: false))
+        XCTAssertEqual(SessionContextPolicy.unknownWorkspace(english: false), "工作区未提供")
+        XCTAssertEqual(SessionContextPolicy.unknownPreset(english: false), "工作模式未提供")
+    }
+
     func testPhoneConnectionLivesInDrawerFooterNotSettings() {
         XCTAssertFalse(settingsIncludesPhoneConnection)
         XCTAssertTrue(phoneConnectionLivesInDrawerFooter)

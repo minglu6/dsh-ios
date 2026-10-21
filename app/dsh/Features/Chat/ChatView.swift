@@ -359,6 +359,23 @@ struct ChatView: View {
                     }
                 }
             }
+            if let chat = model.chat {
+                SessionContextRow(
+                    workspace: SessionContextPolicy.workspaceLabel(
+                        sessionId: chat.sessionId,
+                        parentSessionId: model.currentSubagentAddress?.parentSessionId,
+                        sessions: model.headerSessionRoster,
+                        workspaces: model.workspaces,
+                        localizedDefault: L.defaultWorkspace()
+                    ) ?? SessionContextPolicy.unknownWorkspace(english: L.en),
+                    preset: SessionContextPolicy.presetName(
+                        id: chat.agentPreset, roster: model.presetRoster, english: L.en
+                    ) ?? SessionContextPolicy.unknownPreset(english: L.en)
+                )
+                .id(chat.sessionId)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 4)
+            }
             if !questionVisible && sessionApproval == nil {
                 if firstPromptBlocksComposerActions(model.firstPrompt) {
                     Text(firstPromptSendingLabel(english: L.en))

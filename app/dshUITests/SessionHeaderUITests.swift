@@ -12,9 +12,11 @@ final class SessionHeaderUITests: XCTestCase {
         let count = app.buttons["conversationSubagents"]
         XCTAssertTrue(count.label.contains("6 个子智能体"))
         XCTAssertEqual(app.descendants(matching: .any)["conversationPreset"].firstMatch.label, "标准模式")
-        XCTAssertFalse(app.descendants(matching: .any)["conversationWorkspace"].exists)
+        XCTAssertEqual(app.staticTexts["conversationWorkspace"].label, "dsh-ios")
+        let headerPreset = app.descendants(matching: .any)["conversationHeaderPreset"].firstMatch
+        XCTAssertEqual(headerPreset.label, "标准模式")
+        XCTAssertFalse(app.buttons["conversationHeaderPreset"].exists, "The header preset is an indicator, not a switch")
         let title = app.descendants(matching: .any)["conversationHeaderTitle"].firstMatch
-        let preset = app.descendants(matching: .any)["conversationPreset"].firstMatch
         let tabs = app.buttons["chatTab.chat"]
         try capture(app, name: "session-header-actions")
         XCTAssertTrue(team.isHittable)
@@ -24,7 +26,7 @@ final class SessionHeaderUITests: XCTestCase {
         XCTAssertGreaterThanOrEqual(panel.frame.width, 44, "The panel needs a separate touch target")
         XCTAssertGreaterThanOrEqual(panel.frame.height, 44)
         XCTAssertGreaterThan(title.frame.width, 24, "Header actions must leave a readable title")
-        let controls = [title, team, preset, count, panel]
+        let controls = [title, team, headerPreset, count, panel]
         for (left, right) in zip(controls, controls.dropFirst()) {
             XCTAssertLessThanOrEqual(left.frame.maxX, right.frame.minX, "Header targets must not overlap")
             XCTAssertLessThan(abs(left.frame.midY - right.frame.midY), 8, "Keep a single header row")
@@ -57,12 +59,16 @@ final class SessionHeaderUITests: XCTestCase {
         try capture(app, name: "session-header-subagents")
         oneShot.tap()
         XCTAssertTrue(app.descendants(matching: .any)["subagentReadOnly"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["conversationWorkspace"].label, "dsh-ios")
+        XCTAssertEqual(app.staticTexts["conversationPreset"].label, "工作模式未提供")
         app.buttons["conversationSubagents"].tap()
         let main = app.buttons["subagentMainSession"]
         XCTAssertTrue(main.waitForExistence(timeout: 5))
         XCTAssertTrue(main.isEnabled)
         main.tap()
         XCTAssertFalse(app.descendants(matching: .any)["subagentReadOnly"].exists)
+        XCTAssertEqual(app.staticTexts["conversationWorkspace"].label, "dsh-ios")
+        XCTAssertEqual(app.staticTexts["conversationPreset"].label, "工作模式未提供")
     }
 
     func testSingleMemberTeamRemainsACompactDismissiblePopover() throws {

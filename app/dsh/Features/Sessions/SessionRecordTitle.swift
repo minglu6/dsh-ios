@@ -54,14 +54,13 @@ private struct SessionRecordMarquee: UIViewRepresentable {
     static func dismantleUIView(_ view: SessionRecordTitleView, coordinator: ()) { view.stopReveal() }
 }
 
-final class SessionRecordTitleView: UIView, CAAnimationDelegate {
+final class SessionRecordTitleView: UIView {
     private let label = UILabel()
     private let fade = CAGradientLayer()
     private var sessionId = ""
     private var reduceMotion = false
     private var needsReveal = true
     private var lastSize = CGSize.zero
-    private var generation = 0
 
     var titleSize: CGSize {
         label.sizeThatFits(CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))
@@ -103,6 +102,18 @@ final class SessionRecordTitleView: UIView, CAAnimationDelegate {
 
     override var intrinsicContentSize: CGSize { titleSize }
 
+    // UI tests sample the actual presentation layer, not animation configuration alone.
+    override var accessibilityValue: String? {
+        get {
+            guard UITestLaunch.isEnabled else { return super.accessibilityValue }
+            let offset = label.layer.presentation()?.transform.m41 ?? label.layer.transform.m41
+            let range = max(0, label.bounds.width - bounds.width)
+            let duration = label.layer.animation(forKey: "titleReveal")?.duration ?? 0
+            return "\(super.accessibilityValue ?? "resting")|\(offset)|\(range)|\(duration)"
+        }
+        set { super.accessibilityValue = newValue }
+    }
+
     override func didMoveToWindow() {
         super.didMoveToWindow()
         stopReveal()
@@ -134,30 +145,46 @@ final class SessionRecordTitleView: UIView, CAAnimationDelegate {
         let edge = min(12 / bounds.width, 0.5)
         fade.locations = [0, NSNumber(value: Double(edge)), NSNumber(value: Double(1 - edge)), 1]
         layer.mask = fade
+        let head = [UIColor.black.cgColor, UIColor.black.cgColor, UIColor.black.cgColor, UIColor.clear.cgColor]
+        let tail = [UIColor.clear.cgColor, UIColor.black.cgColor, UIColor.black.cgColor, UIColor.black.cgColor]
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        fade.colors = [UIColor.clear.cgColor, UIColor.black.cgColor, UIColor.black.cgColor, UIColor.black.cgColor]
-        label.transform = CGAffineTransform(translationX: -range, y: 0)
+        fade.colors = reduceMotion ? tail : head
+        label.transform = reduceMotion ? CGAffineTransform(translationX: -range, y: 0) : .identity
         CATransaction.commit()
         guard !reduceMotion else {
             setRevealState("reducedMotion")
             return
         }
-        fade.colors = [UIColor.clear.cgColor, UIColor.black.cgColor, UIColor.black.cgColor, UIColor.clear.cgColor]
-        let animation = CABasicAnimation(keyPath: "transform.translation.x")
-        animation.fromValue = 0
-        animation.toValue = -range
-        animation.duration = Double(range / 30)
+        let pause = 0.75
+        let travel = Double(range / 30)
+        let duration = travel + 2 * pause
+        let keyTimes: [NSNumber] = [0, NSNumber(value: pause / duration), NSNumber(value: (pause + travel) / duration), 1]
+        let animation = CAKeyframeAnimation(keyPath: "transform.translation.x")
+        animation.values = [0, 0, -range, -range]
+        animation.keyTimes = keyTimes
+        animation.duration = duration
+        animation.calculationMode = .linear
         animation.timingFunction = CAMediaTimingFunction(name: .linear)
-        animation.delegate = self
-        animation.setValue(generation, forKey: "generation")
+        animation.repeatCount = .infinity
+        let maskAnimation = CAKeyframeAnimation(keyPath: "colors")
+        maskAnimation.values = [head, head, tail, tail]
+        maskAnimation.keyTimes = keyTimes
+        maskAnimation.duration = duration
+        maskAnimation.calculationMode = .linear
+        maskAnimation.timingFunction = CAMediaTimingFunction(name: .linear)
+        maskAnimation.repeatCount = .infinity
+        // The model stays at the beginning; both layers wrap together after the tail pause.
+        CATransaction.begin()
         label.layer.add(animation, forKey: "titleReveal")
+        fade.add(maskAnimation, forKey: "titleReveal")
+        CATransaction.commit()
         setRevealState("moving")
     }
 
     func stopReveal() {
-        generation += 1
         label.layer.removeAnimation(forKey: "titleReveal")
+        fade.removeAnimation(forKey: "titleReveal")
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         label.transform = .identity
@@ -166,14 +193,6 @@ final class SessionRecordTitleView: UIView, CAAnimationDelegate {
         setRevealState("resting")
     }
 
-    func animationDidStop(_ anim: CAAnimation, finished flag: Bool) {
-        guard flag, (anim.value(forKey: "generation") as? Int) == generation else { return }
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        fade.colors = [UIColor.clear.cgColor, UIColor.black.cgColor, UIColor.black.cgColor, UIColor.black.cgColor]
-        CATransaction.commit()
-        setRevealState("revealed")
-    }
 
     private func setRevealState(_ state: String) {
         if UITestLaunch.isEnabled { accessibilityValue = state }

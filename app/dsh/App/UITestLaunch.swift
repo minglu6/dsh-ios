@@ -261,7 +261,8 @@ extension AppModel {
             installSessionDrawerPagingFixture(workspace: false)
         case "sessionDrawerPagingWorkspace":
             installSessionDrawerPagingFixture(workspace: true)
-        case "contextActive", "contextBlank", "contextOffline", "contextUnknown", "contextNoRoster":
+        case "contextActive", "contextBlank", "contextOffline", "contextUnknown", "contextNoRoster",
+             "contextChild", "contextLong":
             draftWorkspaceId = "ws-android"
             draftPreset = "cordis"
             if screen == "contextBlank" {
@@ -271,11 +272,26 @@ extension AppModel {
                 status[activeId] = .offline
             }
             if screen == "contextUnknown" {
-                workspaces = []
+                workspaces = [workspaces[1]]
                 chat?.agentPreset = nil
                 chat?.loaded = false
             }
             if screen == "contextNoRoster" { presetRoster = [] }
+            if screen == "contextChild" {
+                sessions.append(SessionSummary(
+                    sessionId: "context-child", title: "子会话",
+                    parentSessionId: chatId, origin: "subagent"
+                ))
+                chat = ChatState(sessionId: "context-child", title: "子会话", loaded: true, agentPreset: "ptc")
+            }
+            if screen == "contextLong" {
+                workspaces[0].title = "地面光伏事业部技术交付件审核与产品工作空间"
+                presetRoster.append(jsonObject([
+                    "id": .string("custom-review"),
+                    "name": .string("跨项目技术交付件证据检索与终审工作模式"),
+                ]))
+                chat?.agentPreset = "custom-review"
+            }
         case "contextLandingEmpty":
             chat = nil
             firstPrompt = nil

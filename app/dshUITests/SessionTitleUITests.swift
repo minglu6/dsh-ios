@@ -53,7 +53,7 @@ final class SessionTitleUITests: XCTestCase {
         try capture(app, name: "session-title-live-metadata")
     }
 
-    func testOnlySelectedHistoryTitleRevealsAndDeselectionRestoresItsBeginning() throws {
+    func testOnlySelectedHistoryTitleLoopsTwiceAndDeselectionRestoresItsBeginning() throws {
         let app = launch()
         app.buttons["openDrawer"].tap()
         let chineseTitle = title("s-hello", in: app)
@@ -66,13 +66,16 @@ final class SessionTitleUITests: XCTestCase {
         let row = app.buttons["sessionRow.s-hello"]
         let originalFrame = row.frame
         try capture(app, name: "session-history-selected-only")
-        waitForValue("revealed", element: chineseTitle, timeout: 90)
+        waitForValue("moving", element: chineseTitle)
+        assertTwoPresentationCycles(chineseTitle)
         waitForValue("resting", element: englishTitle)
         XCTAssertEqual(row.frame, originalFrame, "Revealing a title must not move the row")
         toggleSelection()
         waitForValue("resting", element: chineseTitle)
         XCTAssertTrue(app.scrollViews["sessionList"].exists, "Selection must update without remounting the drawer")
-        waitForValue("revealed", element: englishTitle, timeout: 90)
+        XCTAssertEqual(chineseTitle.value as? String, "resting", "Deselection must restore ordinary truncated Text")
+        waitForValue("moving", element: englishTitle)
+        assertTwoPresentationCycles(englishTitle)
         waitForValue("resting", element: chineseTitle)
         XCTAssertEqual(row.frame, originalFrame)
         try capture(app, name: "session-history-deselected-restored")
@@ -81,12 +84,24 @@ final class SessionTitleUITests: XCTestCase {
         XCTAssertTrue(app.scrollViews["sessionList"].exists)
     }
 
+    func testSelectedShortTitleDoesNotScroll() throws {
+        let app = launch()
+        app.buttons["openDrawer"].tap()
+        app.buttons["sessionRow.title-short"].tap()
+        app.buttons["openDrawer"].tap()
+        let shortTitle = title("title-short", in: app)
+        waitForValue("resting", element: shortTitle)
+        XCTAssertEqual(shortTitle.label, "短标题")
+        assertStationary(shortTitle, state: "resting")
+    }
+
     func testReducedMotionRevealsTailWithoutAnimationAndKeepsFullAccessibleNames() throws {
         let app = launch(reduceMotion: true)
         app.buttons["openDrawer"].tap()
         let chineseTitle = title("s-hello", in: app)
         XCTAssertTrue(chineseTitle.waitForExistence(timeout: 5))
         waitForValue("reducedMotion", element: chineseTitle)
+        assertStationary(chineseTitle, state: "reducedMotion")
         waitForValue("resting", element: title("title-english", in: app))
         XCTAssertEqual(chineseTitle.label, chinese)
         XCTAssertEqual(title("title-english", in: app).label, english)
@@ -95,6 +110,7 @@ final class SessionTitleUITests: XCTestCase {
         toggleSelection()
         waitForValue("resting", element: chineseTitle)
         waitForValue("reducedMotion", element: title("title-english", in: app))
+        assertStationary(title("title-english", in: app), state: "reducedMotion")
         try capture(app, name: "session-history-reduced-motion-deselected")
         app.buttons["sessionRow.title-short"].tap()
         try assertFullTitle("短标题", in: app, screenshot: "session-title-short")
@@ -191,8 +207,61 @@ final class SessionTitleUITests: XCTestCase {
         waitForExpectations(timeout: 5)
     }
 
+    private func presentation(_ element: XCUIElement) -> (state: String, offset: Double, range: Double, duration: Double)? {
+        guard let value = element.value as? String else { return nil }
+        let fields = value.split(separator: "|")
+        guard fields.count == 4 else { return nil }
+        let values = fields.dropFirst().compactMap { Double($0) }
+        guard values.count == 3 else { return nil }
+        return (String(fields[0]), values[0], values[1], values[2])
+    }
+
+    private func assertTwoPresentationCycles(_ element: XCUIElement) {
+        guard let initial = presentation(element) else {
+            XCTFail("Missing native presentation-layer sample")
+            return
+        }
+        XCTAssertGreaterThan(initial.range, 8)
+        let tolerance = min(20, initial.range * 0.2)
+        let beginning = XCTNSPredicateExpectation(predicate: NSPredicate { [self] _, _ in
+            guard let sample = presentation(element), sample.state == "moving" else { return false }
+            return abs(sample.offset) < 0.5
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [beginning], timeout: initial.duration + 5), .completed)
+        for _ in 0..<2 {
+            // Observe travel, arrival at the tail, and the return to the beginning twice.
+            // A one-shot animation (even one reporting 'moving') cannot satisfy this.
+            for interval in [
+                (-initial.range * 0.65)...(-initial.range * 0.35),
+                (-initial.range - 0.5)...(-initial.range + tolerance),
+                (-tolerance)...0.5,
+            ] {
+                let reached = XCTNSPredicateExpectation(predicate: NSPredicate { [self] _, _ in
+                    guard let sample = presentation(element), sample.state == "moving" else { return false }
+                    return interval.contains(sample.offset)
+                }, object: nil)
+                XCTAssertEqual(XCTWaiter.wait(for: [reached], timeout: initial.duration + 5), .completed)
+            }
+        }
+    }
+
+    private func assertStationary(_ element: XCUIElement, state: String) {
+        guard let initial = presentation(element) else {
+            XCTFail("Missing native presentation-layer sample")
+            return
+        }
+        XCTAssertEqual(initial.duration, 0)
+        XCTAssertEqual(initial.offset, state == "reducedMotion" ? -initial.range : 0, accuracy: 0.5)
+        let moved = XCTNSPredicateExpectation(predicate: NSPredicate { [self] _, _ in
+            guard let sample = presentation(element) else { return true }
+            return sample.state != state || abs(sample.offset - initial.offset) > 0.5 || sample.duration != 0
+        }, object: nil)
+        moved.isInverted = true
+        XCTAssertEqual(XCTWaiter.wait(for: [moved], timeout: 2), .completed)
+    }
+
     private func waitForValue(_ value: String, element: XCUIElement, timeout: TimeInterval = 5) {
-        expectation(for: NSPredicate(format: "value == %@", value), evaluatedWith: element)
+        expectation(for: NSPredicate(format: "value == %@ OR value BEGINSWITH %@", value, value + "|"), evaluatedWith: element)
         waitForExpectations(timeout: timeout)
     }
 

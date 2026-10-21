@@ -122,6 +122,33 @@ public enum SessionContextPolicy {
         return nonblank(cwd)
     }
 
+    public static func workspaceLabel(
+        sessionId: String,
+        parentSessionId: String?,
+        sessions: [SessionSummary],
+        workspaces: [WorkspaceView],
+        localizedDefault: String
+    ) -> String? {
+        var currentId = sessionId
+        var visited: Set<String> = []
+        while visited.insert(currentId).inserted {
+            let session = sessions.first { $0.sessionId == currentId }
+            if let label = workspaceLabel(
+                sessionId: currentId, cwd: session?.cwd,
+                workspaces: workspaces, localizedDefault: localizedDefault
+            ) {
+                return label
+            }
+            // Catalog-only children have an address but no root-list row.
+            let parent = currentId == sessionId
+                ? parentSessionId ?? (session?.origin == "subagent" ? session?.parentSessionId : nil)
+                : (session?.origin == "subagent" ? session?.parentSessionId : nil)
+            guard let parent = nonblank(parent) else { return nil }
+            currentId = parent
+        }
+        return nil
+    }
+
     public static func unknownWorkspace(english: Bool) -> String {
         english ? "Workspace not provided" : "工作区未提供"
     }

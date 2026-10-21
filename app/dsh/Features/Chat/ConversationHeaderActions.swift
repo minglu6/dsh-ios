@@ -1,7 +1,7 @@
 import SwiftUI
 import DSHProtocol
 
-/// Android header order and spacing; workspace selection stays on new tasks.
+/// Compact session actions; the preset remains a passive current-session indicator.
 struct ConversationHeaderActions: View {
     @ObservedObject var model: AppModel
 
@@ -11,6 +11,7 @@ struct ConversationHeaderActions: View {
         if let chat = model.chat {
             let parent = model.currentSubagentAddress?.parentSessionId ?? chat.sessionId
             let projection = model.headerProjections[parent]
+            let blank = model.sessions.first { $0.sessionId == chat.sessionId }?.blank == true
             let preset = SessionContextPolicy.presetName(
                 id: chat.agentPreset, roster: model.presetRoster, english: L.en
             )
@@ -29,12 +30,7 @@ struct ConversationHeaderActions: View {
                             .modifier(PopoverCompactAdaptation())
                     }
                 }
-                if let preset {
-                    OfficialGlyph(kind: .agentPreset, size: 14, color: T.text2)
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel(preset)
-                        .accessibilityIdentifier("conversationPreset")
-                }
+                ConversationHeaderPreset(name: preset, loaded: chat.loaded, blank: blank)
                 ConversationSubagentAction(model: model)
             }
             .buttonStyle(.plain)
