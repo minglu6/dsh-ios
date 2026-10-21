@@ -386,6 +386,11 @@ struct ChatView: View {
                 ComposerStats(metrics: metrics, settings: model.hostSettings)
             }
         }
+        .overlayPreferenceValue(ComposerStatsPopoverKey.self) { presentation in
+            if let presentation {
+                ComposerStatsPopoverLayer(presentation: presentation)
+            }
+        }
     }
 
     private func commandMenuLayer(maxHeight: CGFloat) -> some View {

@@ -149,6 +149,7 @@ final class ComposerStatsUITests: XCTestCase {
         XCTAssertLessThanOrEqual(panel.frame.maxY, anchor.frame.minY)
         XCTAssertGreaterThanOrEqual(panel.frame.minX, app.frame.minX)
         XCTAssertLessThanOrEqual(panel.frame.maxX, app.frame.maxX)
+        capture(app, suffix: dialog)
         return panel
     }
 
@@ -158,6 +159,24 @@ final class ComposerStatsUITests: XCTestCase {
         XCTAssertTrue(dialog.staticTexts["~1K"].exists)
         XCTAssertTrue(dialog.staticTexts["~15K"].exists)
         XCTAssertTrue(dialog.staticTexts["~38.7K"].exists)
+    }
+
+    private func capture(_ app: XCUIApplication, suffix: String) {
+        let screenshot = app.screenshot()
+        let filename = "\(suffix)-\(name.filter { $0.isLetter || $0.isNumber })"
+        let attachment = XCTAttachment(screenshot: screenshot)
+        attachment.name = filename
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        if let root = ProcessInfo.processInfo.environment["DSH_SCREENSHOT_DIR"] {
+            do {
+                let directory = URL(fileURLWithPath: root, isDirectory: true)
+                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                try screenshot.pngRepresentation.write(to: directory.appendingPathComponent("\(filename).png"))
+            } catch {
+                XCTFail("Could not save statistics screenshot: \(error)")
+            }
+        }
     }
 
     private func dismissOutside(_ app: XCUIApplication, dialog: String) {

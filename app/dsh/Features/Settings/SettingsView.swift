@@ -87,6 +87,7 @@ struct GeneralSettingsView: View {
     var body: some View {
         VStack(spacing: 0) {
             header(L.generalNav()) { model.pop() }
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("generalSettings")
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {

@@ -37,6 +37,8 @@ Conversation actions keep a single 56pt header row above the Chat/Trajectory tab
 
 Composer statistics follow Settings → General → Performance & Usage. Compact speed/cache readings are plain text, not disabled buttons; Detailed exposes available session timing and token-usage dialogs. The context meter opens its breakdown in either mode. Changes to the shared Host preference update the row immediately; the phone does not silently change that preference. `ComposerStatsUITests` covers mode changes, missing data and popover interaction; it is included in the session-header, conversation and full UI scopes.
 
+Statistics details use a nonmodal, upward-anchored portal: tapping a sibling metric switches the panel in one tap, and tapping outside dismisses it. Context values and the General Settings back control remain individually accessible.
+
 Agent Team opens in a popover anchored to its header button and closes on an outside tap, not in a separate page. There are no extra Close or Refresh buttons. The current-session marker uses the desktop tinted-blue capsule; a lone member has no count, and an empty task board shows only its notice.
 
 The new-session toolbar has no wordmark, matching Android and desktop. The centered hero and the drawer's branding remain unchanged.

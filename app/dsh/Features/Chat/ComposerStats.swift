@@ -82,12 +82,10 @@ struct ComposerStats: View {
                 activeBackground: T.hoverBg
             ) { toggle(.activity) }
             .accessibilityIdentifier("composerStats.activity")
-            .popover(
-                isPresented: $activityOpen,
-                attachmentAnchor: .rect(.bounds),
-                arrowEdge: composerActivityPopoverOpensAbove ? .bottom : .top
-            ) {
-                activityPopover
+            .anchorPreference(key: ComposerStatsPopoverKey.self, value: .bounds) { anchor in
+                activityOpen ? ComposerStatsPopover(
+                    anchor: anchor, content: AnyView(activityPopover), dismiss: closeDialogs
+                ) : nil
             }
         }
         if let usageText {
@@ -105,17 +103,23 @@ struct ComposerStats: View {
                 activeBackground: T.hoverBg
             ) { toggle(.usage) }
             .accessibilityIdentifier("composerStats.usage")
-            .popover(
-                isPresented: $usageOpen,
-                attachmentAnchor: .rect(.bounds),
-                arrowEdge: composerUsagePopoverOpensAbove ? .bottom : .top
-            ) {
-                if let usage { sessionUsagePopover(usage) }
+            .anchorPreference(key: ComposerStatsPopoverKey.self, value: .bounds) { anchor in
+                usageOpen ? ComposerStatsPopover(
+                    anchor: anchor, content: AnyView(Group {
+                        if let usage { sessionUsagePopover(usage) }
+                    }), dismiss: closeDialogs
+                ) : nil
             }
         }
         if let context {
             contextMeter(context)
         }
+    }
+
+    private func closeDialogs() {
+        activityOpen = false
+        usageOpen = false
+        contextOpen = false
     }
 
     private func exclusive(_ dialog: StatisticsDialog) {
@@ -171,7 +175,6 @@ struct ComposerStats: View {
         .font(Font.system(size: CGFloat(composerStatDialogFontSizePoints)))
         .padding(CGFloat(composerStatDialogPaddingPoints))
         .frame(minWidth: statDialogMinWidth, maxWidth: statDialogMaxWidth)
-        .modifier(PopoverCompactAdaptation())
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("composerStats.activityDialog")
     }
@@ -199,12 +202,10 @@ struct ComposerStats: View {
         .buttonStyle(.plain)
         .accessibilityLabel(composerContextAria(percent: reading, english: L.en))
         .accessibilityIdentifier("composerStats.context")
-        .popover(
-            isPresented: $contextOpen,
-            attachmentAnchor: .rect(.bounds),
-            arrowEdge: composerContextPopoverOpensAbove ? .bottom : .top
-        ) {
-            contextPopover(context)
+        .anchorPreference(key: ComposerStatsPopoverKey.self, value: .bounds) { anchor in
+            contextOpen ? ComposerStatsPopover(
+                anchor: anchor, content: AnyView(contextPopover(context)), dismiss: closeDialogs
+            ) : nil
         }
     }
 
@@ -227,7 +228,7 @@ struct ComposerStats: View {
                     .monospacedDigit()
                     .foregroundStyle(T.ink)
             }
-            .accessibilityLabel(composerContextUsed(english: L.en))
+            .accessibilityElement(children: .contain)
             contextBar(context.percent)
                 .padding(.top, CGFloat(composerContextBarMarginTopPoints))
                 .padding(.bottom, CGFloat(composerContextBarMarginBottomPoints))
@@ -255,7 +256,6 @@ struct ComposerStats: View {
         .font(panelFont)
         .padding(CGFloat(composerContextPanelPaddingPoints))
         .frame(width: contextPanelWidth)
-        .modifier(PopoverCompactAdaptation())
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("composerStats.contextDialog")
     }
@@ -298,7 +298,6 @@ struct ComposerStats: View {
         .font(Font.system(size: CGFloat(composerStatDialogFontSizePoints)))
         .padding(CGFloat(composerStatDialogPaddingPoints))
         .frame(minWidth: statDialogMinWidth, maxWidth: statDialogMaxWidth)
-        .modifier(PopoverCompactAdaptation())
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("composerStats.usageDialog")
     }
