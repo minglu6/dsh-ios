@@ -5,8 +5,11 @@ import UIKit
 struct TranscriptPanObserver: UIViewRepresentable {
     let onBegan: () -> Void
     let onEnded: () -> Void
+    let onDiagnostic: (String) -> Void
 
-    func makeCoordinator() -> Coordinator { Coordinator(onBegan: onBegan, onEnded: onEnded) }
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onBegan: onBegan, onEnded: onEnded, onDiagnostic: onDiagnostic)
+    }
 
     func makeUIView(context: Context) -> Probe {
         let view = Probe()
@@ -19,6 +22,7 @@ struct TranscriptPanObserver: UIViewRepresentable {
     func updateUIView(_ view: Probe, context: Context) {
         context.coordinator.onBegan = onBegan
         context.coordinator.onEnded = onEnded
+        context.coordinator.onDiagnostic = onDiagnostic
         context.coordinator.attach(from: view)
     }
 
@@ -40,11 +44,13 @@ struct TranscriptPanObserver: UIViewRepresentable {
     final class Coordinator: NSObject {
         var onBegan: () -> Void
         var onEnded: () -> Void
+        var onDiagnostic: (String) -> Void
         private weak var scrollView: UIScrollView?
 
-        init(onBegan: @escaping () -> Void, onEnded: @escaping () -> Void) {
+        init(onBegan: @escaping () -> Void, onEnded: @escaping () -> Void, onDiagnostic: @escaping (String) -> Void) {
             self.onBegan = onBegan
             self.onEnded = onEnded
+            self.onDiagnostic = onDiagnostic
         }
 
         func attach(from view: UIView) {
@@ -71,6 +77,9 @@ struct TranscriptPanObserver: UIViewRepresentable {
             case .began: onBegan()
             case .ended, .cancelled, .failed: onEnded()
             default: break
+            }
+            if UITestLaunch.isEnabled, recognizer.state == .began || recognizer.state == .ended, let scroll = scrollView {
+                onDiagnostic("refresh=\(scroll.refreshControl != nil);refreshing=\(scroll.refreshControl?.isRefreshing ?? false);offset=\(scroll.contentOffset.y);height=\(scroll.contentSize.height);bounds=\(scroll.bounds.height);bounce=\(scroll.alwaysBounceVertical)")
             }
         }
     }

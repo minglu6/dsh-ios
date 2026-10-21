@@ -12,7 +12,7 @@ on:
       ui_scope:
         description: UI verification scope
         type: choice
-        options: [full, settings-trajectory, session-header, pagination, conversation]
+        options: [full, settings-trajectory, session-header, pagination, conversation, reading]
         default: full
 
 concurrency:
@@ -159,6 +159,15 @@ jobs:
               -only-testing:dshUITests/HistoryPagingUITests/testChatFailedPullCanRetryWithoutLosingContent
             )
             MIN_SCREENSHOTS=4
+          elif [ "$UI_SCOPE" = "reading" ]; then
+            export TEST_RUNNER_DSH_SCREENSHOT_SCREENS="landing"
+            UI_TESTS=(
+              -only-testing:dshUITests/ScreenshotTests/testLightScreenshots
+              -only-testing:dshUITests/ScreenshotTests/testDarkScreenshots
+              -only-testing:dshUITests/HistoryPagingUITests/testChatPullsConsecutivePagesAndStopsAtEnd
+              -only-testing:dshUITests/TurnNavigationUITests/testOlderHostOnlyShowsLoadedRealIdentitiesAndPullRefreshAddsEarlierTurn
+            )
+            MIN_SCREENSHOTS=2
           elif [ "$UI_SCOPE" = "pagination" ]; then
             UI_TESTS=(
               -only-testing:dshUITests/HistoryPagingUITests

@@ -32,6 +32,7 @@ struct ChatView: View {
     @State private var transcriptViewport = TranscriptViewport()
     @State private var pendingTurn: Int?
     @State private var navigationError: String?
+    @State private var nativeScrollDiagnostic = ""
 
     /// Android: Screen.Chat + drawer closed + focused + RESUMED. Otherwise completion.view gets null.
     private var desiredViewedSession: String? {
@@ -636,7 +637,7 @@ struct ChatView: View {
                 }, onEnded: {
                     transcriptDragging = false
                     followingTail = atTranscriptBottom
-                }))
+                }, onDiagnostic: { nativeScrollDiagnostic = $0 }))
             }
             .coordinateSpace(name: "chatTranscriptViewport")
             .onPreferenceChange(TranscriptViewportKey.self) { value in
@@ -654,7 +655,7 @@ struct ChatView: View {
             }
             .accessibilityIdentifier("chatTranscript")
             .accessibilityValue(model.uiTestFixture
-                ? "\(model.uiTestHistoryPagingAccessibilityValue);follow=\(followingTail);activeTurn=\(activeTranscriptTurn.map(String.init) ?? "none");landing=\(pendingTurn != nil || historyScrollAnchor != nil)"
+                ? "\(model.uiTestHistoryPagingAccessibilityValue);follow=\(followingTail);activeTurn=\(activeTranscriptTurn.map(String.init) ?? "none");landing=\(pendingTurn != nil || historyScrollAnchor != nil);native=\(nativeScrollDiagnostic)"
                 : "")
             .refreshable {
                 guard let sessionId = model.chat?.sessionId else { return }
