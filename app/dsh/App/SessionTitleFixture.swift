@@ -14,6 +14,7 @@ private enum SessionTitleFixture {
     static let english = "Review conversation title overflow, history row reuse, accessibility and desktop parity without losing the final words [English tail]"
     static var titleChanges: AnyCancellable?
     #if DEBUG
+    static var selectionDriver: SessionTitleSelectionDriver?
     static var metadataDriver: SessionTitleSelectionDriver?
     #endif
 }
@@ -22,6 +23,7 @@ extension AppModel {
     func installUITestSessionTitlesIfRequested() {
         SessionTitleFixture.titleChanges = nil
 #if DEBUG
+        SessionTitleFixture.selectionDriver = nil
         SessionTitleFixture.metadataDriver = nil
 #endif
         guard uiTestFixture, UITestLaunch.screen == "sessionTitles" || UITestLaunch.screen == "sessionTitlesChanging" else { return }
@@ -40,6 +42,16 @@ extension AppModel {
         sessionOrderBy = .updated
         workspaces = []
 #if DEBUG
+        // Switch only the model selection; keep the same drawer rows mounted.
+        SessionTitleFixture.selectionDriver = SessionTitleSelectionDriver { [weak self] in
+            Task { @MainActor in
+                guard let self, self.uiTestFixture, var state = self.chat else { return }
+                let english = state.sessionId == id
+                state.sessionId = english ? "title-english" : id
+                state.title = english ? SessionTitleFixture.english : SessionTitleFixture.chinese
+                self.chat = state
+            }
+        }
         SessionTitleFixture.metadataDriver = SessionTitleSelectionDriver(
             notification: "dev.dsh.uitest.sessionTitle.toggleRunning"
         ) { [weak self] in

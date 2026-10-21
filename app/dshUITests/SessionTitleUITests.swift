@@ -53,7 +53,7 @@ final class SessionTitleUITests: XCTestCase {
         try capture(app, name: "session-title-live-metadata")
     }
 
-    func testOnlyOverflowingHistoryTitlesRevealWithoutRelayingOutRows() throws {
+    func testOnlySelectedHistoryTitleRevealsAndDeselectionRestoresItsBeginning() throws {
         let app = launch()
         app.buttons["openDrawer"].tap()
         let chineseTitle = title("s-hello", in: app)
@@ -61,19 +61,24 @@ final class SessionTitleUITests: XCTestCase {
         XCTAssertTrue(chineseTitle.waitForExistence(timeout: 5))
         XCTAssertEqual(chineseTitle.label, chinese)
         XCTAssertEqual(englishTitle.label, english)
+        waitForValue("resting", element: englishTitle)
         XCTAssertEqual(title("title-short", in: app).value as? String, "resting")
-        XCTAssertEqual(title("title-short-english", in: app).value as? String, "resting")
         let row = app.buttons["sessionRow.s-hello"]
         let originalFrame = row.frame
-        try capture(app, name: "session-history-marquee")
+        try capture(app, name: "session-history-selected-only")
         waitForValue("revealed", element: chineseTitle, timeout: 90)
+        waitForValue("resting", element: englishTitle)
+        XCTAssertEqual(row.frame, originalFrame, "Revealing a title must not move the row")
+        toggleSelection()
+        waitForValue("resting", element: chineseTitle)
+        XCTAssertTrue(app.scrollViews["sessionList"].exists, "Selection must update without remounting the drawer")
         waitForValue("revealed", element: englishTitle, timeout: 90)
-        XCTAssertEqual(row.frame, originalFrame, "Only the glyph layer travels; row geometry must stay fixed")
-        try capture(app, name: "session-history-marquee-tail")
+        waitForValue("resting", element: chineseTitle)
+        XCTAssertEqual(row.frame, originalFrame)
+        try capture(app, name: "session-history-deselected-restored")
         app.buttons["sessionRowMore"].firstMatch.tap()
         XCTAssertTrue(app.buttons["重命名"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.scrollViews["sessionList"].exists, "Opening the menu must not open a conversation")
-        try capture(app, name: "session-history-title-menu")
+        XCTAssertTrue(app.scrollViews["sessionList"].exists)
     }
 
     func testReducedMotionRevealsTailWithoutAnimationAndKeepsFullAccessibleNames() throws {
@@ -82,11 +87,15 @@ final class SessionTitleUITests: XCTestCase {
         let chineseTitle = title("s-hello", in: app)
         XCTAssertTrue(chineseTitle.waitForExistence(timeout: 5))
         waitForValue("reducedMotion", element: chineseTitle)
-        waitForValue("reducedMotion", element: title("title-english", in: app))
+        waitForValue("resting", element: title("title-english", in: app))
         XCTAssertEqual(chineseTitle.label, chinese)
         XCTAssertEqual(title("title-english", in: app).label, english)
         XCTAssertEqual(title("title-short", in: app).value as? String, "resting")
         try capture(app, name: "session-history-reduced-motion")
+        toggleSelection()
+        waitForValue("resting", element: chineseTitle)
+        waitForValue("reducedMotion", element: title("title-english", in: app))
+        try capture(app, name: "session-history-reduced-motion-deselected")
         app.buttons["sessionRow.title-short"].tap()
         try assertFullTitle("短标题", in: app, screenshot: "session-title-short")
         app.buttons["openDrawer"].tap()
@@ -120,6 +129,14 @@ final class SessionTitleUITests: XCTestCase {
         XCTAssertEqual(updated.label, english)
         waitForValue("reducedMotion", element: updated)
         try capture(app, name: "session-history-reused-english")
+    }
+
+    private func toggleSelection() {
+        CFNotificationCenterPostNotification(
+            CFNotificationCenterGetDarwinNotifyCenter(),
+            CFNotificationName(rawValue: "dev.dsh.uitest.sessionTitle.toggleSelection" as CFString),
+            nil, nil, true
+        )
     }
 
     private func launch(reduceMotion: Bool = false, changing: Bool = false) -> XCUIApplication {

@@ -39,7 +39,7 @@ Agent Team opens in a popover anchored to its header button and closes on an out
 
 The new-session toolbar has no wordmark, matching Android and desktop. The centered hero and the drawer's branding remain unchanged.
 
-Long conversation titles open their complete text in a header-anchored popover; ancestor breadcrumbs retain navigation. Text stays inside the bubble's safe area, clear of its arrow, with word wrapping and content-sized short titles; overflow scrolls vertically. History names reveal overflowing text once at 30pt/s and hold the tail, without changing row geometry or intercepting the row/menu actions. Reduce Motion reveals the tail without animation; session, title and width changes reset the reveal.
+Long conversation titles open their complete text in a header-anchored popover; ancestor breadcrumbs retain navigation. Text stays inside the bubble's safe area, clear of its arrow, with word wrapping and content-sized short titles; overflow scrolls vertically. Only the current nonblank session reveals an overflowing history title once at 30pt/s. Losing selection replaces the marquee with ordinary text from the beginning and a trailing ellipsis, rather than freezing the animation or retaining its tail. Reduce Motion reveals only the current title without animation; deselection still restores ordinary text. Row geometry, open-session actions and menu actions are unchanged.
 
 The title popover shows the last-update age and current status below its full text. Pending approval, plan review and answers take precedence over Running/Idle. Live state updates in place and the age refreshes every 30 seconds without reopening the popover. Blank sessions or missing timestamps omit the time; unavailable state is not reported as Idle.
 

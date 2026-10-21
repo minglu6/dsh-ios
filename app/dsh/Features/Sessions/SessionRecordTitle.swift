@@ -1,14 +1,36 @@
 import SwiftUI
 import UIKit
 
-/// A single reveal, then a stationary tail, like the desktop hover marquee.
+/// Touch adaptation: only the current row reveals; losing selection restores plain text.
+struct SessionRecordTitle: View {
+    let sessionId: String
+    let title: String
+    let color: Color
+    let enabled: Bool
+    @Environment(\.scenePhase) private var scenePhase
+
+    var body: some View {
+        if enabled, scenePhase == .active {
+            SessionRecordMarquee(sessionId: sessionId, title: title, color: color)
+        } else {
+            Text(title)
+                .font(.body)
+                .foregroundStyle(color)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .accessibilityLabel(title)
+                .accessibilityIdentifier("sessionRecordTitle.\(sessionId)")
+                .accessibilityValue(UITestLaunch.isEnabled ? "resting" : "")
+        }
+    }
+}
+
 /// Core Animation moves only the label layer; no per-frame SwiftUI row layout.
-struct SessionRecordTitle: UIViewRepresentable {
+private struct SessionRecordMarquee: UIViewRepresentable {
     let sessionId: String
     let title: String
     let color: Color
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.sizeCategory) private var sizeCategory
 
     func makeUIView(context: Context) -> SessionRecordTitleView { SessionRecordTitleView() }
@@ -19,8 +41,7 @@ struct SessionRecordTitle: UIViewRepresentable {
             title: title,
             color: UIColor(color),
             font: UIFont.preferredFont(forTextStyle: .body),
-            reduceMotion: reduceMotion || UITestLaunch.sessionTitleReduceMotion,
-            active: scenePhase == .active
+            reduceMotion: reduceMotion || UITestLaunch.sessionTitleReduceMotion
         )
     }
 
@@ -38,7 +59,6 @@ final class SessionRecordTitleView: UIView, CAAnimationDelegate {
     private let fade = CAGradientLayer()
     private var sessionId = ""
     private var reduceMotion = false
-    private var active = false
     private var needsReveal = true
     private var lastSize = CGSize.zero
     private var generation = 0
@@ -63,12 +83,11 @@ final class SessionRecordTitleView: UIView, CAAnimationDelegate {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    func configure(sessionId: String, title: String, color: UIColor, font: UIFont, reduceMotion: Bool, active: Bool) {
+    func configure(sessionId: String, title: String, color: UIColor, font: UIFont, reduceMotion: Bool) {
         let changed = self.sessionId != sessionId || label.text != title || label.font != font
-            || self.reduceMotion != reduceMotion || self.active != active
+            || self.reduceMotion != reduceMotion
         self.sessionId = sessionId
         self.reduceMotion = reduceMotion
-        self.active = active
         label.text = title
         label.textColor = color
         label.font = font
@@ -102,7 +121,7 @@ final class SessionRecordTitleView: UIView, CAAnimationDelegate {
         needsReveal = false
         let size = titleSize
         label.frame = CGRect(origin: .zero, size: CGSize(width: max(size.width, bounds.width), height: bounds.height))
-        guard window != nil, active, bounds.width > 0 else { return }
+        guard window != nil, bounds.width > 0 else { return }
         let range = max(0, size.width - bounds.width)
         guard range > 8 else {
             label.lineBreakMode = .byTruncatingTail

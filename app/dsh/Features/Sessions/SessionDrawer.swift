@@ -438,7 +438,8 @@ struct SessionDrawer: View {
                                     newSession: L.newSession(),
                                     untitled: L.untitledSession()
                                 ),
-                                color: archived ? T.text3 : T.ink
+                                color: archived ? T.text3 : T.ink,
+                                enabled: selected && !session.blank
                             )
                             Spacer(minLength: 0)
                             if SessionRowChromePolicy.timeSharesTitleLine, let trailing {
