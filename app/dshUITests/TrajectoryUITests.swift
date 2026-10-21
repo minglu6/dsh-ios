@@ -78,11 +78,12 @@ final class TrajectoryUITests: XCTestCase {
             XCTAssertTrue(tool.waitForExistence(timeout: 10))
             tool.tap()
 
-            let header = app.otherElements["trajectoryInspector.header"]
-            XCTAssertTrue(header.waitForExistence(timeout: 5))
+            let close = app.buttons["关闭详情"].firstMatch
+            XCTAssertTrue(close.waitForExistence(timeout: 5))
             let ledger = app.scrollViews["trajectoryLedger"]
-            XCTAssertEqual(header.frame.minY, ledger.frame.minY, accuracy: 2, "Details stay inside the ledger, below its toolbar and timeline")
-            XCTAssertGreaterThan(header.frame.minX, ledger.frame.minX, "The narrow inspector leaves the ledger edge visible")
+            XCTAssertEqual(close.frame.midY, ledger.frame.minY + 21, accuracy: 2, "Details stay inside the ledger, below its toolbar and timeline")
+            let location = app.staticTexts["trajectoryInspector.location"]
+            XCTAssertGreaterThan(location.frame.minX, ledger.frame.minX, "The narrow inspector leaves the ledger edge visible")
             XCTAssertTrue(app.buttons["chatTab.chat"].isHittable, "Inspecting a record must not present a modal over the conversation")
             let tabs = app.scrollViews["trajectoryInspector.tabs"]
             XCTAssertTrue(tabs.buttons["参数"].isHittable)

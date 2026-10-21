@@ -428,14 +428,16 @@ struct SessionDrawer: View {
                     leading(session)
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 8) {
-                            Text(drawerSessionTitle(
-                                session,
-                                current: model.chat?.sessionId,
-                                newSession: L.newSession(),
-                                untitled: L.untitledSession()
-                            ))
-                                .foregroundStyle(archived ? T.text3 : T.ink)
-                                .lineLimit(1)
+                            SessionRecordTitle(
+                                sessionId: session.sessionId,
+                                title: drawerSessionTitle(
+                                    session,
+                                    current: model.chat?.sessionId,
+                                    newSession: L.newSession(),
+                                    untitled: L.untitledSession()
+                                ),
+                                color: archived ? T.text3 : T.ink
+                            )
                             Spacer(minLength: 0)
                             if SessionRowChromePolicy.timeSharesTitleLine, let trailing {
                                 Text(trailing)

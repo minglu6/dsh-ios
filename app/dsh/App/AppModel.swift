@@ -29,6 +29,7 @@ struct ChatState {
     var planMode = false
     var steps: [StepRecord] = []
     var turns: [TurnRecord] = []
+    var turnOutline: [TurnOutlineEntry] = []
     /// Last committed assistant text key per turn; filled in `publishChat`.
     var lastAnswerKeys: [Int: String] = [:]
     var composerMetrics = ComposerMetrics()
@@ -239,6 +240,7 @@ final class AppModel: ObservableObject {
     var uiTestTerminalEntries: [TerminalSessionEntry] = []
 #if DEBUG
     var uiTestTodoLifecycleDriver: UITestTodoLifecycleDriver?
+    var uiTestTurnNavigationDriver: UITestTurnNavigationDriver?
 #endif
 
     let terminal = AnsiTerminal()
@@ -883,6 +885,9 @@ final class AppModel: ObservableObject {
 
     @discardableResult
     func loadOlderHistory(sessionId: String) async -> Bool {
+        if !Task.isCancelled, chat?.sessionId == sessionId, chat?.loadingOlder == true, let task = historyPageTask {
+            return await task.value
+        }
         guard !Task.isCancelled, var state = chat, state.sessionId == sessionId, let client,
               HistoryPagingPolicy.canLoadOlder(
                 hasMore: state.hasMore, loadingOlder: state.loadingOlder, firstSeq: state.firstSeq
@@ -934,15 +939,22 @@ final class AppModel: ObservableObject {
     }
 
     /// Installs only the opening snapshot; subsequent pages use the normal network loader.
-    func installUITestHistoryPagingClient(_ fixtureClient: PocketClient, snapshot: JSONValue) {
+    func installUITestHistoryPagingClient(_ fixtureClient: PocketClient, snapshot: JSONValue, subscriptionId: String? = nil) {
         guard uiTestFixture, let sessionId = chat?.sessionId else { return }
         client = fixtureClient
         initializeChat(sessionId)
+        if let subscriptionId { subId = subscriptionId }
         reducer.apply(snapshot)
         inspectorLog.apply(snapshot)
         publishChat()
     }
 #if DEBUG
+    func receiveUITestTurnNavigationFollow(_ frame: JSONValue) {
+        guard uiTestFixture else { return }
+        onPush(.object([
+            "ev": .string("follow"), "subId": .string("fixture-turn-navigation"), "frame": frame,
+        ]))
+    }
     /// Route synthetic Host frames through the same follow handler and publisher as a live subscription.
     func receiveUITestTodoFollow(_ frame: JSONValue, reset: Bool = false) {
         guard uiTestFixture, let sessionId = chat?.sessionId else { return }
@@ -3633,6 +3645,7 @@ final class AppModel: ObservableObject {
         state.planMode = reducer.planMode
         state.steps = reducer.stepRecords()
         state.turns = reducer.turnRecords()
+        state.turnOutline = reducer.turnOutline()
         state.lastAnswerKeys = ChatActionKeys.lastCommittedAnswerKeys(state.items)
         state.composerMetrics = reducer.composerMetrics
         state.turnTokenUsage = reducer.turnTokenUsage()

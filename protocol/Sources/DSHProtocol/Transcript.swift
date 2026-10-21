@@ -860,6 +860,7 @@ public final class TranscriptReducer {
     private var toolTimings: [String: ToolCallTiming] = [:]
     private let turnUsageLedger = TurnUsageLedger()
     private let composerProjections = ComposerProjectionStore()
+    private let turnOutlineProjection = TurnOutlineProjectionStore()
 
     public private(set) var needsResync = false
     public private(set) var cursor: Int64 = -1
@@ -875,11 +876,13 @@ public final class TranscriptReducer {
     public var composerMetrics: ComposerMetrics { composerProjections.metrics(steps: settledSteps, toolTimings: Array(toolTimings.values)) }
     public func todosSnapshot() -> [TodoItem] { todos }
     public func turnRecords() -> [TurnRecord] { turnFacts.values.sorted { $0.turn < $1.turn } }
+    public func turnOutline() -> [TurnOutlineEntry] { turnOutlineProjection.entries }
     public func stepRecords() -> [StepRecord] { settledSteps }
     public func turnTokenUsage() -> [Int: TurnTokenUsage] { turnUsageLedger.snapshot() }
     public func requestHeaders() -> [RequestHeaderFact] { headerFacts }
     public func clearComposerProjections() {
         composerProjections.clear()
+        turnOutlineProjection.clear()
         // New connections discard projection ordering, not the durable todo event boundary.
         todosSeq = todosEventSeq
     }
@@ -967,6 +970,7 @@ public final class TranscriptReducer {
                 return true
             }
             if key == "inbox" { return readInbox(frame["value"], seq: seq) }
+            if key == "turnOutline" { return turnOutlineProjection.apply(frame["value"], seq: seq) }
             return composerProjections.apply(key: key, value: frame["value"], seq: seq)
         case "assistant-stream":
             return stream(frame["frame"])
@@ -1125,6 +1129,7 @@ public final class TranscriptReducer {
         retiredAttempts.removeAll()
         settlementSeqs.removeAll()
         turnFacts.removeAll()
+        turnOutlineProjection.clear()
         cursor = -1
         firstSeq = -1
         hasMore = false
@@ -1204,6 +1209,7 @@ public final class TranscriptReducer {
 
     private func readProjections(_ p: JSONValue, atSeq: Int64) {
         composerProjections.baseline(p, fallbackSeq: atSeq)
+        turnOutlineProjection.baseline(p, fallbackSeq: atSeq)
         if let title = p["values"]["title"].str()?.nilIfBlank {
             let seq = p["asOfSeq"].long() ?? atSeq
             if seq >= titleProjectionSeq {

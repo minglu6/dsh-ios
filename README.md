@@ -37,6 +37,10 @@ Conversation actions share the title row above the Chat/Trajectory tabs: Agent T
 
 Agent Team opens in a popover anchored to its header button and closes on an outside tap, not in a separate page. There are no extra Close or Refresh buttons. The current-session marker uses the desktop tinted-blue capsule; a lone member has no count, and an empty task board shows only its notice.
 
+Long conversation titles open their complete text in a header-anchored popover; ancestor breadcrumbs retain navigation. History names reveal overflowing text once at 30pt/s and hold the tail, without changing row geometry or intercepting the row/menu actions. Reduce Motion reveals the tail without animation; session, title and width changes reset the reveal.
+
+The transcript has a right-side turn rail and the desktop chevron return-to-bottom control. Marks retain Host turn identities, including sparse numbers; a supplied `turnOutline` exposes unloaded turns that can be paged in before jumping. Legacy Hosts show only known loaded turns. Long press previews a turn on touch screens. Manual reading and turn jumps stop tail following; returning to the bottom restores it. Showing the rail on phone widths is an intentional touch adaptation—the desktop hides it below its container breakpoint. CI `ui_scope=conversation` runs title, navigation and trajectory UI checks.
+
 The work-mode menu uses a desktop-style anchored overlay, up to 360pt wide, measured to its content and bounded by the viewport with 12pt margins. Overflow scrolls vertically while keeping mode names and descriptions intact.
 
 iOS retains the original typography system, with body/code/terminal defaults of 14/11/13pt and no app-wide enlargement. Settings-home navigation uses the same system body size as general settings (17pt by default), matching system headline titles and allowing rows to grow with Dynamic Type. Explicit personal font choices are preserved and never written to the remote host.

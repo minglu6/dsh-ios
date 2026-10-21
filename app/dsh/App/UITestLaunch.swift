@@ -226,10 +226,15 @@ extension AppModel {
         showDrawer = false
         routeStack = []
         applyUITestScreen(UITestLaunch.screen)
+        installUITestSessionTitlesIfRequested()
     }
 
     fileprivate func applyUITestScreen(_ screen: String) {
 #if DEBUG
+        if screen == "turnNavigation" || screen == "turnNavigationSingle" || screen == "turnNavigationLegacy" {
+            installUITestTurnNavigation(single: screen == "turnNavigationSingle", legacy: screen == "turnNavigationLegacy")
+            return
+        }
         if screen == "todoLifecycle" {
             installUITestTodoLifecycle()
             return

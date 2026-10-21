@@ -24,6 +24,14 @@ struct ChatView: View {
     @State private var showFileImporter = false
     @State private var showSessionFeedback = false
     @State private var historyScrollAnchor: HistoryScrollAnchor?
+    @State private var followingTail = true
+    @State private var atTranscriptBottom = true
+    @State private var manualTranscriptScroll = false
+    @State private var transcriptDragging = false
+    @State private var navigationGeneration = 0
+    @State private var transcriptViewport = TranscriptViewport()
+    @State private var pendingTurn: Int?
+    @State private var navigationError: String?
 
     /// Android: Screen.Chat + drawer closed + focused + RESUMED. Otherwise completion.view gets null.
     private var desiredViewedSession: String? {
@@ -127,6 +135,14 @@ struct ChatView: View {
             openTurns = [:]
             openProcesses = [:]
             historyScrollAnchor = nil
+            followingTail = true
+            atTranscriptBottom = true
+            manualTranscriptScroll = false
+            transcriptDragging = false
+            navigationGeneration += 1
+            transcriptViewport = TranscriptViewport()
+            pendingTurn = nil
+            navigationError = nil
             model.setViewedSession(desiredViewedSession)
         }
         .onAppear {
@@ -190,10 +206,11 @@ struct ChatView: View {
                                     .foregroundStyle(T.text3)
                             }
                             if crumb.current {
-                                Text(crumb.title)
-                                    .font(Font.headline)
-                                    .foregroundStyle(crumb.subagent ? T.text2 : T.ink)
-                                    .lineLimit(1)
+                                ConversationTitle(
+                                    sessionId: crumb.sessionId,
+                                    title: crumb.title,
+                                    color: crumb.subagent ? T.text2 : T.ink
+                                )
                             } else {
                                 Button {
                                     model.openSession(crumb.sessionId)
@@ -208,16 +225,12 @@ struct ChatView: View {
                         }
                     }
                 }
-                .accessibilityElement(children: .combine)
+                .accessibilityElement(children: .contain)
                 .accessibilityLabel(sessionHierarchyAria(english: L.en))
                 .frame(maxWidth: .infinity, alignment: .leading)
             } else {
-                Text(headerTitle)
-                    .font(Font.headline)
-                    .foregroundStyle(T.ink)
-                    .lineLimit(1)
+                ConversationTitle(sessionId: model.chat?.sessionId ?? "", title: headerTitle)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityIdentifier("conversationHeaderTitle")
             }
             ConversationHeaderActions(
                 model: model,
@@ -544,8 +557,27 @@ struct ChatView: View {
         chatTranscriptRows(foldedRows, openTurns: openTurns)
     }
 
+    private var turnMarks: [TranscriptTurnMark] {
+        transcriptTurnMarks(rows: chatRows, turns: model.chat?.turns ?? [], outline: model.chat?.turnOutline ?? [])
+    }
+
+    private var firstVisibleTranscriptKey: String? {
+        chatRows.first { row in
+            transcriptViewport.rows[row.key].map { $0.maxY > 0 } ?? false
+        }?.key
+    }
+
+    private var activeTranscriptTurn: Int? {
+        if followingTail && atTranscriptBottom { return turnMarks.last?.turn }
+        guard let key = firstVisibleTranscriptKey,
+              let index = chatRows.firstIndex(where: { $0.key == key }) else { return nil }
+        let indexes = Dictionary(uniqueKeysWithValues: chatRows.enumerated().map { ($0.element.key, $0.offset) })
+        return turnMarks.last { mark in mark.anchorKey.flatMap { indexes[$0] }.map { $0 <= index } ?? false }?.turn
+    }
+
     private var transcript: some View {
         ScrollViewReader { proxy in
+            GeometryReader { viewport in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {
                     ForEach(Array(chatRows.enumerated()), id: \.element.key) { _, row in
@@ -576,6 +608,7 @@ struct ChatView: View {
                                 onTool: { inspectTool = $0 }
                             )
                         }
+                        .background(TranscriptRowMeasurement(key: row.key))
                         .id(row.key)
                     }
                     if model.chat?.loaded == false {
@@ -585,17 +618,51 @@ struct ChatView: View {
                         RunningStatusRow(startedAtMs: runningTurnStartedAt)
                     }
                     Color.clear.frame(height: 1).id("bottom")
+                        .background(GeometryReader { geometry in
+                            Color.clear.preference(key: TranscriptViewportKey.self,
+                                value: TranscriptViewport(bottom: geometry.frame(in: .named("chatTranscriptViewport")).maxY))
+                        })
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
             }
+            .coordinateSpace(name: "chatTranscriptViewport")
+            .onPreferenceChange(TranscriptViewportKey.self) { value in
+                transcriptViewport = value
+                if let bottom = value.bottom {
+                    atTranscriptBottom = bottom <= viewport.size.height + 32
+                    if manualTranscriptScroll && !transcriptDragging && atTranscriptBottom && pendingTurn == nil {
+                        followingTail = true
+                    }
+                    if followingTail && !transcriptDragging && !atTranscriptBottom && model.chat?.loadingOlder != true {
+                        proxy.scrollTo("bottom", anchor: .bottom)
+                    }
+                }
+                else if manualTranscriptScroll { atTranscriptBottom = false }
+            }
+            .simultaneousGesture(DragGesture(minimumDistance: 4).onChanged { _ in
+                if !transcriptDragging { navigationGeneration += 1 }
+                transcriptDragging = true
+                followingTail = false
+                manualTranscriptScroll = true
+                pendingTurn = nil
+                navigationError = nil
+            }.onEnded { _ in
+                transcriptDragging = false
+                followingTail = atTranscriptBottom
+            })
             .accessibilityIdentifier("chatTranscript")
-            .accessibilityValue(model.uiTestFixture ? model.uiTestHistoryPagingAccessibilityValue : "")
+            .accessibilityValue(model.uiTestFixture
+                ? "\(model.uiTestHistoryPagingAccessibilityValue);follow=\(followingTail);activeTurn=\(activeTranscriptTurn.map(String.init) ?? "none")"
+                : "")
             .refreshable {
                 guard let sessionId = model.chat?.sessionId else { return }
-                let key = chatRows.first.map(inspectorPickKey)
+                followingTail = false
+                manualTranscriptScroll = false
+                let key = firstVisibleTranscriptKey ?? chatRows.first.map(inspectorPickKey)
+                let generation = navigationGeneration
                 let applied = await model.loadOlderHistory(sessionId: sessionId)
-                if applied, model.chat?.sessionId == sessionId, let key {
+                if applied, model.chat?.sessionId == sessionId, navigationGeneration == generation, let key {
                     historyScrollAnchor = HistoryScrollAnchor(sessionId: sessionId, rowKey: key)
                 }
             }
@@ -609,15 +676,39 @@ struct ChatView: View {
             }
             .dshDismissesKeyboardOnScrollAndTap()
             .onAppear {
-                if inspectorNav.picking { return }
+                if followingTail && !inspectorNav.picking { proxy.scrollTo("bottom", anchor: .bottom) }
+            }
+            .onChange(of: model.chatRevision) { _ in
+                guard followingTail, !inspectorNav.picking, pendingTurn == nil,
+                      model.chat?.loadingOlder != true, historyScrollAnchor == nil else { return }
                 proxy.scrollTo("bottom", anchor: .bottom)
             }
-            .onChange(of: chatRows.last?.key) { _ in
-                if inspectorNav.picking || model.chat?.loadingOlder == true || historyScrollAnchor != nil { return }
-                withAnimation { proxy.scrollTo("bottom", anchor: .bottom) }
+            .task(id: pendingTurn) {
+                guard let turn = pendingTurn, let sessionId = model.chat?.sessionId else { return }
+                let seq = turnMarks.first(where: { $0.turn == turn })?.seq
+                while !Task.isCancelled, pendingTurn == turn, model.chat?.sessionId == sessionId {
+                    let mark = turnMarks.first { $0.turn == turn }
+                    let needsEarlier = seq.map { (model.chat?.firstSeq ?? -1) > $0 } ?? false
+                    if !needsEarlier, let key = mark?.anchorKey {
+                        historyScrollAnchor = HistoryScrollAnchor(sessionId: sessionId, rowKey: key)
+                        pendingTurn = nil
+                        return
+                    }
+                    guard model.chat?.hasMore == true else { break }
+                    let before = model.chat?.firstSeq
+                    guard await model.loadOlderHistory(sessionId: sessionId), model.chat?.firstSeq != before else { break }
+                }
+                if !Task.isCancelled, pendingTurn == turn, model.chat?.sessionId == sessionId {
+                    navigationError = L.t("无法加载此轮历史，请重试。", "Unable to load this turn. Try again.")
+                    pendingTurn = nil
+                }
             }
             .onChange(of: inspectorNav.revealItemKey) { key in
                 guard let key, inspectorNav.sessionId == model.chat?.sessionId else { return }
+                navigationGeneration += 1
+                followingTail = false
+                manualTranscriptScroll = false
+                pendingTurn = nil
                 let attachedTurn = changesByTurn.first { $0.value.key == key }?.key
                 let target = attachedTurn.flatMap { lastAnswerKeys[$0] } ?? key
                 for row in foldedRows {
@@ -647,6 +738,44 @@ struct ChatView: View {
                 } else if model.chat?.loaded == true, model.chat?.hasMore != true {
                     inspectorNav.revealItemKey = nil
                 }
+            }
+            .overlay {
+                TurnNavigator(items: turnMarks, activeTurn: activeTranscriptTurn, busyTurn: pendingTurn) { item in
+                    navigationGeneration += 1
+                    followingTail = false
+                    manualTranscriptScroll = false
+                    navigationError = nil
+                    pendingTurn = item.turn
+                }
+            }
+            .overlay(alignment: .bottomTrailing) {
+                if !atTranscriptBottom || !followingTail {
+                    Button {
+                        pendingTurn = nil
+                        navigationGeneration += 1
+                        historyScrollAnchor = nil
+                        navigationError = nil
+                        manualTranscriptScroll = false
+                        followingTail = true
+                        proxy.scrollTo("bottom", anchor: .bottom)
+                    } label: {
+                        OfficialGlyph(kind: .chevronDown, size: 16, color: T.ink)
+                            .frame(width: 34, height: 34)
+                            .background(T.surface, in: Circle())
+                            .overlay(Circle().stroke(T.borderL3, lineWidth: 0.5))
+                            .shadow(color: .black.opacity(0.08), radius: 8, y: 2)
+                    }
+                    .buttonStyle(.plain).padding(.trailing, 16).padding(.bottom, 16)
+                    .accessibilityLabel(L.t("回到底部", "Scroll to bottom"))
+                    .accessibilityIdentifier("transcriptScrollToBottom")
+                }
+            }
+            .overlay(alignment: .top) {
+                if let navigationError {
+                    Text(navigationError).font(.caption).padding(8).background(T.surface, in: Capsule())
+                        .accessibilityIdentifier("transcriptNavigationError")
+                }
+            }
             }
         }
         .sheet(item: Binding(

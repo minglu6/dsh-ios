@@ -12,7 +12,7 @@ on:
       ui_scope:
         description: UI verification scope
         type: choice
-        options: [full, settings-trajectory, session-header, pagination]
+        options: [full, settings-trajectory, session-header, pagination, conversation]
         default: full
 
 concurrency:
@@ -147,6 +147,13 @@ jobs:
           elif [ "$UI_SCOPE" = "session-header" ]; then
             UI_TESTS=(-only-testing:dshUITests/SessionHeaderUITests)
             MIN_SCREENSHOTS=4
+          elif [ "$UI_SCOPE" = "conversation" ]; then
+            UI_TESTS=(
+              -only-testing:dshUITests/SessionTitleUITests
+              -only-testing:dshUITests/TurnNavigationUITests
+              -only-testing:dshUITests/TrajectoryUITests
+            )
+            MIN_SCREENSHOTS=4
           elif [ "$UI_SCOPE" = "pagination" ]; then
             UI_TESTS=(
               -only-testing:dshUITests/HistoryPagingUITests
@@ -166,6 +173,8 @@ jobs:
               -only-testing:dshUITests/SessionDrawerPagingUITests
               -only-testing:dshUITests/TodoLifecycleUITests
               -only-testing:dshUITests/JobsLifecycleUITests
+              -only-testing:dshUITests/SessionTitleUITests
+              -only-testing:dshUITests/TurnNavigationUITests
             )
             MIN_SCREENSHOTS=20
           fi
