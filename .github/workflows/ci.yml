@@ -152,6 +152,8 @@ jobs:
               -only-testing:dshUITests/SessionTitleUITests
               -only-testing:dshUITests/TurnNavigationUITests
               -only-testing:dshUITests/TrajectoryUITests
+              -only-testing:dshUITests/HistoryPagingUITests/testChatPullsConsecutivePagesAndStopsAtEnd
+              -only-testing:dshUITests/HistoryPagingUITests/testChatFailedPullCanRetryWithoutLosingContent
             )
             MIN_SCREENSHOTS=4
           elif [ "$UI_SCOPE" = "pagination" ]; then

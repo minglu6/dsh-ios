@@ -625,6 +625,18 @@ struct ChatView: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
+                .background(TranscriptPanObserver(onBegan: {
+                    navigationGeneration += 1
+                    transcriptDragging = true
+                    followingTail = false
+                    manualTranscriptScroll = true
+                    pendingTurn = nil
+                    historyScrollAnchor = nil
+                    navigationError = nil
+                }, onEnded: {
+                    transcriptDragging = false
+                    followingTail = atTranscriptBottom
+                }))
             }
             .coordinateSpace(name: "chatTranscriptViewport")
             .onPreferenceChange(TranscriptViewportKey.self) { value in
@@ -640,18 +652,6 @@ struct ChatView: View {
                 }
                 else if manualTranscriptScroll { atTranscriptBottom = false }
             }
-            .simultaneousGesture(DragGesture(minimumDistance: 4).onChanged { _ in
-                if !transcriptDragging { navigationGeneration += 1 }
-                transcriptDragging = true
-                followingTail = false
-                manualTranscriptScroll = true
-                pendingTurn = nil
-                historyScrollAnchor = nil
-                navigationError = nil
-            }.onEnded { _ in
-                transcriptDragging = false
-                followingTail = atTranscriptBottom
-            })
             .accessibilityIdentifier("chatTranscript")
             .accessibilityValue(model.uiTestFixture
                 ? "\(model.uiTestHistoryPagingAccessibilityValue);follow=\(followingTail);activeTurn=\(activeTranscriptTurn.map(String.init) ?? "none");landing=\(pendingTurn != nil || historyScrollAnchor != nil)"

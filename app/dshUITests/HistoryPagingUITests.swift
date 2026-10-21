@@ -164,7 +164,7 @@ final class HistoryPagingUITests: XCTestCase {
     private func waitForStatus(_ scroll: XCUIElement, requests: Int, responses: Int, failures: Int) {
         let firstSeq = responses == 0 ? 21 : (responses == 1 ? 11 : 1)
         let expected = "requests=\(requests);responses=\(responses);failures=\(failures);firstSeq=\(firstSeq);loading=false"
-        let done = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", expected), object: scroll)
+        let done = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value BEGINSWITH %@", expected), object: scroll)
         XCTAssertEqual(XCTWaiter.wait(for: [done], timeout: 10), .completed, "Expected actual Host transport state \(expected), got \(status(scroll))")
     }
 }
