@@ -6,14 +6,14 @@ struct TurnNavigator: View {
     let items: [TranscriptTurnMark]
     let activeTurn: Int?
     let busyTurn: Int?
+    let viewportSize: CGSize
     let onNavigate: (TranscriptTurnMark) -> Void
     @State private var previewTurn: Int?
     @State private var touching = false
 
     var body: some View {
-        GeometryReader { geometry in
-            if items.count >= 2 {
-                let height = min(420, max(0, geometry.size.height - 64), CGFloat(items.count * 16 + 12))
+        if items.count >= 2 {
+                let height = min(420, max(0, viewportSize.height - 64), CGFloat(items.count * 16 + 12))
                 HStack(spacing: 8) {
                     if let item = items.first(where: { $0.turn == previewTurn }) {
                         VStack(alignment: .leading, spacing: 4) {
@@ -24,7 +24,7 @@ struct TurnNavigator: View {
                             }
                         }
                         .padding(.horizontal, 12).padding(.vertical, 10)
-                        .frame(width: min(280, max(1, geometry.size.width - 72)), alignment: .leading)
+                        .frame(width: min(280, max(1, viewportSize.width - 72)), alignment: .leading)
                         .background(T.surface, in: RoundedRectangle(cornerRadius: 12))
                         .shadow(color: .black.opacity(0.12), radius: 8, y: 2)
                         .accessibilityElement(children: .combine)
@@ -79,10 +79,8 @@ struct TurnNavigator: View {
                         }
                     }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
                 .padding(.trailing, 12)
             }
-        }
     }
 
     private func label(_ turn: Int) -> String { L.t("第\(turn)轮", "Turn \(turn)") }

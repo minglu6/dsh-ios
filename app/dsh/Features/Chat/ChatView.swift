@@ -741,8 +741,8 @@ struct ChatView: View {
                     inspectorNav.revealItemKey = nil
                 }
             }
-            .overlay {
-                TurnNavigator(items: turnMarks, activeTurn: activeTranscriptTurn, busyTurn: pendingTurn) { item in
+            .overlay(alignment: .trailing) {
+                TurnNavigator(items: turnMarks, activeTurn: activeTranscriptTurn, busyTurn: pendingTurn, viewportSize: viewport.size) { item in
                     navigationGeneration += 1
                     followingTail = false
                     manualTranscriptScroll = false
