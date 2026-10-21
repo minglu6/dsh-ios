@@ -1288,11 +1288,6 @@ public func composerModelFallback(english: Bool) -> String {
     english ? "Select model" : "请选择模型"
 }
 
-public func loadOlderLabel(loading: Bool, english: Bool) -> String {
-    if loading { return english ? "Loading…" : "加载中…" }
-    return english ? "Load earlier" : "加载更早"
-}
-
 public func formatRunDuration(elapsedMs: Int64, english: Bool) -> String {
     let total = max(0, elapsedMs / 1000)
     let hours = total / 3600

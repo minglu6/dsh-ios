@@ -43,6 +43,8 @@ Source previews, including Python, retain Android's offline highlighting assets 
 
 Long-conversation trajectories cache complete derivations by chat-update revision, index request boundaries once, and load ledger rows lazily. Selection, collapsing and detail navigation reuse the snapshot. Search still covers full content; same-count streaming replacements, earlier-history loading and session changes invalidate the cache. CI supports `run_ui_tests=true` with `ui_scope=settings-trajectory` for focused settings and multi-MB trajectory interaction checks; this does not replace the full UI suite.
 
+History pagination no longer shows a Load earlier button. Pull down at the top of Chat, Trajectory or Session Inspector to fetch the preceding page; the refresh indicator awaits the actual request. Existing records and reading anchors are retained, failed pulls can be retried, and exhausted histories make no further requests. The session drawer progressively reveals each group's remaining sessions as its visible boundary is reached, without Show more/less paging controls. Workspace collapsing, action menus and search-limit notices are unchanged. CI's `ui_scope=pagination` exercises history gestures and automatic roster expansion.
+
 ## Architecture
 
 ```

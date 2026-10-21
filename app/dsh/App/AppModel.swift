@@ -226,6 +226,11 @@ final class AppModel: ObservableObject {
     @Published var toastUndoArchiveId: String?
     @Published var archiveConfirm: ArchiveConfirmRequest?
     var uiTestFixture = false
+    @Published var uiTestHistoryPagingStatus = ""
+    var uiTestHistoryPagingAccessibilityValue: String {
+        guard uiTestFixture else { return "" }
+        return "\(uiTestHistoryPagingStatus);firstSeq=\(chat?.firstSeq ?? -1);loading=\(chat?.loadingOlder == true)"
+    }
     var uiTestFilePreviewText: String?
     var uiTestChangesSummary: WorkspaceChangesSummary?
     var uiTestChangesDiffs: [Int: WorkspaceFileDiff] = [:]
@@ -866,40 +871,56 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func loadOlderHistory() {
-        Task {
-            guard var state = chat, let client else { return }
-            if !HistoryPagingPolicy.canLoadOlder(hasMore: state.hasMore, loadingOlder: state.loadingOlder, firstSeq: state.firstSeq) {
-                return
-            }
-            let epoch = followEpoch
-            let target = reducer
-            state.loadingOlder = true
-            chat = state
-            do {
-                let req = HistoryPagingPolicy.pageRequest(cursor: reducer.cursor, firstSeq: state.firstSeq)
-                let page = try await client.historyPage(
-                    sessionId: state.sessionId,
-                    throughSeq: req.throughSeq,
-                    beforeSeq: req.beforeSeq,
-                    maxMessages: req.maxMessages,
-                    address: subagentAddress(for: state.sessionId)
-                )
-                guard followEpoch == epoch, reducer === target else { return }
-                _ = reducer.prepend(records: page["records"], pageHasMore: page["hasMore"].bool() ?? false)
-                inspectorLog.prepend(page["records"])
-                publishChat()
-                chat?.loadingOlder = false
-            } catch {
-                if followEpoch != epoch { return }
-                if SessionNotFoundPolicy.matches(error) {
-                    absorbMissingSession(state.sessionId)
-                    return
-                }
-                emit(error.localizedDescription)
+    @discardableResult
+    func loadOlderHistory(sessionId: String) async -> Bool {
+        guard !Task.isCancelled, var state = chat, state.sessionId == sessionId, let client,
+              HistoryPagingPolicy.canLoadOlder(
+                hasMore: state.hasMore, loadingOlder: state.loadingOlder, firstSeq: state.firstSeq
+              ) else { return false }
+        let epoch = followEpoch
+        let target = reducer
+        state.loadingOlder = true
+        chat = state
+        defer {
+            if followEpoch == epoch, reducer === target, chat?.sessionId == sessionId {
                 chat?.loadingOlder = false
             }
         }
+        do {
+            let req = HistoryPagingPolicy.pageRequest(cursor: target.cursor, firstSeq: state.firstSeq)
+            let page = try await client.historyPage(
+                sessionId: sessionId,
+                throughSeq: req.throughSeq,
+                beforeSeq: req.beforeSeq,
+                maxMessages: req.maxMessages,
+                address: subagentAddress(for: sessionId)
+            )
+            guard !Task.isCancelled, followEpoch == epoch, reducer === target,
+                  chat?.sessionId == sessionId else { return false }
+            _ = target.prepend(records: page["records"], pageHasMore: page["hasMore"].bool() ?? false)
+            inspectorLog.prepend(page["records"])
+            publishChat()
+            return true
+        } catch {
+            guard !Task.isCancelled, !(error is CancellationError),
+                  followEpoch == epoch, reducer === target, chat?.sessionId == sessionId else { return false }
+            if SessionNotFoundPolicy.matches(error) {
+                absorbMissingSession(sessionId)
+            } else {
+                emit(error.localizedDescription)
+            }
+            return false
+        }
+    }
+
+    /// Installs only the opening snapshot; subsequent pages use the normal network loader.
+    func installUITestHistoryPagingClient(_ fixtureClient: PocketClient, snapshot: JSONValue) {
+        guard uiTestFixture, let sessionId = chat?.sessionId else { return }
+        client = fixtureClient
+        initializeChat(sessionId)
+        reducer.apply(snapshot)
+        inspectorLog.apply(snapshot)
+        publishChat()
     }
 
     func pin(_ session: SessionSummary) {

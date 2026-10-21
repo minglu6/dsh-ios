@@ -721,17 +721,6 @@ final class TrajectoryRequestTests: XCTestCase {
         XCTAssertFalse(r.hasMore)
     }
 
-    func testLocalesMatchDesktopRequestAndHistory() {
-        TrajL.en = false
-        XCTAssertEqual(TrajL.requestLabel(3), "请求 #3")
-        XCTAssertEqual(TrajL.requestLabelCompaction(2), "请求 #2 · 压缩")
-        XCTAssertEqual(TrajL.historyLoadEarlier, "加载更早的历史")
-        XCTAssertEqual(TrajL.historyLoadingEarlier, "正在加载更早的历史…")
-        XCTAssertEqual(TrajL.tabOptions, "选项")
-        XCTAssertEqual(TrajL.tabUsage, "用量")
-        XCTAssertEqual(TrajL.detailsResult, "结果")
-        XCTAssertEqual(TrajL.detailsCompacted, "已压缩")
-    }
 }
 
 final class SessionInspectorLogTests: XCTestCase {

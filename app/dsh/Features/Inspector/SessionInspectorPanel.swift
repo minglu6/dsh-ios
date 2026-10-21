@@ -123,6 +123,16 @@ final class InspectorViewState: ObservableObject {
     }
 }
 
+private struct InspectorHistoryFrameKey: PreferenceKey {
+    static var defaultValue = CGRect.zero
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) { value = nextValue() }
+}
+
+/// Geometry observation must not republish/rebuild the record table on every scroll tick.
+private final class InspectorHistoryFrame {
+    var rect = CGRect.zero
+}
+
 private struct SessionInspectorContent: View {
     @ObservedObject var model: AppModel
     let sessionId: String
@@ -132,6 +142,9 @@ private struct SessionInspectorContent: View {
 
     @State private var modesOpen = false
     @State private var filterOpen = false
+    @Namespace private var historyViewport
+    @State private var historyFrame = InspectorHistoryFrame()
+    @State private var historyScrollAnchor: HistoryScrollAnchor?
 
     var body: some View {
         if let chat = model.chat, chat.sessionId == sessionId {
@@ -165,7 +178,7 @@ private struct SessionInspectorContent: View {
             VStack(spacing: 0) {
                 toolbar(chat: chat, allCount: all.count, matchingCount: matchingCount)
                 Divider()
-                table(visible: visible, chat: chat, inspectorState: inspectorState, rows: rows)
+                table(visible: visible, chat: chat, inspectorState: inspectorState, rows: rows, viewportWidth: geo.size.width)
                 if state.selectedKey != nil {
                     detail(selected: selected, height: geo.size.height * state.detailFraction, grouped: state.grouped)
                 }
@@ -234,17 +247,6 @@ private struct SessionInspectorContent: View {
                     .foregroundStyle(T.ink)
             }
             Spacer()
-            if chat.hasMore {
-                Button {
-                    state.follow = false
-                    if model.chat?.sessionId == chat.sessionId { model.loadOlderHistory() }
-                } label: {
-                    Text(loadOlderLabel(loading: chat.loadingOlder, english: L.en))
-                        .font(Font.system(size: 11))
-                        .foregroundStyle(chat.loadingOlder ? T.text3 : T.ink)
-                }
-                .disabled(chat.loadingOlder)
-            }
             Button {
                 state.follow = true
                 state.scrollRequest += 1
@@ -257,7 +259,7 @@ private struct SessionInspectorContent: View {
         .frame(minHeight: 34)
     }
 
-    private func table(visible: [InspectorVisibleRow], chat: ChatState, inspectorState: InspectorChatState, rows: [InspectorRow]) -> some View {
+    private func table(visible: [InspectorVisibleRow], chat: ChatState, inspectorState: InspectorChatState, rows: [InspectorRow], viewportWidth: CGFloat) -> some View {
         ScrollViewReader { proxy in
             ScrollView([.vertical, .horizontal]) {
                 VStack(alignment: .leading, spacing: 0) {
@@ -277,6 +279,37 @@ private struct SessionInspectorContent: View {
                     }
                 }
                 .frame(minWidth: 660, alignment: .leading)
+                .background {
+                    GeometryReader { geometry in
+                        Color.clear.preference(
+                            key: InspectorHistoryFrameKey.self,
+                            value: geometry.frame(in: .named(historyViewport))
+                        )
+                    }
+                }
+            }
+            .coordinateSpace(name: historyViewport)
+            .onPreferenceChange(InspectorHistoryFrameKey.self) { historyFrame.rect = $0 }
+            .accessibilityIdentifier("sessionInspectorRecords")
+            .accessibilityValue(model.uiTestFixture ? model.uiTestHistoryPagingAccessibilityValue : "")
+            .refreshable {
+                guard model.chat?.sessionId == chat.sessionId, chat.hasMore else { return }
+                let key = visible.first?.row.key
+                let horizontalRange = max(0, historyFrame.rect.width - viewportWidth)
+                let x = horizontalRange > 0 ? min(1, max(0, -historyFrame.rect.minX / horizontalRange)) : 0
+                state.follow = false
+                let applied = await model.loadOlderHistory(sessionId: chat.sessionId)
+                if applied, model.chat?.sessionId == chat.sessionId, !state.follow, let key {
+                    historyScrollAnchor = HistoryScrollAnchor(
+                        sessionId: chat.sessionId, rowKey: key, point: UnitPoint(x: x, y: 0)
+                    )
+                }
+            }
+            .onChange(of: historyScrollAnchor) { anchor in
+                guard let anchor else { return }
+                historyScrollAnchor = nil
+                guard model.chat?.sessionId == anchor.sessionId, !state.follow else { return }
+                proxy.scrollTo(anchor.rowKey, anchor: anchor.point)
             }
             .onChange(of: visible.last?.row.key) { key in
                 if state.follow, let key { proxy.scrollTo(key, anchor: .bottom) }
@@ -373,6 +406,8 @@ private struct SessionInspectorContent: View {
         }
         .frame(minHeight: 32)
         .background(state.selectedKey == row.key ? T.hoverBg : T.surface)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("inspectorRecord.\(row.key)")
     }
 
     private func detail(selected: InspectorRow?, height: CGFloat, grouped: Bool) -> some View {

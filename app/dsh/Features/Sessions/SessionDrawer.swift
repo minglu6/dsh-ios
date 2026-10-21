@@ -9,7 +9,7 @@ struct SessionDrawer: View {
     @State private var now = Int64(Date().timeIntervalSince1970 * 1000)
     @State private var viewOptions = false
     @State private var addWorkspace = false
-    @State private var overflow: [String: Int] = [:]
+    @State private var visibleIdleLimits: [String: Int] = [:]
     @State private var restoreId: String?
     @State private var renameSession: SessionSummary?
     @State private var renameTitle = ""
@@ -152,6 +152,16 @@ struct SessionDrawer: View {
                     }
                 }
             }
+            .accessibilityIdentifier("sessionList")
+            .background {
+                GeometryReader { viewport in
+                    Color.clear.preference(
+                        key: DrawerPagingGeometryKey.self,
+                        value: DrawerPagingGeometry(viewport: viewport.frame(in: .global))
+                    )
+                }
+            }
+            .onPreferenceChange(DrawerPagingGeometryKey.self, perform: revealVisiblePages)
             .dshDismissesKeyboardOnScrollAndTap()
             footer
         }
@@ -323,33 +333,58 @@ struct SessionDrawer: View {
 
     @ViewBuilder
     private func sessionRows(_ rows: [SessionSummary], groupKey: String?, cap: Bool = true) -> some View {
-        let slice = cap ? projectSessions(rows, groupKey: groupKey) : (rows, 0, 0, Int.max)
-        ForEach(slice.0) { session in
+        let limit = cap ? groupKey.map { visibleIdleLimits[$0] ?? 5 } ?? Int.max : Int.max
+        let slice = projectSessions(rows, limit: limit)
+        ForEach(slice.rows) { session in
             sessionRow(session, groupKey: groupKey)
-        }
-        if cap, let groupKey, slice.1 > 5 {
-            Button {
-                overflow[groupKey] = slice.2 == 0 ? 5 : (slice.2 <= 5 ? Int.max : slice.3 + 5)
-            } label: {
-                Text(slice.2 == 0 ? L.showLess() : L.showMoreSessions(slice.2))
-                    .font(Font.system(size: 13))
-                    .foregroundStyle(T.text3)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.leading, 48)
-                    .padding(.vertical, 8)
-            }
+                .background {
+                    if let groupKey, slice.hasMore, session.sessionId == slice.lastIdleId {
+                        GeometryReader { row in
+                            Color.clear.preference(
+                                key: DrawerPagingGeometryKey.self,
+                                value: DrawerPagingGeometry(boundaries: [
+                                    groupKey: DrawerPagingBoundary(
+                                        limit: limit,
+                                        frame: row.frame(in: .global)
+                                    ),
+                                ])
+                            )
+                        }
+                    }
+                }
         }
     }
 
-    private func projectSessions(_ rows: [SessionSummary], groupKey: String?) -> ([SessionSummary], Int, Int, Int) {
-        let limit = groupKey == nil ? Int.max : (overflow[groupKey!] ?? 5)
+    private func projectSessions(
+        _ rows: [SessionSummary], limit: Int
+    ) -> (rows: [SessionSummary], hasMore: Bool, lastIdleId: String?) {
         var idle = 0
+        var lastIdleId: String?
         let projected = rows.filter { session in
             if session.blank || session.running { return true }
             idle += 1
-            return idle <= limit
+            guard idle <= limit else { return false }
+            lastIdleId = session.sessionId
+            return true
         }
-        return (projected, idle, rows.count - projected.count, limit)
+        return (projected, idle > limit, lastIdleId)
+    }
+
+    private func revealVisiblePages(_ geometry: DrawerPagingGeometry) {
+        guard !searching, let viewport = geometry.viewport, viewport.height > 0 else { return }
+        for (key, boundary) in geometry.boundaries {
+            // Workspace children are not lazy. Appearance alone would eagerly
+            // exhaust every group; require the actual last idle row in view.
+            // The limit also rejects stale geometry during the next layout.
+            guard (visibleIdleLimits[key] ?? 5) == boundary.limit,
+                  boundary.frame.maxY > viewport.minY,
+                  boundary.frame.minY < viewport.maxY,
+                  boundary.frame.maxX > viewport.minX,
+                  boundary.frame.minX < viewport.maxX else { continue }
+            // Insert after this idle boundary, keeping existing row identities
+            // and everything above the boundary at its current scroll offset.
+            visibleIdleLimits[key] = boundary.limit + 5
+        }
     }
 
     private func sessionRow(_ session: SessionSummary, groupKey: String?) -> some View {
@@ -711,6 +746,26 @@ struct SessionDrawer: View {
         case .unauthorized: return L.repairNeeded()
         default: return L.offline()
         }
+    }
+}
+
+private struct DrawerPagingBoundary: Equatable {
+    let limit: Int
+    let frame: CGRect
+}
+
+private struct DrawerPagingGeometry: Equatable {
+    var viewport: CGRect?
+    var boundaries: [String: DrawerPagingBoundary] = [:]
+}
+
+private struct DrawerPagingGeometryKey: PreferenceKey {
+    static var defaultValue: DrawerPagingGeometry { DrawerPagingGeometry() }
+
+    static func reduce(value: inout DrawerPagingGeometry, nextValue: () -> DrawerPagingGeometry) {
+        let next = nextValue()
+        if let viewport = next.viewport { value.viewport = viewport }
+        value.boundaries.merge(next.boundaries, uniquingKeysWith: { _, latest in latest })
     }
 }
 

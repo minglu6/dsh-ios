@@ -23,6 +23,7 @@ struct ChatView: View {
     @State private var showGoal = false
     @State private var showFileImporter = false
     @State private var showSessionFeedback = false
+    @State private var historyScrollAnchor: HistoryScrollAnchor?
 
     /// Android: Screen.Chat + drawer closed + focused + RESUMED. Otherwise completion.view gets null.
     private var desiredViewedSession: String? {
@@ -125,6 +126,7 @@ struct ChatView: View {
             tab = UITestLaunch.screen == "trajectory" || UITestLaunch.screen == "trajectoryDetail" ? 1 : 0
             openTurns = [:]
             openProcesses = [:]
+            historyScrollAnchor = nil
             model.setViewedSession(desiredViewedSession)
         }
         .onAppear {
@@ -546,14 +548,6 @@ struct ChatView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {
-                    if model.chat?.hasMore == true {
-                        Button(loadOlderLabel(loading: model.chat?.loadingOlder == true, english: L.en)) {
-                            model.loadOlderHistory()
-                        }
-                        .disabled(model.chat?.loadingOlder == true)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                    }
                     ForEach(Array(chatRows.enumerated()), id: \.element.key) { _, row in
                         let pickKey = inspectorPickKey(row)
                         let attached: Item.Changes? = {
@@ -596,13 +590,30 @@ struct ChatView: View {
                 .padding(.vertical, 12)
             }
             .accessibilityIdentifier("chatTranscript")
+            .accessibilityValue(model.uiTestFixture ? model.uiTestHistoryPagingAccessibilityValue : "")
+            .refreshable {
+                guard let sessionId = model.chat?.sessionId else { return }
+                let key = chatRows.first.map(inspectorPickKey)
+                let applied = await model.loadOlderHistory(sessionId: sessionId)
+                if applied, model.chat?.sessionId == sessionId, let key {
+                    historyScrollAnchor = HistoryScrollAnchor(sessionId: sessionId, rowKey: key)
+                }
+            }
+            .onChange(of: historyScrollAnchor) { anchor in
+                guard let anchor else { return }
+                historyScrollAnchor = nil
+                guard model.chat?.sessionId == anchor.sessionId else { return }
+                let rows = chatRows
+                let index = inspectorRowIndex(rows, itemKey: anchor.rowKey)
+                if index >= 0 { proxy.scrollTo(rows[index].key, anchor: anchor.point) }
+            }
             .dshDismissesKeyboardOnScrollAndTap()
             .onAppear {
                 if inspectorNav.picking { return }
                 proxy.scrollTo("bottom", anchor: .bottom)
             }
             .onChange(of: chatRows.last?.key) { _ in
-                if inspectorNav.picking { return }
+                if inspectorNav.picking || model.chat?.loadingOlder == true || historyScrollAnchor != nil { return }
                 withAnimation { proxy.scrollTo("bottom", anchor: .bottom) }
             }
             .onChange(of: inspectorNav.revealItemKey) { key in
@@ -630,7 +641,9 @@ struct ChatView: View {
                 } else if inspectorRowIndex(foldedRows, itemKey: target) >= 0 {
                     return
                 } else if model.chat?.loaded == true, model.chat?.hasMore == true, model.chat?.loadingOlder != true {
-                    model.loadOlderHistory()
+                    if let sessionId = model.chat?.sessionId {
+                        Task { await model.loadOlderHistory(sessionId: sessionId) }
+                    }
                 } else if model.chat?.loaded == true, model.chat?.hasMore != true {
                     inspectorNav.revealItemKey = nil
                 }

@@ -124,9 +124,6 @@ public enum TrajL {
     public static var optionsJson: String { pick("请求选项 JSON", "Request options JSON") }
 
     public static var historyLoadingTrajectory: String { pick("正在加载轨迹…", "Loading trajectory…") }
-    public static var historyLoadingEarlier: String { pick("正在加载更早的历史…", "Loading earlier history…") }
-    public static var historyLoadEarlier: String { pick("加载更早的历史", "Load earlier history") }
-    public static var historyClickToLoadEarlier: String { pick("点击加载更早的历史", "Click to load earlier history") }
 
     public static var recordToolCallOnly: String { pick("（仅工具调用）", "(tool call only)") }
     public static var recordNoContent: String { pick("无内容", "No content") }

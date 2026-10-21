@@ -236,6 +236,16 @@ extension AppModel {
             seedUITestSessionHeader(compactTeam: true)
         case "trajectoryLarge":
             seedUITestLargeTrajectory()
+        case "historyPagingChat":
+            installUITestHistoryPaging(screen: .chat)
+        case "historyPagingTrajectory":
+            installUITestHistoryPaging(screen: .trajectory)
+        case "historyPagingInspector":
+            installUITestHistoryPaging(screen: .inspector)
+        case "sessionDrawerPagingFlat":
+            installSessionDrawerPagingFixture(workspace: false)
+        case "sessionDrawerPagingWorkspace":
+            installSessionDrawerPagingFixture(workspace: true)
         case "contextActive", "contextBlank", "contextOffline", "contextUnknown", "contextNoRoster":
             draftWorkspaceId = "ws-android"
             draftPreset = "cordis"

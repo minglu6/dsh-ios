@@ -346,10 +346,6 @@ enum L {
     static func expand() -> String { en ? "Expand" : "展开" }
     static func collapse() -> String { en ? "Collapse" : "收起" }
     static func moreActions() -> String { en ? "More" : "更多" }
-    static func showMoreSessions(_ n: Int) -> String {
-        en ? "Show \(n) more sessions" : "展开其余 \(n) 个会话"
-    }
-    static func showLess() -> String { en ? "Show less" : "收起" }
 
     static func presentFiles() -> String { en ? "Present files" : "交付文件" }
     static func trajectory() -> String { en ? "Trajectory" : "轨迹" }

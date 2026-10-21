@@ -9,6 +9,7 @@ struct TrajectoryView: View {
     @State private var turnsCollapsed = false
     @State private var callsCollapsed = false
     @State private var searchQuery = ""
+    @State private var historyScrollAnchor: HistoryScrollAnchor?
 
     var body: some View {
         let loaded = model.chat?.loaded == true
@@ -38,47 +39,62 @@ struct TrajectoryView: View {
                 }
             }
             Divider()
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    if model.chat?.hasMore == true || model.chat?.loadingOlder == true {
-                        Button {
-                            model.loadOlderHistory()
-                        } label: {
-                            Text(model.chat?.loadingOlder == true ? TrajL.historyLoadingEarlier : TrajL.historyLoadEarlier)
-                                .font(Font.caption)
-                                .foregroundStyle(model.chat?.loadingOlder == true ? T.text2 : T.accent)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 10)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        if turnsCollapsed {
+                            ForEach(projection.turns, id: \.self) { turn in
+                                Button { turnsCollapsed = false } label: {
+                                    Text(TrajL.turnLabel(turn))
+                                        .font(Font.caption)
+                                        .foregroundStyle(T.text3)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                }
+                                .id(turn)
+                            }
+                        } else {
+                            // A single ForEach keeps even a many-thousand-row turn lazy.
+                            ForEach(projection.rows) { entry in
+                                let row = entry.row
+                                let boundary = snapshot.boundaryByRow[row.key]
+                                TrajRowView(
+                                    row: row,
+                                    highlighted: selectedKey == row.key,
+                                    turnStart: entry.turnStart ? entry.turn : nil,
+                                    requestBoundary: boundary,
+                                    requestSelected: selectedRequestId != nil && selectedRequestId == boundary?.identity
+                                ) {
+                                    selection = .row(row, turn: entry.turn)
+                                } onRequestClick: { req in
+                                    selection = .request(req, tab: .overview)
+                                }
+                                .id(entry.id)
+                            }
                         }
-                        .disabled(model.chat?.loadingOlder == true || model.chat?.hasMore != true)
                     }
-                    if turnsCollapsed {
-                        ForEach(projection.turns, id: \.self) { turn in
-                            Button { turnsCollapsed = false } label: {
-                                Text(TrajL.turnLabel(turn))
-                                    .font(Font.caption)
-                                    .foregroundStyle(T.text3)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 8)
-                            }
-                        }
-                    } else {
-                        // A single ForEach keeps even a many-thousand-row turn lazy.
-                        ForEach(projection.rows) { entry in
-                            let row = entry.row
-                            let boundary = snapshot.boundaryByRow[row.key]
-                            TrajRowView(
-                                row: row,
-                                highlighted: selectedKey == row.key,
-                                turnStart: entry.turnStart ? entry.turn : nil,
-                                requestBoundary: boundary,
-                                requestSelected: selectedRequestId != nil && selectedRequestId == boundary?.identity
-                            ) {
-                                selection = .row(row, turn: entry.turn)
-                            } onRequestClick: { req in
-                                selection = .request(req, tab: .overview)
-                            }
+                }
+                .accessibilityIdentifier("trajectoryLedger")
+                .accessibilityValue(model.uiTestFixture ? model.uiTestHistoryPagingAccessibilityValue : "")
+                .refreshable {
+                    guard let sessionId = model.chat?.sessionId else { return }
+                    let key = projection.rows.first?.row.key
+                    let applied = await model.loadOlderHistory(sessionId: sessionId)
+                    if applied, model.chat?.sessionId == sessionId, let key {
+                        historyScrollAnchor = HistoryScrollAnchor(sessionId: sessionId, rowKey: key)
+                    }
+                }
+                .onChange(of: historyScrollAnchor) { anchor in
+                    guard let anchor else { return }
+                    historyScrollAnchor = nil
+                    guard model.chat?.sessionId == anchor.sessionId else { return }
+                    let current = ledgerCache.snapshot(for: model)
+                    if let entry = current.rowByKey[anchor.rowKey] {
+                        if turnsCollapsed {
+                            proxy.scrollTo(entry.turn, anchor: anchor.point)
+                        } else {
+                            proxy.scrollTo(entry.id, anchor: anchor.point)
                         }
                     }
                 }
