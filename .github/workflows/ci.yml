@@ -147,9 +147,11 @@ jobs:
           elif [ "$UI_SCOPE" = "session-header" ]; then
             UI_TESTS=(
               -only-testing:dshUITests/SessionHeaderUITests
-              -only-testing:dshUITests/ScreenshotTests/testConversationContextUsesSessionMetadataNotDraftSelection
-              -only-testing:dshUITests/ScreenshotTests/testConversationContextFollowsSessionSwitchWithoutRetainingPreviousPreset
-              -only-testing:dshUITests/ScreenshotTests/testLongConversationContextKeepsBothValuesReadableAboveComposer
+              -only-testing:dshUITests/ComposerStatsUITests
+              -only-testing:dshUITests/ScreenshotTests/testExistingSessionHasOnlyPassiveHeaderPresetAndNoComposerSelectors
+              -only-testing:dshUITests/ScreenshotTests/testHeaderDoesNotRetainPreviousPresetWhenSwitchingSessions
+              -only-testing:dshUITests/ScreenshotTests/testLandingSelectorsUseRealMenusAndHideUnreadyPreset
+              -only-testing:dshUITests/ScreenshotTests/testNewSessionEntriesOpenSelectableDraftWithoutCreatingBlankChat
             )
             MIN_SCREENSHOTS=4
           elif [ "$UI_SCOPE" = "conversation" ]; then
@@ -158,6 +160,7 @@ jobs:
               -only-testing:dshUITests/SessionTitleUITests
               -only-testing:dshUITests/TurnNavigationUITests
               -only-testing:dshUITests/TrajectoryUITests
+              -only-testing:dshUITests/ComposerStatsUITests
               -only-testing:dshUITests/ScreenshotTests/testLightScreenshots
               -only-testing:dshUITests/ScreenshotTests/testDarkScreenshots
               -only-testing:dshUITests/ScreenshotTests/testNewSessionEntriesOpenSelectableDraftWithoutCreatingBlankChat
@@ -183,6 +186,7 @@ jobs:
           else
             UI_TESTS=(
               -only-testing:dshUITests/ScreenshotTests
+              -only-testing:dshUITests/ComposerStatsUITests
               -only-testing:dshUITests/KeyboardDismissalTests
               -only-testing:dshUITests/ComposerImeTests
               -only-testing:dshUITests/SessionHeaderUITests

@@ -92,10 +92,7 @@ public enum PresetPolicy {
     public static func canSelectAsDefault(_ row: JSONValue) -> Bool {
         row["broken"].str() == nil && row["isDefault"].bool() != true
     }
-}
 
-/// Session context is immutable after creation; never resolve it through draft selections.
-public enum SessionContextPolicy {
     public static func presetName(id: String?, roster: [JSONValue], english: Bool) -> String? {
         guard let id = nonblank(id) else { return nil }
         let row = roster.first { $0["id"].str() == id } ?? jsonObject(["id": .string(id)])
@@ -105,56 +102,6 @@ public enum SessionContextPolicy {
     public static func draftPresetId(pending: String?, draft: String, roster: [JSONValue]) -> String? {
         nonblank(pending) ?? nonblank(draft)
             ?? roster.first { $0["isDefault"].bool() == true }.flatMap { nonblank($0["id"].str()) }
-    }
-
-    public static func workspaceLabel(
-        sessionId: String,
-        cwd: String?,
-        workspaces: [WorkspaceView],
-        localizedDefault: String
-    ) -> String? {
-        if let workspace = workspaces.first(where: { $0.sessionIds.contains(sessionId) }) {
-            return workspaceDisplayTitle(
-                title: workspace.title, path: workspace.path, localizedDefault: localizedDefault
-            )
-        }
-        // Do not infer workspace identity from a path or another session's draft.
-        return nonblank(cwd)
-    }
-
-    public static func workspaceLabel(
-        sessionId: String,
-        parentSessionId: String?,
-        sessions: [SessionSummary],
-        workspaces: [WorkspaceView],
-        localizedDefault: String
-    ) -> String? {
-        var currentId = sessionId
-        var visited: Set<String> = []
-        while visited.insert(currentId).inserted {
-            let session = sessions.first { $0.sessionId == currentId }
-            if let label = workspaceLabel(
-                sessionId: currentId, cwd: session?.cwd,
-                workspaces: workspaces, localizedDefault: localizedDefault
-            ) {
-                return label
-            }
-            // Catalog-only children have an address but no root-list row.
-            let parent = currentId == sessionId
-                ? parentSessionId ?? (session?.origin == "subagent" ? session?.parentSessionId : nil)
-                : (session?.origin == "subagent" ? session?.parentSessionId : nil)
-            guard let parent = nonblank(parent) else { return nil }
-            currentId = parent
-        }
-        return nil
-    }
-
-    public static func unknownWorkspace(english: Bool) -> String {
-        english ? "Workspace not provided" : "工作区未提供"
-    }
-
-    public static func unknownPreset(english: Bool) -> String {
-        english ? "Work mode not provided" : "工作模式未提供"
     }
 
     private static func nonblank(_ value: String?) -> String? {

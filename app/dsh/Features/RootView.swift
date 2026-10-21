@@ -278,7 +278,7 @@ struct RootView: View {
     }
 
     /// Phone landing (Android `Chat.kt`): Hero centers in leftover space;
-    /// workspace row sits `gap: 12` above InputBar; InputBar pins to the
+    /// workspace row sits `gap: 8` above InputBar; InputBar pins to the
     /// safe-area bottom like the chat composer. Slash menu overlays the
     /// leftover above the composer — Composer stays outside GeometryReader
     /// so XCUITest can still see the plus/send UIKit hosts.
@@ -421,7 +421,7 @@ struct RootView: View {
     }
 
     private var landingWorkspaceRow: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 2) {
             LandingWorkspaceChip(model: model, showDirectoryPicker: $showWorkspacePicker)
             AgentPresetSeat(
                 model: model,
@@ -431,7 +431,8 @@ struct RootView: View {
             Spacer()
         }
         .disabled(firstPromptBlocksComposerActions(model.firstPrompt))
-        .padding(.horizontal, 14)
+        .padding(.leading, 20)
+        .padding(.trailing, 16)
     }
 
     private var drawerScrim: some View {

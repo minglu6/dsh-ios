@@ -174,12 +174,12 @@ final class HostSettings: ObservableObject {
     }
 
     /// Screenshot / XCUITest writable Host snapshot. No transport.
-    func installUITestFixture() {
+    func installUITestFixture(performanceUsage: PerformanceUsage = .compact) {
         online = true
         loading = false
         saving = false
         error = nil
-        let fixture = JSONValue.object([
+        var fixture = JSONValue.object([
             "writable": .bool(true),
             "namespaces": .array([
                 .object([
@@ -201,7 +201,7 @@ final class HostSettings: ObservableObject {
                     "value": .object([
                         "transcriptView": .string("detailed"),
                         "collapseTiming": .string("completion"),
-                        "performanceUsage": .string("compact"),
+                        "performanceUsage": .string(performanceUsage.rawValue),
                         "linkOpening": .string("sidebar"),
                     ]),
                 ]),
@@ -221,6 +221,27 @@ final class HostSettings: ObservableObject {
         ])
         snapshot = fixture
         describe = { fixture }
-        mutate = { _, _, _ in fixture }
+        mutate = { namespace, operations, revision in
+            guard var namespaces = fixture["namespaces"].arr(),
+                  let index = namespaces.firstIndex(where: { $0["ns"].str() == namespace }),
+                  var row = namespaces[index].obj(),
+                  row["revision"]?.int() == revision,
+                  var value = row["value"]?.obj(),
+                  let patches = operations.arr() else {
+                throw PocketError(code: "fixture_settings", message: "Unknown settings namespace or revision")
+            }
+            for patch in patches {
+                guard patch["op"].str() == "set", let path = patch["path"].arr(),
+                      path.count == 1, let field = path[0].str() else {
+                    throw PocketError(code: "fixture_settings", message: "Unsupported settings patch")
+                }
+                value[field] = patch["value"]
+            }
+            row["value"] = .object(value)
+            row["revision"] = .number(Double(revision + 1))
+            namespaces[index] = .object(row)
+            fixture = .object(["writable": .bool(true), "namespaces": .array(namespaces)])
+            return .object(["ok": .bool(true)])
+        }
     }
 }

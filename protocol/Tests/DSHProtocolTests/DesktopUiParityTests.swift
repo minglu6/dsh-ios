@@ -370,7 +370,7 @@ final class DesktopUiParityTests: XCTestCase {
         XCTAssertTrue(landingHeadlineCentersInLeftover)
         XCTAssertEqual(landingComposerBottomGapMaxPoints, 40)
         XCTAssertTrue(landingHeroPreviewSharesHeadlineLine)
-        XCTAssertEqual(landingHeroStackGapPoints, 12)
+        XCTAssertEqual(landingHeroStackGapPoints, 8)
         XCTAssertEqual(landingHeroHeadlineSizePoints, 26)
         XCTAssertEqual(landingHeroHeadlineLineHeightPoints, 32)
         XCTAssertEqual(landingHeroHeadlineWeight, 500)

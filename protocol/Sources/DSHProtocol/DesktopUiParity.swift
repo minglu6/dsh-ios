@@ -1241,7 +1241,7 @@ public let landingHeadlineCentersInLeftover = true
 /// Max gap from the composer card bottom to the safe-area bottom (pt).
 public let landingComposerBottomGapMaxPoints: Double = 40
 public let landingHeroPreviewSharesHeadlineLine = true
-public let landingHeroStackGapPoints: Double = 12
+public let landingHeroStackGapPoints: Double = 8
 public let landingHeroHeadlineSizePoints: Double = 26
 public let landingHeroHeadlineLineHeightPoints: Double = 32
 public let landingHeroHeadlineWeight: Double = 500

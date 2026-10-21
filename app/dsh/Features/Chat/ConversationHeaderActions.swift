@@ -12,7 +12,7 @@ struct ConversationHeaderActions: View {
             let parent = model.currentSubagentAddress?.parentSessionId ?? chat.sessionId
             let projection = model.headerProjections[parent]
             let blank = model.sessions.first { $0.sessionId == chat.sessionId }?.blank == true
-            let preset = SessionContextPolicy.presetName(
+            let preset = PresetPolicy.presetName(
                 id: chat.agentPreset, roster: model.presetRoster, english: L.en
             )
             HStack(spacing: 8) {
@@ -43,6 +43,23 @@ struct ConversationHeaderActions: View {
             .onChange(of: chat.sessionId) { _ in
                 teamOpen = false
             }
+        }
+    }
+}
+
+/// Compact phone counterpart of the desktop's passive preset label.
+private struct ConversationHeaderPreset: View {
+    let name: String?
+    let loaded: Bool
+    let blank: Bool
+
+    var body: some View {
+        if loaded, !blank, let name {
+            OfficialGlyph(kind: .agentPreset, size: 14, color: T.text3)
+                .opacity(0.7)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(name)
+                .accessibilityIdentifier("conversationHeaderPreset")
         }
     }
 }

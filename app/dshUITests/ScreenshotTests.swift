@@ -59,84 +59,51 @@ final class ScreenshotTests: XCTestCase {
         add(shot)
     }
 
-    func testConversationContextUsesSessionMetadataNotDraftSelection() {
-        for screen in ["contextActive", "contextBlank", "contextOffline", "contextNoRoster", "contextUnknown", "contextChild"] {
+    func testExistingSessionHasOnlyPassiveHeaderPresetAndNoComposerSelectors() {
+        for screen in ["contextActive", "contextBlank", "contextOffline", "contextNoRoster", "contextUnknown", "contextChild", "contextLong"] {
             let app = XCUIApplication()
             app.launchArguments = ["-UITestFixture", "-UITestScreen", screen]
             app.launch()
             XCTAssertTrue(app.buttons["openDrawer"].waitForExistence(timeout: 15), screen)
-            let preset = app.staticTexts["conversationPreset"]
-            let workspace = app.staticTexts["conversationWorkspace"]
-            XCTAssertTrue(preset.waitForExistence(timeout: 5), screen)
-            XCTAssertTrue(workspace.exists, screen)
-            XCTAssertEqual(
-                preset.label,
-                screen == "contextUnknown" ? "工作模式未提供" : (screen == "contextChild" ? "PTC 模式" : "标准模式"),
-                screen
-            )
-            XCTAssertEqual(workspace.label, screen == "contextUnknown" ? "工作区未提供" : "dsh-ios", screen)
-            XCTAssertTrue(workspace.isHittable, screen)
-            XCTAssertTrue(preset.isHittable, screen)
-            XCTAssertFalse(app.buttons["conversationWorkspace"].exists, screen)
-            XCTAssertFalse(app.buttons["draftWorkspace"].exists, screen)
-            XCTAssertFalse(app.buttons["agentPresetSeat"].exists, screen)
-            XCTAssertFalse(app.buttons["conversationPreset"].exists, screen)
+            for identifier in ["conversationWorkspace", "conversationPreset", "draftWorkspace", "agentPresetSeat"] {
+                XCTAssertFalse(app.descendants(matching: .any)[identifier].firstMatch.exists, screen)
+            }
             let headerPreset = app.descendants(matching: .any)["conversationHeaderPreset"].firstMatch
             if screen == "contextBlank" || screen == "contextUnknown" {
                 XCTAssertFalse(headerPreset.exists, screen)
             } else {
                 XCTAssertTrue(headerPreset.exists, screen)
-                XCTAssertEqual(headerPreset.label, preset.label, "Header and context row must describe the same session")
+                let expected = screen == "contextLong"
+                    ? "跨项目技术交付件证据检索与终审工作模式"
+                    : (screen == "contextChild" ? "PTC 模式" : "标准模式")
+                XCTAssertEqual(headerPreset.label, expected, screen)
                 XCTAssertFalse(app.buttons["conversationHeaderPreset"].exists, screen)
+                XCTAssertLessThanOrEqual(headerPreset.frame.maxY, app.buttons["chatTab.chat"].frame.minY, screen)
             }
             app.terminate()
         }
     }
 
-    func testConversationContextFollowsSessionSwitchWithoutRetainingPreviousPreset() {
+    func testHeaderDoesNotRetainPreviousPresetWhenSwitchingSessions() {
         let app = XCUIApplication()
         app.launchArguments = ["-UITestFixture", "-UITestScreen", "contextActive"]
         app.launch()
-        XCTAssertTrue(app.staticTexts["conversationPreset"].waitForExistence(timeout: 10))
-        XCTAssertEqual(app.staticTexts["conversationPreset"].label, "标准模式")
-        for (sessionId, workspace) in [("s-old", "dsh-android"), ("s-hello", "dsh-ios")] {
+        let headerPreset = app.descendants(matching: .any)["conversationHeaderPreset"].firstMatch
+        XCTAssertTrue(headerPreset.waitForExistence(timeout: 10))
+        XCTAssertEqual(headerPreset.label, "标准模式")
+        for sessionId in ["s-old", "s-hello"] {
             app.buttons["openDrawer"].tap()
             let row = app.buttons["sessionRow.\(sessionId)"]
             XCTAssertTrue(row.waitForExistence(timeout: 5))
             row.tap()
-            XCTAssertTrue(app.staticTexts["conversationWorkspace"].waitForExistence(timeout: 5))
-            XCTAssertEqual(app.staticTexts["conversationWorkspace"].label, workspace)
+            XCTAssertTrue(app.buttons["chatTab.chat"].waitForExistence(timeout: 5))
             // This offline fixture sends no follow projection after navigation.
-            XCTAssertEqual(app.staticTexts["conversationPreset"].label, "工作模式未提供")
+            XCTAssertFalse(headerPreset.exists)
+            XCTAssertFalse(app.buttons["agentPresetSeat"].exists)
+            XCTAssertFalse(app.buttons["draftWorkspace"].exists)
+            XCTAssertFalse(app.descendants(matching: .any)["conversationPreset"].firstMatch.exists)
+            XCTAssertFalse(app.descendants(matching: .any)["conversationWorkspace"].firstMatch.exists)
         }
-    }
-
-    func testLongConversationContextKeepsBothValuesReadableAboveComposer() {
-        let app = XCUIApplication()
-        app.launchArguments = ["-UITestFixture", "-UITestScreen", "contextLong"]
-        app.launch()
-        let workspace = app.scrollViews["conversationWorkspace.scroll"]
-        let preset = app.scrollViews["conversationPreset.scroll"]
-        XCTAssertTrue(workspace.waitForExistence(timeout: 10))
-        XCTAssertTrue(preset.exists)
-        XCTAssertEqual(app.staticTexts["conversationWorkspace"].label, "地面光伏事业部技术交付件审核与产品工作空间")
-        XCTAssertEqual(app.staticTexts["conversationPreset"].label, "跨项目技术交付件证据检索与终审工作模式")
-        XCTAssertGreaterThan(workspace.frame.width, 100)
-        XCTAssertGreaterThan(preset.frame.width, 100)
-        XCTAssertLessThanOrEqual(workspace.frame.maxX, preset.frame.minX)
-        XCTAssertGreaterThanOrEqual(workspace.frame.minX, app.frame.minX)
-        XCTAssertLessThanOrEqual(preset.frame.maxX, app.frame.maxX)
-        XCTAssertLessThan(abs(workspace.frame.midY - preset.frame.midY), 2)
-        XCTAssertLessThanOrEqual(preset.frame.maxY, app.descendants(matching: .any)["chatComposer"].firstMatch.frame.minY)
-        XCTAssertFalse(app.buttons["conversationWorkspace"].exists)
-        XCTAssertFalse(app.buttons["conversationPreset"].exists)
-        workspace.swipeLeft()
-        preset.swipeLeft()
-        XCTAssertTrue(app.textViews["composerInput"].exists)
-        let shot = XCTAttachment(screenshot: app.screenshot())
-        shot.name = "session-context-long-values-scrolled"
-        shot.lifetime = .keepAlways
-        add(shot)
     }
 
     func testNewSessionEntriesOpenSelectableDraftWithoutCreatingBlankChat() {
@@ -160,16 +127,22 @@ final class ScreenshotTests: XCTestCase {
             XCTAssertEqual(workspace.value as? String, expectedWorkspace)
             XCTAssertTrue(preset.isEnabled)
             XCTAssertFalse(app.descendants(matching: .any)["chatTab.chat"].exists)
+            let input = app.textViews["composerInput"]
+            XCTAssertTrue(input.exists)
+            input.tap()
+            input.typeText("Keep this draft")
             preset.tap()
             let standard = app.buttons["agentPresetRow.standard"]
             XCTAssertTrue(standard.waitForExistence(timeout: 5))
             standard.tap()
             XCTAssertEqual(preset.label, "标准模式")
+            XCTAssertEqual(input.value as? String, "Keep this draft")
             workspace.tap()
-            let ios = app.buttons.containing(.staticText, identifier: "dsh-ios").firstMatch
+            let ios = app.buttons["draftWorkspaceRow.ws-ios"]
             XCTAssertTrue(ios.waitForExistence(timeout: 5))
             ios.tap()
             XCTAssertEqual(workspace.value as? String, "dsh-ios")
+            XCTAssertEqual(input.value as? String, "Keep this draft")
             let shot = XCTAttachment(screenshot: app.screenshot())
             shot.name = "new-session-selectable-context-\(entry)"
             shot.lifetime = .keepAlways
@@ -178,7 +151,7 @@ final class ScreenshotTests: XCTestCase {
         }
     }
 
-    func testLandingContextRemainsSelectableAndVisibleWithoutMetadata() {
+    func testLandingSelectorsUseRealMenusAndHideUnreadyPreset() {
         let app = XCUIApplication()
         app.launchArguments = ["-UITestFixture", "-UITestScreen", "landing"]
         app.launch()
@@ -188,7 +161,7 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertEqual(workspace.value as? String, "dsh-ios")
         XCTAssertEqual(preset.label, "标准模式")
         workspace.tap()
-        let android = app.buttons.containing(.staticText, identifier: "dsh-android").firstMatch
+        let android = app.buttons["draftWorkspaceRow.ws-android"]
         XCTAssertTrue(android.waitForExistence(timeout: 5))
         android.tap()
         XCTAssertEqual(workspace.value as? String, "dsh-android")
@@ -203,9 +176,7 @@ final class ScreenshotTests: XCTestCase {
         app.launch()
         XCTAssertTrue(workspace.waitForExistence(timeout: 15))
         XCTAssertEqual(workspace.value as? String, "")
-        XCTAssertTrue(preset.exists)
-        XCTAssertEqual(preset.label, "选择工作模式")
-        XCTAssertFalse(preset.isEnabled)
+        XCTAssertFalse(preset.exists)
     }
 
     private func capture(appearance: String) throws {

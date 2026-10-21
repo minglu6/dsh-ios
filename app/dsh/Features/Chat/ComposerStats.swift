@@ -12,11 +12,12 @@ private let statisticsContextColors: [Color] = [
 
 struct ComposerStats: View {
     let metrics: ComposerMetrics
+    @ObservedObject var settings: HostSettings
     @State private var activityOpen = false
     @State private var usageOpen = false
     @State private var contextOpen = false
 
-    private var detailed: Bool { AppModel.shared.performanceUsage == .detailed }
+    private var detailed: Bool { settings.value(.performance)?.str() == "detailed" }
     private var activity: ComposerActivity? { metrics.activity }
     private var usage: ComposerTokenUsage? { metrics.tokens.flatMap { $0.totalTokens > 0 ? $0 : nil } }
     private var context: ComposerContext? { metrics.context }
@@ -57,30 +58,58 @@ struct ComposerStats: View {
             .padding(.horizontal, CGFloat(composerStatisticsRowPaddingHorizontalPoints))
             .padding(.top, CGFloat(composerStatisticsRowPaddingTopPoints))
             .padding(.bottom, CGFloat(composerStatisticsRowPaddingBottomPoints))
+            .onChange(of: detailed) { _ in
+                activityOpen = false
+                usageOpen = false
+            }
         }
     }
 
     @ViewBuilder
     private var pills: some View {
         if let activityText {
-            pill(
-                activityText,
-                icon: .gaugeOutline,
+            ComposerStatPill(
+                text: activityText,
+                icon: OfficialGlyph(
+                    kind: .gaugeOutline,
+                    size: CGFloat(composerStatisticsIconSizePoints),
+                    color: activityOpen ? T.text2 : T.text3
+                ),
                 clickable: detailed && activityHasDetails,
-                open: $activityOpen,
-                opensAbove: composerActivityPopoverOpensAbove
-            ) { toggle(.activity) } content: {
+                open: activityOpen,
+                restingInk: T.text3,
+                activeInk: T.text2,
+                activeBackground: T.hoverBg
+            ) { toggle(.activity) }
+            .accessibilityIdentifier("composerStats.activity")
+            .popover(
+                isPresented: $activityOpen,
+                attachmentAnchor: .rect(.bounds),
+                arrowEdge: composerActivityPopoverOpensAbove ? .bottom : .top
+            ) {
                 activityPopover
             }
         }
         if let usageText {
-            pill(
-                usageText,
-                icon: .databaseOutline,
+            ComposerStatPill(
+                text: usageText,
+                icon: OfficialGlyph(
+                    kind: .databaseOutline,
+                    size: CGFloat(composerStatisticsIconSizePoints),
+                    color: usageOpen ? T.text2 : T.text3
+                ),
                 clickable: detailed,
-                open: $usageOpen,
-                opensAbove: composerUsagePopoverOpensAbove
-            ) { toggle(.usage) } content: {
+                open: usageOpen,
+                restingInk: T.text3,
+                activeInk: T.text2,
+                activeBackground: T.hoverBg
+            ) { toggle(.usage) }
+            .accessibilityIdentifier("composerStats.usage")
+            .popover(
+                isPresented: $usageOpen,
+                attachmentAnchor: .rect(.bounds),
+                arrowEdge: composerUsagePopoverOpensAbove ? .bottom : .top
+            ) {
                 if let usage { sessionUsagePopover(usage) }
             }
         }
@@ -111,43 +140,6 @@ struct ComposerStats: View {
         exclusive(dialog)
     }
 
-    private func pill<Content: View>(
-        _ text: String,
-        icon: OfficialGlyph.Kind,
-        clickable: Bool,
-        open: Binding<Bool>,
-        opensAbove: Bool,
-        action: @escaping () -> Void,
-        @ViewBuilder content: @escaping () -> Content
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: CGFloat(composerStatisticsPillIconGapPoints)) {
-                OfficialGlyph(
-                    kind: icon,
-                    size: CGFloat(composerStatisticsIconSizePoints),
-                    color: open.wrappedValue ? T.text2 : T.text3
-                )
-                Text(text)
-                    .font(Font.system(size: CGFloat(composerStatisticsPillFontSizePoints)))
-                    .monospacedDigit()
-                    .foregroundStyle(open.wrappedValue ? T.text2 : T.text3)
-                    .lineLimit(1)
-            }
-            .frame(minHeight: CGFloat(composerStatisticsPillLineHeightPoints))
-            .padding(.vertical, CGFloat(composerStatisticsPillPaddingVerticalPoints))
-            .padding(.horizontal, CGFloat(composerStatisticsPillPaddingHorizontalPoints))
-            .background(
-                open.wrappedValue ? T.hoverBg : Color.clear,
-                in: RoundedRectangle(cornerRadius: CGFloat(composerStatisticsPillRadiusPoints), style: .circular)
-            )
-        }
-        .buttonStyle(.plain)
-        .disabled(!clickable)
-        .popover(isPresented: open, attachmentAnchor: .rect(.bounds), arrowEdge: opensAbove ? .bottom : .top) {
-            content()
-        }
-    }
-
     @ViewBuilder
     private var activityPopover: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -162,13 +154,13 @@ struct ComposerStats: View {
             VStack(alignment: .leading, spacing: CGFloat(composerStatDialogDetailsRowGapPoints)) {
                 if let activity {
                     if activity.llmMs > 0 {
-                        statDialogRow(composerActivityLlmTime(english: L.en), statisticsDuration(activity.llmMs))
+                        statDialogRow(composerActivityLlmTime(english: L.en), statisticsDuration(activity.llmMs, english: L.en))
                     }
                     if activity.toolMs > 0 {
-                        statDialogRow(composerActivityToolTime(english: L.en), statisticsDuration(activity.toolMs))
+                        statDialogRow(composerActivityToolTime(english: L.en), statisticsDuration(activity.toolMs, english: L.en))
                     }
                     if let ttft = activity.meanTtftMs {
-                        statDialogRow(composerActivityTtft(english: L.en), statisticsDuration(ttft))
+                        statDialogRow(composerActivityTtft(english: L.en), statisticsDuration(ttft, english: L.en))
                     }
                     if let speed {
                         statDialogRow(composerActivitySpeed(english: L.en), speed)
@@ -180,6 +172,8 @@ struct ComposerStats: View {
         .padding(CGFloat(composerStatDialogPaddingPoints))
         .frame(minWidth: statDialogMinWidth, maxWidth: statDialogMaxWidth)
         .modifier(PopoverCompactAdaptation())
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("composerStats.activityDialog")
     }
 
     private func contextMeter(_ context: ComposerContext) -> some View {
@@ -204,6 +198,7 @@ struct ComposerStats: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(composerContextAria(percent: reading, english: L.en))
+        .accessibilityIdentifier("composerStats.context")
         .popover(
             isPresented: $contextOpen,
             attachmentAnchor: .rect(.bounds),
@@ -261,6 +256,8 @@ struct ComposerStats: View {
         .padding(CGFloat(composerContextPanelPaddingPoints))
         .frame(width: contextPanelWidth)
         .modifier(PopoverCompactAdaptation())
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("composerStats.contextDialog")
     }
 
     /// Desktop session usage chip: anchored above, icon + title left, total right.
@@ -302,6 +299,8 @@ struct ComposerStats: View {
         .padding(CGFloat(composerStatDialogPaddingPoints))
         .frame(minWidth: statDialogMinWidth, maxWidth: statDialogMaxWidth)
         .modifier(PopoverCompactAdaptation())
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("composerStats.usageDialog")
     }
 
     /// Desktop `stat-dialog` `.details dt` tertiary / `dd` secondary, `gap: 6px 16px`.
@@ -525,9 +524,11 @@ func statisticsExact(_ value: Int64) -> String {
     return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
 }
 
-func statisticsDuration(_ milliseconds: Double) -> String {
+func statisticsDuration(_ milliseconds: Double, english: Bool) -> String {
     let seconds = milliseconds / 1000
-    if seconds < 60 { return "\(statisticsRounded(seconds, decimals: 1))s" }
+    if seconds < 60 {
+        return "\(statisticsRounded(seconds, decimals: 1))\(english ? "s" : "秒")"
+    }
     let whole = Int64(floor(seconds + 0.5))
-    return "\(whole / 60)m\(whole % 60)s"
+    return english ? "\(whole / 60)m\(whole % 60)s" : "\(whole / 60)分\(whole % 60)秒"
 }

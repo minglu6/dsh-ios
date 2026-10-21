@@ -56,7 +56,7 @@ struct LandingWorkspaceChip: View {
         .popover(
             isPresented: $open,
             attachmentAnchor: .rect(.bounds),
-            arrowEdge: composerPickerPopoverOpensAbove ? .bottom : .top
+            arrowEdge: .top
         ) {
             VStack(alignment: .leading, spacing: 0) {
                 if model.workspaces.isEmpty {
@@ -96,6 +96,7 @@ struct LandingWorkspaceChip: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("draftWorkspaceRow.\(workspace.workspaceId)")
                 }
                 if canCreate {
                     Button {
@@ -139,18 +140,18 @@ struct AgentPresetSeat: View {
     }
 
     private var currentId: String? {
-        SessionContextPolicy.draftPresetId(
+        PresetPolicy.draftPresetId(
             pending: model.pendingCreatorPreset, draft: model.draftPreset, roster: model.presetRoster
         )
     }
 
-    private var currentLabel: String {
-        SessionContextPolicy.presetName(id: currentId, roster: model.presetRoster, english: L.en)
-            ?? (L.en ? "Choose work mode" : "选择工作模式")
+    private var currentLabel: String? {
+        PresetPolicy.presetName(id: currentId, roster: model.presetRoster, english: L.en)
     }
 
     var body: some View {
-        Button { if model.isOnline && !rows.isEmpty { open.toggle() } } label: {
+        if let currentLabel, !model.presetRoster.isEmpty {
+            Button { if model.isOnline && !rows.isEmpty { open.toggle() } } label: {
                 HStack(spacing: 4) {
                     OfficialGlyph(kind: .agentPreset, size: 14, color: T.ink)
                     Text(currentLabel)
@@ -181,6 +182,7 @@ struct AgentPresetSeat: View {
                     )
                 }
             )
+        }
     }
 }
 
@@ -195,7 +197,7 @@ struct AgentPresetMenuLayer: View {
     }
 
     private var currentId: String? {
-        SessionContextPolicy.draftPresetId(
+        PresetPolicy.draftPresetId(
             pending: model.pendingCreatorPreset, draft: model.draftPreset, roster: model.presetRoster
         )
     }
