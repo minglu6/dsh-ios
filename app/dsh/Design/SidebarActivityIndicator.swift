@@ -44,7 +44,7 @@ struct SidebarSessionLeadingView: View {
     }
 }
 
-private struct SidebarActivitySpinner: View {
+struct SidebarActivitySpinner: View {
     let color: Color
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 

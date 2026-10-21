@@ -24,7 +24,7 @@ struct HostPanelView: View {
             case .trajectory: TrajectoryView(model: model)
             case .files: FilesPanel(model: model)
             case .terminal: TerminalPanel(model: model)
-            case .jobs: JobsPanel(model: model) { model.pop() }
+            case .jobs: JobsHostPanel(model: model) { model.pop() }
             case .browser:
                 BrowserPanel(
                     model: model,

@@ -313,6 +313,94 @@ final class JobsTests: XCTestCase {
         XCTAssertEqual(jobs?.first?.detail, "signal: SIGTERM; cancelled by the user")
         XCTAssertFalse(jobs?.first?.isLive ?? true)
     }
+
+    func testClearIsClientOnlyAndSharedWithTriggerAcrossPopoverLifetimes() throws {
+        let payload = try JSONValue.parse("""
+        {"jobs":[
+          {"id":"run","kind":"bash","label":"sleep 600","status":"running","startedAt":1000,"output":{"total":0}},
+          {"id":"stop","kind":"bash","label":"sleep 900","status":"stopping","startedAt":2000,"output":{"total":0}},
+          {"id":"done","kind":"bash","label":"echo done","status":"completed","detail":"exit code: 0","startedAt":1000,"finishedAt":3000,"output":{"total":8}},
+          {"id":"failed","kind":"bash","label":"exit 3","status":"failed","detail":"exit code: 3","startedAt":1000,"finishedAt":4000,"output":{"total":0}}
+        ]}
+        """)
+        let roster = parseJobRoster(payload)
+        var root = JobListState()
+        root.expandedKey = "done"
+        root.clearSettled(roster)
+        XCTAssertNil(root.expandedKey)
+        XCTAssertEqual(root.visibleRows(roster).map(\.id), ["run", "stop"])
+        XCTAssertEqual(JobsActionLabel.chip(jobs: root.visibleRows(roster), failed: false), .live(2))
+        XCTAssertEqual(roster.count, 4, "Clear must not delete registry rows")
+
+        // The popover reads the same root again; no component-owned clear set.
+        root.reconcile(roster, nowMs: 5_000)
+        XCTAssertEqual(root.visibleRows(roster).map(\.id), ["run", "stop"])
+        root.expandedKey = "run"
+        root.clearSettled(roster)
+        XCTAssertEqual(root.expandedKey, "run", "Clearing must not collapse live output")
+
+        var settledRoster = roster
+        settledRoster[0].status = "completed"
+        settledRoster[0].finishedAt = 6_000
+        XCTAssertEqual(root.visibleRows(settledRoster).map(\.id), ["stop", "run"], "A later settlement was not cleared")
+        root.clearSettled(settledRoster)
+        XCTAssertEqual(root.visibleRows(settledRoster).map(\.id), ["stop"])
+        settledRoster[1].status = "killed"
+        root.clearSettled(settledRoster)
+        XCTAssertNil(JobsActionLabel.chip(jobs: root.visibleRows(settledRoster), failed: false))
+        XCTAssertEqual(JobListState().visibleRows(settledRoster).count, 4, "A fresh host/session root starts uncleared")
+    }
+
+    func testExpandedOutputAndKillReconcileAgainstAuthoritativeStatus() throws {
+        var root = JobListState()
+        var roster = parseJobRoster(try JSONValue.parse("""
+        {"jobs":[{"id":"run","kind":"bash","label":"sleep 10","status":"running","startedAt":1000,"output":{"total":0}}]}
+        """))
+        root.expandedKey = "run"
+        root.killPhase = jobKillPress(phase: .idle, key: "run", nowMs: 1_000)
+        root.killPhase = jobKillPress(phase: root.killPhase, key: "run", nowMs: 2_000)
+        root.killPhase = jobKillAdmit(phase: root.killPhase, key: "run", ok: true, nowMs: 2_500)
+        root.reconcile(roster, nowMs: 9_000)
+        XCTAssertEqual(root.killPhase, .pending(key: "run"), "Admission waits for the authoritative row")
+        roster[0].status = "stopping"
+        root.reconcile(roster, nowMs: 10_000)
+        XCTAssertEqual(root.killPhase, .idle)
+        XCTAssertEqual(root.expandedKey, "run", "Stopping jobs remain observable")
+        roster[0].status = "killed"
+        roster[0].detail = "signal: SIGTERM; cancelled by the user"
+        roster[0].finishedAt = 11_000
+        root.reconcile(roster, nowMs: 11_000)
+        XCTAssertNil(root.expandedKey, "A settled row without retained output is static")
+        XCTAssertEqual(jobRowStatusText(roster[0], english: false), "signal: SIGTERM; cancelled by the user")
+        roster[0].outputTotal = 12
+        root.expandedKey = "run"
+        root.reconcile(roster, nowMs: 12_000)
+        XCTAssertEqual(root.expandedKey, "run", "Retained output stays observable")
+        root.reconcile([], nowMs: 13_000)
+        XCTAssertNil(root.expandedKey)
+    }
+
+    func testScopeIdentitySeparatesHostAndSessionAndKillFailureExpires() {
+        XCTAssertNotEqual(JobsScope(hostId: "a", sessionId: "s"), JobsScope(hostId: "b", sessionId: "s"))
+        XCTAssertNotEqual(JobsScope(hostId: "a", sessionId: "s"), JobsScope(hostId: "a", sessionId: "t"))
+        XCTAssertEqual(JobsScope(hostId: "a", sessionId: "s"), JobsScope(hostId: "a", sessionId: "s"))
+        let failed = jobKillAdmit(phase: .pending(key: "run"), key: "run", ok: false, nowMs: 2_000)
+        XCTAssertEqual(jobKillTick(phase: failed, nowMs: 5_999, runningKeys: ["run"]), failed)
+        XCTAssertEqual(jobKillTick(phase: failed, nowMs: 6_000, runningKeys: ["run"]), .idle)
+        XCTAssertEqual(jobKillAdmit(phase: .armed(key: "next", untilMs: 8_000), key: "run", ok: false, nowMs: 3_000), .armed(key: "next", untilMs: 8_000))
+        XCTAssertEqual(jobKillPress(phase: .armed(key: "run", untilMs: 4_000), key: "run", nowMs: 4_000), .armed(key: "run", untilMs: 7_000))
+    }
+
+    func testPopoverStaysWithinNarrowViewportAndHeightBudget() {
+        for width in [0.0, 24, 32, 240, 320, 402, 768] {
+            XCTAssertGreaterThanOrEqual(jobsPopoverWidth(screenWidth: width), 0)
+            XCTAssertLessThanOrEqual(jobsPopoverWidth(screenWidth: width), max(0, width - 32))
+        }
+        for height in [0.0, 120, 140, 320, 667, 1024] {
+            XCTAssertGreaterThanOrEqual(jobsPopoverMaxHeight(screenHeight: height), 0)
+            XCTAssertLessThanOrEqual(jobsPopoverMaxHeight(screenHeight: height), max(0, height - 140))
+        }
+    }
 }
 
 final class CompletionRemindersTests: XCTestCase {

@@ -397,7 +397,7 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 | 模块 | iOS | 对照的桌面源码 | 对齐点 |
 | --- | --- | --- | --- |
 | Composer 换行 | `ComposerTextView.sizeThatFits -> CGSize?` | SwiftUI `UIViewRepresentable` 协议 | 返回非 Optional 时 SwiftUI 不调用，长文本不换行；空文本仍走 36/52 |
-| 任务 popover | `arrowEdge: .top` + 无 `header` | `ui-jobs` `JobListAction` 从 chip 下方弹出，无返回箭头 | 320×420 内容完整；「<」只留在全屏 Host 面板 |
+| 任务 popover | `arrowEdge: .top` + 无 `header` | `ui-jobs` `JobListAction` 从 chip 下方弹出，无返回箭头 | 内容自适应并受视口约束；返回箭头只保留在完整 Host 面板 |
 | landing 完全权限确认 | `permission.access` / `currentSession` | `PermissionSelect` 用 `confirm.description`（智能体 / 当前任务）；`settings.permission` 的「新会话 / 后续任务」只给设置默认档。桌面 hero 已是空白会话 | landing 与会话同一套 |
 | landing 草稿持久化 | `landingPermissionPersistsAcrossLaunch = false` | InputBar 仅在 `sessionId !== undefined` 时画权限；hero 的选择写在 Host 会话上 | 不写 UserDefaults；杀进程后回默认档 |
 | waking | `InboxClaimState` + `applyInboxClaim` + `isWakingTurnTrigger` | `ui-chat` `inbox.ts` / `message.ts`（client.js ~10360–10491） | claim **替换** `currentClaimed`；idle steer 要求 step 1、`claimSeq > turnStart`、`claimedHuman == false`；id 不用 rpcId |
@@ -407,7 +407,7 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 | 模块 | iOS | 对照的桌面源码 | 对齐点 |
 | --- | --- | --- | --- |
 | 已停止任务行 | `jobViewProjection` + `applyJobFollowProjection` | `dsh-jobs/view` `JobView`；`ui-jobs` `JobListAction` `isLive` / `jobDetail` / `dotState` / kill 仅 `running` | Host `job.list` / follow 的 killed `JobView`（`status`+`detail`+`finishedAt`，progress 清空）投影为橙点 + `signal: SIGTERM; cancelled by the user` 单行、无停止按钮。`exit.signal` 仍写成 live `status` 时同样投影。follow `opened` 不得把已结算行救回 running |
-| 任务 popover 尺寸 | `jobsPopoverSizesToContent` + `ViewThatFits` | `JobListAction` `MenuSurface` + `useAnchoredPosition` | 按内容收缩，不再固定 320×420 |
+| 任务 popover 尺寸 | `JobsPopoverRoster` + `jobsPopoverWidth` / `jobsPopoverMaxHeight` | `JobListAction` `MenuSurface` + `useAnchoredPosition` | 保持单一列表身份并按内容收缩；宽不超过 500pt、两侧各留至少 16pt，高不超过 480pt并保留视口余量 |
 | 底栏统计 | `composerStatisticsTokenUnit` | desktop statistics `tok` | 「25.4K tok · 缓存命中 48%」，不再用会被截断的 `tokens` |
 | 触发行 | `TurnTriggerRow` `T.fill2` 圆角卡 | `TurnTriggerNodeView` 灰底圆角卡 | 左图标、右时间 + chevron |
 | 完全权限确认 | `PermissionRiskDialog` | `RiskConfirmation` 居中对话框 | landing / 会话 / 设置同一套文案，不再整屏 sheet 把内容顶上去 |
@@ -419,7 +419,7 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 | 模块 | iOS | 对照的桌面源码 | 对齐点 |
 | --- | --- | --- | --- |
 | Token 用量 | `ComposerStats` session usage `.popover` | desktop statistics chip `MenuSurface` | 贴 chip 的小气泡；表头 `Token 用量 {exact} tok`；无「合计」行；「缓存命中」不是「缓存命中率」；token 值带 `tok` |
-| 已结束任务 SIGTERM | `jobsPopoverWidth(screenWidth:)` + `jobsPopoverSettledDetailWraps` | `JobListAction` 整句 `signal: SIGTERM; cancelled by the user` | 窄屏换行，不再 `SIGTER…` |
+| 已结束任务与清空 | Action 根持有 `JobListState`，面板共享过滤结果 | `JobListAction` 的 settled 单行、producer detail 与 client-side clear | 命令和退出原因在窄屏按桌面截断，保留状态点与耗时；清空仅隐藏已结束记录并同步入口计数，关闭重开不复活，进行中任务不受影响，新结束任务仍出现 |
 | 完全权限确认键盘 | `permissionRiskDismissesKeyboard` + composer `resignKeyboard` | desktop `RiskConfirmation` 先 blur composer | 对话框出现前收起键盘（slash 菜单的 lockFirstResponder 也放开） |
 | waking 回归表 | `WakingTurnTriggerTests` | `ui-chat` `inbox.ts` / `message.ts`（client.js ~10360–10491） | 一张表覆盖 next-turn claim、idle steer、skill-catalog / time-context、未认领 tool-jobs、claim 替换、无 step、canceled splice |
 

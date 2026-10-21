@@ -237,6 +237,9 @@ final class AppModel: ObservableObject {
     var uiTestChangesDiffFailures: Set<Int> = []
     var uiTestChangesSummaryFailures = 0
     var uiTestTerminalEntries: [TerminalSessionEntry] = []
+#if DEBUG
+    var uiTestTodoLifecycleDriver: UITestTodoLifecycleDriver?
+#endif
 
     let terminal = AnsiTerminal()
     let hostSettings = HostSettings()
@@ -939,6 +942,26 @@ final class AppModel: ObservableObject {
         inspectorLog.apply(snapshot)
         publishChat()
     }
+#if DEBUG
+    /// Route synthetic Host frames through the same follow handler and publisher as a live subscription.
+    func receiveUITestTodoFollow(_ frame: JSONValue, reset: Bool = false) {
+        guard uiTestFixture, let sessionId = chat?.sessionId else { return }
+        if reset {
+            initializeChat(sessionId)
+            subId = "fixture-todo-follow"
+        }
+        onPush(.object([
+            "ev": .string("follow"),
+            "subId": .string("fixture-todo-follow"),
+            "frame": frame,
+        ]))
+    }
+
+    func receiveUITestJobFrame(jobId: String, frame: JSONValue) {
+        guard uiTestFixture else { return }
+        applyJobFrame(jobId: jobId, frame: frame)
+    }
+#endif
 
     func pin(_ session: SessionSummary) {
         Task {
@@ -2090,14 +2113,31 @@ final class AppModel: ObservableObject {
     }
 
     func killJob(jobId: String, onResult: @escaping (Bool) -> Void) {
+        guard let client, let sessionId = jobsWatchSessionId ?? chat?.sessionId else {
+            onResult(false)
+            return
+        }
+        let hostId = activeId
+        let generation = jobsLoopGeneration
         Task {
-            guard let client, let sessionId = jobsWatchSessionId ?? chat?.sessionId else {
+            guard self.client === client, activeId == hostId, chat?.sessionId == sessionId,
+                  jobsLoopGeneration == generation else {
                 onResult(false)
                 return
             }
             do {
                 _ = try await client.killJob(sessionId: sessionId, jobId: jobId)
+                guard self.client === client, activeId == hostId, chat?.sessionId == sessionId,
+                      jobsLoopGeneration == generation else {
+                    onResult(false)
+                    return
+                }
                 let next = parseJobRoster(try await client.listJobs(sessionId: sessionId))
+                guard self.client === client, activeId == hostId, chat?.sessionId == sessionId,
+                      jobsLoopGeneration == generation else {
+                    onResult(false)
+                    return
+                }
                 jobs = next
                 jobsFailed = false
                 jobsPanelKillError = false
@@ -2106,10 +2146,16 @@ final class AppModel: ObservableObject {
                     jobDetail?.status = updated.status
                 }
                 await runJobReconcile()
-                onResult(true)
+                onResult(self.client === client && activeId == hostId && chat?.sessionId == sessionId
+                    && jobsLoopGeneration == generation)
             } catch is CancellationError {
                 onResult(false)
             } catch {
+                guard self.client === client, activeId == hostId, chat?.sessionId == sessionId,
+                      jobsLoopGeneration == generation else {
+                    onResult(false)
+                    return
+                }
                 jobsPanelKillError = true
                 jobsPanelError = jobKillFailedLabel(english: L.en)
                 onResult(false)
@@ -2333,6 +2379,7 @@ final class AppModel: ObservableObject {
                     emit(compatibilityError(issue).message)
                 }
                 self.client = client
+                reducer.clearComposerProjections()
                 resetQuestionStore(clearDrafts: false)
                 ops = hello.ops
                 routes[profile.id] = client.route ?? hello.route

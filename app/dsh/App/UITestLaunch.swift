@@ -229,6 +229,16 @@ extension AppModel {
     }
 
     fileprivate func applyUITestScreen(_ screen: String) {
+#if DEBUG
+        if screen == "todoLifecycle" {
+            installUITestTodoLifecycle()
+            return
+        }
+        if screen == "jobsLifecycle" || screen == "jobsHost" {
+            installUITestJobsLifecycle(hostPanel: screen == "jobsHost")
+            return
+        }
+#endif
         switch screen {
         case "sessionHeader":
             seedUITestSessionHeader()

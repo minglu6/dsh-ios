@@ -709,18 +709,17 @@ public func isWakingTurnTrigger(
 /// Desktop `JobListAction` anchors the list below the chip (`arrowEdge: .top`).
 public let jobsPopoverArrowPointsDown = true
 
-/// Desktop `MenuSurface` sizes to the roster, not a fixed 320×420 sheet.
-public let jobsPopoverSizesToContent = true
-/// Desktop portals one `MenuSurface` identity. `ViewThatFits` remounting
-/// `jobList` ↔ `ScrollView { jobList }` drops the first 「已结束」 press.
-public let jobsPopoverKeepsRosterIdentity = true
-public let jobsPopoverWidthPoints: Double = 320
-public let jobsPopoverMaxHeightPoints: Double = 360
-/// Settled `detail` (`signal: SIGTERM; cancelled by the user`) is never ellipsized.
-public let jobsPopoverSettledDetailWraps = true
+/// Desktop `MenuSurface` uses one scrolling roster, sized to its content
+/// within viewport bounds; it is not a fixed-height sheet.
+public let jobsPopoverWidthPoints: Double = 500
+public let jobsPopoverMaxHeightPoints: Double = 480
 
 public func jobsPopoverWidth(screenWidth: Double) -> Double {
-    min(max(jobsPopoverWidthPoints, screenWidth - 24), 520)
+    min(jobsPopoverWidthPoints, max(0, screenWidth - 32))
+}
+
+public func jobsPopoverMaxHeight(screenHeight: Double) -> Double {
+    min(jobsPopoverMaxHeightPoints, max(0, screenHeight - 140))
 }
 
 /// Desktop statistics row uses `tok`, not `tokens`.

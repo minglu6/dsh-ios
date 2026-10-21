@@ -164,6 +164,8 @@ jobs:
               -only-testing:dshUITests/TrajectoryUITests
               -only-testing:dshUITests/HistoryPagingUITests
               -only-testing:dshUITests/SessionDrawerPagingUITests
+              -only-testing:dshUITests/TodoLifecycleUITests
+              -only-testing:dshUITests/JobsLifecycleUITests
             )
             MIN_SCREENSHOTS=20
           fi

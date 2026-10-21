@@ -427,14 +427,6 @@ final class DesktopUiParityTests: XCTestCase {
             step: 1,
             turnStartSeq: 5
         ))
-        XCTAssertTrue(jobsPopoverArrowPointsDown)
-        XCTAssertTrue(jobsPopoverSizesToContent)
-        XCTAssertTrue(jobsPopoverKeepsRosterIdentity)
-        XCTAssertLessThan(jobsPopoverMaxHeightPoints, 420)
-        XCTAssertTrue(jobsPopoverSettledDetailWraps)
-        XCTAssertEqual(jobsPopoverWidth(screenWidth: 320), 320)
-        XCTAssertEqual(jobsPopoverWidth(screenWidth: 402), 378)
-        XCTAssertEqual(jobsPopoverWidth(screenWidth: 800), 520)
         XCTAssertEqual(composerStatisticsTokenUnit, "tok")
         XCTAssertTrue(composerStatisticsRowCentersUnderComposer)
         XCTAssertEqual(composerStatisticsRowGapPoints, 12)

@@ -222,6 +222,50 @@ public func orderedJobRows(_ jobs: [JobRow]) -> [JobRow] {
     }
 }
 
+/// Client-only state owned by the jobs entry point, not its transient popover.
+/// Clearing never mutates the Host registry or hides running/stopping work.
+public struct JobListState: Sendable, Equatable {
+    public var expandedKey: String?
+    public var settledOpen: Bool?
+    public var killPhase: JobKillPhase = .idle
+    public private(set) var clearedKeys: Set<String> = []
+
+    public init() {}
+
+    public func visibleRows(_ jobs: [JobRow]) -> [JobRow] {
+        orderedJobRows(jobs).filter { $0.isLive || !clearedKeys.contains($0.id) }
+    }
+
+    public mutating func clearSettled(_ jobs: [JobRow]) {
+        let keys = Set(jobs.filter { !$0.isLive }.map(\.id))
+        clearedKeys.formUnion(keys)
+        if let expandedKey, keys.contains(expandedKey) { self.expandedKey = nil }
+    }
+
+    public mutating func reconcile(_ jobs: [JobRow], nowMs: Int64) {
+        let visible = visibleRows(jobs)
+        if let expandedKey, !visible.contains(where: { $0.id == expandedKey && $0.isObservable }) {
+            self.expandedKey = nil
+        }
+        killPhase = jobKillTick(
+            phase: killPhase, nowMs: nowMs,
+            runningKeys: Set(visible.filter(\.canKill).map(\.id))
+        )
+    }
+}
+
+/// SwiftUI roots use this value as their identity so local hides, expanded
+/// output and pending kill receipts cannot migrate between hosts or sessions.
+public struct JobsScope: Hashable, Sendable {
+    public let hostId: String?
+    public let sessionId: String?
+
+    public init(hostId: String?, sessionId: String?) {
+        self.hostId = hostId
+        self.sessionId = sessionId
+    }
+}
+
 public func jobElapsedMs(_ job: JobRow, nowMs: Int64) -> Int64 {
     if job.isLive { return max(0, nowMs - job.startedAt) }
     return max(0, (job.finishedAt ?? job.startedAt) - job.startedAt)
@@ -383,7 +427,7 @@ public enum JobFollowClaim {
     }
 }
 
-/// Android `JobsSheet.appendOutput`: split on `\n` and extend the last line.
+/// Append output chunks without inventing extra newline boundaries.
 public func appendJobOutput(_ lines: inout [String], text: String) {
     if text.isEmpty { return }
     if lines.isEmpty { lines.append("") }

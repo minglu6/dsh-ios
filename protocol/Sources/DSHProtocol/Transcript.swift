@@ -824,6 +824,8 @@ public final class TranscriptReducer {
     private var settlementSeqs: [String: Int64] = [:]
     private var turnFacts: [Int: TurnRecord] = [:]
     private var todos: [TodoItem] = []
+    private var todosSeq: Int64 = -1
+    private var todosEventSeq: Int64 = -1
     private var planActive = false
     private var planProjectionSeq: Int64 = -1
     private var titleValue: String?
@@ -876,7 +878,11 @@ public final class TranscriptReducer {
     public func stepRecords() -> [StepRecord] { settledSteps }
     public func turnTokenUsage() -> [Int: TurnTokenUsage] { turnUsageLedger.snapshot() }
     public func requestHeaders() -> [RequestHeaderFact] { headerFacts }
-    public func clearComposerProjections() { composerProjections.clear() }
+    public func clearComposerProjections() {
+        composerProjections.clear()
+        // New connections discard projection ordering, not the durable todo event boundary.
+        todosSeq = todosEventSeq
+    }
 
     public func items() -> [Item] {
         var result: [Item] = []
@@ -944,6 +950,7 @@ public final class TranscriptReducer {
         case "projection":
             let key = frame["key"].str() ?? ""
             let seq = frame["seq"].long() ?? -1
+            if key == "todos" { return readTodos(frame["value"], seq: seq) }
             if key == "plan" {
                 if seq < planProjectionSeq { return false }
                 planProjectionSeq = seq
@@ -1130,6 +1137,8 @@ public final class TranscriptReducer {
         outputTokens = 0
         running = false
         todos = []
+        todosSeq = -1
+        todosEventSeq = -1
         planActive = false
         planProjectionSeq = -1
         titleValue = nil
@@ -1213,12 +1222,8 @@ public final class TranscriptReducer {
             inputTokens = uncached + cr + (usage["cacheWriteTokens"].long() ?? 0)
             outputTokens = usage["outputTokens"].long() ?? 0
         }
-        if let arr = p["values"]["todos"].arr() {
-            todos = arr.compactMap { row in
-                let content = row["content"].str()?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                guard let status = row["status"].str(), !content.isEmpty else { return nil }
-                return TodoItem(content: content, status: status)
-            }
+        if let value = p["values"].obj()?["todos"] {
+            _ = readTodos(value, seq: p["asOfSeq"].long() ?? atSeq)
         }
         if !p["values"]["plan"].isNull {
             let seq = p["asOfSeq"].long() ?? atSeq
@@ -1227,6 +1232,18 @@ public final class TranscriptReducer {
                 planActive = p["values"]["plan"]["active"].bool() ?? false
             }
         }
+    }
+
+    @discardableResult
+    private func readTodos(_ value: JSONValue, seq: Int64) -> Bool {
+        guard seq >= todosSeq, value.isNull || value.arr() != nil else { return false }
+        todosSeq = seq
+        todos = (value.arr() ?? []).compactMap { row in
+            let content = row["content"].str()?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            guard let status = row["status"].str(), !content.isEmpty else { return nil }
+            return TodoItem(content: content, status: status)
+        }
+        return true
     }
 
     private func baseline(_ b: JSONValue) {
@@ -1270,6 +1287,8 @@ public final class TranscriptReducer {
         let data = e["data"]
         switch e["type"].str() {
         case "turn/start":
+            todosEventSeq = seq
+            _ = readTodos(.null, seq: seq)
             turns += 1
             setRunning(true)
             openTurn = data["turn"].int()
@@ -1326,10 +1345,9 @@ public final class TranscriptReducer {
                 break
             }
         case "todo/write":
-            todos = (data["todos"].arr() ?? []).compactMap { row in
-                let content = row["content"].str()?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                guard let status = row["status"].str(), !content.isEmpty else { return nil }
-                return TodoItem(content: content, status: status)
+            todosEventSeq = seq
+            if let value = data.obj()?["todos"] {
+                _ = readTodos(value, seq: seq)
             }
         case "plan/mode":
             if seq >= planProjectionSeq {
