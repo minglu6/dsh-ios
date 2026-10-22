@@ -33,15 +33,6 @@ public let connectionsSectionTitleLineHeightPoints: Double = 20
 public let connectionsSectionTitlePaddingTopPoints: Double = 16
 public let connectionsSectionTitlePaddingBottomPoints: Double = 4
 
-/// Paired card → nearby card: Card 6 + ConnSectionTitle 16+20+4 + Card 6.
-/// Adjacent action cards stay on `connectionsCardStackGapPoints` (12).
-public let connectionsPairedNearbyGapPoints: Double =
-    connectionsCardVerticalPaddingPoints
-    + connectionsSectionTitlePaddingTopPoints
-    + connectionsSectionTitleLineHeightPoints
-    + connectionsSectionTitlePaddingBottomPoints
-    + connectionsCardVerticalPaddingPoints
-
 /// Android `PocketSheet` dragHandle (`Sheets.kt`):
 /// `padding(top = 10.dp, bottom = 14.dp).size(40.dp, 4.dp)`.
 public let connectionsSheetDragHandleTopPoints: Double = 10
@@ -155,11 +146,8 @@ public let connectionsPairingLinkFieldHint = "dshpocket://pair?h=…&c=…"
 
 /// Pairing-link row uses desktop `IconLinkOutlineRegular`. Enter-address uses
 /// Android `Icons.Outlined.Keyboard` (Material 24×24, not ui-primitives).
-/// Nearby leading icon is Android `Icons.Outlined.Computer` (Material 24×24);
-/// `ui-primitives@0.2.1-alpha.5` has no IconComputer.
 public func connectionsPairingLinkSymbol() -> String { "official.linkOutline" }
 public func connectionsEnterAddressSymbol() -> String { "connections.keyboard" }
-public func connectionsNearbyComputerSymbol() -> String { "connections.computer" }
 
 /// ProfileManageSheet actions: desktop `IconRefreshOutlineRegular` /
 /// `IconEditOutlineRegular` / `IconTrashOutlineRegular` (Android `D.refresh` /
@@ -173,9 +161,7 @@ public func connectionsActionRowIdentifier(_ action: ConnectionsAction) -> Strin
 }
 
 public func connectionsPairedCardIdentifier() -> String { "connectionsPairedCard" }
-public func connectionsNearbyCardIdentifier() -> String { "connectionsNearbyCard" }
 public func connectionsPairedRowIdentifier() -> String { "connectionsPairedRow" }
-public func connectionsNearbyRowIdentifier() -> String { "connectionsNearbyRow" }
 public func connectionsActionsCardIdentifier() -> String { "connectionsActionsCard" }
 public func connectionsPairLinkSheetIdentifier() -> String { "connectionsPairLinkSheet" }
 public func connectionsPairLinkCancelIdentifier() -> String { "connectionsPairLinkCancel" }
@@ -197,10 +183,6 @@ public func connectionsManageDeleteIdentifier() -> String { "connectionsManageDe
 
 public func isForbiddenConnectionsEnterAddressSymbol(_ name: String) -> Bool {
     name == "keyboard" || name == "keyboard.fill"
-}
-
-public func isForbiddenConnectionsNearbySymbol(_ name: String) -> Bool {
-    name == "desktopcomputer"
 }
 
 public func isForbiddenConnectionsManageSymbol(_ name: String) -> Bool {
@@ -226,12 +208,6 @@ public let connectionsKeyboardKeyPaths = [
     connectionsKeyboardSpacePath,
 ]
 public let connectionsKeyboardViewBox: Double = 24
-
-/// Google Material Icons Outlined Computer, 24×24 view box — Android
-/// `ConnectionsScreen` nearby row (`Icons.Outlined.Computer`, tint `T.Accent`).
-public let connectionsComputerPath =
-    "M20 18c1.1 0 1.99-.9 1.99-2L22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z"
-public let connectionsComputerViewBox: Double = 24
 
 public func connectionsShowsInvalidPairingLink(text: String, pasted: Bool, parsed: Bool) -> Bool {
     !parsed && (pasted || !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)

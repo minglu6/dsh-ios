@@ -443,61 +443,6 @@ final class TaskNotifyTests: XCTestCase {
     }
 }
 
-final class LanDiscoveryPolicyTests: XCTestCase {
-    func testAcceptsOnlyMetadataAnnouncementFromItsAdvertisedAddress() {
-        let instanceId = String(repeating: "a", count: 64)
-        let result = LanDiscoveryPolicy.parseAnnouncement(
-            #"{"deviceName":"Studio PC","host":"192.168.1.20","port":7690,"protocol":1,"instanceId":"\#(instanceId)"}"#,
-            remoteAddress: "192.168.1.20"
-        )
-        XCTAssertEqual(result, DiscoveredHost(instanceId: instanceId, host: "192.168.1.20", port: 7690, deviceName: "Studio PC"))
-    }
-
-    func testRejectsSecretBearingOrAddressMismatchedAnnouncements() {
-        let instanceId = String(repeating: "a", count: 64)
-        let valid = #"{"deviceName":"Studio PC","host":"192.168.1.20","port":7690,"protocol":1,"instanceId":"\#(instanceId)"}"#
-        let withSecret = String(valid.dropLast()) + #","deviceToken":"secret"}"#
-        XCTAssertNil(LanDiscoveryPolicy.parseAnnouncement(withSecret, remoteAddress: "192.168.1.20"))
-        XCTAssertNil(LanDiscoveryPolicy.parseAnnouncement(valid, remoteAddress: "192.168.1.21"))
-    }
-
-    func testApplyAddressUpdateOnlyWhenInstanceMatchesAndHostChanges() {
-        let id = String(repeating: "b", count: 64)
-        XCTAssertNil(LanDiscoveryPolicy.applyAddressUpdate(
-            instanceId: id, host: "192.168.1.10", port: 7690,
-            discovered: DiscoveredHost(instanceId: id, host: "192.168.1.10", port: 7690, deviceName: "Mac")
-        ))
-        XCTAssertEqual(
-            LanDiscoveryPolicy.applyAddressUpdate(
-                instanceId: id, host: "192.168.1.10", port: 7690,
-                discovered: DiscoveredHost(instanceId: id, host: "192.168.1.55", port: 7690, deviceName: "Mac")
-            )?.host,
-            "192.168.1.55"
-        )
-        XCTAssertNil(LanDiscoveryPolicy.applyAddressUpdate(
-            instanceId: id, host: "192.168.1.10", port: 7690,
-            discovered: DiscoveredHost(instanceId: String(repeating: "c", count: 64), host: "192.168.1.55", port: 7690, deviceName: "Other")
-        ))
-    }
-
-    func testUnpairedNearbyDropsPairedInstanceAndHostPort() {
-        let pairedId = String(repeating: "d", count: 64)
-        let otherId = String(repeating: "e", count: 64)
-        let found = [
-            DiscoveredHost(instanceId: pairedId, host: "192.168.1.10", port: 7690, deviceName: "Mac"),
-            DiscoveredHost(instanceId: otherId, host: "192.168.1.10", port: 7690, deviceName: "NAS"),
-            DiscoveredHost(instanceId: otherId, host: "192.168.1.42", port: 7690, deviceName: "Studio"),
-        ]
-        XCTAssertEqual(
-            LanDiscoveryPolicy.unpairedNearby(
-                found: found,
-                paired: [(pairedId, "192.168.1.10", 7690, false)]
-            ),
-            [DiscoveredHost(instanceId: otherId, host: "192.168.1.42", port: 7690, deviceName: "Studio")]
-        )
-    }
-}
-
 final class PairedDeviceStatusTests: XCTestCase {
     func testProbeAppliesOnlyToRequestedAuthorization() {
         let current = PairedDeviceIdentity(id: "p1", host: "10.0.0.2", port: 7690, instanceId: "aa")

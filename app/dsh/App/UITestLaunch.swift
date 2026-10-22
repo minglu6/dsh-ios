@@ -405,14 +405,6 @@ extension AppModel {
             break
         case "connections":
             showDrawer = false
-            nearby = [
-                DiscoveredHost(
-                    instanceId: String(repeating: "f", count: 64),
-                    host: "192.168.1.42",
-                    port: 7690,
-                    deviceName: "客厅 Mac"
-                ),
-            ]
             push(.connections)
         case "settings", "general":
             showDrawer = false

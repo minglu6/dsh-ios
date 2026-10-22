@@ -161,7 +161,6 @@ enum L {
     static func followSystem() -> String { en ? "System" : "跟随系统" }
     static func currentVersion() -> String { en ? "Current version" : "当前版本" }
 
-    static func nearbyDevices() -> String { en ? "Nearby devices" : "附近设备" }
     static func connections() -> String { connectionsPageTitle(english: en) }
     static func scanQr() -> String { connectionsActionTitle(.scan, english: en) }
     static func pairingLink() -> String { connectionsActionTitle(.pairingLink, english: en) }
@@ -171,7 +170,6 @@ enum L {
     static func pastePairingLink() -> String { connectionsPastePairingLink(english: en) }
     static func reviewPairingLink() -> String { connectionsReviewPairingLink(english: en) }
     static func invalidPairingLink() -> String { connectionsInvalidPairingLink(english: en) }
-    static func lan() -> String { en ? "LAN" : "局域网" }
     static func repairPair() -> String { en ? "Pair again" : "重新配对" }
     static func pairedDevices() -> String { en ? "Paired devices" : "已配对设备" }
     static func pairSheetTitle() -> String { en ? "Pair" : "配对" }

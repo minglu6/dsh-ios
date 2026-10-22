@@ -556,9 +556,7 @@ final class AndroidParityTests: XCTestCase {
         XCTAssertEqual(connectionsEnterAddressSymbol(), "connections.keyboard")
         XCTAssertEqual(connectionsActionRowIdentifier(.pairingLink), "connectionsAction.pairingLink")
         XCTAssertEqual(connectionsPairedCardIdentifier(), "connectionsPairedCard")
-        XCTAssertEqual(connectionsNearbyCardIdentifier(), "connectionsNearbyCard")
         XCTAssertEqual(connectionsPairedRowIdentifier(), "connectionsPairedRow")
-        XCTAssertEqual(connectionsNearbyRowIdentifier(), "connectionsNearbyRow")
         XCTAssertEqual(connectionsActionsCardIdentifier(), "connectionsActionsCard")
         XCTAssertEqual(connectionsPairLinkCancelIdentifier(), "connectionsPairLinkCancel")
         XCTAssertEqual(connectionsCardVerticalPaddingPoints, 6)
@@ -567,15 +565,6 @@ final class AndroidParityTests: XCTestCase {
         XCTAssertEqual(connectionsSectionTitleLineHeightPoints, 20)
         XCTAssertEqual(connectionsSectionTitlePaddingTopPoints, 16)
         XCTAssertEqual(connectionsSectionTitlePaddingBottomPoints, 4)
-        XCTAssertEqual(
-            connectionsPairedNearbyGapPoints,
-            connectionsCardVerticalPaddingPoints
-                + connectionsSectionTitlePaddingTopPoints
-                + connectionsSectionTitleLineHeightPoints
-                + connectionsSectionTitlePaddingBottomPoints
-                + connectionsCardVerticalPaddingPoints
-        )
-        XCTAssertEqual(connectionsPairedNearbyGapPoints, 52)
         XCTAssertEqual(connectionsSheetDragHandleTopPoints, 10)
         XCTAssertEqual(connectionsSheetDragHandleHeightPoints, 4)
         XCTAssertEqual(connectionsSheetDragHandleBottomPoints, 14)
@@ -624,10 +613,6 @@ final class AndroidParityTests: XCTestCase {
         XCTAssertEqual(connectionsKeyboardSpacePath, "M8 14H16V16H8V14Z")
         XCTAssertEqual(connectionsKeyboardKeyPaths.last, connectionsKeyboardSpacePath)
         XCTAssertFalse(connectionsKeyboardKeyPaths.contains("M6 14H14V16H6V14Z"))
-        XCTAssertEqual(connectionsNearbyComputerSymbol(), "connections.computer")
-        XCTAssertEqual(connectionsComputerViewBox, 24)
-        XCTAssertTrue(connectionsComputerPath.hasPrefix("M20 18c1.1 0"))
-        XCTAssertTrue(connectionsComputerPath.contains("H0v2h24v-2h-4z"))
         XCTAssertEqual(connectionsManageSheetIdentifier(), "connectionsManageSheet")
         XCTAssertEqual(connectionsManageCancelIdentifier(), "connectionsManageCancel")
         XCTAssertEqual(connectionsManageRepairIdentifier(), "connectionsManageRepair")

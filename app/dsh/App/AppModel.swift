@@ -187,7 +187,6 @@ final class AppModel: ObservableObject {
     var fileTreeStates: [String: FileTreeState] = [:]
     var fileTreeOffsets: [String: CGFloat] = [:]
     @Published var hiddenQuestionId: String?
-    @Published var nearby: [DiscoveredHost] = []
     @Published var composerText = ""
     @Published var composerCursor = 0
     @Published var mentionQuery: String?
@@ -245,7 +244,6 @@ final class AppModel: ObservableObject {
 
     let terminal = AnsiTerminal()
     let hostSettings = HostSettings()
-    let lan = LanDiscovery()
 
     private var client: PocketClient?
     private var connectTask: Task<Void, Never>?
@@ -319,10 +317,6 @@ final class AppModel: ObservableObject {
             return
         }
         if let id = activeId { connect(profileId: id) }
-        lan.onHosts = { [weak self] hosts in
-            Task { @MainActor in self?.applyDiscovery(hosts) }
-        }
-        lan.start()
         ConnectionKeeper.shared.start()
         if let id = activeId { collapsedWorkspaces = AppPrefs.collapsedWorkspaces(hostId: id) }
     }
@@ -3689,31 +3683,6 @@ final class AppModel: ObservableObject {
                 return next
             }
         }
-    }
-
-    private func applyDiscovery(_ hosts: [DiscoveredHost]) {
-        let merged = LanDiscoveryPolicy.mergeByInstance(hosts)
-        nearby = LanDiscoveryPolicy.unpairedNearby(
-            found: merged,
-            paired: profiles.map { ($0.instanceId, $0.host, $0.port, $0.needsRepair) }
-        )
-        var activeChanged = false
-        for host in merged {
-            if let index = profiles.firstIndex(where: { !$0.instanceId.isEmpty && $0.instanceId == host.instanceId }) {
-                if let updated = LanDiscoveryPolicy.applyAddressUpdate(
-                    instanceId: profiles[index].instanceId,
-                    host: profiles[index].host,
-                    port: profiles[index].port,
-                    discovered: host
-                ) {
-                    profiles[index].host = updated.host
-                    profiles[index].port = updated.port
-                    ProfileStore.save(profiles)
-                    if profiles[index].id == activeId { activeChanged = true }
-                }
-            }
-        }
-        if activeChanged, let id = activeId { connect(profileId: id) }
     }
 
     private func probePairedDevices() async {

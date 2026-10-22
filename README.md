@@ -16,7 +16,7 @@ Available surfaces depend on the Host version and enabled plugins. The phone mir
 
 | Area | This release |
 | --- | --- |
-| Connection | Pairing URI / QR / host:port + 6-digit code, LAN Bonjour `_dshpocket._tcp` (TXT `protocol=1` + 64-hex `instanceId`), unpaired nearby filter, paired-device TCP poll (10s, max 2), reconnect 1s→30s with Offline/Connecting restore gate, short iOS background task (not Android FGS), completion / approval local notifications |
+| Connection | Pairing URI / QR / host:port + 6-digit code, paired-device TCP poll (10s, max 2), reconnect 1s→30s with Offline/Connecting restore gate, short iOS background task (not Android FGS), completion / approval local notifications |
 | Sessions | Workspace grouping, pin / fork / archive / unarchive (archived rows are not openable), Host search + local title/path merge, drag reorder via `insertBefore` / `insertSessionBefore` when advertised, unread green dot, relative time. No session path, no chat “scroll to bottom” button |
 | Chat | Streaming text and reasoning, Markdown / code / tables, official Think disclosure, tool-row receipts, ChatProcess fold, local echo, queue edit / steer, official approval card, user-question card, `/` commands, attachments, session image bubbles (`session.attachment`), official `@` mention tokens + chips, model + reasoning effort, permission-mode text chip, todo dock, goals, turn usage + composer stats, retry / turn-failure rows, WorkspaceChanges cards (when coding view is on). Export and session feedback live on `/` and `+`. Message actions: copy / like / dislike (when the remote host has `feedback.set`); branch lives on session ⋯ (`sessions.fork`). Opening the drawer, scrolling the transcript, or tapping outside the composer dismisses the keyboard |
 | Trajectory | Chat / 轨迹 tab: compact ledger (7 cell kinds), toolbar 时长 / 轮次 / 调用 + search, swimlane, cell inspector 概述 / 参数 / 结果 / Schema / 计时, Request inspector 概述 / 选项 / 用量 / 计时 (official `ui-trajectory` copy). Hidden when coding view is off. Gap matrix: [docs/parity-gap.md](docs/parity-gap.md) |
@@ -83,7 +83,7 @@ The phone talks to `dsh-plugin-pocket` over `ws://host:port` (LAN or Tailscale).
 
 - Default plugin listen address is `0.0.0.0:7690`. Pairing advertises IPv4 only.
 - When both a LAN IPv4 and a Tailscale address (`100.64.0.0/10` or `*.ts.net`) are available, desktop **Settings → Phone connection** switches **LAN / Tailscale**. The advertised address, QR code, and copy link change.
-- The plugin advertises `_dshpocket._tcp`. The phone lists unpaired nearby hosts.
+- iOS connects using a QR code, pairing link, or manually entered address; it does not browse nearby hosts through Bonjour. If a host address changes, edit the saved address or scan a new QR code.
 - The LAN path is `ws://` / HTTP and has no TLS. Pairing authenticates the device; it does not encrypt the wire. Cross-network use should be Tailscale or another trusted encrypted path. Do not expose port 7690 to the public internet.
 
 ## Download and install
@@ -117,8 +117,8 @@ Restart the desktop Host. Management UI: desktop **Settings → Phone connection
 ### Pair the phone
 
 1. On the computer, open **Settings → Phone connection**, choose LAN or Tailscale, and open the pairing window.
-2. On the phone, open the host row at the bottom of the session drawer, then Phone connection. Use **Scan**, **Enter address**, or **Nearby devices**.
-3. Scan the QR code or enter `dshpocket://pair?h=<host:port>&c=<6-digit-code>`. Leave the name empty to use the host address.
+2. On the phone, open the host row at the bottom of the session drawer, then Phone connection. Use **Scan**, **Pairing link**, or **Enter address**.
+3. Scan the QR code, paste `dshpocket://pair?h=<host:port>&c=<6-digit-code>`, or enter the host address and 6-digit code manually. Leave the name empty to use the host address.
 4. After the connection succeeds, select a workspace or session. Model providers and credentials are owned by the Host.
 
 Pairing codes last 10 minutes, allow at most 3 attempts, and are consumed on success. Legacy iroh forms (`n=` / `nodeId#code`) are rejected.
@@ -170,7 +170,7 @@ New runs cancel older runs for the same event and ref. IPA artifacts disable red
 
 - The phone cannot run dsh locally. Sleeping the computer, quitting the Host, or losing the network stops remote control.
 - iOS cannot keep a persistent “connected” notification the way Android ForegroundService does. `ConnectionKeeper` holds `beginBackgroundTask` with pings, then a `BGAppRefreshTask`; the WebSocket is not guaranteed after the system expires those windows.
-- Nearby discovery uses Local Network + Bonjour, not Android `NEARBY_WIFI_DEVICES`.
+- Local Network permission is still required to connect to LAN hosts and probe paired devices over TCP; it is not used for nearby-device discovery.
 - Upstream dsh is still alpha. Upgrade the app, the Android-hosted bridge, and dsh together.
 
 ## Acknowledgements

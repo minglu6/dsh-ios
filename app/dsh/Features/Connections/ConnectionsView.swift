@@ -41,13 +41,6 @@ struct ConnectionsView: View {
                             }
                         }
                     }
-                    if !model.nearby.isEmpty {
-                        section(L.nearbyDevices(), cardIdentifier: connectionsNearbyCardIdentifier()) {
-                            ForEach(Array(model.nearby.enumerated()), id: \.element.id) { index, host in
-                                nearbyRow(host, divider: index < model.nearby.count - 1)
-                            }
-                        }
-                    }
                     connCard(identifier: connectionsActionsCardIdentifier()) {
                         // Skip: ui-primitives 0.2.1-alpha.5 has no QR artwork
                         // (`connectionsScanUsesOfficialGlyph`). Do not invent one.
@@ -213,25 +206,6 @@ struct ConnectionsView: View {
                 model.pop()
             },
             leading: { StatusDot(color: dotColor(dot)) }
-        )
-    }
-
-    private func nearbyRow(_ host: DiscoveredHost, divider: Bool) -> some View {
-        ConnDeviceRow(
-            name: host.deviceName,
-            statusLine: L.lan(),
-            detail: "\(host.host):\(host.port)",
-            warn: false,
-            divider: divider,
-            rowIdentifier: connectionsNearbyRowIdentifier(),
-            onClick: {
-                openAddressSheet(host: host.host, port: host.port, name: host.deviceName)
-            },
-            leading: {
-                // Material Outlined Computer (Android nearby row). primitives
-                // have no IconComputer — do not substitute a desktop monitor cube.
-                OfficialGlyph(kind: .computer, size: 18, color: T.accent)
-            }
         )
     }
 

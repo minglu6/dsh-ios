@@ -78,7 +78,6 @@ struct OfficialGlyph: View {
         case goalOutline
         case cordisPlugin
         case stopFill
-        case computer
         case trashOutline
         case queueOutline
         case sendOutline
@@ -164,7 +163,6 @@ struct OfficialGlyph: View {
             case .goalOutline: return "official.goalOutline"
             case .cordisPlugin: return "official.cordisPlugin"
             case .stopFill: return jobsStopFillSymbol()
-            case .computer: return connectionsNearbyComputerSymbol()
             case .trashOutline: return connectionsManageTrashSymbol()
             case .queueOutline: return chatQueueDockSymbol()
             case .sendOutline: return queueSteerSendSymbol()
@@ -198,7 +196,7 @@ struct OfficialGlyph: View {
                  .closeOutline, .linkOutline, .rightUp, .appearanceLight, .appearanceDark, .appearanceFollowSystem,
                  .think, .agentPreset, .globe, .browseOutline, .editOutline, .apiOutline, .codeOutline, .planOutline,
                  .questionOutline, .usersOutline, .checklistOutline, .goalOutline, .cordisPlugin, .stopFill,
-                 .computer, .trashOutline, .queueOutline, .sendOutline, .dataOutline, .dataOutlineRegular,
+                 .trashOutline, .queueOutline, .sendOutline, .dataOutline, .dataOutlineRegular,
                  .paperclipOutline, .paperPlaneOutline, .compactOutline, .permissionFullAccess,
                  .downloadOutline, .warningOutline, .warningTriangle, .playOutline, .pauseOutline,
                  .contextInjection, .wrapFill, .nowrapFill, .ellipsis, .terminalTab:
@@ -223,9 +221,6 @@ struct OfficialGlyph: View {
                 ctx.scaleBy(x: scale, y: scale)
             case .keyboard:
                 let scale = min(canvas.width, canvas.height) / CGFloat(connectionsKeyboardViewBox)
-                ctx.scaleBy(x: scale, y: scale)
-            case .computer:
-                let scale = min(canvas.width, canvas.height) / CGFloat(connectionsComputerViewBox)
                 ctx.scaleBy(x: scale, y: scale)
             default:
                 let scale = min(canvas.width, canvas.height) / 16
@@ -266,12 +261,6 @@ struct OfficialGlyph: View {
                 for key in connectionsKeyboardKeyPaths {
                     ctx.fill(Path(SVGPath.cgPath(key)), with: .color(color))
                 }
-            case .computer:
-                ctx.fill(
-                    Path(SVGPath.cgPath(connectionsComputerPath)),
-                    with: .color(color),
-                    style: FillStyle(eoFill: true)
-                )
             case .pinOutline, .pinFill:
                 ctx.stroke(Path(SVGPath.cgPath(Self.pinBody)), with: .color(color), style: stroke)
                 ctx.stroke(Path(SVGPath.cgPath(Self.pinNeedle)), with: .color(color), style: stroke)

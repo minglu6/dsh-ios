@@ -214,12 +214,6 @@ public let connectionsScanUsesOfficialGlyph = false
 public let connectionsScanSkipReason =
     "ui-primitives 0.2.1-alpha.5 has no QR/scan artwork; do not invent one"
 
-/// Nearby leading icon is Android Material `Icons.Outlined.Computer`, not a
-/// primitives glyph. Do not invent an IconComputer or reuse appearance cubes.
-public let connectionsNearbyUsesOfficialGlyph = false
-public let connectionsNearbySkipReason =
-    "ui-primitives 0.2.1-alpha.5 has no IconComputer; Android nearby uses Material Outlined Computer"
-
 /// Session Inspector pick + type filter are Android/phone surfaces, not desktop Guide.
 /// `IconInspectOutline` is `CodeBracketsArtwork` (`<>`), not a viewfinder.
 public let inspectorPickUsesOfficialGlyph = false

@@ -457,22 +457,6 @@ public struct PairingLink: Sendable, Equatable {
     }
 }
 
-public struct DiscoveredHost: Sendable, Equatable, Identifiable {
-    public var instanceId: String
-    public var host: String
-    public var port: Int
-    public var deviceName: String
-
-    public var id: String { instanceId.isEmpty ? "\(host):\(port)" : instanceId }
-
-    public init(instanceId: String, host: String, port: Int, deviceName: String) {
-        self.instanceId = instanceId
-        self.host = host
-        self.port = port
-        self.deviceName = deviceName
-    }
-}
-
 public func parseHostPort(_ raw: String) -> (String, Int)? {
     var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
     if text.hasPrefix("ws://") { text.removeFirst(5) }

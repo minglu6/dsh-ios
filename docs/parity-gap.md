@@ -4,6 +4,8 @@ Phone is a controller. Layout may change for a narrow portrait screen. Features,
 
 **Do not invent** settings groups, credential pages, extra security, or placeholder shells. Hide only what desktop itself hides (local OS editor, keyboard shortcuts).
 
+> **当前产品决定（2026-10-22）：iOS 已移除「附近设备」及 Bonjour 自动发现。** 保留扫码、配对链接、手动地址，以及已配对设备 TCP 探测与连接；本地网络权限仍用于连接局域网主机。主机地址变化后需手动修改已保存的地址或重新扫码。下方批次／轮次中的 NSD、附近设备、`NWBrowser` 等记录仅描述当时实现，不代表当前支持，也不是待补齐功能。
+
 | Tag | Meaning |
 | --- | --- |
 | **present** | iOS already matches Android/desktop semantics (layout may differ) |
@@ -126,7 +128,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Markdown | `ui-chat` primitives | `Markdown.kt` | `protocol/Markdown.swift` + `Features/Chat/MarkdownView.swift` |
 | Official icons | desktop `D.*` | Android vector set | `Design/Icons.swift` SF Symbol map |
 | Connection keep-alive | — | `ConnectionService` FGS | `ConnectionKeeper` `beginBackgroundTask` + ping + `BGAppRefreshTask` `dev.dsh.pocket.ios.refresh` + path monitor + local notify |
-| Controller connections | Host pocket `settings.section` `pocket` is QR on the **computer**; Android `ConnectionsScreen` | `Screens.kt` `ConnectionsScreen` / `ConnDeviceRow` + PairLinkSheet（`9aa43c4` / `33b97b2`） | `Features/Connections/ConnectionsView.swift` + `ConnectionsLayout.swift`：全屏「远程主机」；已配对 / 附近 / 动作卡间距 12pt（`Card` 竖向 6）；已配对与附近之间是 ConnSectionTitle 14/20+16/4（52pt）；附近设备 Material Outlined Computer（primitives 无 IconComputer）；管理 sheet 官方 refresh/edit/trash（非 SF、非系统 NavigationStack）；删除无确认（Android 立即 `removeProfile`）；ConnSheet `T.Surface` + dragHandle 28pt 顶留白 + 取消 ≥44pt；动作卡 扫码 → 配对链接（`IconLinkOutlineRegular`）→ 输入地址（Material Keyboard）；配对链接 sheet 用桌面 Button/Input token + Android 48 高，**输入框与按钮同一 22pt 外沿**（去掉 ConnField 18 leftover），粘贴后进既有配对确认，不立刻连接。入口在抽屉脚，Settings 无连接分组 |
+| Controller connections | Host pocket `settings.section` `pocket` is QR on the **computer**; Android `ConnectionsScreen` | `Screens.kt` `ConnectionsScreen` / `ConnDeviceRow` + PairLinkSheet（`9aa43c4` / `33b97b2`） | `Features/Connections/ConnectionsView.swift` + `ConnectionsLayout.swift`：全屏「远程主机」；已配对 / 动作卡间距 12pt（`Card` 竖向 6）；无附近设备区；管理 sheet 官方 refresh/edit/trash（非 SF、非系统 NavigationStack）；删除无确认（Android 立即 `removeProfile`）；ConnSheet `T.Surface` + dragHandle 28pt 顶留白 + 取消 ≥44pt；动作卡 扫码 → 配对链接（`IconLinkOutlineRegular`）→ 输入地址（Material Keyboard）；配对链接 sheet 用桌面 Button/Input token + Android 48 高，**输入框与按钮同一 22pt 外沿**（去掉 ConnField 18 leftover），粘贴后进既有配对确认，不立刻连接。入口在抽屉脚，Settings 无连接分组 |
 
 ---
 
@@ -253,7 +255,7 @@ Current iOS context display: `ConversationContextRow` shows the active workspace
 | Version only on General | audit S3 | General only | **present** | — |
 | Account / shortcuts / open config file | desktop-local | — | **hide** | — |
 | Phone connection | connections | 抽屉脚（计算机名 + 状态），Settings 无「手机连接」分组。页面 chrome 对齐 Android `ConnectionsScreen`（#43）。用户决定不暴露「连接诊断」/ 复制诊断报告 | **present** | **R13** / **R27** |
-| LAN / NSD discovery | `_dshpocket._tcp` protocol=1 + 64-hex instanceId | same TXT gate; unpaired filter; address bind | **partial** → **present** | **G** |
+| LAN / NSD discovery | `_dshpocket._tcp` protocol=1 + 64-hex instanceId | Removed by product decision; use QR, pairing link, or manual address; update saved addresses manually or rescan | **removed** (product decision) | Formerly **G** |
 | Paired-device online poll | TCP probe, 10s, max 2 | same policy (`PairedDeviceStatusPolicy`) | **missing** → **present** | **G** |
 | Reconnect restore gate | `ConnectionRestorePolicy` Offline/Connecting only | same; `NWPathMonitor` wakes the loop | **partial** → **present** | **G** |
 | Background keep-alive | Android ForegroundService | `beginBackgroundTask` + ping for the system window, then `BGAppRefreshTask` for a later lightweight reconnect/status refresh; **not** FGS | **present** (platform) | **G** |
@@ -276,7 +278,7 @@ Port as the matching batch needs them (same JSON, no second protocol):
 | `BrowserPolicy` / `CodePreview*` / `SessionInspector*` / `TrajectoryRequest` | Browser + preview + inspector + request leftover | **F done** |
 | `PermissionModels.kt` | Permission pickers | **D done** (`PermissionModels.swift`) |
 | `HostUi.kt` | Plugin/settings slots | **D done** (`HostUi.swift`); **E** adds `ui.close` |
-| Session search / feedback / attachment / restore / presets / NSD / notify / reconnect | drawer + `/`/`+` + connection | **G done** (`SessionSearch` / `SessionFeedback` / `SessionAttachment` / `PresetPolicy` / `LanDiscoveryPolicy` / `PairedDeviceStatus` / `ConnectionRestore` / `TaskNotify`) |
+| Session search / feedback / attachment / restore / presets / notify / reconnect | drawer + `/`/`+` + connection | **G done** (`SessionSearch` / `SessionFeedback` / `SessionAttachment` / `PresetPolicy` / `PairedDeviceStatus` / `ConnectionRestore` / `TaskNotify`); NSD and `LanDiscoveryPolicy` removed by product decision |
 
 Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, commands.list/execute, attachments.upload, userQuestions.answer, goals.get/edit/pause/resume/clear, references.files/sessions, session.export, session.attachment, sessions.search, sessionFeedback.record, workspace.unarchiveSession / insertBefore / insertSessionBefore, presets.list/read/settings, ui.close. Approval `accepted` is required (same as Android `Pocket.answer`).
 
@@ -375,7 +377,7 @@ Existing iOS `DSHProtocol` now also covers permissions.get/set, queue.update, co
 - Account / shortcuts settings page / open config file / open-in-desktop-editor: desktop-local — **hide**.
 - Keyboard shortcut *settings* page: desktop-local — **hide**. Touch Start also omits desktop chords (`⌘P` / `⌥⌘P` / Ctrl-`) next to 工作区文件 / 新建终端. Composer Cmd/Ctrl+Enter is wired.
 - Android ForegroundService persistent “已连接” notification: iOS has no equivalent; `ConnectionKeeper` uses `beginBackgroundTask` + ping, then `BGAppRefreshTask` `dev.dsh.pocket.ios.refresh`. The WS is not guaranteed after the system expires those windows.
-- Nearby Wi-Fi (`NEARBY_WIFI_DEVICES`) is Android 13+; iOS uses Local Network + Bonjour (`NSLocalNetworkUsageDescription`).
+- iOS nearby-device discovery has been removed by product decision, not deferred for parity. Local Network permission (`NSLocalNetworkUsageDescription`) remains necessary for LAN host connections and paired-device TCP probes.
 - CodePreview CSS names `DSH Meslo` at `/font/meslo.ttf`; `dsh-code-preview://` serves the same bundled Meslo Nerd TTF as `TerminalTypeface` (Android `@meslo` → `R.font.meslolgl_dz_nerd_regular`). WKWebView cannot intercept `https://`; assets load over `dsh-code-preview://` mapped to the same Android `https://code-preview.invalid` policy used in tests.
 - Embedded browser cannot intercept every subresource the way Android `shouldInterceptRequest` does; main-frame / navigation policy still uses `BrowserPolicy`. WKWebView cannot intercept `https://` for FortuneSheet; workbook assets load over `dsh-workbook-preview://` mapped to Android `https://workbook-preview.invalid`.
 - Foundation `JSONSerialization` object key order is not insertion-stable; protocol tests compare parsed `JSONValue`, not pretty strings.

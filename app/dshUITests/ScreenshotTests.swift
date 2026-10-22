@@ -800,26 +800,6 @@ final class ScreenshotTests: XCTestCase {
                     app.descendants(matching: .any)["connections.keyboard"].exists,
                     "\(appearance) connections missing Android keyboard glyph on 输入地址"
                 )
-                XCTAssertTrue(
-                    app.staticTexts["附近设备"].waitForExistence(timeout: 8),
-                    "\(appearance) connections missing 附近设备"
-                )
-                XCTAssertTrue(
-                    app.staticTexts["客厅 Mac"].waitForExistence(timeout: 4)
-                        || app.buttons["客厅 Mac"].waitForExistence(timeout: 2),
-                    "\(appearance) connections missing nearby 客厅 Mac"
-                )
-                XCTAssertFalse(app.images["desktopcomputer"].exists, "\(appearance) nearby still exposes SF desktopcomputer")
-                XCTAssertTrue(
-                    app.descendants(matching: .any)["connections.computer"].waitForExistence(timeout: 8),
-                    "\(appearance) nearby missing Material Computer glyph"
-                )
-                let nearbyCard = app.descendants(matching: .any)["connectionsNearbyCard"].firstMatch
-                XCTAssertTrue(nearbyCard.waitForExistence(timeout: 4), "\(appearance) connections missing 附近设备 card")
-                XCTAssertTrue(
-                    app.descendants(matching: .any)["connectionsNearbyRow"].waitForExistence(timeout: 4),
-                    "\(appearance) connections missing nearby row"
-                )
                 // Intentional skip: primitives have no QR artwork.
                 XCTAssertTrue(
                     app.images["qrcode.viewfinder"].exists,
@@ -829,37 +809,6 @@ final class ScreenshotTests: XCTestCase {
                 let actionsCard = app.descendants(matching: .any)["connectionsActionsCard"].firstMatch
                 XCTAssertTrue(pairedCard.waitForExistence(timeout: 4), "\(appearance) connections missing 已配对设备 card")
                 XCTAssertTrue(actionsCard.exists, "\(appearance) connections missing action card")
-                let nearbyGap = nearbyCard.frame.minY - pairedCard.frame.maxY
-                let actionsGap = actionsCard.frame.minY - nearbyCard.frame.maxY
-                let nearbyTitle = app.staticTexts["附近设备"].firstMatch
-                XCTAssertTrue(nearbyTitle.exists, "\(appearance) 附近设备 title missing after card query")
-                XCTAssertGreaterThan(
-                    nearbyTitle.frame.minY,
-                    pairedCard.frame.maxY,
-                    "\(appearance) 附近设备 title is not below paired card (\(nearbyTitle.frame) vs paired \(pairedCard.frame))"
-                )
-                XCTAssertLessThan(
-                    nearbyTitle.frame.maxY,
-                    nearbyCard.frame.minY,
-                    "\(appearance) 附近设备 title is not above nearby card (\(nearbyTitle.frame) vs nearby \(nearbyCard.frame))"
-                )
-                // Card 6 + ConnSectionTitle 16+20+4 + Card 6 = connectionsPairedNearbyGapPoints.
-                XCTAssertEqual(
-                    nearbyGap,
-                    52,
-                    accuracy: 2,
-                    "\(appearance) paired/nearby gap \(nearbyGap) is not ConnSectionTitle 6+16+20+4+6"
-                )
-                XCTAssertGreaterThanOrEqual(
-                    actionsGap,
-                    11,
-                    "\(appearance) nearby/actions cards almost touch (gap \(actionsGap); Android Card vertical 6+6)"
-                )
-                XCTAssertLessThan(
-                    actionsGap,
-                    20,
-                    "\(appearance) nearby/actions gap \(actionsGap) is not the 12pt Card stack"
-                )
                 assertNoConnectionDiagnostics(app, appearance: appearance, screen: screen)
                 XCTAssertFalse(
                     app.descendants(matching: .any)["official.ellipsis"].exists,

@@ -131,11 +131,6 @@ final class ChatToolIconsTests: XCTestCase {
     func testDocumentedSkipsHaveNoInventedArtwork() {
         XCTAssertFalse(connectionsScanUsesOfficialGlyph)
         XCTAssertTrue(connectionsScanSkipReason.contains("no QR"))
-        XCTAssertFalse(connectionsNearbyUsesOfficialGlyph)
-        XCTAssertTrue(connectionsNearbySkipReason.contains("no IconComputer"))
-        XCTAssertEqual(connectionsNearbyComputerSymbol(), "connections.computer")
-        XCTAssertTrue(isForbiddenConnectionsNearbySymbol("desktopcomputer"))
-        XCTAssertFalse(isForbiddenConnectionsNearbySymbol("connections.computer"))
         XCTAssertEqual(connectionsManageTrashSymbol(), "official.trashOutline")
         XCTAssertEqual(connectionsManageRepairSymbol(), "official.refreshOutline")
         XCTAssertEqual(connectionsManageRenameSymbol(), "official.editOutline")
