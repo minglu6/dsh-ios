@@ -4,74 +4,13 @@ import XCTest
 final class AndroidParityTests: XCTestCase {
     private func json(_ text: String) throws -> JSONValue { try JSONValue.parse(text) }
 
-    func testHostUiUsesSuccessfulTransportEndpointAndBindsGrantToItsGeneration() async throws {
-        let client = PocketClient()
-        let original = FakeTransport(endpointURL: URL(string: "wss://100.64.1.2:8443/pocket?route=actual"))
-        _ = try await client.connect(transport: original, auth: .token("test-token"))
-        let old = try XCTUnwrap(client.hostUiConnection())
-        XCTAssertEqual(old.origin, HostUiOrigin(scheme: "https", host: "100.64.1.2", port: 8443))
-        let opened = expectation(description: "old grant sent")
-        original.onSend = { opened.fulfill() }
-        let opening = Task { try await old.open(section: "plugins") }
-        await fulfillment(of: [opened], timeout: 2)
-        let replacement = FakeTransport(endpointURL: URL(string: "ws://192.0.2.9:7690"))
-        _ = try await client.connect(transport: replacement, auth: .token("test-token"))
-        defer { client.close() }
-        do {
-            _ = try await opening.value
-            XCTFail("Superseded grant completed")
-        } catch {}
-        XCTAssertFalse(old.isCurrent)
-        do {
-            _ = try await old.open()
-            XCTFail("Old connection opened a new grant")
-        } catch {}
-        do {
-            try await old.close(ticket: "old-ticket")
-            XCTFail("Old connection revoked a replacement grant")
-        } catch {}
-        XCTAssertEqual(replacement.requests.map { $0["op"].str() }, ["hello"])
-        let current = try XCTUnwrap(client.hostUiConnection())
-        XCTAssertEqual(current.origin.host, "192.0.2.9")
-        XCTAssertTrue(current.isCurrent)
-        replacement.onSend = {
-            if let request = replacement.requests.last {
-                replacement.reply(request, jsonObject(["ticket": .string("new-ticket"), "path": .string("/pocket-ui/open")]))
-            }
-        }
-        let grant = try await current.open(section: "models")
-        XCTAssertEqual(grant["ticket"].str(), "new-ticket")
-        try await current.close(ticket: "new-ticket")
-        XCTAssertEqual(replacement.requests.last?["args"]["ticket"].str(), "new-ticket")
-    }
-
-    func testHostUiCloseInFlightCannotReachReplacementTransport() async throws {
-        let client = PocketClient()
-        let oldTransport = FakeTransport(endpointURL: URL(string: "ws://localhost:7690"))
-        _ = try await client.connect(transport: oldTransport, auth: .token("test-token"))
-        let old = try XCTUnwrap(client.hostUiConnection())
-        let sent = expectation(description: "close sent to original connection")
-        oldTransport.onSend = { sent.fulfill() }
-        let closing = Task { try await old.close(ticket: "only-old-ticket") }
-        await fulfillment(of: [sent], timeout: 2)
-        let replacement = FakeTransport(endpointURL: URL(string: "ws://localhost:7691"))
-        _ = try await client.connect(transport: replacement, auth: .token("test-token"))
-        defer { client.close() }
-        do {
-            try await closing.value
-            XCTFail("Superseded close completed")
-        } catch {}
-        XCTAssertEqual(oldTransport.requests.last?["args"]["ticket"].str(), "only-old-ticket")
-        XCTAssertEqual(replacement.requests.map { $0["op"].str() }, ["hello"])
-    }
-
     func testRequestTimeoutAndCancellationReleaseWaitersWithoutDisconnecting() async throws {
         let client = PocketClient()
-        let transport = FakeTransport(endpointURL: URL(string: "ws://localhost:7690"))
+        let transport = FakeTransport()
         _ = try await client.connect(transport: transport, auth: .token("test-token"))
         defer { client.close() }
         do {
-            _ = try await client.call("ui.close", args: jsonObject(["ticket": .string("unanswered")]), timeoutMs: 20)
+            _ = try await client.call("unanswered", timeoutMs: 20)
             XCTFail("Unanswered request did not time out")
         } catch let error as PocketError {
             XCTAssertEqual(error.code, "timeout")
@@ -79,53 +18,15 @@ final class AndroidParityTests: XCTestCase {
         XCTAssertEqual(client.pendingRequestCount, 0)
         let sent = expectation(description: "cancellable request sent")
         transport.onSend = { sent.fulfill() }
-        let connection = try XCTUnwrap(client.hostUiConnection())
-        let request = Task { try await connection.close(ticket: "cancelled") }
+        let request = Task { try await client.call("unanswered") }
         await fulfillment(of: [sent], timeout: 2)
         request.cancel()
         do {
-            try await request.value
+            _ = try await request.value
             XCTFail("Cancelled request completed")
         } catch is CancellationError {}
         XCTAssertEqual(client.pendingRequestCount, 0)
-        XCTAssertTrue(connection.isCurrent)
-    }
-
-    func testHostUiInvalidationIsOneShotAndCancellationUnsubscribes() async throws {
-        let client = PocketClient()
-        let transport = FakeTransport(endpointURL: URL(string: "ws://localhost:7690"))
-        _ = try await client.connect(transport: transport, auth: .token("test-token"))
-        let connection = try XCTUnwrap(client.hostUiConnection())
-        let cancelledStream = connection.invalidations()
-        let subscriber = Task {
-            for await _ in cancelledStream {}
-        }
-        XCTAssertEqual(client.hostUiInvalidationSubscriberCount, 1)
-        subscriber.cancel()
-        await subscriber.value
-        XCTAssertEqual(client.hostUiInvalidationSubscriberCount, 0)
-        let stream = connection.invalidations()
-        client.close()
-        var iterator = stream.makeAsyncIterator()
-        let first = await iterator.next()
-        let end = await iterator.next()
-        XCTAssertNotNil(first)
-        XCTAssertNil(end)
-        var late = connection.invalidations().makeAsyncIterator()
-        let lateFirst = await late.next()
-        let lateEnd = await late.next()
-        XCTAssertNotNil(lateFirst)
-        XCTAssertNil(lateEnd)
-        XCTAssertEqual(client.hostUiInvalidationSubscriberCount, 0)
-    }
-
-    func testHostUiIsUnavailableForSyntheticOrCredentialBearingEndpoints() async throws {
-        for url in [nil, URL(string: "ws://secret@localhost:7690"), URL(string: "https://localhost:7690")] as [URL?] {
-            let client = PocketClient()
-            _ = try await client.connect(transport: FakeTransport(endpointURL: url), auth: .token("test-token"))
-            XCTAssertNil(client.hostUiConnection())
-            client.close()
-        }
+        XCTAssertEqual(client.state, .open)
     }
 
     func testCommandMenuInjectsExportAndFeedbackWithoutCollidingHostRows() throws {
@@ -677,9 +578,6 @@ final class AndroidParityTests: XCTestCase {
 
 private final class FakeTransport: FrameTransport, @unchecked Sendable {
     let route = Route.wsLocal
-    let endpointURL: URL?
-
-    init(endpointURL: URL? = nil) { self.endpointURL = endpointURL }
     var closeReason: String?
     var closed = false
     var requests: [JSONValue] = []

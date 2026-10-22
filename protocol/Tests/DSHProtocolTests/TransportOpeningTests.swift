@@ -1,7 +1,7 @@
 import XCTest
 @testable import DSHProtocol
 
-final class HostUiTransportTests: XCTestCase {
+final class TransportOpeningTests: XCTestCase {
     func testOpeningTimeoutReleasesWaiterSoAnotherEndpointCanBeTried() async {
         let waiter = WebSocketOpenWaiter()
         let completed = expectation(description: "Opening timeout returns")

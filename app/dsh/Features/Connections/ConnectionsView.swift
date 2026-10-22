@@ -497,7 +497,14 @@ struct ConnectionsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(L.cancel()) { presented = nil }
+                    Button { presented = nil } label: {
+                        OfficialGlyph(kind: .chevronLeft, size: 16, color: T.ink)
+                            .frame(width: 28, height: 28)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(L.t("返回", "Back"))
+                    .accessibilityIdentifier("connectionsPairBack")
                 }
             }
             .onChange(of: pairingLink) { _ in emptyPaste = false }
@@ -681,14 +688,14 @@ private struct ConnActionRow: View {
     }
 }
 
-/// Ghost「取消」on ConnSheet. Android `PocketSheet` has no cancel row —
-/// it dismisses by swipe. Phone still needs a control; 44pt hit is
-/// `connectionsSheetCancelMinHeightPoints`.
+/// DSH back affordance with the sheet's existing touch target.
 private func connSheetCancel(identifier: String, action: @escaping () -> Void) -> some View {
-    Button(L.cancel(), action: action)
+    Button(action: action) {
+        OfficialGlyph(kind: .chevronLeft, size: 16, color: T.ink)
+            .frame(width: 28, height: 28)
+    }
         .buttonStyle(.plain)
-        .font(Font.system(size: CGFloat(dswButtonFontSizePoints)))
-        .foregroundStyle(T.ink)
+        .accessibilityLabel(L.t("返回", "Back"))
         .padding(.horizontal, CGFloat(connectionsSheetContentPaddingPoints))
         .frame(minHeight: CGFloat(connectionsSheetCancelMinHeightPoints), alignment: .leading)
         .contentShape(Rectangle())

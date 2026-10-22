@@ -18,8 +18,6 @@ public enum Route: String, Sendable, Equatable {
 
 public protocol FrameTransport: AnyObject {
     var route: Route { get }
-    /// The actual WebSocket endpoint; synthetic, non-network transports use nil.
-    var endpointURL: URL? { get }
     var closeReason: String? { get }
     func send(_ text: String) async throws
     func receive() async throws -> String
@@ -117,7 +115,6 @@ final class WebSocketOpenWaiter: NSObject, URLSessionWebSocketDelegate, @uncheck
 
 final class URLSessionFrameTransport: FrameTransport {
     let route: Route
-    let endpointURL: URL?
     private let task: URLSessionWebSocketTask
     private let session: URLSession
     private let waiter: WebSocketOpenWaiter
@@ -125,12 +122,11 @@ final class URLSessionFrameTransport: FrameTransport {
     private var closed = false
     private(set) var closeReason: String?
 
-    init(task: URLSessionWebSocketTask, session: URLSession, waiter: WebSocketOpenWaiter, route: Route, endpointURL: URL) {
+    init(task: URLSessionWebSocketTask, session: URLSession, waiter: WebSocketOpenWaiter, route: Route) {
         self.task = task
         self.session = session
         self.waiter = waiter
         self.route = route
-        self.endpointURL = endpointURL
     }
 
     func send(_ text: String) async throws {
@@ -212,7 +208,7 @@ enum TransportOpener {
         let waiter = WebSocketOpenWaiter()
         let session = URLSession(configuration: config, delegate: waiter, delegateQueue: nil)
         let task = session.webSocketTask(with: url)
-        let transport = URLSessionFrameTransport(task: task, session: session, waiter: waiter, route: route, endpointURL: url)
+        let transport = URLSessionFrameTransport(task: task, session: session, waiter: waiter, route: route)
         task.resume()
         do {
             try await withTimeout(ms: timeoutMs) { try await waiter.wait() }

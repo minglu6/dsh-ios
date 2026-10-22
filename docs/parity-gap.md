@@ -2312,7 +2312,7 @@ header 只要变高（`minHeight` 30 或 `padding.bottom` 15 且 top 仍 10）co
 - 验证：全部 App 源码（以独立烟测入口替代 app entry）及协议源码完成 Catalyst 编译；独立可执行程序验证更多页过滤／启用固定／实验标签／entryId 精确匹配。实际原生组件交互验证空白禁用、示例填入、自定义源合法／非法状态、先关来源浮层再关安装弹窗、更多与详情返回、不可寻址组件禁用、四个内置页往返及字段修改／非法值／恢复原值的保存按钮状态；查看浅色列表、安装、来源浮层、详情和内置配置，以及深色主列表截图。
 - 新增 `PluginInstallUITests`、`PluginManagerUITests`，纳入 full 与 settings-trajectory UI scope；新测试语法检查通过。本机仅有 Command Line Tools，`swift test --filter PluginPolicyTests` 因缺 XCTest 无法运行，未运行 iOS 模拟器／真机测试、未构建或发布 IPA。未对现用 Host 执行安装、卸载或配置写入；本地烟测不替代这些端到端验证。
 
-## 2026-10-22 — 通用 Host 插件 Web UI
+## 2026-10-22 — 通用 Host 插件 Web UI（后续已移除）
 
 - 保留原生插件／模型管理，在两页接入 `HostUiEntry`；`AppModel` 持有连接绑定的请求，`RootView` 全页覆盖展示 `HostUiScreen`。插件入口不指定 section，加载完整 Host shell，因此第三方 `shell.overlay` 等客户端注册可由 Host 模块图直接展示，不逐插件复刻。
 - 用户明确选择通用页面最低 iOS 18.4：该版本开始可通过公开 `WKUIDelegate` 拒绝文件选择；全 App 最低版本仍为 iOS 16，旧系统显示说明并保留原生管理。新窗口、下载、媒体／运动权限、外部导航及外部资源均拒绝，无 JS/native bridge；定位依赖 App 不声明／不申请位置权限。保留 Host CSP，私有 HTTP 路径授权仍由 Host 的 `pluginUiPaths` 控制，不在客户端扩权。
@@ -2323,3 +2323,11 @@ header 只要变高（`minHeight` 30 或 `padding.bottom` 15 且 top 仍 10）co
 - 延迟真实桥接回复 600ms 的独立透明 relay 验证：关闭早于 ui.open 回执时不兑换／不展示迟到票据，票据真实返回 401；快速重复刷新等待旧撤销、只发最新 open，最终页面可加载，重复关闭不影响其他页。未修改现用 Host 或 Android 仓库，未执行 dsh-purge 自身的管理操作。
 - 本机仍无完整 Xcode／XCTest，未运行完整 XCTest、iOS 模拟器／真机或构建 IPA。以上是真实 Host + macOS Catalyst WebKit 验证，不替代 iPhone 验收；dsh-purge 专属页面尚未逐功能真机验证。
 - 首轮提交 `1383c15` 的 CI 协议测试发现取消检查阻止 Office/file-watch 的既有清理请求：保留普通 RPC 的取消语义，将 `office.release` 与 `unfollow` 放到独立、仍受原 generation 限制且有 5 秒超时的清理任务。未弱化失败的两个回归测试；本机直接执行实际 PocketClient 验证取消释放原句柄、退出文件流退订及旧清理不得写入替换连接均通过。
+
+## 2026-10-22 — 撤回自定义 Web 界面，保留桌面式原生排版
+
+- 按用户最新要求，移除插件与模型页的自定义 Web 入口、页面、AppModel/RootView 路由、票据/Cookie helpers、连接专用 API、失效订阅和仅该功能使用的 endpoint 字段；删除对应专用测试。保留普通 RPC 取消／超时、Office 释放和文件退订修复，开连接取消测试改名为 `TransportOpeningTests`。
+- 截图中操作栏过早换行的根因是 `HStack(spacing:16)` 两个间隔加 `Spacer(minLength:16)`，比桌面单个 16pt gap 多占 32pt。改为仅一份 16pt 最小间距；空间足够时标题与操作栏同排，不足时按桌面 flex-wrap 左对齐换行。对齐标题 28pt、简介 20pt、分组标题 22pt、插件标题／说明 20/18pt 行高，以及插件行间 2pt；不缩小图标或改变分组逻辑。
+- 将配对工具栏、主机管理退出、插件卸载弹窗取消和模型编辑退出改为无边框的官方 chevronLeft 返回图标，显式使用主题文字色；保留原回调、禁用状态、辅助功能名称和管理弹窗 44pt 触摸高度。真正停止安装或删除确认中的取消语义不改。
+- 验证：对包含并行连接页改动的源码快照完成协议编译、完整 DEBUG App 类型检查和真实 Catalyst 应用运行；检查 402pt 同排、320pt 换行、浅深主题截图。实际点击插件卸载弹窗返回后弹窗消失、详情仍在；原生添加弹窗仍可打开关闭。通过生产配对链接导航直接呈现配对表单，截图确认顶部为极简返回图标、无蓝色取消文字。
+- 补充原生标题排版／安装入口及模型页无 Web 入口回归，管理弹窗回归移除文字取消的定位兜底；相关测试语法检查通过。当前 `app/dsh` 与协议生产源码已无 Host UI 专用引用。本机缺 XCTest／完整 Xcode，未跑完整测试、iPhone 模拟器或真机，本轮未重新提交或构建 IPA。

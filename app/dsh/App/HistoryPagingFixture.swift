@@ -47,7 +47,6 @@ extension AppModel {
 /// are synthetic; cursor validation makes a repeated/incorrect request observable.
 private final class HistoryPagingTransport: FrameTransport, @unchecked Sendable {
     let route = Route.wsLocal
-    let endpointURL: URL? = nil
     var closeReason: String? { "Synthetic history transport closed" }
     private let sessionId: String
     private let failFirst: Bool

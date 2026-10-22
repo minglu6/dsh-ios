@@ -25,9 +25,7 @@
 
 远程主机配置来自 `plugins.settingsDescribe` 与 `settings.changed`。正常态不放手动同步。
 
-iOS 18.4 及以上可在插件管理或模型页点击 **「打开插件自定义界面」**，通过隔离的 `WKWebView` 加载 Host 实际提供的 Web 客户端；原生管理界面仍保留。插件入口打开完整 Host shell，兼容插件的覆盖层和自定义页面由 Host 加载；模型入口定位到模型设置。Host 提供新版插件后，重新连接页面即可读取新版 UI，无需重新编译手机 App；这不会将 Web 控件注入原生聊天页。
-
-Host 必须公布 `ui.open` 和 `ui.close`。原生网络兑换一次性票据，网页只接收绑定当前 WebSocket 连接的专属 HttpOnly Cookie；刷新、退出、切换 Host 或断连会释放该页及其数据、票据。插件私有 HTTP 根路径仍需 Host 用 `pluginUiPaths` 显式授权，例如 `/dsh-purge`、`/redteam`，且该授权包含写操作。页面禁止外部导航／资源、新窗口、下载、文件选择和媒体／运动权限，不暴露 JS 原生桥；App 不申请定位权限。不支持 Electron 专属 API 和插件自定义 WebSocket。iOS 16–18.3 仅提供原生插件管理。
+插件管理和模型设置仅保留原生页面，排版按桌面插件管理对齐，包括紧凑操作栏、分组插件行与居中安装弹窗。已移除自定义插件 Web 界面入口及其票据／Cookie 生命周期，不在手机中渲染第三方 Web 控件。
 
 任务栏遵循桌面生命周期：`todo/write` 更新整份清单，本轮全部完成和 `turn/end` 后仍保留；下一轮 `turn/start`，或远程主机通过 snapshot／resume／projection 明确发送 `todos: null`、`todos: []` 时移除整个任务栏。缺失投影键不等于清空，过期状态不会复活任务；清空不删除历史 `todo_write` 的参数和结果。`TodoLifecycleUITests` 通过 DEBUG fixture 将真实 follow 帧送入生产 reducer→AppModel 发布链路，覆盖完成保留、各类清空及历史轨迹可读性，不直接改写任务栏状态。
 

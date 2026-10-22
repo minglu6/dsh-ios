@@ -1700,17 +1700,8 @@ final class ScreenshotTests: XCTestCase {
             "\(appearance) manage sheet missing"
         )
         let manageCancel = app.descendants(matching: .any)["connectionsManageCancel"].firstMatch
-        XCTAssertTrue(
-            manageCancel.waitForExistence(timeout: 4)
-                || app.buttons["取消"].waitForExistence(timeout: 2),
-            "\(appearance) manage sheet missing 取消"
-        )
-        let manageCancelFrame = manageCancel.exists ? manageCancel : app.buttons["取消"].firstMatch
-        XCTAssertGreaterThanOrEqual(
-            manageCancelFrame.frame.height,
-            44,
-            "\(appearance) manage 取消 height \(manageCancelFrame.frame.height) is under 44pt"
-        )
+        XCTAssertTrue(manageCancel.waitForExistence(timeout: 4), "\(appearance) manage sheet missing back control")
+        XCTAssertGreaterThanOrEqual(manageCancel.frame.height, 44, "\(appearance) manage back touch target is under 44pt")
         XCTAssertTrue(
             app.staticTexts["重新配对"].waitForExistence(timeout: 4)
                 || app.descendants(matching: .any)["connectionsManageRepair"].waitForExistence(timeout: 2),
@@ -1742,15 +1733,10 @@ final class ScreenshotTests: XCTestCase {
             "\(appearance) manage missing official editOutline"
         )
         try saveNamedScreenshot(appearance, "manage")
-        let cancel = app.descendants(matching: .any)["connectionsManageCancel"].firstMatch
-        if cancel.exists {
-            cancel.tap()
-        } else {
-            app.buttons["取消"].firstMatch.tap()
-        }
+        manageCancel.tap()
         XCTAssertTrue(
             app.descendants(matching: .any)["connectionsManageSheet"].firstMatch.waitForNonExistence(timeout: 8),
-            "\(appearance) manage sheet stayed after 取消"
+            "\(appearance) manage sheet stayed after back"
         )
     }
 

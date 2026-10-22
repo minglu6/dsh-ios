@@ -22,8 +22,6 @@ struct ModelsSettingsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     settingsMessage(modelsSettingsIntro(english: L.en))
-                    HostUiEntry(model: model, section: "models", enabled: !busy && !loading)
-                        .padding(.horizontal, 22)
                     if model.isOnline && !writable && !loading && error == nil {
                         settingsMessage(L.hostSettingsReadOnly())
                     }
@@ -308,7 +306,12 @@ private struct AddModelProviderView: View {
                 )
             }
             if !custom && target == nil {
-                Button(L.cancel()) { onClose(false) }
+                Button { onClose(false) } label: {
+                    OfficialGlyph(kind: .chevronLeft, size: 16, color: T.ink)
+                        .frame(width: 28, height: 28).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(L.t("返回", "Back"))
             }
         }
         .padding(14)
@@ -420,7 +423,13 @@ struct ProviderSettingsEditorView: View {
                 Button(L.save(), action: save)
                     .disabled(!model.isOnline || busy || !writable)
                 Spacer()
-                Button(L.cancel()) { onClose(false) }.disabled(busy)
+                Button { onClose(false) } label: {
+                    OfficialGlyph(kind: .chevronLeft, size: 16, color: T.ink)
+                        .frame(width: 28, height: 28).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(L.t("返回", "Back"))
+                .disabled(busy)
                 if initial != nil, !account, model.ops.contains("models.settingsMutate") {
                     Button(L.delete(), role: .destructive) { confirmRemove = true }.disabled(busy || !writable)
                 }

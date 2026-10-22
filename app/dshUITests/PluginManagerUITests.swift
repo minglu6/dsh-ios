@@ -7,6 +7,40 @@ final class PluginManagerUITests: XCTestCase {
         continueAfterFailure = false
     }
 
+    func testHeaderAvoidsUnnecessaryWrappingAndKeepsNativeAddActionReachable() {
+        let app = launch()
+        let title = app.staticTexts["pluginPageTitle"]
+        let add = app.buttons["pluginAddButton"]
+        let basic = element(app, "pluginGroup.basic")
+        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        XCTAssertTrue(add.isHittable)
+        XCTAssertFalse(element(app, "hostUiEntry.plugins").exists)
+        if app.windows.firstMatch.frame.width >= 390 {
+            XCTAssertEqual(title.frame.midY, add.frame.midY, accuracy: 4)
+            XCTAssertLessThanOrEqual(basic.frame.minY - add.frame.maxY, 56)
+        } else {
+            XCTAssertGreaterThan(add.frame.minY, title.frame.maxY)
+        }
+        add.tap()
+        let dialog = element(app, "pluginInstallDialog")
+        XCTAssertTrue(dialog.waitForExistence(timeout: 5))
+        app.buttons["pluginInstallClose"].tap()
+        assertAbsent(dialog)
+        XCTAssertTrue(add.isHittable)
+        attach(app, name: "plugin-manager-native-header")
+    }
+
+    func testModelsHasNoCustomPluginWebEntry() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-UITestFixture", "-UITestScreen", "settingsShell", "-UITestAppearanceLight"]
+        app.launch()
+        let models = element(app, "settingsNavRow.models")
+        XCTAssertTrue(models.waitForExistence(timeout: 15))
+        models.tap()
+        XCTAssertTrue(element(app, "modelsSettings").waitForExistence(timeout: 15))
+        XCTAssertFalse(element(app, "hostUiEntry.models").exists)
+    }
+
     func testMainGroupsExcludeHeldBackPackageAndMoreShowsIt() {
         let app = launch()
         for group in ["basic", "extensions", "bundles"] {

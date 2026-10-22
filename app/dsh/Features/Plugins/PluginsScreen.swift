@@ -65,7 +65,6 @@ struct PluginsScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 32) {
                 if selected == nil { pluginsHeader }
-                HostUiEntry(model: model, enabled: !locked)
                 if let error { Text(error).font(.system(size: 13)).foregroundStyle(T.err) }
                 if let configError { Text(configError).font(.system(size: 13)).foregroundStyle(T.err) }
                 if let outcome { Text(pluginChangeText(outcome, en: L.en)).font(.system(size: 13)).foregroundStyle(T.text2) }
@@ -198,8 +197,8 @@ struct PluginsScreen: View {
                 }
             } else {
                 ViewThatFits(in: .horizontal) {
-                    HStack(alignment: .top, spacing: 16) { pageHeading.fixedSize(); Spacer(minLength: 16); toolbar }
-                    VStack(alignment: .leading, spacing: 16) { pageHeading; toolbar.frame(maxWidth: .infinity, alignment: .trailing) }
+                    HStack(alignment: .top, spacing: 0) { pageHeading.fixedSize(); Spacer(minLength: 16); toolbar }
+                    VStack(alignment: .leading, spacing: 16) { pageHeading; toolbar }
                 }
             }
         }
@@ -215,6 +214,8 @@ struct PluginsScreen: View {
                 }
                 .accessibilityLabel(L.t("返回", "Back"))
                 Text(L.pluginsNav()).font(.system(size: 20, weight: .medium))
+                    .frame(minHeight: 28, alignment: .leading)
+                    .accessibilityIdentifier("pluginPageTitle")
             }
             HStack(spacing: 4) {
                 Text(L.pluginsHint()).font(.system(size: 13)).foregroundStyle(T.text2)
@@ -234,6 +235,7 @@ struct PluginsScreen: View {
                     ["info": PluginHeaderPresentation(anchor: $0, content: showPluginInfo ? AnyView(pluginInfoTooltip) : nil)]
                 }
             }
+            .frame(minHeight: 20, alignment: .leading)
         }
         .fixedSize(horizontal: false, vertical: true)
     }
@@ -287,14 +289,14 @@ struct PluginsScreen: View {
         }.map(\.element)
         let basics = PluginBuiltinItem.available(in: namespaces)
         if moreOpen {
-            VStack(spacing: 0) {
+            VStack(spacing: 2) {
                 ForEach(Array(ordered.enumerated()), id: \.offset) { _, bundle in marketRow(bundle) }
             }
         } else {
             if !basics.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     groupHeading(L.t("内置插件配置", "Built-in plugin settings"))
-                    VStack(spacing: 0) {
+                    VStack(spacing: 2) {
                         ForEach(basics) { item in
                             Button { builtin = item } label: {
                                 HStack(spacing: 14) {
@@ -303,7 +305,9 @@ struct PluginsScreen: View {
                                         .overlay(RoundedRectangle(cornerRadius: 16).stroke(T.borderL3, lineWidth: 0.5))
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(item.title).font(.system(size: 14, weight: .medium)).foregroundStyle(T.ink).lineLimit(1)
+                                            .frame(minHeight: 20, alignment: .leading)
                                         Text(item.description).font(.system(size: 13)).foregroundStyle(T.text3).lineLimit(1)
+                                            .frame(minHeight: 18, alignment: .leading)
                                     }
                                     Spacer(minLength: 0)
                                 }
@@ -329,7 +333,7 @@ struct PluginsScreen: View {
                         }
                         .buttonStyle(.plain).accessibilityIdentifier("pluginMore")
                     }
-                    VStack(spacing: 0) {
+                    VStack(spacing: 2) {
                         ForEach(Array(ordered.filter {
                             pluginOptionalVisible(name: $0["name"].str(), enabled: $0["enabled"].bool() == true, expanded: false)
                         }.enumerated()), id: \.offset) { _, bundle in marketRow(bundle) }
@@ -340,7 +344,7 @@ struct PluginsScreen: View {
             if !groups.installed.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     groupHeading(L.installedPlugins())
-                    VStack(spacing: 0) {
+                    VStack(spacing: 2) {
                         ForEach(Array(groups.installed.enumerated()), id: \.offset) { _, bundle in marketRow(bundle) }
                     }
                 }
@@ -354,6 +358,7 @@ struct PluginsScreen: View {
 
     private func groupHeading(_ title: String) -> some View {
         Text(title).font(.system(size: 14, weight: .medium)).foregroundStyle(T.ink)
+            .frame(minHeight: 22, alignment: .leading)
     }
 
     private func canToggle(_ bundle: JSONValue) -> Bool {
@@ -378,6 +383,7 @@ struct PluginsScreen: View {
                         let description = pluginDescription(bundle, english: L.en)
                         if !description.isEmpty {
                             Text(description).font(.system(size: 13)).foregroundStyle(T.text3).lineLimit(1)
+                                .frame(minHeight: 18, alignment: .leading)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -396,6 +402,7 @@ struct PluginsScreen: View {
 
     private func packageTitle(_ bundle: JSONValue) -> some View {
         Text(pluginTitle(bundle, english: L.en)).font(.system(size: 14, weight: .medium)).foregroundStyle(T.ink).lineLimit(1)
+            .frame(minHeight: 20, alignment: .leading)
     }
 
     private func packageTags(_ bundle: JSONValue) -> some View {
@@ -845,9 +852,12 @@ private struct PluginUninstallDialog: View {
                     .font(.system(size: 14)).foregroundStyle(T.ink)
                 HStack(spacing: 8) {
                     Spacer()
-                    Button(L.cancel(), action: onCancel)
-                        .padding(.horizontal, 16).frame(height: 36)
-                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.borderL3, lineWidth: 0.5))
+                    Button(action: onCancel) {
+                        OfficialGlyph(kind: .chevronLeft, size: 16, color: T.ink)
+                            .frame(width: 28, height: 36).contentShape(Rectangle())
+                    }
+                    .accessibilityLabel(L.t("返回", "Back"))
+                    .accessibilityIdentifier("pluginUninstallBack")
                     Button(L.t("卸载", "Uninstall"), action: onConfirm)
                         .foregroundStyle(T.onPrimary).padding(.horizontal, 16).frame(height: 36)
                         .background(T.err, in: RoundedRectangle(cornerRadius: 12))
