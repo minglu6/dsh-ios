@@ -92,6 +92,8 @@ iOS 应用（dev.dsh.pocket.ios）         桌面
 - 电脑：已安装 dsh，且远程主机保持运行。Android／插件 CI 当前固定 `@deepseek-ai/dsh@0.2.1-alpha.2`。
 - 网络：手机与电脑处于可互访的局域网，或同一可互访的 Tailscale 网络。防火墙需允许桥接端口（默认 TCP `7690`）。
 
+1.0.0 正式版：[发布说明](https://github.com/minglu6/dsh-ios/releases/tag/v1.0.0) · [未签名 IPA](https://github.com/minglu6/dsh-ios/releases/download/v1.0.0/dsh-ios-v1.0.0.ipa)。
+
 最新未签名 IPA：
 
 https://github.com/minglu6/dsh-ios/releases/download/dsh-ios-latest/dsh-ios.ipa

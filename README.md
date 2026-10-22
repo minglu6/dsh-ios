@@ -94,6 +94,8 @@ Requirements:
 - Desktop: dsh installed and the Host kept running. The Android/plugin CI pins `@deepseek-ai/dsh@0.2.1-alpha.2`.
 - Network: a reachable LAN, or the same Tailscale tailnet. The firewall must allow the bridge port (default TCP `7690`).
 
+Version 1.0.0: [Release notes](https://github.com/minglu6/dsh-ios/releases/tag/v1.0.0) · [Unsigned IPA](https://github.com/minglu6/dsh-ios/releases/download/v1.0.0/dsh-ios-v1.0.0.ipa).
+
 Latest unsigned IPA:
 
 https://github.com/minglu6/dsh-ios/releases/download/dsh-ios-latest/dsh-ios.ipa
