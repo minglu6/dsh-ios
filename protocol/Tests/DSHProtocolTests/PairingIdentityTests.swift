@@ -77,6 +77,7 @@ final class PairingIdentityTests: XCTestCase {
 
 private final class PairingFakeTransport: FrameTransport, @unchecked Sendable {
     let route = Route.wsLocal
+    let endpointURL: URL? = nil
     var closeReason: String?
     var closed = false
     var requests: [JSONValue] = []

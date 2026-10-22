@@ -19,12 +19,13 @@ public let moreOptionalBundles = [
     "@deepseek-ai/dsh-experimental-session-titles-bundle",
     "@deepseek-ai/dsh-experimental-badge-skill-bundle",
     "@deepseek-ai/dsh-experimental-ralph-bundle",
+    "@deepseek-ai/dsh-experimental-plugin-market-bundle",
     "@deepseek-ai/dsh-subagent-codex",
     "@deepseek-ai/dsh-subagent-claude-code",
 ]
 
-public func pluginOptionalVisible(name: String?, expanded: Bool) -> Bool {
-    expanded || name.map { !moreOptionalBundles.contains($0) } ?? true
+public func pluginOptionalVisible(name: String?, enabled: Bool, expanded: Bool) -> Bool {
+    expanded || enabled || name.map { !moreOptionalBundles.contains($0) } ?? true
 }
 
 public func pluginOptionalRank(_ name: String?) -> Int {
@@ -54,11 +55,7 @@ public func pluginMarketGroups(_ bundles: [JSONValue]) -> PluginMarketGroups {
 }
 
 public func pluginExperimental(_ bundle: JSONValue) -> Bool {
-    if bundle["official"].bool() == true { return true }
-    if bundle["optional"].bool() == true { return true }
-    guard let name = bundle["name"].str() else { return false }
-    if name.contains("experimental") { return true }
-    return primaryOptionalBundles.contains(name) || moreOptionalBundles.contains(name)
+    bundle["name"].str()?.hasPrefix("@deepseek-ai/dsh-experimental-") == true
 }
 
 public func pluginTitle(_ value: JSONValue, english: Bool) -> String {

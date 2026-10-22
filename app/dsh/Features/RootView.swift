@@ -37,6 +37,25 @@ struct RootView: View {
                 }
             }
         }
+        .accessibilityHidden(model.hostUi != nil)
+        .overlay {
+            if let request = model.hostUi {
+                HostUiScreen(request: request) {
+                    if model.hostUi?.id == request.id { model.hostUi = nil }
+                }
+                .id(request.id)
+            }
+        }
+        .onChange(of: model.activeId) { host in
+            if model.hostUi?.hostId != host { model.hostUi = nil }
+        }
+        .onChange(of: model.currentDot) { state in
+            if state != .online { model.hostUi = nil }
+        }
+        .onChange(of: model.currentRoute) { _ in model.hostUi = nil }
+        .onChange(of: model.ops) { ops in
+            if !ops.contains("ui.open") || !ops.contains("ui.close") { model.hostUi = nil }
+        }
         .preferredColorScheme(preferred)
         .onAppear { theme.resolve(appearance: model.appearance, systemDark: colorScheme == .dark) }
         .onChange(of: model.appearance) { _ in theme.resolve(appearance: model.appearance, systemDark: colorScheme == .dark) }
@@ -446,13 +465,13 @@ struct RootView: View {
     private var drawerEdgeSwipe: some Gesture {
         DragGesture(minimumDistance: 40, coordinateSpace: .global)
             .onChanged { value in
-                guard model.currentRoute.allowsSessionDrawer else { return }
+                guard model.hostUi == nil, model.currentRoute.allowsSessionDrawer else { return }
                 if !model.showDrawer, value.startLocation.x < 24 {
                     Keyboard.dismiss()
                 }
             }
             .onEnded { value in
-                guard model.currentRoute.allowsSessionDrawer else { return }
+                guard model.hostUi == nil, model.currentRoute.allowsSessionDrawer else { return }
                 let horizontal = abs(value.translation.width) > abs(value.translation.height)
                 if !model.showDrawer,
                    value.startLocation.x < 24,

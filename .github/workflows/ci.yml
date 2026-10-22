@@ -144,6 +144,8 @@ jobs:
               -only-testing:dshUITests/ScreenshotTests/testGeneralSettingsSelectionsStayAnchoredAndPersist
               -only-testing:dshUITests/ScreenshotTests/testSettingsSelectDismissesAndSwitchesWithOneTap
               -only-testing:dshUITests/TrajectoryUITests
+              -only-testing:dshUITests/PluginInstallUITests
+              -only-testing:dshUITests/PluginManagerUITests
             )
             MIN_SCREENSHOTS=4
           elif [ "$UI_SCOPE" = "session-header" ]; then
@@ -189,6 +191,8 @@ jobs:
             UI_TESTS=(
               -only-testing:dshUITests/ScreenshotTests
               -only-testing:dshUITests/ComposerStatsUITests
+              -only-testing:dshUITests/PluginInstallUITests
+              -only-testing:dshUITests/PluginManagerUITests
               -only-testing:dshUITests/KeyboardDismissalTests
               -only-testing:dshUITests/ComposerImeTests
               -only-testing:dshUITests/SessionHeaderUITests

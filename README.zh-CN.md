@@ -21,9 +21,13 @@
 | 聊天 | 流式正文与思考、Markdown／代码块／表格、官方思考区、工具行回执、进程组折叠、本地回显、排队编辑／插话、审批官方卡、用户提问卡、`/` 指令、附件上传、会话图片气泡（`session.attachment`）、`@` 官方 mention token 与 chip、模型＋思考强度、权限模式文案芯片、任务清单、目标、本轮用量与会话统计、重试／回合失败、工作区改动卡片（编码视图开启时）。导出与会话反馈走 `/` 与 `+`。消息动作：复制／赞／踩（远程主机有 `feedback.set` 时）；分支在会话 ⋯（`sessions.fork`）。打开抽屉、滚动消息列表或点 Composer 外空白会收起键盘 |
 | 轨迹 | 对话／轨迹页签：紧凑账本（7 种格子）、工具栏时长／轮次／调用＋搜索、泳道、格子检视 概述／参数／结果／Schema／计时、请求检视 概述／选项／用量／计时（官方 `ui-trajectory` 文案）。编码视图关闭时隐藏。差距矩阵：[docs/parity-gap.md](docs/parity-gap.md) |
 | 配置 | 通用设置（外观三块、字号 px、折叠时机、性能、权限、会话日志、链接打开位置）。外观与字体只保存在本机，不写入远程主机。模型页：提供商编辑＋密钥（`models.providers*`／`credentials.*`）。Agent 预设（`presets.list`／`presets.read`／`presets.settings`）＋官方引导＋创造模式入口。无自造「凭证」页 |
-| 远程主机工具 | 抽屉在公布 `plugins.list` 时打开插件管理（官方市场列表＋开关、安装／检视／来源库；settingsDescribe 在插件详情「配置组件」），在公布 `schedule.catalog` 时打开自动化任务（仅抽屉，设置里没有「自动化」行）。会话「开始」面板对齐桌面文案：工作区文件＋新建终端（不展示桌面快捷键）。桌面开始与 ⋯ 都没有浏览器／会话诊断入口，故不暴露。PTY 终端与工作区文件树在公布对应 op 时出现。文件预览语言表与隔离高亮对齐 Android，并在对应类型上支持 PDF / Office / XLS。会话顶栏在公布 `jobs.list` 时显示实时任务 chip／面板。差距矩阵：[docs/parity-gap.md](docs/parity-gap.md) |
+| 远程主机工具 | 抽屉在公布 `plugins.list` 时打开插件管理（内置插件配置／实验性插件与「更多」／已安装插件），在公布 `schedule.catalog` 时打开自动化任务（仅抽屉，设置里没有「自动化」行）。插件详情展示组件状态、可寻址开关、配置及来源／版本；添加插件使用桌面式居中弹窗，包含示例、安装源选择，检查合并进「安装」。会话「开始」面板对齐桌面文案：工作区文件＋新建终端（不展示桌面快捷键）。桌面开始与 ⋯ 都没有浏览器／会话诊断入口，故不暴露。PTY 终端与工作区文件树在公布对应 op 时出现。文件预览语言表与隔离高亮对齐 Android，并在对应类型上支持 PDF / Office / XLS。会话顶栏在公布 `jobs.list` 时显示实时任务 chip／面板。差距矩阵：[docs/parity-gap.md](docs/parity-gap.md) |
 
 远程主机配置来自 `plugins.settingsDescribe` 与 `settings.changed`。正常态不放手动同步。
+
+iOS 18.4 及以上可在插件管理或模型页点击 **「打开插件自定义界面」**，通过隔离的 `WKWebView` 加载 Host 实际提供的 Web 客户端；原生管理界面仍保留。插件入口打开完整 Host shell，兼容插件的覆盖层和自定义页面由 Host 加载；模型入口定位到模型设置。Host 提供新版插件后，重新连接页面即可读取新版 UI，无需重新编译手机 App；这不会将 Web 控件注入原生聊天页。
+
+Host 必须公布 `ui.open` 和 `ui.close`。原生网络兑换一次性票据，网页只接收绑定当前 WebSocket 连接的专属 HttpOnly Cookie；刷新、退出、切换 Host 或断连会释放该页及其数据、票据。插件私有 HTTP 根路径仍需 Host 用 `pluginUiPaths` 显式授权，例如 `/dsh-purge`、`/redteam`，且该授权包含写操作。页面禁止外部导航／资源、新窗口、下载、文件选择和媒体／运动权限，不暴露 JS 原生桥；App 不申请定位权限。不支持 Electron 专属 API 和插件自定义 WebSocket。iOS 16–18.3 仅提供原生插件管理。
 
 任务栏遵循桌面生命周期：`todo/write` 更新整份清单，本轮全部完成和 `turn/end` 后仍保留；下一轮 `turn/start`，或远程主机通过 snapshot／resume／projection 明确发送 `todos: null`、`todos: []` 时移除整个任务栏。缺失投影键不等于清空，过期状态不会复活任务；清空不删除历史 `todo_write` 的参数和结果。`TodoLifecycleUITests` 通过 DEBUG fixture 将真实 follow 帧送入生产 reducer→AppModel 发布链路，覆盖完成保留、各类清空及历史轨迹可读性，不直接改写任务栏状态。
 

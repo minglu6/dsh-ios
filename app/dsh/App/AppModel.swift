@@ -184,6 +184,7 @@ final class AppModel: ObservableObject {
     private var skillEntriesByScope: [String: [SkillEntry]] = [:]
     @Published var draftWorkspaceId: String?
     @Published var pendingBrowserURL: URL?
+    @Published var hostUi: HostUiRequest?
     var fileTreeStates: [String: FileTreeState] = [:]
     var fileTreeOffsets: [String: CGFloat] = [:]
     @Published var hiddenQuestionId: String?
@@ -339,6 +340,24 @@ final class AppModel: ObservableObject {
         }
     }
     func pop() { if !routeStack.isEmpty { routeStack.removeLast() } }
+
+    func openHostUi(section: String? = nil) {
+        guard #available(iOS 18.4, *) else {
+            toast = L.t("插件自定义界面需要 iOS 18.4 或更新版本。", "Plugin Web interfaces require iOS 18.4 or later.")
+            return
+        }
+        guard isOnline, ops.contains("ui.open"), ops.contains("ui.close"), let hostId = activeId else {
+            toast = L.t("请连接支持插件界面会话的 Host。", "Connect to a Host that supports plugin UI sessions.")
+            return
+        }
+        guard let connection = client?.hostUiConnection() else {
+            toast = L.t("当前连接无法打开主机插件界面，请重新连接。", "The current connection cannot open Host plugin interfaces. Reconnect to the Host.")
+            return
+        }
+        showDrawer = false
+        Keyboard.dismiss()
+        hostUi = HostUiRequest(hostId: hostId, connection: connection, section: section)
+    }
 
     func connect(profileId: String) {
         if uiTestFixture { return }

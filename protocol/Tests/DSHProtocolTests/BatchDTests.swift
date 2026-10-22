@@ -2,11 +2,11 @@ import XCTest
 @testable import DSHProtocol
 
 final class HostUiTests: XCTestCase {
-    func testTicketExchangeKeepsBearerOutOfUrlAndRetainsHttpOnlySameSiteCookie() throws {
+    func testTicketExchangeKeepsBearerOutOfUrlAndRetainsHttpOnlySameSiteCookie() async throws {
         let origin = HostUiOrigin(scheme: "http", host: "192.0.2.1", port: 7690)
         let http = MockHostUiHTTP { url, body in
             XCTAssertEqual(url.path, "/pocket-ui/open")
-            XCTAssertEqual(String(data: body, encoding: .utf8), "ticket=one-use%2Bticket")
+            XCTAssertEqual(String(data: body, encoding: .utf8), "ticket=one-use%2Bticket%26%27%3D")
             return HostUiHTTPResponse(
                 status: 303,
                 headers: [
@@ -15,7 +15,7 @@ final class HostUiTests: XCTestCase {
                 ]
             )
         }
-        let session = try exchangeHostUiTicket(http: http, origin: origin, path: "/pocket-ui/open", ticket: "one-use+ticket")
+        let session = try await exchangeHostUiTicket(http: http, origin: origin, path: "/pocket-ui/open", ticket: "one-use+ticket&'=")
         XCTAssertEqual(URLComponents(url: session.startURL, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "section" }?.value, "models")
         XCTAssertTrue(session.cookie.httpOnly)
         XCTAssertTrue(session.cookie.hostOnly)
@@ -23,7 +23,7 @@ final class HostUiTests: XCTestCase {
         XCTAssertFalse(session.startURL.absoluteString.contains("one-use"))
     }
 
-    func testRedirectCannotMoveSessionToDifferentOriginOrRevealTicket() {
+    func testRedirectCannotMoveSessionToDifferentOriginOrRevealTicket() async {
         let origin = HostUiOrigin(scheme: "http", host: "192.0.2.1", port: 7690)
         for location in [
             "https://outside.invalid/?pocket-ui=1",
@@ -32,27 +32,43 @@ final class HostUiTests: XCTestCase {
             "/?pocket-ui=1&ticket=grant",
             "/pocket/devices?pocket-ui=1",
             "/?pocket-ui=1#ticket",
+            "/?pocket-ui=1&pocket-ui=0",
+            "/?pocket-ui=1&section=models&section=plugins",
+            "/?pocket-ui=1&%74oken=secret",
+            "/?pocket-ui=1&Authorization=secret",
+            "/?pocket-ui=1&cookie=secret",
         ] {
             let http = MockHostUiHTTP { _, _ in
                 HostUiHTTPResponse(
                     status: 303,
                     headers: [
                         "Location": [location],
-                        "Set-Cookie": ["dsh-pocket-web=session; Path=/; HttpOnly; SameSite=Strict"],
+                        "Set-Cookie": ["dsh-pocket-web=session; Path=/; HttpOnly; SameSite=Strict; Max-Age=900"],
                     ]
                 )
             }
-            XCTAssertThrowsError(try exchangeHostUiTicket(http: http, origin: origin, path: "/pocket-ui/open", ticket: "ticket"))
+            do {
+                _ = try await exchangeHostUiTicket(http: http, origin: origin, path: "/pocket-ui/open", ticket: "ticket")
+                XCTFail("Accepted unsafe redirect: \(location)")
+            } catch {}
         }
     }
 
-    func testSessionRejectsReadableCookiesAndNeverAcceptsUpstreamHostCookie() {
+    func testSessionRejectsReadableCookiesAndNeverAcceptsUpstreamHostCookie() async {
         let origin = HostUiOrigin(scheme: "http", host: "localhost", port: 7690)
         for header in [
-            "dsh-auth-host=privileged; Path=/; HttpOnly",
-            "dsh-pocket-web=session; Path=/",
-            "dsh-pocket-web=session; Domain=localhost; Path=/; HttpOnly",
-            "dsh-pocket-web=session; Path=/api; HttpOnly",
+            "dsh-auth-host=privileged; Path=/; HttpOnly; SameSite=Strict; Max-Age=900",
+            "dsh-pocket-web=session; Path=/; SameSite=Strict; Max-Age=900",
+            "dsh-pocket-web=session; Domain=localhost; Path=/; HttpOnly; SameSite=Strict; Max-Age=900",
+            "dsh-pocket-web=session; Path=/api; HttpOnly; SameSite=Strict; Max-Age=900",
+            "dsh-pocket-web=session; Path=/; HttpOnly; Max-Age=900",
+            "dsh-pocket-web=session; Path=/; HttpOnly; SameSite=Lax; Max-Age=900",
+            "dsh-pocket-web=session; Path=/; HttpOnly; SameSite=Strict",
+            "dsh-pocket-web=session; Path=/; HttpOnly; SameSite=Strict; Max-Age=0",
+            "dsh-pocket-web=session; Path=/; HttpOnly; SameSite=Strict; Max-Age=-1",
+            "dsh-pocket-web=session; Path=/; HttpOnly; SameSite=Strict; Max-Age=invalid",
+            "dsh-pocket-web=session; Path=/; HttpOnly; SameSite=Strict; Max-Age=900; Max-Age=1",
+            "dsh-pocket-web=session; Path=/; HttpOnly; SameSite=Strict; Expires=Wed, 21 Oct 2015 07:28:00 GMT",
         ] {
             let http = MockHostUiHTTP { _, _ in
                 HostUiHTTPResponse(status: 303, headers: [
@@ -60,14 +76,50 @@ final class HostUiTests: XCTestCase {
                     "Set-Cookie": [header],
                 ])
             }
-            XCTAssertThrowsError(try exchangeHostUiTicket(http: http, origin: origin, path: "/pocket-ui/open", ticket: "ticket"))
+            do {
+                _ = try await exchangeHostUiTicket(http: http, origin: origin, path: "/pocket-ui/open", ticket: "ticket")
+                XCTFail("Accepted unsafe cookie: \(header)")
+            } catch {}
         }
     }
 
-    func testAuthenticationFailureIsNotAnEmptyAuthenticatedPage() {
+    func testAuthenticationFailureIsNotAnEmptyAuthenticatedPage() async {
         let origin = HostUiOrigin(scheme: "http", host: "192.0.2.1", port: 7690)
         let http = MockHostUiHTTP { _, _ in HostUiHTTPResponse(status: 401, headers: [:], body: Data("expired".utf8)) }
-        XCTAssertThrowsError(try exchangeHostUiTicket(http: http, origin: origin, path: "/pocket-ui/open", ticket: "expired-ticket"))
+        do {
+            _ = try await exchangeHostUiTicket(http: http, origin: origin, path: "/pocket-ui/open", ticket: "expired-ticket")
+            XCTFail("Accepted failed authentication")
+        } catch {}
+    }
+
+    func testCookieLifetimeUsesMaxAgePrecedenceAndRejectsExpiryBoundary() throws {
+        let origin = HostUiOrigin(scheme: "http", host: "localhost", port: 7690)
+        let now = Date(timeIntervalSince1970: 1_445_412_480)
+        let base = "dsh-pocket-web=session; Path=/; HttpOnly; SameSite=Strict"
+        let expires = "; Expires=Wed, 21 Oct 2015 07:28:00 GMT"
+        XCTAssertNil(parseHostUiCookie(base + expires, origin: origin, now: now))
+        let absolute = try XCTUnwrap(parseHostUiCookie(base + expires, origin: origin, now: now.addingTimeInterval(-1)))
+        XCTAssertEqual(absolute.expiresAt, now)
+        let relative = try XCTUnwrap(parseHostUiCookie(base + expires + "; Max-Age=900", origin: origin, now: now))
+        XCTAssertEqual(relative.expiresAt, now.addingTimeInterval(900))
+        XCTAssertNil(parseHostUiCookie(base + "; Max-Age=900", origin: HostUiOrigin(scheme: "https", host: "localhost", port: 443), now: now))
+    }
+
+    func testDuplicateRedirectAndCookieHeadersAreRejected() async {
+        let origin = HostUiOrigin(scheme: "http", host: "localhost", port: 7690)
+        let cookie = "dsh-pocket-web=session; Path=/; HttpOnly; SameSite=Strict; Max-Age=900"
+        for headers in [
+            ["Location": ["/?pocket-ui=1", "/?pocket-ui=1"], "Set-Cookie": [cookie]],
+            ["Location": ["/?pocket-ui=1"], "location": ["/?pocket-ui=1"], "Set-Cookie": [cookie]],
+            ["Location": ["/?pocket-ui=1"], "Set-Cookie": [cookie, cookie]],
+            ["Location": ["/?pocket-ui=1"], "Set-Cookie": [cookie, "dsh-auth-host=secret"]],
+        ] {
+            let http = MockHostUiHTTP { _, _ in HostUiHTTPResponse(status: 303, headers: headers) }
+            do {
+                _ = try await exchangeHostUiTicket(http: http, origin: origin, path: "/pocket-ui/open", ticket: "ticket")
+                XCTFail("Accepted ambiguous response")
+            } catch {}
+        }
     }
 
     func testWebNavigationRejectsOtherHostsPortsSchemesCredentialsAndLocalFiles() throws {
@@ -87,7 +139,7 @@ final class HostUiTests: XCTestCase {
 
 private struct MockHostUiHTTP: HostUiHTTPClient {
     let handler: @Sendable (URL, Data) -> HostUiHTTPResponse
-    func post(url: URL, body: Data) throws -> HostUiHTTPResponse { handler(url, body) }
+    func post(url: URL, body: Data) async throws -> HostUiHTTPResponse { handler(url, body) }
 }
 
 final class PluginPolicyTests: XCTestCase {
@@ -160,13 +212,8 @@ final class PluginPolicyTests: XCTestCase {
         XCTAssertNil(pluginMetadataSVG("https://evil.example/icon.svg"))
     }
 
-    func testChangeTextMatchesAndroidHostCopy() {
-        XCTAssertEqual(pluginChangeText(jsonObject(["application": .string("restart-required")]), en: false), "更改将在下次启动生效")
-        XCTAssertEqual(pluginChangeText(jsonObject(["application": .string("restart-required")]), en: true), "The change takes effect at the next start")
-        XCTAssertEqual(pluginChangeText(jsonObject(["application": .string("applied")]), en: true), "Change applied")
-    }
 
-    func testMarketGroupsOfficialCatalogWithoutCollapsingOrConfigNamespaces() throws {
+    func testMarketGroupsAndExperimentalMetadataRemainIndependent() throws {
         let official = try JSONValue.parse(
             #"{"name":"@deepseek-ai/dsh-experimental-agent-team-profile","official":true,"optional":true,"enabled":false,"meta":{"title":{"zh":"智能体团队","en":"Agent team"},"description":{"zh":"启用团队协作。","en":"Enable team collaboration."}}}"#
         )
@@ -181,12 +228,20 @@ final class PluginPolicyTests: XCTestCase {
         XCTAssertEqual(groups.official.map { $0["name"].str() }, ["@deepseek-ai/dsh-experimental-agent-team-profile"])
         XCTAssertEqual(groups.installed.map { $0["name"].str() }, ["dsh-plugin-whale-pet"])
         XCTAssertTrue(pluginExperimental(official))
-        XCTAssertTrue(pluginExperimental(try JSONValue.parse(#"{"name":"@deepseek-ai/dsh-catalog-plugin","official":true}"#)))
+        XCTAssertFalse(pluginExperimental(try JSONValue.parse(#"{"name":"@deepseek-ai/dsh-catalog-plugin","official":true}"#)))
         XCTAssertFalse(pluginExperimental(third))
         XCTAssertEqual(pluginTitle(official, english: false), "智能体团队")
         XCTAssertEqual(pluginDescription(official, english: false), "启用团队协作。")
         XCTAssertEqual(pluginTitle(official, english: true), "Agent team")
-        XCTAssertTrue(pluginOptionalVisible(name: "@deepseek-ai/dsh-experimental-ralph-bundle", expanded: true))
+    }
+
+    func testMorePluginsPinToMainOnlyWhenEnabled() {
+        let heldBack = "@deepseek-ai/dsh-experimental-ralph-bundle"
+        XCTAssertFalse(pluginOptionalVisible(name: heldBack, enabled: false, expanded: false))
+        XCTAssertTrue(pluginOptionalVisible(name: heldBack, enabled: true, expanded: false))
+        XCTAssertTrue(pluginOptionalVisible(name: heldBack, enabled: false, expanded: true))
+        XCTAssertTrue(pluginOptionalVisible(name: "@deepseek-ai/dsh-experimental-agent-team-profile", enabled: false, expanded: false))
+        XCTAssertTrue(pluginOptionalVisible(name: "@deepseek-ai/dsh-new-feature", enabled: false, expanded: false))
     }
 
     func testNeedsInstallWhenOfficialPackageIsMissing() throws {

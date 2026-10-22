@@ -18,6 +18,8 @@ public enum Route: String, Sendable, Equatable {
 
 public protocol FrameTransport: AnyObject {
     var route: Route { get }
+    /// The actual WebSocket endpoint; synthetic, non-network transports use nil.
+    var endpointURL: URL? { get }
     var closeReason: String? { get }
     func send(_ text: String) async throws
     func receive() async throws -> String
@@ -60,31 +62,35 @@ final class WebSocketOpenWaiter: NSObject, URLSessionWebSocketDelegate, @uncheck
     private var failure: Error?
 
     func wait() async throws {
-        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
-            enum Outcome {
-                case alreadyOpen
-                case failed(Error)
-                case waiting
+        try await withTaskCancellationHandler {
+            try Task.checkCancellation()
+            try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+                enum Outcome {
+                    case alreadyOpen
+                    case failed(Error)
+                    case waiting
+                }
+                let outcome: Outcome = mutex.withLock {
+                    if let failure { return .failed(failure) }
+                    if opened { return .alreadyOpen }
+                    continuation = cont
+                    return .waiting
+                }
+                switch outcome {
+                case .alreadyOpen: cont.resume()
+                case .failed(let error): cont.resume(throwing: error)
+                case .waiting: break
+                }
             }
-            let outcome: Outcome = mutex.withLock {
-                if opened { return .alreadyOpen }
-                if let failure { return .failed(failure) }
-                continuation = cont
-                return .waiting
-            }
-            switch outcome {
-            case .alreadyOpen:
-                cont.resume()
-            case .failed(let error):
-                cont.resume(throwing: error)
-            case .waiting:
-                break
-            }
+        } onCancel: {
+            self.fail(CancellationError())
         }
+        try Task.checkCancellation()
     }
 
     func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol protocol: String?) {
         let cont: CheckedContinuation<Void, Error>? = mutex.withLock {
+            guard failure == nil else { return nil }
             opened = true
             let pending = continuation
             continuation = nil
@@ -95,18 +101,23 @@ final class WebSocketOpenWaiter: NSObject, URLSessionWebSocketDelegate, @uncheck
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         guard let error else { return }
+        fail(PocketError(code: "transport", message: error.localizedDescription))
+    }
+
+    func fail(_ error: Error) {
         let cont: CheckedContinuation<Void, Error>? = mutex.withLock {
             failure = error
             let pending = continuation
             continuation = nil
             return pending
         }
-        cont?.resume(throwing: PocketError(code: "transport", message: error.localizedDescription))
+        cont?.resume(throwing: error)
     }
 }
 
 final class URLSessionFrameTransport: FrameTransport {
     let route: Route
+    let endpointURL: URL?
     private let task: URLSessionWebSocketTask
     private let session: URLSession
     private let waiter: WebSocketOpenWaiter
@@ -114,11 +125,12 @@ final class URLSessionFrameTransport: FrameTransport {
     private var closed = false
     private(set) var closeReason: String?
 
-    init(task: URLSessionWebSocketTask, session: URLSession, waiter: WebSocketOpenWaiter, route: Route) {
+    init(task: URLSessionWebSocketTask, session: URLSession, waiter: WebSocketOpenWaiter, route: Route, endpointURL: URL) {
         self.task = task
         self.session = session
         self.waiter = waiter
         self.route = route
+        self.endpointURL = endpointURL
     }
 
     func send(_ text: String) async throws {
@@ -200,7 +212,7 @@ enum TransportOpener {
         let waiter = WebSocketOpenWaiter()
         let session = URLSession(configuration: config, delegate: waiter, delegateQueue: nil)
         let task = session.webSocketTask(with: url)
-        let transport = URLSessionFrameTransport(task: task, session: session, waiter: waiter, route: route)
+        let transport = URLSessionFrameTransport(task: task, session: session, waiter: waiter, route: route, endpointURL: url)
         task.resume()
         do {
             try await withTimeout(ms: timeoutMs) { try await waiter.wait() }

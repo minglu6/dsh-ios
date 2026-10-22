@@ -22,6 +22,8 @@ struct ModelsSettingsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     settingsMessage(modelsSettingsIntro(english: L.en))
+                    HostUiEntry(model: model, section: "models", enabled: !busy && !loading)
+                        .padding(.horizontal, 22)
                     if model.isOnline && !writable && !loading && error == nil {
                         settingsMessage(L.hostSettingsReadOnly())
                     }

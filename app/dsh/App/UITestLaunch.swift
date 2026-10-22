@@ -418,6 +418,10 @@ extension AppModel {
             push(.settings)
         case "plugins":
             ops.insert("plugins.install")
+            ops.formUnion([
+                "plugins.setEnabled", "plugins.settingsDescribe",
+                "plugins.settingsMutate", "plugins.uninstall",
+            ])
             showDrawer = false
             push(.panel(.plugins))
         case "schedule":

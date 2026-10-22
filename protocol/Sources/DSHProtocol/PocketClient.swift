@@ -22,8 +22,10 @@ public final class PocketClient: @unchecked Sendable {
     private var stateHandler: (@Sendable (State) -> Void)?
     private var eventTaps: [UUID: @Sendable (JSONValue) -> Void] = [:]
     private var stateTaps: [UUID: @Sendable (State) -> Void] = [:]
+    private var hostUiInvalidations: [UUID: AsyncStream<Void>.Continuation] = [:]
 
     var pendingRequestCount: Int { mutex.withLock { pending.count } }
+    var hostUiInvalidationSubscriberCount: Int { mutex.withLock { hostUiInvalidations.count } }
 
     public init(appVersion: String = VersionCompatibility.minimumAppVersion) {
         self.appVersion = appVersion
@@ -392,12 +394,56 @@ public final class PocketClient: @unchecked Sendable {
         try await call("credentials.unset", args: jsonObject(["ref": .string(ref)]))
     }
 
-    public func uiOpen(section: String? = nil) async throws -> JSONValue {
-        try await call("ui.open", args: jsonObject(["section": section.map { .string($0) }]))
+    public struct HostUiConnection: Sendable {
+        public let origin: HostUiOrigin
+        private let client: PocketClient
+        private let generation: Int64
+
+        fileprivate init(origin: HostUiOrigin, client: PocketClient, generation: Int64) {
+            self.origin = origin
+            self.client = client
+            self.generation = generation
+        }
+
+        public var isCurrent: Bool {
+            client.mutex.withLock { client.generation == generation && client.state == .open }
+        }
+
+        public func open(section: String? = nil) async throws -> JSONValue {
+            try await client.request("ui.open", args: jsonObject(["section": section.map { .string($0) }]),
+                                     timeoutMs: 60_000, expectedGeneration: generation)
+        }
+
+        public func close(ticket: String) async throws {
+            _ = try await client.request("ui.close", args: jsonObject(["ticket": .string(ticket)]),
+                                         timeoutMs: 5_000, expectedGeneration: generation)
+        }
+
+        public func invalidations() -> AsyncStream<Void> {
+            let id = UUID()
+            return AsyncStream(bufferingPolicy: .bufferingNewest(1)) { continuation in
+                continuation.onTermination = { [weak client] _ in
+                    _ = client?.mutex.withLock { client?.hostUiInvalidations.removeValue(forKey: id) }
+                }
+                let subscribed = client.mutex.withLock {
+                    guard client.generation == generation && client.state == .open else { return false }
+                    client.hostUiInvalidations[id] = continuation
+                    return true
+                }
+                if !subscribed {
+                    continuation.yield(())
+                    continuation.finish()
+                }
+            }
+        }
     }
 
-    public func uiClose(ticket: String) async throws -> JSONValue {
-        try await call("ui.close", args: jsonObject(["ticket": .string(ticket)]), timeoutMs: 5_000)
+    public func hostUiConnection() -> HostUiConnection? {
+        mutex.withLock {
+            guard state == .open, let endpoint = transport?.endpointURL,
+                  let origin = HostUiOrigin.fromWebSocket(endpoint) else { return nil }
+            return HostUiConnection(origin: origin, client: self, generation: generation)
+        }
     }
 
     public func permissionsCatalog() async throws -> PermissionCatalog {
@@ -757,7 +803,7 @@ public final class PocketClient: @unchecked Sendable {
         timeoutMs: Int64,
         expectedGeneration: Int64?
     ) async throws -> JSONValue {
-        let prepared: (id: Int64, transport: FrameTransport) = try mutex.withLock {
+        let prepared: (id: Int64, transport: FrameTransport, generation: Int64) = try mutex.withLock {
             if let expectedGeneration, expectedGeneration != generation {
                 throw PocketError(code: "transport", message: "connection superseded")
             }
@@ -766,7 +812,7 @@ public final class PocketClient: @unchecked Sendable {
             }
             let id = nextId
             nextId += 1
-            return (id, current)
+            return (id, current, generation)
         }
         let id = prepared.id
         let transport = prepared.transport
@@ -776,12 +822,26 @@ public final class PocketClient: @unchecked Sendable {
             "args": args,
         ])
         do {
-            let reply: JSONValue = try await withTaskCancellationHandler {
-                try await withTimeout(ms: timeoutMs) {
-                    try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<JSONValue, Error>) in
-                        self.mutex.withLock { self.pending[id] = continuation }
+            let reply: JSONValue = try await withTimeout(ms: timeoutMs) {
+                try await withTaskCancellationHandler {
+                    try Task.checkCancellation()
+                    return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<JSONValue, Error>) in
+                        let registered = self.mutex.withLock {
+                            guard prepared.generation == self.generation, self.transport === transport else {
+                                continuation.resume(throwing: PocketError(code: "transport", message: "connection superseded"))
+                                return false
+                            }
+                            guard !Task.isCancelled else {
+                                continuation.resume(throwing: CancellationError())
+                                return false
+                            }
+                            self.pending[id] = continuation
+                            return true
+                        }
+                        guard registered else { return }
                         Task {
                             do {
+                                // Never re-read self.transport: reconnect must not redirect an old grant.
                                 try await transport.send(try frame.encodeString())
                             } catch {
                                 let waiter = self.mutex.withLock { self.pending.removeValue(forKey: id) }
@@ -789,10 +849,10 @@ public final class PocketClient: @unchecked Sendable {
                             }
                         }
                     }
+                } onCancel: {
+                    let waiter = self.mutex.withLock { self.pending.removeValue(forKey: id) }
+                    waiter?.resume(throwing: CancellationError())
                 }
-            } onCancel: {
-                let waiter = self.mutex.withLock { self.pending.removeValue(forKey: id) }
-                waiter?.resume(throwing: CancellationError())
             }
             mutex.withLock { pending.removeValue(forKey: id) }
             if reply["ok"].bool() == true {
@@ -877,6 +937,17 @@ public final class PocketClient: @unchecked Sendable {
     private func closeLocked() {
         generation += 1
         pump?.cancel()
+        let invalidations = Array(hostUiInvalidations.values)
+        hostUiInvalidations.removeAll()
+        // Finishing invokes onTermination synchronously; never do that under the mutex.
+        if !invalidations.isEmpty {
+            Task {
+                for continuation in invalidations {
+                    continuation.yield(())
+                    continuation.finish()
+                }
+            }
+        }
         pump = nil
         transport?.close()
         transport = nil

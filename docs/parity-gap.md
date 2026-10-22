@@ -2302,3 +2302,23 @@ header 只要变高（`minHeight` 30 或 `padding.bottom` 15 且 top 仍 10）co
 - 本地验证：全部 App 源码通过 Catalyst SDK 类型检查；真实 SwiftUI/UIKit 组件烟测验证选项回写、当前项无重复写入、选中 trait、单次激活切换菜单、再次激活关闭、禁用关闭、底部翻转与窄视口边界。原生 Catalyst 独立测试应用运行实际 `GeneralSettingsView`，查看浅色／深色菜单截图，并通过真实 UI 的 fixture 保存确认工作步骤与语言更新。
 - 新增 XCUITest 覆盖五类偏好选择后的回显／重新打开选中态，以及语言、权限间切换与外部关闭。本机仅有 Command Line Tools，未运行 iPhone 模拟器 XCUITest、未构建或发布 IPA；Catalyst 验证不代替 iPhone 真机验收。
 - CI 首轮定向测试发现测试启动未注册生产连接中的 `HostSettings.onChange → applyHostMirroredPrefs`，导致收起时机写入后 fixture 的镜像状态仍为旧值。补齐 fixture 的同一回调及初始同步；保留真实单击、回显和选中态断言，不改生产保存语义。
+
+## 2026-10-22 — 插件管理与添加弹窗对齐
+
+- 以官方 `ui-plugin-manager/PluginManagerPage.tsx`、`PluginManagerPage.module.css`、`ui-primitives/Modal`、`Switch` 和四个 `ui-settings-*` 配置页为依据。主列表改为内置插件配置、实验性插件和已安装插件；「更多」显示完整官方目录，已启用的后置插件保留在主列表，详情返回保留进入路径。实验性标签只依据官方实验包名前缀，不再将所有官方包标为实验性。
+- 统一 48pt 图标框／36pt artwork、14pt 插件名、13pt 单行说明、36×20 开关、分体添加按钮及锚定添加菜单。详情改为返回面包屑、图标／操作行、标题／包名／版本、组件状态与来源信息；缺少真实 entryId 的组件不可写，停用的包不展示组件开关。
+- 添加插件移除系统 sheet、NavigationStack、Form 和独立「检视」操作；改为最大宽 560pt 的居中遮罩弹窗，支持官方 npm 示例、默认／镜像／自定义安装源浮层及安全说明。空白输入、无效自定义 URL 和未决安装禁用提交；检查拒绝停留在输入页，关闭检查中的弹窗取消检查，不继续发起安装。卸载确认也使用居中弹窗。
+- 内置配置卡按桌面 `whileServed` 的实际 namespace 条件出现，Shell 优先采用已服务的 PowerShell 配置。配置页接通现有 settings revision 写入、模型目录及凭据接口；不增加 Host API，不把隔离 fixture 当作真实保存成功。
+- 验证：全部 App 源码（以独立烟测入口替代 app entry）及协议源码完成 Catalyst 编译；独立可执行程序验证更多页过滤／启用固定／实验标签／entryId 精确匹配。实际原生组件交互验证空白禁用、示例填入、自定义源合法／非法状态、先关来源浮层再关安装弹窗、更多与详情返回、不可寻址组件禁用、四个内置页往返及字段修改／非法值／恢复原值的保存按钮状态；查看浅色列表、安装、来源浮层、详情和内置配置，以及深色主列表截图。
+- 新增 `PluginInstallUITests`、`PluginManagerUITests`，纳入 full 与 settings-trajectory UI scope；新测试语法检查通过。本机仅有 Command Line Tools，`swift test --filter PluginPolicyTests` 因缺 XCTest 无法运行，未运行 iOS 模拟器／真机测试、未构建或发布 IPA。未对现用 Host 执行安装、卸载或配置写入；本地烟测不替代这些端到端验证。
+
+## 2026-10-22 — 通用 Host 插件 Web UI
+
+- 保留原生插件／模型管理，在两页接入 `HostUiEntry`；`AppModel` 持有连接绑定的请求，`RootView` 全页覆盖展示 `HostUiScreen`。插件入口不指定 section，加载完整 Host shell，因此第三方 `shell.overlay` 等客户端注册可由 Host 模块图直接展示，不逐插件复刻。
+- 用户明确选择通用页面最低 iOS 18.4：该版本开始可通过公开 `WKUIDelegate` 拒绝文件选择；全 App 最低版本仍为 iOS 16，旧系统显示说明并保留原生管理。新窗口、下载、媒体／运动权限、外部导航及外部资源均拒绝，无 JS/native bridge；定位依赖 App 不声明／不申请位置权限。保留 Host CSP，私有 HTTP 路径授权仍由 Host 的 `pluginUiPaths` 控制，不在客户端扩权。
+- `PocketClient.HostUiConnection` 捕获成功拨号候选的 URL 与 generation；废弃未绑定连接的 uiOpen/uiClose。取票、关闭及失效通知均绑定该代连接，不能在重连后误作用于新连接。原生异步兑换拒绝重定向和 Cookie 歧义，要求 host-only、HttpOnly、SameSite=Strict 及有效到期时间；每次使用独立 nonPersistent WebKit store，等待 Cookie 安装完成才加载。
+- 生命周期串行处理：即使取票尚未返回时页面关闭，也接住迟到 ticket 并撤销；重连先清理旧尝试，只启动最新请求。刷新／关闭／断连／切换 Host／能力撤回均清理页面，旧页不得撤销新会话。加载失败、超时、到期显式展示错误，需用户重试。
+- 真实链路烟测发现并修复两个底层问题：WebSocket open waiter 未响应取消，导致失败候选超时后无法回退；URLSessionWebSocketTask 握手后的 currentRequest 可为 nil，故由 transport 保留拨号 URL。另修复 WKContentRuleList 不支持正则 alternation，data/blob 资源分别声明规则。
+- 验证：完整 App（含 DEBUG fixtures）Catalyst 类型检查及原生烟测编译通过；更新的协议测试语法检查通过。隔离真实官方 Host 0.2.1-rc.2 + 当前 Pocket bridge + 临时普通 Web 插件完成原生取票、HTML/模块/私有 API、旧 Cookie 撤销与连接 generation 测试。实际 `WKWebView` 展示插件 v1，修改 Host 上 client.js 后仅重新连接页面即显示 v2，未重编译手机程序；验证插件 HTTP 写操作、HttpOnly、子请求 403 不误杀整页、外部导航／文件选择拒绝、JS confirm 回传，以及刷新／断连清理。
+- 延迟真实桥接回复 600ms 的独立透明 relay 验证：关闭早于 ui.open 回执时不兑换／不展示迟到票据，票据真实返回 401；快速重复刷新等待旧撤销、只发最新 open，最终页面可加载，重复关闭不影响其他页。未修改现用 Host 或 Android 仓库，未执行 dsh-purge 自身的管理操作。
+- 本机仍无完整 Xcode／XCTest，未运行完整 XCTest、iOS 模拟器／真机或构建 IPA。以上是真实 Host + macOS Catalyst WebKit 验证，不替代 iPhone 验收；dsh-purge 专属页面尚未逐功能真机验证。

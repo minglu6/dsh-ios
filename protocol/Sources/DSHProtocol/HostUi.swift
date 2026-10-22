@@ -28,6 +28,14 @@ public struct HostUiOrigin: Equatable, Sendable {
         self.port = url.port ?? (scheme == "https" ? 443 : 80)
     }
 
+    public static func fromWebSocket(_ url: URL) -> HostUiOrigin? {
+        guard let scheme = url.scheme?.lowercased(), scheme == "ws" || scheme == "wss",
+              let host = url.host, !host.isEmpty, url.user == nil, url.password == nil,
+              url.fragment == nil, (1...65535).contains(url.port ?? 80) else { return nil }
+        return HostUiOrigin(scheme: scheme == "wss" ? "https" : "http", host: host,
+                            port: url.port ?? (scheme == "wss" ? 443 : 80))
+    }
+
     public var url: URL {
         var components = URLComponents()
         components.scheme = scheme
@@ -44,7 +52,7 @@ public struct HostUiSession: Equatable, Sendable {
     public var startURL: URL
     public var cookie: HostUiCookie
 
-    public var cookieHeader: String { cookie.header + "; SameSite=Strict" }
+    public var cookieHeader: String { cookie.header }
 }
 
 public struct HostUiCookie: Equatable, Sendable {
@@ -56,6 +64,7 @@ public struct HostUiCookie: Equatable, Sendable {
     public var secure: Bool
     public var hostOnly: Bool
     public var header: String
+    public var expiresAt: Date
 }
 
 public struct HostUiHTTPResponse: Sendable {
@@ -76,12 +85,12 @@ public struct HostUiHTTPResponse: Sendable {
 
     public func headers(_ name: String) -> [String] {
         let key = name.lowercased()
-        return headers.first { $0.key.lowercased() == key }?.value ?? []
+        return headers.filter { $0.key.lowercased() == key }.flatMap(\.value)
     }
 }
 
 public protocol HostUiHTTPClient: Sendable {
-    func post(url: URL, body: Data) throws -> HostUiHTTPResponse
+    func post(url: URL, body: Data) async throws -> HostUiHTTPResponse
 }
 
 public struct HostUiPolicy: Sendable {
@@ -108,7 +117,7 @@ public func exchangeHostUiTicket(
     origin: HostUiOrigin,
     path: String,
     ticket: String
-) throws -> HostUiSession {
+) async throws -> HostUiSession {
     guard origin.scheme == "http" || origin.scheme == "https" else {
         throw PocketError(code: "host-ui", message: "Invalid Host UI origin")
     }
@@ -123,14 +132,15 @@ public func exchangeHostUiTicket(
     guard let url = components.url else {
         throw PocketError(code: "host-ui", message: "Invalid Host UI origin")
     }
-    let encoded = ticket.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)?
-        .replacingOccurrences(of: "+", with: "%2B") ?? ticket
+    let encoded = ticket.addingPercentEncoding(withAllowedCharacters: CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~"))!
     let body = Data("ticket=\(encoded)".utf8)
-    let response = try http.post(url: url, body: body)
+    let response = try await http.post(url: url, body: body)
     guard response.status == 303 else {
         throw PocketError(code: "host-ui", message: "Host UI authentication failed (\(response.status))")
     }
-    guard let location = response.header("Location") else {
+    let locations = response.headers("Location")
+    guard locations.count == 1, let location = locations.first,
+          !location.contains("\\"), !location.unicodeScalars.contains(where: { $0.value <= 0x20 || $0.value == 0x7F }) else {
         throw PocketError(code: "host-ui", message: "Host UI redirect missing")
     }
     guard let target = URL(string: location, relativeTo: origin.url)?.absoluteURL else {
@@ -138,20 +148,20 @@ public func exchangeHostUiTicket(
     }
     let policy = HostUiPolicy(origin: origin)
     let queryItems = URLComponents(url: target, resolvingAgainstBaseURL: false)?.queryItems ?? []
-    let pocketUi = queryItems.first { $0.name == "pocket-ui" }?.value
-    let hasToken = queryItems.contains { $0.name == "token" }
-    let hasTicket = queryItems.contains { $0.name == "ticket" }
+    let names = queryItems.map { $0.name.lowercased() }
     guard policy.allows(target.absoluteString),
           target.path == "/" || target.path.isEmpty,
-          pocketUi == "1",
-          !hasToken,
-          !hasTicket,
+          queryItems.first(where: { $0.name == "pocket-ui" })?.value == "1",
+          Set(names).count == names.count,
+          names.allSatisfy({ $0 == "pocket-ui" || $0 == "section" }),
           target.fragment == nil
     else {
         throw PocketError(code: "host-ui", message: "Unsafe Host UI redirect")
     }
-    let cookies = response.headers("Set-Cookie").compactMap { parseHostUiCookie($0, origin: origin) }
-    guard let cookie = cookies.first(where: { $0.name == "dsh-pocket-web" }), cookies.filter({ $0.name == "dsh-pocket-web" }).count == 1 else {
+    let issuedCookies = response.headers("Set-Cookie")
+    guard issuedCookies.count == 1,
+          let cookie = parseHostUiCookie(issuedCookies[0], origin: origin),
+          cookie.name == "dsh-pocket-web" else {
         throw PocketError(code: "host-ui", message: "Host UI session cookie missing")
     }
     guard cookie.httpOnly,
@@ -165,47 +175,51 @@ public func exchangeHostUiTicket(
     return HostUiSession(origin: origin, startURL: target, cookie: cookie)
 }
 
-public func parseHostUiCookie(_ header: String, origin: HostUiOrigin) -> HostUiCookie? {
+public func parseHostUiCookie(_ header: String, origin: HostUiOrigin, now: Date = Date()) -> HostUiCookie? {
+    guard !header.unicodeScalars.contains(where: { $0.value < 0x20 || $0.value == 0x7F }) else { return nil }
     let parts = header.split(separator: ";").map { $0.trimmingCharacters(in: .whitespaces) }
     guard let first = parts.first, let eq = first.firstIndex(of: "=") else { return nil }
     let name = String(first[..<eq])
     let value = String(first[first.index(after: eq)...])
-    guard !name.isEmpty else { return nil }
-    var path = "/"
-    var domain: String?
-    var httpOnly = false
-    var secure = false
+    let cookieCharacters = CharacterSet(charactersIn: "!#$%&'()*+-./:<=>?@[]^_`{|}~0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
+    guard !name.isEmpty, !value.isEmpty, value.unicodeScalars.allSatisfy(cookieCharacters.contains) else { return nil }
+    var attributes: [String: String] = [:]
     for attr in parts.dropFirst() {
-        let lower = attr.lowercased()
-        if lower == "httponly" { httpOnly = true; continue }
-        if lower == "secure" { secure = true; continue }
-        if lower.hasPrefix("path=") {
-            path = String(attr.dropFirst(5))
-            continue
-        }
-        if lower.hasPrefix("domain=") {
-            domain = String(attr.dropFirst(7)).trimmingCharacters(in: CharacterSet(charactersIn: "."))
-        }
+        let pair = attr.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+        let key = pair[0].lowercased()
+        guard attributes[key] == nil else { return nil }
+        attributes[key] = pair.count == 2 ? String(pair[1]) : ""
     }
-    let hostOnly = domain == nil
-    return HostUiCookie(
-        name: name,
-        value: value,
-        path: path,
-        domain: domain ?? origin.host,
-        httpOnly: httpOnly,
-        secure: secure,
-        hostOnly: hostOnly,
-        header: header
-    )
+    guard attributes["domain"] == nil, attributes["path"] == "/",
+          attributes["httponly"] == "", attributes["samesite"]?.lowercased() == "strict",
+          (attributes["secure"] == nil || attributes["secure"] == ""),
+          (origin.scheme != "https" || attributes["secure"] == "") else { return nil }
+    let expiresAt: Date
+    if let maxAge = attributes["max-age"] {
+        guard !maxAge.isEmpty, maxAge.utf8.allSatisfy({ (48...57).contains($0) }),
+              let seconds = Int64(maxAge), seconds > 0 else { return nil }
+        expiresAt = now.addingTimeInterval(TimeInterval(seconds))
+    } else if let expires = attributes["expires"] {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss zzz"
+        formatter.isLenient = false
+        guard let date = formatter.date(from: expires) else { return nil }
+        expiresAt = date
+    } else {
+        return nil
+    }
+    guard expiresAt > now else { return nil }
+    return HostUiCookie(name: name, value: value, path: "/", domain: origin.host,
+                        httpOnly: true, secure: attributes["secure"] != nil, hostOnly: true,
+                        header: header, expiresAt: expiresAt)
 }
 
 public struct URLSessionHostUiHTTP: HostUiHTTPClient {
     public init() {}
 
-    public func post(url: URL, body: Data) throws -> HostUiHTTPResponse {
-        let semaphore = DispatchSemaphore(value: 0)
-        var captured: Result<HostUiHTTPResponse, Error>?
+    public func post(url: URL, body: Data) async throws -> HostUiHTTPResponse {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.httpBody = body
@@ -214,37 +228,26 @@ public struct URLSessionHostUiHTTP: HostUiHTTPClient {
         let config = URLSessionConfiguration.ephemeral
         config.httpShouldSetCookies = false
         config.httpCookieAcceptPolicy = .never
-        // Do not follow the grant redirect; the ticket must stay off the WebView URL.
+        config.httpCookieStorage = nil
+        config.urlCredentialStorage = nil
+        config.urlCache = nil
         let session = URLSession(configuration: config, delegate: HostUiRedirectDeny(), delegateQueue: nil)
-        session.dataTask(with: request) { data, response, error in
-            if let error {
-                captured = .failure(error)
-            } else if let http = response as? HTTPURLResponse {
-                var headers: [String: [String]] = [:]
-                for (key, value) in http.allHeaderFields {
-                    guard let name = key as? String else { continue }
-                    let text: String
-                    if let string = value as? String {
-                        text = string
-                    } else {
-                        text = String(describing: value)
-                    }
-                    headers[name, default: []].append(text)
-                }
-                if let cookies = http.value(forHTTPHeaderField: "Set-Cookie") {
-                    headers["Set-Cookie"] = splitSetCookie(cookies)
-                }
-                captured = .success(HostUiHTTPResponse(status: http.statusCode, headers: headers, body: data ?? Data()))
-            } else {
-                captured = .failure(PocketError(code: "host-ui", message: "Host UI authentication failed"))
+        defer { session.invalidateAndCancel() }
+        return try await withTaskCancellationHandler {
+            try Task.checkCancellation()
+            let (data, response) = try await session.data(for: request)
+            guard let http = response as? HTTPURLResponse else {
+                throw PocketError(code: "host-ui", message: "Host UI authentication failed")
             }
-            semaphore.signal()
-        }.resume()
-        semaphore.wait()
-        switch captured {
-        case .success(let value): return value
-        case .failure(let error): throw error
-        case nil: throw PocketError(code: "host-ui", message: "Host UI authentication failed")
+            var headers: [String: [String]] = [:]
+            for (key, value) in http.allHeaderFields {
+                guard let name = key as? String else { continue }
+                headers[name] = name.lowercased() == "set-cookie"
+                    ? splitSetCookie(String(describing: value)) : [String(describing: value)]
+            }
+            return HostUiHTTPResponse(status: http.statusCode, headers: headers, body: data)
+        } onCancel: {
+            session.invalidateAndCancel()
         }
     }
 }
@@ -270,8 +273,9 @@ private func splitSetCookie(_ value: String) -> [String] {
         let ch = value[index]
         if ch == "," {
             let rest = value[value.index(after: index)...]
-            let trimmed = rest.trimmingCharacters(in: .whitespaces)
-            if trimmed.contains("="), !trimmed.lowercased().hasPrefix("expires=") {
+            let candidate = rest.prefix { $0 != ";" && $0 != "," }
+            if let equals = candidate.firstIndex(of: "="),
+               !candidate[..<equals].trimmingCharacters(in: .whitespaces).contains(" ") {
                 out.append(current.trimmingCharacters(in: .whitespaces))
                 current = ""
                 index = value.index(after: index)

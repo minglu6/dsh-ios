@@ -93,6 +93,7 @@ private enum TurnNavigationFrames {
 /// history.page runs through PocketClient and the normal AppModel page loader.
 private final class TurnNavigationTransport: FrameTransport, @unchecked Sendable {
     let route = Route.wsLocal
+    let endpointURL: URL? = nil
     var closeReason: String? { "Turn navigation fixture closed" }
     private let sessionId: String
     private let report: @Sendable (String) -> Void
