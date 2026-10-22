@@ -74,8 +74,7 @@ struct SettingsView: View {
 struct GeneralSettingsView: View {
     @ObservedObject var model: AppModel
     @ObservedObject private var shared: HostSettings
-    @State private var sheet: String?
-    @State private var permissionSelectOpen = false
+    @State private var activeSelect: String?
     @State private var riskPermission: String?
     @State private var fontsExpanded = false
 
@@ -116,19 +115,32 @@ struct GeneralSettingsView: View {
                                         .foregroundStyle(T.text3)
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                SettingsPermissionSelect(
-                                    current: model.defaultPermission,
-                                    catalog: model.permissionCatalog,
-                                    loading: model.permissionCatalogLoading,
+                                SettingsSelect(
+                                    id: "permission",
+                                    title: L.t("权限", "Permission"),
+                                    value: model.defaultPermission,
+                                    options: (model.permissionCatalog?.defaultOptions ?? []).map {
+                                        SettingsSelectOption(
+                                            id: $0.value,
+                                            title: permissionLabel(value: $0.value, option: $0, english: L.en),
+                                            icon: permissionHasGlyph($0.value) ? .permission($0.value) : nil
+                                        )
+                                    },
+                                    fallbackLabel: permissionLabel(
+                                        value: model.defaultPermission,
+                                        option: model.permissionCatalog?.find(model.defaultPermission),
+                                        english: L.en
+                                    ),
                                     enabled: model.isOnline && shared.writable(.permission),
+                                    loading: model.permissionCatalogLoading,
+                                    active: $activeSelect,
                                     onSelect: { value in
                                         if value == "danger-full-access" {
                                             riskPermission = value
                                         } else if model.permissionCatalog?.allowsDefault(value) == true {
                                             shared.write(.permission, value: .string(value))
                                         }
-                                    },
-                                    open: $permissionSelectOpen
+                                    }
                                 )
                             }
                             .padding(.horizontal, 16)
@@ -136,13 +148,14 @@ struct GeneralSettingsView: View {
                             .opacity(model.isOnline && shared.writable(.permission) ? 1 : 0.5)
                             Divider().padding(.leading, 16)
                         }
-                        picker(L.language(), selection: Binding(
-                            get: { model.language },
-                            set: { model.setLanguage($0); sheet = nil }
-                        ), divider: true, enabled: shared.writable(.language)) {
-                            Text("中文").tag(AppLanguage.zh)
-                            Text("English").tag(AppLanguage.en)
-                        }
+                        SettingsSelectRow(
+                            id: "language", title: L.language(), value: model.language.rawValue,
+                            options: [
+                                SettingsSelectOption(id: "zh", title: "中文"),
+                                SettingsSelectOption(id: "en", title: "English"),
+                            ],
+                            enabled: shared.writable(.language), active: $activeSelect
+                        ) { if let value = AppLanguage(rawValue: $0) { model.setLanguage(value) } }
                         VStack(alignment: .leading, spacing: 10) {
                             Text(L.appearance()).foregroundStyle(T.ink)
                             HStack(spacing: 8) {
@@ -188,18 +201,20 @@ struct GeneralSettingsView: View {
                                 onChange: { model.setTerminalFontSize($0) }
                             )
                         }
-                        preferenceRow(
-                            L.workDetails(),
-                            workDetailsDescription(english: L.en),
-                            value: transcriptText(model.transcriptView),
-                            enabled: shared.writable(.transcript)
-                        ) { sheet = "transcript" }
-                        preferenceRow(
-                            L.collapseTiming(),
-                            collapseTimingDescription(english: L.en),
-                            value: collapseText(model.collapseTiming),
-                            enabled: shared.writable(.collapse)
-                        ) { sheet = "collapse" }
+                        SettingsSelectRow(
+                            id: "transcript", title: L.workDetails(),
+                            description: workDetailsDescription(english: L.en),
+                            value: model.transcriptView.rawValue,
+                            options: TranscriptView.allCases.map { SettingsSelectOption(id: $0.rawValue, title: transcriptText($0)) },
+                            enabled: shared.writable(.transcript), active: $activeSelect
+                        ) { shared.write(.transcript, value: .string($0)) }
+                        SettingsSelectRow(
+                            id: "collapse", title: L.collapseTiming(),
+                            description: collapseTimingDescription(english: L.en),
+                            value: model.collapseTiming.rawValue,
+                            options: CollapseTiming.allCases.map { SettingsSelectOption(id: $0.rawValue, title: collapseText($0)) },
+                            enabled: shared.writable(.collapse), active: $activeSelect
+                        ) { shared.write(.collapse, value: .string($0)) }
                         HStack {
                             VStack(alignment: .leading) {
                                 Text(L.t("显示代码工作视图", "Show coding view")).foregroundStyle(T.ink)
@@ -217,18 +232,25 @@ struct GeneralSettingsView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)
                         Divider().padding(.leading, 16)
-                        preferenceRow(
-                            L.t("繁忙时的发送行为", "Send behavior while busy"),
-                            busySendDescription(english: L.en),
-                            value: model.busySend == .steer ? L.steerSend() : L.queueSend(),
-                            enabled: shared.writable(.busySend)
-                        ) { sheet = "busy" }
-                        preferenceRow(
-                            L.performanceUsage(),
-                            performanceUsageDescription(english: L.en),
-                            value: performanceUsageLabel(detailed: model.performanceUsage == .detailed, english: L.en),
-                            enabled: shared.writable(.performance)
-                        ) { sheet = "perf" }
+                        SettingsSelectRow(
+                            id: "busy", title: L.t("繁忙时的发送行为", "Send behavior while busy"),
+                            description: busySendDescription(english: L.en),
+                            value: model.busySend.rawValue,
+                            options: [
+                                SettingsSelectOption(id: BusySend.queue.rawValue, title: L.queueSend()),
+                                SettingsSelectOption(id: BusySend.steer.rawValue, title: L.steerSend()),
+                            ],
+                            enabled: shared.writable(.busySend), active: $activeSelect
+                        ) { if let value = BusySend(rawValue: $0) { model.setBusySend(value) } }
+                        SettingsSelectRow(
+                            id: "perf", title: L.performanceUsage(),
+                            description: performanceUsageDescription(english: L.en),
+                            value: model.performanceUsage.rawValue,
+                            options: PerformanceUsage.allCases.map {
+                                SettingsSelectOption(id: $0.rawValue, title: performanceUsageLabel(detailed: $0 == .detailed, english: L.en))
+                            },
+                            enabled: shared.writable(.performance), active: $activeSelect
+                        ) { shared.write(.performance, value: .string($0)) }
                         if shared.namespace(.sessionLog) != nil {
                             HStack {
                                 VStack(alignment: .leading) {
@@ -248,14 +270,13 @@ struct GeneralSettingsView: View {
                             Divider().padding(.leading, 16)
                         }
                         if shared.hasField(.linkOpening) {
-                            preferenceRow(
-                                linkOpeningTitle(english: L.en),
-                                linkOpeningDescription(english: L.en),
-                                value: shared.value(.linkOpening)?.str().flatMap { value in
-                                    value.isEmpty ? nil : linkOpeningLabel(value, english: L.en)
-                                },
-                                enabled: shared.writable(.linkOpening)
-                            ) { sheet = "links" }
+                            SettingsSelectRow(
+                                id: "links", title: linkOpeningTitle(english: L.en),
+                                description: linkOpeningDescription(english: L.en),
+                                value: shared.value(.linkOpening)?.str() ?? "",
+                                options: linkOpeningValues.map { SettingsSelectOption(id: $0, title: linkOpeningLabel($0, english: L.en)) },
+                                enabled: shared.writable(.linkOpening), active: $activeSelect
+                            ) { shared.write(.linkOpening, value: .string($0)) }
                         }
                         HStack {
                             Text(L.t("代码自动换行", "Wrap code")).foregroundStyle(T.ink)
@@ -277,20 +298,17 @@ struct GeneralSettingsView: View {
             .background(T.bg)
         }
         .background(T.bg.ignoresSafeArea())
-        .sheet(isPresented: Binding(get: { sheet != nil && riskPermission == nil }, set: { if !$0 { sheet = nil } })) {
-            optionSheet
-        }
+        .modifier(SettingsSelectOverlay(active: $activeSelect))
         .overlay {
             if let value = riskPermission {
                 PermissionRiskDialog(
                     preset: value,
                     enabled: model.isOnline && shared.writable(.permission) && model.permissionCatalog?.allowsDefault(value) == true,
                     forDefaults: true,
-                    onDismiss: { riskPermission = nil; permissionSelectOpen = false },
+                    onDismiss: { riskPermission = nil },
                     onConfirm: {
                         shared.write(.permission, value: .string(value)) {
                             riskPermission = nil
-                            permissionSelectOpen = false
                         }
                     }
                 )
@@ -323,60 +341,6 @@ struct GeneralSettingsView: View {
         .accessibilityLabel(title)
         .accessibilityIdentifier("appearance.\(value.rawValue)")
     }
-
-    @ViewBuilder
-    private var optionSheet: some View {
-        NavigationStack {
-            List {
-                switch sheet {
-                case "transcript":
-                    ForEach(TranscriptView.allCases, id: \.rawValue) { mode in
-                        Button(transcriptText(mode)) {
-                            shared.write(.transcript, value: .string(mode.rawValue)) { sheet = nil }
-                        }
-                    }
-                case "collapse":
-                    ForEach(CollapseTiming.allCases, id: \.rawValue) { mode in
-                        Button(collapseText(mode)) {
-                            shared.write(.collapse, value: .string(mode.rawValue)) { sheet = nil }
-                        }
-                    }
-                case "busy":
-                    Button(L.queueSend()) { model.setBusySend(.queue); sheet = nil }
-                    Button(L.steerSend()) { model.setBusySend(.steer); sheet = nil }
-                case "perf":
-                    ForEach(PerformanceUsage.allCases, id: \.rawValue) { mode in
-                        Button(performanceUsageLabel(detailed: mode == .detailed, english: L.en)) {
-                            shared.write(.performance, value: .string(mode.rawValue)) { sheet = nil }
-                        }
-                    }
-                case "links":
-                    let current = shared.value(.linkOpening)?.str()
-                    ForEach(linkOpeningValues, id: \.self) { value in
-                        Button(linkOpeningLabel(value, english: L.en)) {
-                            shared.write(.linkOpening, value: .string(value)) { sheet = nil }
-                        }
-                        .disabled(current == value)
-                    }
-                default:
-                    EmptyView()
-                }
-            }
-            .navigationTitle(sheetTitle)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L.cancel()) { sheet = nil } } }
-        }
-    }
-
-    private var sheetTitle: String {
-        switch sheet {
-        case "transcript": return L.workDetails()
-        case "collapse": return L.collapseTiming()
-        case "busy": return L.t("繁忙时的发送行为", "Send behavior while busy")
-        case "perf": return L.performanceUsage()
-        case "links": return linkOpeningTitle(english: L.en)
-        default: return ""
-        }
-    }
 }
 
 func transcriptText(_ mode: TranscriptView) -> String {
@@ -385,38 +349,6 @@ func transcriptText(_ mode: TranscriptView) -> String {
 
 func collapseText(_ mode: CollapseTiming) -> String {
     collapseTimingLabel(mode, english: L.en)
-}
-
-func preferenceRow(
-    _ title: String,
-    _ description: String? = nil,
-    value: String? = nil,
-    divider: Bool = true,
-    enabled: Bool = true,
-    action: @escaping () -> Void
-) -> some View {
-    VStack(spacing: 0) {
-        Button(action: action) {
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title).foregroundStyle(T.ink)
-                    if let description, !description.isEmpty {
-                        Text(description).font(.caption).foregroundStyle(T.text3)
-                    }
-                }
-                Spacer()
-                if let value, !value.isEmpty {
-                    Text(value).font(Font.subheadline).foregroundStyle(T.text3).lineLimit(2)
-                }
-                OfficialGlyph(kind: .chevronDown, size: 12, color: T.text2)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .opacity(enabled ? 1 : 0.5)
-        }
-        .disabled(!enabled)
-        if divider { Divider().padding(.leading, 16) }
-    }
 }
 
 func settingsMessage(_ text: String, error: Bool = false) -> some View {
@@ -554,30 +486,6 @@ func nav<Icon: View>(
         .buttonStyle(.plain)
         .accessibilityElement(children: .contain)
         .disabled(!enabled)
-        if divider { Divider().padding(.leading, 16) }
-    }
-}
-
-func picker<Selection: Hashable, Content: View>(
-    _ title: String,
-    selection: Binding<Selection>,
-    divider: Bool = true,
-    enabled: Bool = true,
-    @ViewBuilder content: () -> Content
-) -> some View {
-    VStack(spacing: 0) {
-        HStack {
-            Text(title).foregroundStyle(T.ink)
-            Spacer()
-            Picker("", selection: selection, content: content)
-                .labelsHidden()
-                .tint(T.ink)
-                .accentColor(T.ink)
-                .disabled(!enabled)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .opacity(enabled ? 1 : 0.5)
         if divider { Divider().padding(.leading, 16) }
     }
 }

@@ -2293,3 +2293,11 @@ CI `11c995e` / `f9f8457` artifact `ios-simulator-screenshots` 逐屏对照：
 
 header 只要变高（`minHeight` 30 或 `padding.bottom` 15 且 top 仍 10）composer 列就变矮：`input.typeText` 在键盘起来后重查 `composerInput` 会 AX 超时；`9b899f3` 连 IME mentionChip 的 `composerIme.setMarked` 也挂。桌面 15pt 用**等高**分配：`padding.top` 5 + `padding.bottom` 15（总垂直 20pt 与 `2a39d41` 相同）。Flash 后等 `PopoverDismissRegion` 离开，点中后再 `app.typeText`（不重查输入框）。草稿断言仍是 `contains("保留草稿")`。`conversationHeaderTitle` + `chatTab.chat` 断言 15±3。不加 wrapper / maxWidth / probe / `ignoresSafeArea` / 动画开关 / `sizeThatFits`。
 
+
+## 2026-10-22 — 通用设置选择菜单统一
+
+- 对照桌面 `ui-chat/settings/PreferenceRow.tsx` / `.module.css` 与 `ui-primitives/Menu.module.css`：权限、语言、工作步骤展示、收起时机、繁忙时发送行为、性能与用量、链接打开方式共用 `SettingsSelect`。移除整页 option sheet、语言系统 Picker 和独立权限选择器。
+- 右侧浅底按钮、右对齐锚定菜单、当前项尾部勾选；不添加标题栏、取消、关闭或刷新按钮。选择后立即收起，重复选择当前值不重复保存；点击外部／再次点击触发器关闭，可一次切换到另一选择入口。保留 Host 写入、只读／保存中禁用、错误提示及高风险权限确认。
+- 菜单自动向上／向下避让，限制在可视区域；长内容可滚动，窄屏设置行可换为上下布局。保留桌面颜色、圆角与阴影，选项触控高度扩至 44pt，支持选中态辅助功能。
+- 本地验证：全部 App 源码通过 Catalyst SDK 类型检查；真实 SwiftUI/UIKit 组件烟测验证选项回写、当前项无重复写入、选中 trait、单次激活切换菜单、再次激活关闭、禁用关闭、底部翻转与窄视口边界。原生 Catalyst 独立测试应用运行实际 `GeneralSettingsView`，查看浅色／深色菜单截图，并通过真实 UI 的 fixture 保存确认工作步骤与语言更新。
+- 新增 XCUITest 覆盖五类偏好选择后的回显／重新打开选中态，以及语言、权限间切换与外部关闭。本机仅有 Command Line Tools，未运行 iPhone 模拟器 XCUITest、未构建或发布 IPA；Catalyst 验证不代替 iPhone 真机验收。

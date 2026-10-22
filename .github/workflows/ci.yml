@@ -141,6 +141,8 @@ jobs:
             UI_TESTS=(
               -only-testing:dshUITests/ScreenshotTests/testLightScreenshots
               -only-testing:dshUITests/ScreenshotTests/testDarkScreenshots
+              -only-testing:dshUITests/ScreenshotTests/testGeneralSettingsSelectionsStayAnchoredAndPersist
+              -only-testing:dshUITests/ScreenshotTests/testSettingsSelectDismissesAndSwitchesWithOneTap
               -only-testing:dshUITests/TrajectoryUITests
             )
             MIN_SCREENSHOTS=4

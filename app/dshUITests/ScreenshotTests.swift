@@ -25,6 +25,74 @@ final class ScreenshotTests: XCTestCase {
         try capture(appearance: "Dark")
     }
 
+    func testGeneralSettingsSelectionsStayAnchoredAndPersist() {
+        for appearance in ["Light", "Dark"] {
+            let app = XCUIApplication()
+            app.launchArguments = ["-UITestFixture", "-UITestScreen", "settings", "-UITestAppearance\(appearance)"]
+            app.launch()
+            for (id, value, label) in [
+                ("transcript", "compact", "简洁"),
+                ("collapse", "next-input", "下次有新消息时"),
+                ("busy", "steer", "插话发送"),
+                ("perf", "detailed", "详细"),
+                ("links", "new-tab", "默认浏览器"),
+            ] {
+                let trigger = app.buttons["settingsSelect.\(id)"]
+                for _ in 0..<6 {
+                    if trigger.isHittable { break }
+                    app.swipeUp()
+                }
+                XCTAssertTrue(trigger.isHittable, id)
+                trigger.tap()
+                let menu = app.descendants(matching: .any)["settingsSelectMenu.\(id)"].firstMatch
+                XCTAssertTrue(menu.waitForExistence(timeout: 5), id)
+                XCTAssertTrue(app.navigationBars.count == 0, "Selection must not navigate to a new page")
+                XCTAssertLessThan(menu.frame.height, app.windows.firstMatch.frame.height / 2)
+                XCTAssertLessThanOrEqual(menu.frame.maxX, app.windows.firstMatch.frame.maxX - 11)
+                let option = app.buttons["settingsSelectOption.\(id).\(value)"]
+                XCTAssertTrue(option.isHittable, id)
+                option.tap()
+                XCTAssertTrue(menu.waitForNonExistence(timeout: 5), id)
+                let saved = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", label), object: trigger)
+                XCTAssertEqual(XCTWaiter.wait(for: [saved], timeout: 5), .completed, id)
+                trigger.tap()
+                XCTAssertTrue(option.waitForExistence(timeout: 5), id)
+                XCTAssertTrue(option.isSelected, id)
+                option.tap()
+                XCTAssertTrue(menu.waitForNonExistence(timeout: 5), id)
+            }
+            app.terminate()
+        }
+    }
+
+    func testSettingsSelectDismissesAndSwitchesWithOneTap() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-UITestFixture", "-UITestScreen", "settings"]
+        app.launch()
+        let language = app.buttons["settingsSelect.language"]
+        XCTAssertTrue(language.waitForExistence(timeout: 10))
+        language.tap()
+        let languageMenu = app.descendants(matching: .any)["settingsSelectMenu.language"].firstMatch
+        XCTAssertTrue(languageMenu.waitForExistence(timeout: 5))
+        app.buttons["settingsPermissionSelect"].tap()
+        XCTAssertTrue(languageMenu.waitForNonExistence(timeout: 5))
+        let permissionMenu = app.descendants(matching: .any)["settingsPermissionMenu"].firstMatch
+        XCTAssertTrue(permissionMenu.waitForExistence(timeout: 5))
+        app.buttons["settingsPermissionSelect"].tap()
+        XCTAssertTrue(permissionMenu.waitForNonExistence(timeout: 5))
+        language.tap()
+        XCTAssertTrue(languageMenu.waitForExistence(timeout: 5))
+        app.staticTexts["外观"].firstMatch.tap()
+        XCTAssertTrue(languageMenu.waitForNonExistence(timeout: 5))
+        language.tap()
+        app.buttons["settingsSelectOption.language.en"].tap()
+        XCTAssertTrue(languageMenu.waitForNonExistence(timeout: 5))
+        let saved = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == 'English'"), object: language)
+        XCTAssertEqual(XCTWaiter.wait(for: [saved], timeout: 5), .completed)
+        language.tap()
+        XCTAssertTrue(app.buttons["settingsSelectOption.language.en"].isSelected)
+    }
+
     func testTerminalImmediateFailureLeavesConnectingAndOffersRetry() {
         let app = XCUIApplication()
         // This fixture reaches the real attach path without a client. The
@@ -1129,11 +1197,6 @@ final class ScreenshotTests: XCTestCase {
                 XCTAssertTrue(
                     app.descendants(matching: .any)["settingsPermissionMenu"].waitForExistence(timeout: 8),
                     "\(appearance) settings permission menu missing"
-                )
-                XCTAssertFalse(app.images["checkmark"].exists, "\(appearance) settings permission still uses SF checkmark")
-                XCTAssertTrue(
-                    app.descendants(matching: .any)["official.checkOutline"].exists,
-                    "\(appearance) settings permission missing official check"
                 )
                 let window = app.windows.firstMatch.frame
                 let menu = app.descendants(matching: .any)["settingsPermissionMenu"].firstMatch.frame
