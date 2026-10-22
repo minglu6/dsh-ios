@@ -991,15 +991,28 @@ public final class PocketClient: @unchecked Sendable {
     }
 
     private func releaseOffice(sessionId: String, handle: String, attempt: Int64) async {
-        _ = try? await request(
-            "office.release",
-            args: jsonObject([
-                "sessionId": .string(sessionId),
-                "handle": .string(handle),
-            ]),
-            timeoutMs: 5_000,
-            expectedGeneration: attempt
-        )
+        await Task {
+            _ = try? await self.request(
+                "office.release",
+                args: jsonObject([
+                    "sessionId": .string(sessionId),
+                    "handle": .string(handle),
+                ]),
+                timeoutMs: 5_000,
+                expectedGeneration: attempt
+            )
+        }.value
+    }
+
+    private func releaseFileWatch(_ subscription: String, attempt: Int64) async {
+        await Task {
+            _ = try? await self.request(
+                "unfollow",
+                args: jsonObject(["subId": .string(subscription)]),
+                timeoutMs: 5_000,
+                expectedGeneration: attempt
+            )
+        }.value
     }
 
     private func runFollowFiles(
@@ -1053,20 +1066,10 @@ public final class PocketClient: @unchecked Sendable {
                 }
             }
         } catch {
-            _ = try? await request(
-                "unfollow",
-                args: jsonObject(["subId": .string(subscription)]),
-                timeoutMs: 5_000,
-                expectedGeneration: attempt
-            )
+            await releaseFileWatch(subscription, attempt: attempt)
             throw error
         }
-        _ = try? await request(
-            "unfollow",
-            args: jsonObject(["subId": .string(subscription)]),
-            timeoutMs: 5_000,
-            expectedGeneration: attempt
-        )
+        await releaseFileWatch(subscription, attempt: attempt)
     }
 }
 

@@ -2322,3 +2322,4 @@ header 只要变高（`minHeight` 30 或 `padding.bottom` 15 且 top 仍 10）co
 - 验证：完整 App（含 DEBUG fixtures）Catalyst 类型检查及原生烟测编译通过；更新的协议测试语法检查通过。隔离真实官方 Host 0.2.1-rc.2 + 当前 Pocket bridge + 临时普通 Web 插件完成原生取票、HTML/模块/私有 API、旧 Cookie 撤销与连接 generation 测试。实际 `WKWebView` 展示插件 v1，修改 Host 上 client.js 后仅重新连接页面即显示 v2，未重编译手机程序；验证插件 HTTP 写操作、HttpOnly、子请求 403 不误杀整页、外部导航／文件选择拒绝、JS confirm 回传，以及刷新／断连清理。
 - 延迟真实桥接回复 600ms 的独立透明 relay 验证：关闭早于 ui.open 回执时不兑换／不展示迟到票据，票据真实返回 401；快速重复刷新等待旧撤销、只发最新 open，最终页面可加载，重复关闭不影响其他页。未修改现用 Host 或 Android 仓库，未执行 dsh-purge 自身的管理操作。
 - 本机仍无完整 Xcode／XCTest，未运行完整 XCTest、iOS 模拟器／真机或构建 IPA。以上是真实 Host + macOS Catalyst WebKit 验证，不替代 iPhone 验收；dsh-purge 专属页面尚未逐功能真机验证。
+- 首轮提交 `1383c15` 的 CI 协议测试发现取消检查阻止 Office/file-watch 的既有清理请求：保留普通 RPC 的取消语义，将 `office.release` 与 `unfollow` 放到独立、仍受原 generation 限制且有 5 秒超时的清理任务。未弱化失败的两个回归测试；本机直接执行实际 PocketClient 验证取消释放原句柄、退出文件流退订及旧清理不得写入替换连接均通过。
