@@ -233,6 +233,10 @@ extension AppModel {
 
     fileprivate func applyUITestScreen(_ screen: String) {
 #if DEBUG
+        if screen == "modelsSettings" {
+            installUITestModelsSettings()
+            return
+        }
         if screen == "turnNavigation" || screen == "turnNavigationSingle" || screen == "turnNavigationLegacy" {
             installUITestTurnNavigation(single: screen == "turnNavigationSingle", legacy: screen == "turnNavigationLegacy")
             return

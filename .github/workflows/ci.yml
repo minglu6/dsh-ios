@@ -146,6 +146,7 @@ jobs:
               -only-testing:dshUITests/TrajectoryUITests
               -only-testing:dshUITests/PluginInstallUITests
               -only-testing:dshUITests/PluginManagerUITests
+              -only-testing:dshUITests/ModelsSettingsUITests
             )
             MIN_SCREENSHOTS=4
           elif [ "$UI_SCOPE" = "session-header" ]; then
@@ -193,6 +194,7 @@ jobs:
               -only-testing:dshUITests/ComposerStatsUITests
               -only-testing:dshUITests/PluginInstallUITests
               -only-testing:dshUITests/PluginManagerUITests
+              -only-testing:dshUITests/ModelsSettingsUITests
               -only-testing:dshUITests/KeyboardDismissalTests
               -only-testing:dshUITests/ComposerImeTests
               -only-testing:dshUITests/SessionHeaderUITests

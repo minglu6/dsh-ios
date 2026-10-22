@@ -227,6 +227,9 @@ final class AppModel: ObservableObject {
     @Published var archiveConfirm: ArchiveConfirmRequest?
     var uiTestFixture = false
     @Published var uiTestHistoryPagingStatus = ""
+#if DEBUG
+    @Published var uiTestModelsStatus = ""
+#endif
     var uiTestHistoryPagingAccessibilityValue: String {
         guard uiTestFixture else { return "" }
         return "\(uiTestHistoryPagingStatus);firstSeq=\(chat?.firstSeq ?? -1);loading=\(chat?.loadingOlder == true)"
@@ -973,6 +976,12 @@ final class AppModel: ObservableObject {
         publishChat()
     }
 #if DEBUG
+    func installUITestModelsClient(_ fixtureClient: PocketClient) {
+        guard uiTestFixture else { return }
+        client?.close()
+        client = fixtureClient
+    }
+
     func receiveUITestTurnNavigationFollow(_ frame: JSONValue) {
         guard uiTestFixture else { return }
         onPush(.object([
