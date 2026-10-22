@@ -163,16 +163,16 @@ enum L {
 
     static func connections() -> String { connectionsPageTitle(english: en) }
     static func scanQr() -> String { connectionsActionTitle(.scan, english: en) }
-    static func pairingLink() -> String { connectionsActionTitle(.pairingLink, english: en) }
     static func enterAddress() -> String { connectionsActionTitle(.enterAddress, english: en) }
-    static func pairingLinkHint() -> String { connectionsPairingLinkHint(english: en) }
-    static func pairingLinkFieldHint() -> String { connectionsPairingLinkFieldHint }
+    static func addressInputHint() -> String {
+        en
+            ? "Paste a pairing link copied from desktop settings, or enter an IP address and port with the six-digit pairing code."
+            : "粘贴电脑端复制的配对链接，或手动输入 IP 和端口，并填写六位配对码。"
+    }
     static func pastePairingLink() -> String { connectionsPastePairingLink(english: en) }
-    static func reviewPairingLink() -> String { connectionsReviewPairingLink(english: en) }
     static func invalidPairingLink() -> String { connectionsInvalidPairingLink(english: en) }
     static func repairPair() -> String { en ? "Pair again" : "重新配对" }
     static func pairedDevices() -> String { en ? "Paired devices" : "已配对设备" }
-    static func pairSheetTitle() -> String { en ? "Pair" : "配对" }
     static func addressField() -> String { en ? "Address" : "地址" }
     static func nameField() -> String { en ? "Name" : "名称" }
     static func nameHint() -> String { en ? "Defaults to remote host IP" : "默认远程主机 IP" }
@@ -190,7 +190,6 @@ enum L {
     static func repairNeeded() -> String { en ? "Pair again" : "请重新配对" }
     static func currentDevice() -> String { en ? "Current" : "当前" }
     static func switchDevice() -> String { en ? "Switch" : "切换" }
-    static func pairingUriHint() -> String { "dshpocket://pair?h=<host:port>&c=<code>" }
 
     static func files() -> String { en ? "Files" : "文件" }
     static func workspaceFiles() -> String { en ? "Workspace files" : "工作区文件" }

@@ -123,8 +123,8 @@ Restart the desktop Host. Management UI: desktop **Settings → Phone connection
 ### Pair the phone
 
 1. On the computer, open **Settings → Phone connection**, choose LAN or Tailscale, and open the pairing window.
-2. On the phone, open the host row at the bottom of the session drawer, then Phone connection. Use **Scan**, **Pairing link**, or **Enter address**.
-3. Scan the QR code, paste `dshpocket://pair?h=<host:port>&c=<6-digit-code>`, or enter the host address and 6-digit code manually. Leave the name empty to use the host address.
+2. On the phone, open the host row at the bottom of the session drawer, then choose **Scan** or **Enter address**.
+3. In **Enter address**, choose **Paste link** for a dedicated `dshpocket://pair?h=<host:port>&c=<6-digit-code>` input, or **Manual entry** for an IP address, port, and 6-digit code. The two inputs are independent. Review the details and tap **Start pairing**; pasting does not connect automatically. Leave the name empty to use the host address.
 4. After the connection succeeds, select a workspace or session. Model providers and credentials are owned by the Host.
 
 Pairing codes last 10 minutes, allow at most 3 attempts, and are consumed on success. Legacy iroh forms (`n=` / `nodeId#code`) are rejected.

@@ -844,26 +844,16 @@ final class ScreenshotTests: XCTestCase {
                         || app.buttons["扫码"].waitForExistence(timeout: 2),
                     "\(appearance) connections missing 扫码"
                 )
-                XCTAssertTrue(
-                    app.staticTexts["配对链接"].exists || app.buttons["配对链接"].exists,
-                    "\(appearance) connections missing 配对链接"
-                )
+                XCTAssertFalse(app.descendants(matching: .any)["connectionsAction.pairingLink"].exists)
                 XCTAssertTrue(
                     app.staticTexts["输入地址"].exists || app.buttons["输入地址"].exists,
                     "\(appearance) connections missing 输入地址"
                 )
                 let scan = app.descendants(matching: .any)["connectionsAction.scan"].firstMatch
-                let pairing = app.descendants(matching: .any)["connectionsAction.pairingLink"].firstMatch
                 let address = app.descendants(matching: .any)["connectionsAction.enterAddress"].firstMatch
                 XCTAssertTrue(scan.waitForExistence(timeout: 8), "\(appearance) connections missing scan row")
-                XCTAssertTrue(pairing.exists, "\(appearance) connections missing pairing-link row")
                 XCTAssertTrue(address.exists, "\(appearance) connections missing enter-address row")
-                XCTAssertLessThan(scan.frame.minY, pairing.frame.minY, "\(appearance) connections pairing-link is not after 扫码")
-                XCTAssertLessThan(pairing.frame.minY, address.frame.minY, "\(appearance) connections 输入地址 is not after 配对链接")
-                XCTAssertTrue(
-                    app.descendants(matching: .any)["official.linkOutline"].exists,
-                    "\(appearance) connections missing official link glyph on 配对链接"
-                )
+                XCTAssertLessThan(scan.frame.minY, address.frame.minY)
                 XCTAssertTrue(
                     app.descendants(matching: .any)["connections.keyboard"].exists,
                     "\(appearance) connections missing Android keyboard glyph on 输入地址"
@@ -1427,7 +1417,7 @@ final class ScreenshotTests: XCTestCase {
             }
             if screen == "connections" {
                 try assertManageSheet(app, appearance: appearance)
-                try assertPairingLinkSheet(app, appearance: appearance)
+                try assertAddressSheet(app, appearance: appearance)
             }
             if screen == "models" {
                 try assertModelReleaseBadgeTracksSelection(app, appearance: appearance)
@@ -1764,156 +1754,53 @@ final class ScreenshotTests: XCTestCase {
         )
     }
 
-    /// Android `PairLinkSheet`: paste/type `dshpocket://pair`, then Continue
-    /// prefills pair confirmation and does not connect.
-    private func assertPairingLinkSheet(_ app: XCUIApplication, appearance: String) throws {
-        let pairingRow = app.descendants(matching: .any)["connectionsAction.pairingLink"].firstMatch
-        let pairingTitle = app.staticTexts["配对链接"].firstMatch
-        let pairingButton = app.buttons["配对链接"].firstMatch
-        XCTAssertTrue(
-            pairingRow.waitForExistence(timeout: 4)
-                || pairingTitle.waitForExistence(timeout: 2)
-                || pairingButton.waitForExistence(timeout: 2),
-            "\(appearance) 配对链接 row title missing"
-        )
-        if pairingRow.exists {
-            pairingRow.tap()
-        } else if pairingButton.exists {
-            pairingButton.tap()
-        } else {
-            pairingTitle.tap()
-        }
-        let hint = app.staticTexts["在电脑「设置 → 手机连接」复制配对链接，然后粘贴到这里。"]
-        XCTAssertTrue(
-            hint.waitForExistence(timeout: 8),
-            "\(appearance) pairing-link sheet missing"
-        )
-        XCTAssertTrue(
-            app.descendants(matching: .any)["connectionsPairLinkSheet"].waitForExistence(timeout: 4),
-            "\(appearance) connectionsPairLinkSheet identifier missing"
-        )
-        let pairCancel = app.descendants(matching: .any)["connectionsPairLinkCancel"].firstMatch
-        XCTAssertTrue(
-            pairCancel.waitForExistence(timeout: 4)
-                || app.buttons["取消"].waitForExistence(timeout: 2),
-            "\(appearance) pairing-link sheet missing 取消"
-        )
-        let pairCancelFrame = pairCancel.exists ? pairCancel : app.buttons["取消"].firstMatch
-        XCTAssertGreaterThanOrEqual(
-            pairCancelFrame.frame.height,
-            44,
-            "\(appearance) pairing-link 取消 height \(pairCancelFrame.frame.height) is under 44pt"
-        )
-        try saveNamedScreenshot(appearance, "pairingLink")
-        let paste = app.descendants(matching: .any)["connectionsPastePairingLink"]
-        let next = app.descendants(matching: .any)["connectionsReviewPairingLink"]
-        XCTAssertTrue(paste.waitForExistence(timeout: 4), "\(appearance) 粘贴链接 missing")
-        XCTAssertTrue(next.waitForExistence(timeout: 4), "\(appearance) 下一步 missing")
-        XCTAssertEqual(
-            paste.firstMatch.frame.height,
-            48,
-            accuracy: 2,
-            "\(appearance) 粘贴链接 height \(paste.firstMatch.frame.height) is not Android PairLinkSheet 48"
-        )
-        XCTAssertEqual(
-            next.firstMatch.frame.height,
-            48,
-            accuracy: 2,
-            "\(appearance) 下一步 height \(next.firstMatch.frame.height) is not Android PairLinkSheet 48"
-        )
-        let field = app.descendants(matching: .any)["connectionsPairingLinkField"].firstMatch
-        XCTAssertTrue(field.waitForExistence(timeout: 4), "\(appearance) pairing-link field missing")
-        let bounds = app.descendants(matching: .any)["connectionsPairingLinkFieldBounds"].firstMatch
-        XCTAssertTrue(
-            bounds.waitForExistence(timeout: 4),
-            "\(appearance) pairing-link field bounds missing"
-        )
-        let fieldFrame = bounds.frame
-        let pasteFrame = paste.firstMatch.frame
-        let nextFrame = next.firstMatch.frame
-        XCTAssertEqual(
-            fieldFrame.minX,
-            pasteFrame.minX,
-            accuracy: 1,
-            "\(appearance) pairing field minX \(fieldFrame.minX) != 粘贴链接 minX \(pasteFrame.minX)"
-        )
-        XCTAssertEqual(
-            fieldFrame.maxX,
-            nextFrame.maxX,
-            accuracy: 1,
-            "\(appearance) pairing field maxX \(fieldFrame.maxX) != 下一步 maxX \(nextFrame.maxX)"
-        )
-        let hintGap = fieldFrame.minY - hint.frame.maxY
-        XCTAssertLessThanOrEqual(
-            hintGap,
-            24,
-            "\(appearance) pairing field minY \(fieldFrame.minY) is \(hintGap)pt below hint maxY \(hint.frame.maxY)"
-        )
-        XCTAssertEqual(
-            pasteFrame.minY - fieldFrame.maxY,
-            14,
-            accuracy: 4,
-            "\(appearance) 粘贴链接 minY \(pasteFrame.minY) is \(pasteFrame.minY - fieldFrame.maxY)pt below field maxY \(fieldFrame.maxY), not Android button-row vertical 14"
-        )
-        let pairingTexts = app.staticTexts.matching(NSPredicate(format: "label == %@", "配对链接"))
-        var titleMinX: CGFloat?
-        var labelMinX: CGFloat?
-        for index in 0..<pairingTexts.count {
-            let frame = pairingTexts.element(boundBy: index).frame
-            if frame.maxY <= hint.frame.minY + 1 {
-                titleMinX = frame.minX
-            } else if frame.minY >= hint.frame.maxY - 1 && frame.minY < fieldFrame.maxY {
-                labelMinX = frame.minX
-            }
-        }
-        let titleX = try XCTUnwrap(titleMinX, "\(appearance) pairing-link sheet title missing")
-        let labelX = try XCTUnwrap(labelMinX, "\(appearance) pairing-link field label missing")
-        XCTAssertEqual(
-            labelX,
-            titleX,
-            accuracy: 1,
-            "\(appearance) pairing field label minX \(labelX) != title minX \(titleX)"
-        )
-        XCTAssertFalse(next.firstMatch.isEnabled, "\(appearance) 下一步 enabled on empty pairing link")
-        replaceText(field, with: "https://example.com")
-        XCTAssertTrue(
-            app.descendants(matching: .any)["connectionsInvalidPairingLink"].waitForExistence(timeout: 4)
-                || app.staticTexts["请输入有效的 dshpocket://pair 链接，需包含主机地址和六位配对码。"].waitForExistence(timeout: 2),
-            "\(appearance) invalid pairing-link copy missing"
-        )
-        XCTAssertFalse(next.firstMatch.isEnabled, "\(appearance) 下一步 enabled on invalid pairing link")
-        replaceText(field, with: "dshpocket://pair?h=192.168.1.20:7690&c=654321")
-        let invalid = app.descendants(matching: .any)["connectionsInvalidPairingLink"].firstMatch
-        XCTAssertTrue(
-            invalid.waitForNonExistence(timeout: 4),
-            "\(appearance) invalid pairing-link copy stayed after a valid paste"
-        )
-        waitUntil(timeout: 4) { next.firstMatch.isEnabled }
-        XCTAssertTrue(next.firstMatch.isEnabled, "\(appearance) 下一步 disabled on valid pairing link")
-        next.firstMatch.tap()
-        let address = app.descendants(matching: .any)["connectionsAddressField"].firstMatch
-        XCTAssertTrue(address.waitForExistence(timeout: 8), "\(appearance) pair sheet address missing after 下一步")
-        XCTAssertEqual(address.value as? String, "192.168.1.20:7690", "\(appearance) pair sheet did not prefill host:port")
-        let code = app.descendants(matching: .any)["connectionsCodeField"].firstMatch
-        XCTAssertTrue(code.waitForExistence(timeout: 4), "\(appearance) pair sheet code missing after 下一步")
-        XCTAssertEqual(code.value as? String, "654321", "\(appearance) pair sheet did not prefill pairing code")
-        XCTAssertTrue(
-            app.buttons["开始配对"].waitForExistence(timeout: 4) || app.staticTexts["开始配对"].waitForExistence(timeout: 2),
-            "\(appearance) pair sheet missing 开始配对"
-        )
-        XCTAssertTrue(
-            app.descendants(matching: .any)["connectionsScreen"].firstMatch.waitForExistence(timeout: 2),
-            "\(appearance) pairing-link flow left 远程主机"
-        )
+    private func assertAddressSheet(_ app: XCUIApplication, appearance: String) throws {
+        app.descendants(matching: .any)["connectionsAction.enterAddress"].firstMatch.tap()
+        let address = app.textFields["connectionsAddressField"].firstMatch
+        let code = app.textFields["connectionsCodeField"].firstMatch
+        let start = app.buttons["connectionsStartPair"].firstMatch
+        XCTAssertTrue(address.waitForExistence(timeout: 8))
+        XCTAssertTrue(code.exists)
+        XCTAssertFalse(start.isEnabled)
+        try saveNamedScreenshot(appearance, "address")
+
+        app.segmentedControls["connectionsInputMethod"].buttons["粘贴链接"].tap()
+        let link = app.textFields["connectionsPairingLinkField"].firstMatch
+        XCTAssertTrue(link.waitForExistence(timeout: 4))
+        XCTAssertTrue(address.waitForNonExistence(timeout: 4))
+        XCTAssertTrue(app.buttons["connectionsPastePairingLink"].exists)
+        replaceText(link, with: "dshpocket://pair?h=mac%&c=654321")
+        XCTAssertTrue(app.staticTexts["connectionsInvalidPairingLink"].waitForExistence(timeout: 4))
+        XCTAssertFalse(start.isEnabled)
+        replaceText(link, with: "dshpocket://pair?h=192.168.1.20:7690&c=654321")
+        XCTAssertTrue(code.waitForNonExistence(timeout: 4))
+        XCTAssertTrue(app.staticTexts["connectionsParsedLink"].waitForExistence(timeout: 4))
+        XCTAssertTrue(start.isEnabled)
+        XCTAssertFalse(app.staticTexts["connectionsInvalidPairingLink"].exists)
+        try saveNamedScreenshot(appearance, "addressLink")
+
+        app.segmentedControls["connectionsInputMethod"].buttons["手动输入"].tap()
+        replaceText(address, with: "192.168.1.21:7690")
+        XCTAssertTrue(code.waitForExistence(timeout: 4))
+        XCTAssertFalse(start.isEnabled)
+        code.tap()
+        code.typeText("654321")
+        XCTAssertTrue(waitUntil(timeout: 4) { start.isEnabled })
+        XCTAssertFalse(app.staticTexts["connectionsParsedLink"].exists)
+        XCTAssertTrue(address.exists, "Editing must not start pairing automatically")
+        app.segmentedControls["connectionsInputMethod"].buttons["粘贴链接"].tap()
+        XCTAssertEqual(link.value as? String, "dshpocket://pair?h=192.168.1.20:7690&c=654321")
+        XCTAssertTrue(start.isEnabled)
+        replaceText(link, with: "https://example.com")
+        XCTAssertFalse(start.isEnabled, "Invalid link must not fall back to the saved manual address")
     }
 
-    /// Pairing-link placeholder (`connectionsPairingLinkFieldHint`). Empty
-    /// SwiftUI TextFields report this as `value`.
-    private let pairingLinkPlaceholder = "dshpocket://pair?h=…&c=…"
+    /// Empty SwiftUI TextFields report the placeholder as their value.
+    private let pairingInputPlaceholders = ["192.168.1.20:7690", "dshpocket://pair?h=…&c=…"]
 
     private func pairingLinkFieldValue(_ element: XCUIElement) -> String {
         let raw = (element.value as? String) ?? ""
-        return (raw.isEmpty || raw == pairingLinkPlaceholder) ? "" : raw
+        return pairingInputPlaceholders.contains(raw) ? "" : raw
     }
 
     /// Wait on an XCUI predicate. Do not sleep — CI Dark failed at 22b3312

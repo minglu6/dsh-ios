@@ -14,15 +14,16 @@ struct ConnectionsView: View {
     @State private var pairing = false
     @State private var renaming = false
     @State private var renameDraft = ""
+    @State private var emptyPaste = false
+    @State private var useLink = false
+    @State private var pairingLink = ""
 
     private enum Presented: Identifiable, Equatable {
-        case pairLink
         case pair
         case manage(String)
 
         var id: String {
             switch self {
-            case .pairLink: return "pairLink"
             case .pair: return "pair"
             case .manage(let id): return "manage.\(id)"
             }
@@ -51,12 +52,6 @@ struct ConnectionsView: View {
                             divider: true
                         ) { showScan = true }
                         ConnActionRow(
-                            title: L.pairingLink(),
-                            identifier: connectionsActionRowIdentifier(.pairingLink),
-                            official: .linkOutline,
-                            divider: true
-                        ) { presented = .pairLink }
-                        ConnActionRow(
                             title: L.enterAddress(),
                             identifier: connectionsActionRowIdentifier(.enterAddress),
                             official: .keyboard,
@@ -79,13 +74,6 @@ struct ConnectionsView: View {
         .accessibilityIdentifier("connectionsScreen")
         .sheet(item: $presented, onDismiss: { renaming = false }) { item in
             switch item {
-            case .pairLink:
-                PairLinkSheet(
-                    onDismiss: { presented = nil },
-                    onResult: { link in
-                        openAddressSheet(host: link.host, port: link.port, code: link.code)
-                    }
-                )
             case .pair:
                 pairSheet
             case .manage(let id):
@@ -245,7 +233,7 @@ struct ConnectionsView: View {
                         .buttonStyle(.plain)
                         .font(Font.system(size: CGFloat(dswButtonFontSizePoints)))
                         .frame(maxWidth: .infinity)
-                        .frame(height: CGFloat(connectionsPairLinkButtonHeightPoints))
+                        .frame(height: CGFloat(connectionsSheetButtonHeightPoints))
                         .foregroundStyle(T.ink)
                         .overlay(
                             RoundedRectangle(cornerRadius: CGFloat(dswButtonRadiusMdPoints))
@@ -262,7 +250,7 @@ struct ConnectionsView: View {
                         Text(L.save())
                             .font(Font.system(size: CGFloat(dswButtonFontSizePoints)))
                             .frame(maxWidth: .infinity)
-                            .frame(height: CGFloat(connectionsPairLinkButtonHeightPoints))
+                            .frame(height: CGFloat(connectionsSheetButtonHeightPoints))
                             .foregroundStyle(T.onPrimary)
                             .background(
                                 T.primaryButton,
@@ -408,22 +396,76 @@ struct ConnectionsView: View {
             address = ""
         }
         self.code = code
+        emptyPaste = false
+        useLink = false
+        pairingLink = ""
         self.name = name
         presented = .pair
+    }
+
+    private var parsedLink: PairingLink? { PairingUriPolicy.parse(pairingLink) }
+
+    private var invalidLink: Bool {
+        !pairingLink.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && parsedLink == nil
+    }
+
+    private var canPair: Bool {
+        useLink ? parsedLink != nil
+            : (parseHostPort(address) != nil && code.count == 6 && code.allSatisfy(\.isNumber))
     }
 
     private var pairSheet: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 12) {
-                field(
-                    L.addressField(),
-                    text: $address,
-                    hint: L.pairingUriHint(),
-                    mono: true,
-                    identifier: connectionsAddressFieldIdentifier()
-                )
-                field(L.nameField(), text: $name, hint: L.nameHint(), mono: false)
-                if !address.contains("dshpocket://") {
+                Text(L.addressInputHint())
+                    .font(.caption)
+                    .foregroundStyle(T.text3)
+                Picker(L.t("输入方式", "Input method"), selection: $useLink) {
+                    Text(L.t("手动输入", "Manual entry")).tag(false)
+                    Text(L.pastePairingLink()).tag(true)
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("connectionsInputMethod")
+                if useLink {
+                    field(
+                        L.t("配对链接", "Pairing link"),
+                        text: $pairingLink,
+                        hint: "dshpocket://pair?h=…&c=…",
+                        mono: true,
+                        identifier: "connectionsPairingLinkField"
+                    )
+                    Button(L.pastePairingLink()) {
+                        let value = UIPasteboard.general.string ?? ""
+                        emptyPaste = value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        if !emptyPaste { pairingLink = value }
+                    }
+                    .foregroundStyle(T.ink)
+                    .accessibilityIdentifier(connectionsPastePairingLinkIdentifier())
+                    if emptyPaste {
+                        Text(L.t("剪贴板中没有链接。", "No link on the clipboard."))
+                            .font(.caption)
+                            .foregroundStyle(T.err)
+                    } else if invalidLink {
+                        Text(L.invalidPairingLink())
+                            .font(.caption)
+                            .foregroundStyle(T.err)
+                            .accessibilityIdentifier(connectionsInvalidPairingLinkIdentifier())
+                    }
+                    if let link = parsedLink {
+                        Text("\(link.host):\(link.port) · \(L.pairingCode()) \(link.code)")
+                            .font(.caption.monospaced())
+                            .foregroundStyle(T.text3)
+                            .accessibilityIdentifier("connectionsParsedLink")
+                    }
+                } else {
+                    field(
+                        L.addressField(),
+                        text: $address,
+                        hint: "192.168.1.20:7690",
+                        mono: true,
+                        identifier: connectionsAddressFieldIdentifier()
+                    )
                     field(
                         L.pairingCode(),
                         text: $code,
@@ -432,6 +474,7 @@ struct ConnectionsView: View {
                         identifier: connectionsCodeFieldIdentifier()
                     )
                 }
+                field(L.nameField(), text: $name, hint: L.nameHint(), mono: false)
                 Spacer()
                 Button {
                     Task { await startPair() }
@@ -445,17 +488,19 @@ struct ConnectionsView: View {
                     .foregroundStyle(T.onPrimary)
                     .background(T.primaryButton, in: RoundedRectangle(cornerRadius: 8))
                 }
-                .disabled(pairing)
+                .disabled(pairing || !canPair)
+                .accessibilityIdentifier("connectionsStartPair")
             }
             .padding(18)
             .background(T.bg)
-            .navigationTitle(L.pairSheetTitle())
+            .navigationTitle(L.enterAddress())
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(L.cancel()) { presented = nil }
                 }
             }
+            .onChange(of: pairingLink) { _ in emptyPaste = false }
         }
     }
 
@@ -481,12 +526,13 @@ struct ConnectionsView: View {
     }
 
     private func startPair() async {
+        guard canPair else { return }
         pairing = true
         defer { pairing = false }
         do {
-            if let link = PairingUriPolicy.parse(address) {
+            if useLink, let link = parsedLink {
                 try await model.pair(link: link, name: name)
-            } else if let parsed = parseHostPort(address), !code.isEmpty {
+            } else if let parsed = parseHostPort(address) {
                 try await model.pair(name: name, host: parsed.0, port: parsed.1, code: code)
             } else {
                 throw PocketError(code: "pair", message: L.pairFailed())
@@ -621,7 +667,7 @@ private struct ConnActionRow: View {
             .onTapGesture(perform: onClick)
             // VoiceOver: one labeled button. Not a SwiftUI `Button` + `.contain`
             // — that retargets XCUI taps onto the child glyph and never fires.
-            // `.combine` would swallow `official.linkOutline` / keyboard / QR
+            // `.combine` would swallow keyboard / QR
             // skip leaves (see OfficialGlyphAccess). `.contain` keeps those
             // descendants queryable; label + isButton is the activatable row.
             .accessibilityElement(children: .contain)
@@ -632,152 +678,6 @@ private struct ConnActionRow: View {
                 Divider().padding(.horizontal, 16)
             }
         }
-    }
-}
-
-/// Android `PairLinkSheet` (9aa43c4): paste `dshpocket://pair`, then Continue
-/// prefills the existing pair confirmation. Does not connect.
-private struct PairLinkSheet: View {
-    var onDismiss: () -> Void
-    var onResult: (PairingLink) -> Void
-    @State private var text = ""
-    @State private var pasted = false
-    /// Skip the next `onChange(of: text)` pasted reset so 粘贴链接 can set
-    /// `pasted = true` after assigning `text` (Compose onValueChange does not
-    /// fire for programmatic paste).
-    @State private var suppressPasteReset = false
-
-    private var parsed: PairingLink? { PairingUriPolicy.parse(text) }
-    private var showInvalid: Bool {
-        connectionsShowsInvalidPairingLink(text: text, pasted: pasted, parsed: parsed != nil)
-    }
-
-    var body: some View {
-        // Not NavigationStack: that is system bar chrome (and can leak the
-        // accent tint). Android `PairLinkSheet` is ConnSheet + SheetTitle;
-        // phone still needs a dismiss control, styled as desktop Button.ghost.
-        VStack(alignment: .leading, spacing: 0) {
-            connSheetCancel(identifier: connectionsPairLinkCancelIdentifier(), action: onDismiss)
-            Text(L.pairingLink())
-                .font(Font.system(size: CGFloat(connectionsSheetTitleFontSizePoints), weight: .semibold))
-                .foregroundStyle(T.ink)
-                .padding(.horizontal, CGFloat(connectionsSheetContentPaddingPoints))
-                .padding(.vertical, 6)
-            Text(L.pairingLinkHint())
-                .font(Font.system(size: CGFloat(connectionsSheetHintFontSizePoints)))
-                .foregroundStyle(T.text3)
-                .padding(.horizontal, CGFloat(connectionsSheetContentPaddingPoints))
-                .padding(.vertical, 8)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(L.pairingLink())
-                    .font(Font.system(size: CGFloat(connectionsFieldLabelFontSizePoints)))
-                    .foregroundStyle(T.text3)
-                // `$text` (not a custom Binding that also writes `pasted`):
-                // XCUI typeText talks to the UITextField; an extra @State
-                // write in the setter can leave SwiftUI `text` on the old
-                // URL while the field shows a concatenation, so parse
-                // stays nil and invalid copy plus disabled 下一步 remain.
-                TextField(L.pairingLinkFieldHint(), text: $text)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .font(Font.system(size: CGFloat(connectionsFieldFontSizePoints), design: .monospaced))
-                    .padding(.horizontal, CGFloat(connectionsFieldHorizontalPaddingPoints))
-                    .padding(.vertical, CGFloat(connectionsFieldVerticalPaddingPoints))
-                    .background(
-                        T.input,
-                        in: RoundedRectangle(cornerRadius: CGFloat(connectionsFieldRadiusPoints))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: CGFloat(connectionsFieldRadiusPoints))
-                            .stroke(T.borderStrong, lineWidth: CGFloat(dswButtonOutlineWidthPoints))
-                    )
-                    .accessibilityLabel(L.pairingLink())
-                    .accessibilityIdentifier(connectionsPairingLinkFieldIdentifier())
-                    .onChange(of: text) { _ in
-                        if suppressPasteReset {
-                            suppressPasteReset = false
-                            return
-                        }
-                        pasted = false
-                    }
-            }
-            // Overlay on the field column, not a ZStack sibling: maxHeight
-            // infinity as a sibling ate the bottom Spacer and vertically
-            // centered the field. Overlay does not participate in VStack
-            // height. Not on TextField (it combines overlays into its own
-            // a11y). Not Color.clear (XCUI drops it). Not an identifier on
-            // this VStack (that overrides child ids).
-            .overlay {
-                PairingFieldBoundsHost()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .allowsHitTesting(false)
-            }
-            .padding(.horizontal, CGFloat(connectionsFieldOuterPaddingPoints))
-            .padding(.vertical, 4)
-            if showInvalid {
-                Text(L.invalidPairingLink())
-                    .font(Font.system(size: 12))
-                    .foregroundStyle(T.err)
-                    .padding(.horizontal, CGFloat(connectionsSheetContentPaddingPoints))
-                    .padding(.vertical, 8)
-                    .accessibilityIdentifier(connectionsInvalidPairingLinkIdentifier())
-            }
-            HStack(spacing: 10) {
-                Button(action: pasteLink) {
-                    Text(L.pastePairingLink())
-                        .font(Font.system(size: CGFloat(dswButtonFontSizePoints)))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: CGFloat(connectionsPairLinkButtonHeightPoints))
-                        .foregroundStyle(T.ink)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: CGFloat(dswButtonRadiusMdPoints))
-                                .stroke(T.borderL3, lineWidth: CGFloat(dswButtonOutlineWidthPoints))
-                        )
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier(connectionsPastePairingLinkIdentifier())
-                Button(action: continuePairing) {
-                    Text(L.reviewPairingLink())
-                        .font(Font.system(size: CGFloat(dswButtonFontSizePoints)))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: CGFloat(connectionsPairLinkButtonHeightPoints))
-                        .foregroundStyle(T.onPrimary)
-                        .background(
-                            T.primaryButton,
-                            in: RoundedRectangle(cornerRadius: CGFloat(dswButtonRadiusMdPoints))
-                        )
-                }
-                .buttonStyle(.plain)
-                .disabled(parsed == nil)
-                .opacity(parsed == nil ? dswButtonDisabledOpacity : 1)
-                .accessibilityIdentifier(connectionsReviewPairingLinkIdentifier())
-            }
-            .padding(.horizontal, CGFloat(connectionsSheetContentPaddingPoints))
-            .padding(.vertical, 14)
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(.top, CGFloat(connectionsSheetDragHandleAreaPoints))
-        .background(T.surface)
-        .tint(T.ink)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier(connectionsPairLinkSheetIdentifier())
-    }
-
-    private func pasteLink() {
-        let value = UIPasteboard.general.string ?? ""
-        if value == text {
-            pasted = true
-            return
-        }
-        suppressPasteReset = true
-        pasted = true
-        text = value
-    }
-
-    private func continuePairing() {
-        guard let link = parsed else { return }
-        onResult(link)
     }
 }
 
@@ -803,27 +703,6 @@ private extension View {
         } else {
             self
         }
-    }
-}
-
-/// XCUI geometry leaf the same size as the field column. Lives in the
-/// column's overlay (not TextField overlay, not a layout-participating
-/// ZStack sibling). Same UIKit leaf as ComposerAddA11yHost.
-private struct PairingFieldBoundsHost: UIViewRepresentable {
-    func makeUIView(context: Context) -> UIView {
-        let view = UIView()
-        view.backgroundColor = .clear
-        view.isUserInteractionEnabled = false
-        view.isAccessibilityElement = UITestLaunch.isEnabled
-        view.accessibilityIdentifier = connectionsPairingLinkFieldBoundsIdentifier()
-        view.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        view.setContentHuggingPriority(.defaultLow, for: .vertical)
-        return view
-    }
-
-    func updateUIView(_ view: UIView, context: Context) {
-        view.isAccessibilityElement = UITestLaunch.isEnabled
-        view.accessibilityIdentifier = connectionsPairingLinkFieldBoundsIdentifier()
     }
 }
 

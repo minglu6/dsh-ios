@@ -128,7 +128,7 @@ Android docs this matrix follows: `docs/feature-parity.md`, `docs/desktop-parity
 | Markdown | `ui-chat` primitives | `Markdown.kt` | `protocol/Markdown.swift` + `Features/Chat/MarkdownView.swift` |
 | Official icons | desktop `D.*` | Android vector set | `Design/Icons.swift` SF Symbol map |
 | Connection keep-alive | — | `ConnectionService` FGS | `ConnectionKeeper` `beginBackgroundTask` + ping + `BGAppRefreshTask` `dev.dsh.pocket.ios.refresh` + path monitor + local notify |
-| Controller connections | Host pocket `settings.section` `pocket` is QR on the **computer**; Android `ConnectionsScreen` | `Screens.kt` `ConnectionsScreen` / `ConnDeviceRow` + PairLinkSheet（`9aa43c4` / `33b97b2`） | `Features/Connections/ConnectionsView.swift` + `ConnectionsLayout.swift`：全屏「远程主机」；已配对 / 动作卡间距 12pt（`Card` 竖向 6）；无附近设备区；管理 sheet 官方 refresh/edit/trash（非 SF、非系统 NavigationStack）；删除无确认（Android 立即 `removeProfile`）；ConnSheet `T.Surface` + dragHandle 28pt 顶留白 + 取消 ≥44pt；动作卡 扫码 → 配对链接（`IconLinkOutlineRegular`）→ 输入地址（Material Keyboard）；配对链接 sheet 用桌面 Button/Input token + Android 48 高，**输入框与按钮同一 22pt 外沿**（去掉 ConnField 18 leftover），粘贴后进既有配对确认，不立刻连接。入口在抽屉脚，Settings 无连接分组 |
+| Controller connections | Host pocket `settings.section` `pocket` is QR on the **computer**; Android `ConnectionsScreen` | `Screens.kt` `ConnectionsScreen` / `ConnDeviceRow` + PairLinkSheet（`9aa43c4` / `33b97b2`） | `Features/Connections/ConnectionsView.swift` + `ConnectionsLayout.swift`：全屏「远程主机」；已配对 / 动作卡间距 12pt（`Card` 竖向 6）；无附近设备区；管理 sheet 官方 refresh/edit/trash，删除无确认；动作卡只保留扫码与输入地址（Material Keyboard）。2026-10-22 按用户要求将配对链接入口合入输入地址，内部切换手动输入与粘贴链接，链接使用独立输入框及粘贴按钮，不与 IP:端口共用。链接携带验证码，手动方式填写六位码；无效链接不能回退使用另一方式的地址，点击开始配对才连接。入口在抽屉脚，Settings 无连接分组 |
 
 ---
 

@@ -65,24 +65,14 @@ public let dswButtonMdHeightPoints: Double = 36
 public let dswAliasBorderL3LightHex: UInt32 = 0x1F000000
 public let dswAliasBorderL3DarkHex: UInt32 = 0x29FFFFFF
 
-/// Android `PairLinkSheet` / `ConnField` (9aa43c4 / 33b97b2): phone touch
-/// height 48, field 14pt / pad 14×12 / radius-md 12. Sheet title 18
-/// semibold; hint 13 tertiary.
-public let connectionsPairLinkButtonHeightPoints: Double = 48
+/// Shared manage-sheet touch height and field metrics.
+public let connectionsSheetButtonHeightPoints: Double = 48
 public let connectionsFieldFontSizePoints: Double = 14
-public let connectionsFieldLabelFontSizePoints: Double = 12
 public let connectionsFieldRadiusPoints: Double = dswButtonRadiusMdPoints
 public let connectionsFieldHorizontalPaddingPoints: Double = 14
 public let connectionsFieldVerticalPaddingPoints: Double = 12
 public let connectionsSheetTitleFontSizePoints: Double = 18
-public let connectionsSheetHintFontSizePoints: Double = 13
-/// ConnSheet title / hint / invalid / buttons inset. Android `ConnField` used
-/// 18 while the button row used 22, so the input sat wider than「粘贴链接 /
-/// 下一步」. Desktop Input has no sheet inset (wrap pad is 0 8 inner).
-/// Phone chrome is the 22 used by SheetTitle / hint / buttons — unify the
-/// field to that, do not keep the 18 leftover.
 public let connectionsSheetContentPaddingPoints: Double = 22
-public let connectionsFieldOuterPaddingPoints: Double = connectionsSheetContentPaddingPoints
 /// Android `ProfileManageSheet` `ConnOptionRow(L.delete())` calls
 /// `Pocket.removeProfile` immediately. Desktop Host `ui-settings` pocket
 /// is the computer QR page, not this phone manage sheet — no Modal confirm.
@@ -106,34 +96,21 @@ public func connectionDiagnosticsForbiddenTitles(english: Bool) -> [String] {
         : ["连接诊断", "复制诊断报告"]
 }
 
-/// Android `ConnectionsScreen` action-card order after 9aa43c4 / 33b97b2:
-/// 扫码 → 配对链接 → 输入地址.
+/// iOS combines pairing-link import and manual host:port in Enter address.
 public enum ConnectionsAction: String, Equatable, Sendable, CaseIterable {
     case scan
-    case pairingLink
     case enterAddress
 }
 
 public func connectionsActionTitle(_ action: ConnectionsAction, english: Bool) -> String {
     switch action {
     case .scan: return english ? "Scan" : "扫码"
-    case .pairingLink: return english ? "Pairing link" : "配对链接"
     case .enterAddress: return english ? "Enter address" : "输入地址"
     }
 }
 
-public func connectionsPairingLinkHint(english: Bool) -> String {
-    english
-        ? "Copy the pairing link from Phone connection in desktop settings, then paste it here."
-        : "在电脑「设置 → 手机连接」复制配对链接，然后粘贴到这里。"
-}
-
 public func connectionsPastePairingLink(english: Bool) -> String {
     english ? "Paste link" : "粘贴链接"
-}
-
-public func connectionsReviewPairingLink(english: Bool) -> String {
-    english ? "Continue" : "下一步"
 }
 
 public func connectionsInvalidPairingLink(english: Bool) -> String {
@@ -142,11 +119,6 @@ public func connectionsInvalidPairingLink(english: Bool) -> String {
         : "请输入有效的 dshpocket://pair 链接，需包含主机地址和六位配对码。"
 }
 
-public let connectionsPairingLinkFieldHint = "dshpocket://pair?h=…&c=…"
-
-/// Pairing-link row uses desktop `IconLinkOutlineRegular`. Enter-address uses
-/// Android `Icons.Outlined.Keyboard` (Material 24×24, not ui-primitives).
-public func connectionsPairingLinkSymbol() -> String { "official.linkOutline" }
 public func connectionsEnterAddressSymbol() -> String { "connections.keyboard" }
 
 /// ProfileManageSheet actions: desktop `IconRefreshOutlineRegular` /
@@ -163,15 +135,7 @@ public func connectionsActionRowIdentifier(_ action: ConnectionsAction) -> Strin
 public func connectionsPairedCardIdentifier() -> String { "connectionsPairedCard" }
 public func connectionsPairedRowIdentifier() -> String { "connectionsPairedRow" }
 public func connectionsActionsCardIdentifier() -> String { "connectionsActionsCard" }
-public func connectionsPairLinkSheetIdentifier() -> String { "connectionsPairLinkSheet" }
-public func connectionsPairLinkCancelIdentifier() -> String { "connectionsPairLinkCancel" }
-public func connectionsPairingLinkFieldIdentifier() -> String { "connectionsPairingLinkField" }
-/// Visual field chrome (inner pad + stroke). XCUI `TextField` can report the
-/// inner UITextField, which is inset by `connectionsFieldHorizontalPaddingPoints`
-/// and would fail a minX/maxX check against the button row.
-public func connectionsPairingLinkFieldBoundsIdentifier() -> String { "connectionsPairingLinkFieldBounds" }
 public func connectionsPastePairingLinkIdentifier() -> String { "connectionsPastePairingLink" }
-public func connectionsReviewPairingLinkIdentifier() -> String { "connectionsReviewPairingLink" }
 public func connectionsInvalidPairingLinkIdentifier() -> String { "connectionsInvalidPairingLink" }
 public func connectionsAddressFieldIdentifier() -> String { "connectionsAddressField" }
 public func connectionsCodeFieldIdentifier() -> String { "connectionsCodeField" }
@@ -208,7 +172,3 @@ public let connectionsKeyboardKeyPaths = [
     connectionsKeyboardSpacePath,
 ]
 public let connectionsKeyboardViewBox: Double = 24
-
-public func connectionsShowsInvalidPairingLink(text: String, pasted: Bool, parsed: Bool) -> Bool {
-    !parsed && (pasted || !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-}
