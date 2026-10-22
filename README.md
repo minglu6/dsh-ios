@@ -57,6 +57,8 @@ The transcript has a right-side turn rail and the desktop chevron return-to-bott
 
 The work-mode menu uses a desktop-style anchored overlay, up to 360pt wide, measured to its content and bounded by the viewport with 12pt margins. Overflow scrolls vertically while keeping mode names and descriptions intact.
 
+The workspace directory picker uses the desktop centered dialog instead of a system sheet, shared by the landing page and drawer. The card caps at 680×500pt with 24pt viewport margins. New folder/Cancel use neutral outlined buttons; Open/Create use the primary filled style. Narrow layouts wrap footer actions and horizontally scroll the directory columns to reveal the child pane on navigation. New folder opens a centered nested dialog; the scrim dismisses only the topmost layer, and pending creation/opening blocks duplicate actions.
+
 iOS retains the original typography system, with body/code/terminal defaults of 14/11/13pt and no app-wide enlargement. Settings-home navigation uses the same system body size as general settings (17pt by default), matching system headline titles and allowing rows to grow with Dynamic Type. Explicit personal font choices are preserved and never written to the remote host.
 
 Edited-file cards and comparisons use the same real Host snapshots as Android: file switching, old/new line numbers, wrapping and a 5,000-line display limit. Failed reads remain visible and retryable rather than hiding the card; previews and comparison caches are isolated by Host/session/file identity. Missing events, capabilities or expired Host comparisons never produce fabricated diffs from tool summaries.

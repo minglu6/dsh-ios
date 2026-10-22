@@ -30,7 +30,10 @@ struct RootView: View {
             }
             if model.showDrawer && model.currentRoute.allowsSessionDrawer {
                 HStack(spacing: 0) {
-                    SessionDrawer(model: model)
+                    SessionDrawer(model: model, onAddWorkspace: {
+                        Keyboard.dismiss()
+                        showWorkspacePicker = true
+                    })
                         .frame(width: min(320, UIScreen.main.bounds.width * 0.86))
                         .transition(.move(edge: .leading))
                     Spacer()
@@ -71,6 +74,12 @@ struct RootView: View {
         .simultaneousGesture(drawerEdgeSwipe)
         .onChange(of: scenePhase) { phase in
             ConnectionKeeper.shared.sceneChanged(phase)
+        }
+        .accessibilityHidden(showWorkspacePicker)
+        .overlay {
+            if showWorkspacePicker {
+                WorkspaceDirectoryPicker(model: model, onDismiss: { showWorkspacePicker = false })
+            }
         }
     }
 
@@ -236,9 +245,6 @@ struct RootView: View {
         .onAppear {
             slashMenu.track(trigger: landingSlashTrigger)
             mentionMenu.track(trigger: landingMentionTrigger)
-        }
-        .sheet(isPresented: $showWorkspacePicker) {
-            WorkspaceDirectorySheet(model: model, onDismiss: { showWorkspacePicker = false })
         }
         .fileImporter(isPresented: $showFileImporter, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
             if case .success(let urls) = result {

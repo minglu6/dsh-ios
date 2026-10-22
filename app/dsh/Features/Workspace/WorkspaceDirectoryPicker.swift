@@ -1,7 +1,7 @@
 import SwiftUI
 import DSHProtocol
 
-struct WorkspaceDirectorySheet: View {
+struct WorkspaceDirectoryPicker: View {
     @ObservedObject var model: AppModel
     var onCreated: (WorkspaceView) -> Void = { _ in }
     var onDismiss: () -> Void
@@ -37,6 +37,10 @@ struct WorkspaceDirectoryDialog: View {
     @State private var folderName: String?
     @State private var creating = false
     @State private var createError: String?
+    @ObservedObject private var theme = ThemeStateHolder.shared
+    @FocusState private var focusedField: Field?
+
+    private enum Field: Hashable { case path, folder }
 
     init(
         browse: Bool,
@@ -59,37 +63,70 @@ struct WorkspaceDirectoryDialog: View {
         _dir = StateObject(wrappedValue: DirectoryController(list: list))
     }
 
-    private var inert: Bool { saving || folderName != nil }
+    private var inert: Bool { saving || creating || folderName != nil }
     private var target: String? { browse ? dir.target : nativePath.nilIfBlank }
     private var ready: Bool { enabled && target != nil && !dir.loading && !inert && dir.draft == nil }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            Divider()
-            panes
-            if dir.parent?.truncated == true || dir.child?.truncated == true {
-                Text(L.foldersTruncated()).font(Font.system(size: 12)).foregroundStyle(T.text3).padding(.horizontal, 24).padding(.vertical, 4)
+        GeometryReader { geometry in
+            ZStack {
+                T.scrim.ignoresSafeArea().onTapGesture { dismiss() }
+                card
+                    .frame(width: max(0, min(680, geometry.size.width - 48)),
+                           height: max(0, min(500, geometry.size.height - 48)))
+                    .background(T.surface2)
+                    .clipShape(RoundedRectangle(cornerRadius: 28))
+                    .shadow(color: .black.opacity(theme.dark ? 0.35 : 0.16), radius: 24, y: 8)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityAddTraits(.isModal)
+                    .accessibilityIdentifier("workspaceDirectoryDialog")
+                    .accessibilityHidden(folderName != nil)
+                if folderName != nil {
+                    T.scrim.ignoresSafeArea().onTapGesture { cancelFolder() }
+                    ScrollView { createFolderDialog }
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(width: max(0, min(380, geometry.size.width - 48)))
+                        .background(T.surface2)
+                        .clipShape(RoundedRectangle(cornerRadius: 28))
+                        .shadow(color: .black.opacity(theme.dark ? 0.35 : 0.16), radius: 24, y: 8)
+                        .accessibilityElement(children: .contain)
+                        .accessibilityAddTraits(.isModal)
+                        .accessibilityIdentifier("workspaceCreateFolderDialog")
+                }
             }
-            if let err = saveError ?? dir.error {
-                Text(err).font(Font.system(size: 12)).foregroundStyle(T.err).lineLimit(3).padding(.horizontal, 24).padding(.vertical, 4)
-            }
-            Divider()
-            footer
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .background(T.surface2)
+        .buttonStyle(.plain)
         .task {
             if browse, enabled { await dir.navigate() }
         }
         .onDisappear { dir.dispose() }
-        .sheet(isPresented: Binding(get: { folderName != nil }, set: { if !$0, !creating { folderName = nil } })) {
-            createFolderSheet
+    }
+
+    private var card: some View {
+        VStack(spacing: 0) {
+            header
+            separator
+            panes
+            if dir.parent?.truncated == true || dir.child?.truncated == true {
+                Text(L.foldersTruncated()).font(.system(size: 12)).foregroundStyle(T.text2).padding(.horizontal, 24).padding(.vertical, 4)
+            }
+            if let err = saveError ?? dir.error {
+                Text(err).font(.system(size: 12)).foregroundStyle(T.err).lineLimit(3).padding(.horizontal, 24).padding(.vertical, 4)
+            }
+            separator
+            footer
         }
+    }
+
+    private var separator: some View {
+        T.borderL3.frame(height: 0.5)
     }
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(L.selectWorkspaceDirectory()).font(Font.system(size: 16, weight: .medium)).foregroundStyle(T.ink)
+            Text(L.selectWorkspaceDirectory()).font(.system(size: 16, weight: .medium)).foregroundStyle(T.ink)
+                .frame(minHeight: 28, alignment: .bottomLeading)
             if !browse || dir.draft != nil {
                 TextField(L.editPath(), text: Binding(
                     get: { browse ? (dir.draft ?? "") : nativePath },
@@ -97,38 +134,54 @@ struct WorkspaceDirectoryDialog: View {
                         if browse { dir.edit(value) } else { nativePath = value }
                     }
                 ))
+                .font(.system(size: 13)).foregroundStyle(T.ink)
                 .textInputAutocapitalization(.never)
-                .disableAutocorrection(true)
-                .padding(10)
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(T.border, lineWidth: 0.5))
-                .disabled(inert)
+                .autocorrectionDisabled()
+                .focused($focusedField, equals: .path)
+                .padding(.horizontal, 8).frame(height: 24)
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(T.border, lineWidth: 1))
+                .padding(.leading, -9)
+                .disabled(inert || !enabled)
+                .submitLabel(.go)
                 .onSubmit { submitPath() }
+                .onAppear { focusedField = .path }
+                .accessibilityIdentifier("workspaceDirectoryPath")
             } else {
-                HStack {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 2) {
-                            ForEach(Array(dir.crumbs.enumerated()), id: \.offset) { index, crumb in
-                                if index > 0 {
-                                    OfficialGlyph(kind: .chevronRight, size: 9, color: T.text3)
+                HStack(spacing: 4) {
+                    ScrollViewReader { proxy in
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 4) {
+                                ForEach(Array(dir.crumbs.enumerated()), id: \.offset) { index, crumb in
+                                    if index > 0 {
+                                        OfficialGlyph(kind: .chevronRight, size: 12, color: T.text3)
+                                    }
+                                    Button {
+                                        Task { await dir.navigate(path: crumb.path) }
+                                    } label: {
+                                        Text(crumb.path == dir.parent?.home ? L.homeDirectory() : crumb.name)
+                                            .font(.system(size: 13, weight: .medium))
+                                            .foregroundStyle(T.text3)
+                                            .lineLimit(1)
+                                            .frame(maxWidth: 160)
+                                    }
+                                    .disabled(!(enabled && !inert))
+                                    .id(crumb.path)
                                 }
-                                Button {
-                                    Task { await dir.navigate(path: crumb.path) }
-                                } label: {
-                                    Text(crumb.path == dir.parent?.home ? L.homeDirectory() : crumb.name)
-                                        .font(Font.system(size: 13))
-                                        .foregroundStyle(T.text3)
-                                        .lineLimit(1)
-                                }
-                                .disabled(!(enabled && !inert))
                             }
                         }
+                        .onAppear { proxy.scrollTo(dir.crumbs.last?.path, anchor: .trailing) }
+                        .onChange(of: dir.crumbs.last?.path) { path in proxy.scrollTo(path, anchor: .trailing) }
                     }
                     Button { dir.beginEdit() } label: {
-                        OfficialGlyph(kind: .editOutline, size: 12, color: T.text3)
+                        OfficialGlyph(kind: .editOutline, size: 14, color: T.text3)
+                            .frame(minWidth: 34, minHeight: 24, alignment: .trailing)
+                            .contentShape(Rectangle())
                     }
-                    .disabled(inert)
+                    .disabled(inert || !enabled)
                     .accessibilityLabel(L.editPath())
+                    .accessibilityIdentifier("workspaceDirectoryEditPath")
                 }
+                .frame(height: 24)
             }
         }
         .padding(.leading, 24)
@@ -139,103 +192,176 @@ struct WorkspaceDirectoryDialog: View {
 
     @ViewBuilder
     private var panes: some View {
-        ZStack(alignment: .topTrailing) {
+        ZStack(alignment: .bottomTrailing) {
             if browse {
                 GeometryReader { geo in
-                    let two = dir.child != nil
-                    let width = two ? max(256, (geo.size.width - 24) / 2) : geo.size.width
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 12) {
-                            if let parent = dir.parent {
-                                DirectoryColumn(entries: dir.visibleEntries(parent), selected: dir.selected?.path, enabled: enabled && !inert, width: width) { entry in
-                                    Task { await dir.navigate(path: entry.path, base: parent) }
+                    let width = dir.child != nil ? max(256, (geo.size.width - 24.5) / 2) : geo.size.width
+                    ScrollViewReader { proxy in
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 12) {
+                                if let parent = dir.parent {
+                                    DirectoryColumn(entries: dir.visibleEntries(parent), selected: dir.selected?.path, enabled: enabled && !inert, width: width) { entry in
+                                        Task { await dir.navigate(path: entry.path, base: parent) }
+                                    }
+                                }
+                                if let child = dir.child {
+                                    T.borderL3.frame(width: 0.5)
+                                    DirectoryColumn(entries: dir.visibleEntries(child), selected: nil, enabled: enabled && !inert, width: width) { entry in
+                                        Task { await dir.navigate(path: entry.path, base: child) }
+                                    }
+                                    .id("directoryChild")
                                 }
                             }
-                            if let child = dir.child {
-                                Divider()
-                                DirectoryColumn(entries: dir.visibleEntries(child), selected: dir.selected?.path, enabled: enabled && !inert, width: width) { entry in
-                                    Task { await dir.navigate(path: entry.path, base: child) }
-                                }
-                            }
+                            .frame(height: geo.size.height)
+                        }
+                        .onChange(of: dir.child?.path) { path in
+                            if path != nil { proxy.scrollTo("directoryChild", anchor: .trailing) }
+                        }
+                        .onChange(of: geo.size.width) { _ in
+                            if dir.child != nil { proxy.scrollTo("directoryChild", anchor: .trailing) }
                         }
                     }
                 }
             }
             if dir.loading {
                 Text(L.loading())
-                    .font(Font.system(size: 12))
+                    .font(.system(size: 12))
                     .foregroundStyle(T.text3)
-                    .padding(8)
-                    .background(T.surface3, in: RoundedRectangle(cornerRadius: 8))
+                    .padding(.horizontal, 8).padding(.vertical, 2)
+                    .background(T.surface2)
             }
         }
-        .frame(minHeight: 220)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .frame(minHeight: 0, maxHeight: .infinity)
+        .padding(.leading, 24)
+        .padding(.trailing, 16)
+        .padding(.vertical, 16)
     }
 
     private var footer: some View {
-        VStack(spacing: 8) {
-            if browse {
-                HStack {
-                    Button {
-                        folderName = ""
-                        createError = nil
-                    } label: {
-                        HStack(spacing: 4) {
-                            OfficialGlyph(kind: .plusOutline, size: 12, color: T.text3)
-                            Text(L.newFolder())
-                        }
-                    }
-                    .disabled(!(canCreate && ready))
-                    Button { dir.toggleHidden() } label: {
-                        HStack(spacing: 4) {
-                            Text(L.showHiddenFiles()).font(Font.system(size: 12)).foregroundStyle(T.text3)
-                            if dir.showHidden {
-                                OfficialGlyph(kind: .checkOutline, size: 11, color: T.text3)
-                            }
-                        }
-                    }
-                    .disabled(inert)
-                    Spacer()
-                }
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                if browse { browsingActions }
+                Spacer(minLength: 0)
+                confirmationActions
             }
-            HStack {
-                Spacer()
-                Button(L.cancel()) { if !inert { onDismiss() } }
-                    .disabled(inert)
-                Button(L.open()) { openTarget() }
-                    .disabled(!(ready && canOpen))
-                    .foregroundStyle(T.onPrimary)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background((ready && canOpen) ? T.primaryButton : T.primaryButton.opacity(0.4), in: RoundedRectangle(cornerRadius: 12))
+            VStack(alignment: .leading, spacing: 8) {
+                if browse {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 8) { browsingActions }
+                        VStack(alignment: .leading, spacing: 8) { browsingActions }
+                    }
+                }
+                HStack { Spacer(minLength: 0); confirmationActions }
             }
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 16)
     }
 
-    private var createFolderSheet: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(L.newFolder()).font(Font.system(size: 16, weight: .medium)).foregroundStyle(T.ink)
-            Text(L.newFolderIn(currentFolderName)).font(Font.system(size: 14)).foregroundStyle(T.ink)
-            TextField(L.untitledFolder(), text: Binding(get: { folderName ?? "" }, set: { folderName = $0 }))
-                .textInputAutocapitalization(.never)
-                .padding(12)
-                .overlay(RoundedRectangle(cornerRadius: 16).stroke(T.borderStrong, lineWidth: 0.5))
-                .disabled(creating)
-                .onSubmit { createFolder() }
-            if let createError { Text(createError).font(Font.system(size: 12)).foregroundStyle(T.err) }
-            HStack {
-                Spacer()
-                Button(L.cancel()) { if !creating { folderName = nil } }.disabled(creating)
-                Button(L.create()) { createFolder() }
-                    .disabled(!(enabled && canCreate && !creating && !(folderName ?? "").isEmpty))
+    @ViewBuilder
+    private var browsingActions: some View {
+        Button {
+            folderName = ""
+            createError = nil
+        } label: {
+            HStack(spacing: 4) {
+                OfficialGlyph(kind: .plusOutline, size: 14, color: T.ink)
+                Text(L.newFolder())
             }
         }
-        .padding(24)
-        .background(T.surface2)
+        .buttonStyle(DirectoryActionStyle())
+        .disabled(!(canCreate && ready))
+        .accessibilityIdentifier("workspaceDirectoryNewFolder")
+        Button { dir.toggleHidden() } label: {
+            HStack(spacing: 4) {
+                Text(L.showHiddenFiles())
+                if dir.showHidden {
+                    OfficialGlyph(kind: .checkOutline, size: 14, color: inert ? T.caption : T.ink)
+                }
+            }
+            .font(.system(size: 13, weight: .medium))
+            .foregroundStyle(inert ? T.caption : (dir.showHidden ? T.ink : T.text2))
+            .fixedSize()
+            .frame(minHeight: 28)
+            .contentShape(Rectangle())
+        }
+        .disabled(inert)
+        .accessibilityValue(dir.showHidden ? L.t("已开启", "On") : L.t("已关闭", "Off"))
+        .accessibilityIdentifier("workspaceDirectoryHidden")
+    }
+
+    private var confirmationActions: some View {
+        HStack(spacing: 8) {
+            Button(L.cancel()) { dismiss() }
+                .buttonStyle(DirectoryActionStyle(minWidth: 72))
+                .disabled(inert)
+                .accessibilityIdentifier("workspaceDirectoryCancel")
+            Button(L.open()) { openTarget() }
+                .buttonStyle(DirectoryActionStyle(primary: true, minWidth: 72))
+                .disabled(!(ready && canOpen))
+                .accessibilityIdentifier("workspaceDirectoryOpen")
+        }
+        .background {
+            Button("") {
+                if dir.draft != nil {
+                    focusedField = nil
+                    Task { await dir.cancelEdit() }
+                } else {
+                    dismiss()
+                }
+            }
+            .keyboardShortcut(.cancelAction)
+            .hidden()
+            .disabled(inert)
+        }
+    }
+
+    private var createFolderDialog: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(L.newFolder()).font(.system(size: 16, weight: .medium)).foregroundStyle(T.ink)
+            Text(L.newFolderIn(currentFolderName)).font(.system(size: 14)).foregroundStyle(T.ink)
+            TextField(L.untitledFolder(), text: Binding(get: { folderName ?? "" }, set: { folderName = $0 }))
+                .font(.system(size: 14)).foregroundStyle(T.ink)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .focused($focusedField, equals: .folder)
+                .padding(.horizontal, 14).frame(height: 44)
+                .overlay(RoundedRectangle(cornerRadius: 16).stroke(T.borderStrong, lineWidth: 0.5))
+                .disabled(creating)
+                .submitLabel(.done)
+                .onSubmit { createFolder() }
+                .onAppear { focusedField = .folder }
+                .accessibilityLabel(L.folderName())
+                .accessibilityIdentifier("workspaceDirectoryFolderName")
+            if let createError { Text(createError).font(.system(size: 12)).foregroundStyle(T.err) }
+            HStack(spacing: 8) {
+                Spacer(minLength: 0)
+                Button(L.cancel()) { cancelFolder() }
+                    .buttonStyle(DirectoryActionStyle())
+                    .keyboardShortcut(.cancelAction)
+                    .disabled(creating)
+                Button(L.create()) { createFolder() }
+                    .buttonStyle(DirectoryActionStyle(primary: true))
+                    .disabled(!(enabled && canCreate && !creating && folderName?.nilIfBlank != nil))
+                    .accessibilityIdentifier("workspaceDirectoryCreate")
+            }
+            .padding(.top, 8)
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 22)
+        .padding(.bottom, 20)
+    }
+
+    private func dismiss() {
+        guard !inert else { return }
+        focusedField = nil
+        onDismiss()
+    }
+
+    private func cancelFolder() {
+        guard !creating else { return }
+        focusedField = nil
+        folderName = nil
     }
 
     private var currentFolderName: String {
@@ -260,6 +386,7 @@ struct WorkspaceDirectoryDialog: View {
                 try await open(path)
                 onDismiss()
             } catch is CancellationError {
+                saving = false
                 return
             } catch {
                 saveError = error.localizedDescription
@@ -275,15 +402,37 @@ struct WorkspaceDirectoryDialog: View {
         Task {
             do {
                 let created = try await createDirectory(path, name)
+                focusedField = nil
                 folderName = nil
                 await dir.navigate(path: created)
             } catch is CancellationError {
+                creating = false
                 return
             } catch {
                 createError = error.localizedDescription
             }
             creating = false
         }
+    }
+}
+
+private struct DirectoryActionStyle: ButtonStyle {
+    var primary = false
+    var minWidth: CGFloat = 0
+    @Environment(\.isEnabled) private var enabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 14))
+            .foregroundStyle(primary ? T.onPrimary : T.ink)
+            .fixedSize()
+            .padding(.horizontal, 14)
+            .frame(minWidth: minWidth, minHeight: 36)
+            .background(primary ? T.primaryButton : (configuration.isPressed ? T.hoverBg : .clear),
+                        in: RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(primary ? .clear : T.borderL3, lineWidth: 0.5))
+            .contentShape(RoundedRectangle(cornerRadius: 12))
+            .opacity(enabled ? (configuration.isPressed ? 0.8 : 1) : 0.4)
     }
 }
 
@@ -300,23 +449,27 @@ private struct DirectoryColumn: View {
                 ForEach(entries) { entry in
                     let isSelected = entry.path == selected
                     Button { onPick(entry) } label: {
-                        HStack(spacing: 6) {
+                        HStack(spacing: 4) {
                             OfficialGlyph(
                                 kind: isSelected ? .folderOpen : .folderClose,
                                 size: 14,
-                                color: !enabled ? T.caption : T.ink
+                                color: !enabled ? T.caption : (isSelected ? T.accent : T.text2)
                             )
-                            Text(entry.name).font(Font.system(size: 13)).foregroundStyle(enabled ? T.ink : T.caption).lineLimit(1)
+                            Text(entry.name).font(.system(size: 13, weight: .medium)).foregroundStyle(enabled ? T.ink : T.caption).lineLimit(1)
                             Spacer()
                             OfficialGlyph(kind: .chevronRight, size: 10, color: T.text3)
                         }
-                        .padding(.horizontal, 6)
-                        .frame(minHeight: 44)
-                        .background(isSelected ? T.hoverBg : Color.clear, in: RoundedRectangle(cornerRadius: 8))
+                        .padding(.horizontal, 4)
+                        .frame(height: 28)
+                        .background(isSelected ? T.interactiveBgActive : Color.clear, in: RoundedRectangle(cornerRadius: 8))
+                        .contentShape(Rectangle())
                     }
                     .disabled(!enabled)
+                    .accessibilityAddTraits(isSelected ? .isSelected : [])
+                    .accessibilityIdentifier("workspaceDirectoryEntry.\(entry.path)")
                 }
             }
+            .padding(.trailing, 8)
         }
         .frame(width: width)
     }
@@ -354,6 +507,12 @@ private final class DirectoryController: ObservableObject {
 
     func beginEdit() {
         inner.beginEdit()
+        if inner.draft == nil { inner.draft = "" }
+        publish()
+    }
+
+    func cancelEdit() async {
+        await inner.cancelEdit()
         publish()
     }
 

@@ -5,10 +5,10 @@ import UniformTypeIdentifiers
 
 struct SessionDrawer: View {
     @ObservedObject var model: AppModel
+    let onAddWorkspace: () -> Void
     @State private var query = ""
     @State private var now = Int64(Date().timeIntervalSince1970 * 1000)
     @State private var viewOptions = false
-    @State private var addWorkspace = false
     @State private var visibleIdleLimits: [String: Int] = [:]
     @State private var restoreId: String?
     @State private var renameSession: SessionSummary?
@@ -95,7 +95,7 @@ struct SessionDrawer: View {
                         .modifier(PopoverCompactAdaptation())
                 }
                 if visibleOps.contains("workspace.create") {
-                    Button { addWorkspace = true } label: {
+                    Button(action: onAddWorkspace) {
                         OfficialGlyph(
                             kind: .projectAdd,
                             size: CGFloat(sidebarProjectAddIconSizePoints),
@@ -193,9 +193,6 @@ struct SessionDrawer: View {
         }
         .onChange(of: model.isOnline) { _ in rememberOps() }
         .onChange(of: model.ops) { _ in rememberOps() }
-        .sheet(isPresented: $addWorkspace) {
-            WorkspaceDirectorySheet(model: model, onDismiss: { addWorkspace = false })
-        }
         .alert(L.rename(), isPresented: Binding(get: { renameSession != nil }, set: { if !$0 && !renameBusy { renameSession = nil } })) {
             TextField(L.rename(), text: $renameTitle)
             Button(renameBusy ? L.savingEllipsis() : L.save()) {
