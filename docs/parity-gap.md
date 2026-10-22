@@ -2301,3 +2301,4 @@ header 只要变高（`minHeight` 30 或 `padding.bottom` 15 且 top 仍 10）co
 - 菜单自动向上／向下避让，限制在可视区域；长内容可滚动，窄屏设置行可换为上下布局。保留桌面颜色、圆角与阴影，选项触控高度扩至 44pt，支持选中态辅助功能。
 - 本地验证：全部 App 源码通过 Catalyst SDK 类型检查；真实 SwiftUI/UIKit 组件烟测验证选项回写、当前项无重复写入、选中 trait、单次激活切换菜单、再次激活关闭、禁用关闭、底部翻转与窄视口边界。原生 Catalyst 独立测试应用运行实际 `GeneralSettingsView`，查看浅色／深色菜单截图，并通过真实 UI 的 fixture 保存确认工作步骤与语言更新。
 - 新增 XCUITest 覆盖五类偏好选择后的回显／重新打开选中态，以及语言、权限间切换与外部关闭。本机仅有 Command Line Tools，未运行 iPhone 模拟器 XCUITest、未构建或发布 IPA；Catalyst 验证不代替 iPhone 真机验收。
+- CI 首轮定向测试发现测试启动未注册生产连接中的 `HostSettings.onChange → applyHostMirroredPrefs`，导致收起时机写入后 fixture 的镜像状态仍为旧值。补齐 fixture 的同一回调及初始同步；保留真实单击、回显和选中态断言，不改生产保存语义。

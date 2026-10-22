@@ -83,7 +83,9 @@ extension AppModel {
                 "definitionId": .string("@deepseek-ai/dsh-permission-presets"),
             ]),
         ]
+        hostSettings.onChange = { [weak self] in self?.applyHostMirroredPrefs() }
         hostSettings.installUITestFixture()
+        applyHostMirroredPrefs()
         feedback["m-assistant"] = MessageFeedback(
             messageId: "m-assistant",
             rating: "positive",
