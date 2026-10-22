@@ -43,6 +43,30 @@ final class WorkspaceChangesUITests: XCTestCase {
         }
     }
 
+    func testReviewDismissesByDraggingAndCanReopen() {
+        let app = launch("changesReview")
+        let card = app.buttons["changesCard"]
+        XCTAssertTrue(card.waitForExistence(timeout: 10))
+        card.tap()
+        let picker = app.buttons["changesFilePicker"]
+        XCTAssertTrue(picker.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["changesReviewClose"].exists)
+
+        let header = app.navigationBars.firstMatch
+        XCTAssertTrue(header.waitForExistence(timeout: 5))
+        header.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9)))
+        let dismissed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: picker)
+        XCTAssertEqual(XCTWaiter.wait(for: [dismissed], timeout: 5), .completed)
+        XCTAssertTrue(card.waitForExistence(timeout: 5))
+        card.tap()
+        XCTAssertTrue(picker.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["-previousValue"].waitForExistence(timeout: 5))
+        app.buttons["changesReviewClose"].tap()
+        let closed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: picker)
+        XCTAssertEqual(XCTWaiter.wait(for: [closed], timeout: 5), .completed)
+    }
+
     func testSummaryAndDiffFailuresRemainVisibleAndRetryable() {
         let app = launch("changesRetry")
         let summaryRetry = app.buttons["changesSummaryRetry"]

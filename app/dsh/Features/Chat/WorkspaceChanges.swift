@@ -90,8 +90,7 @@ private struct ChangesCardContent: View {
                     sessionId: sessionId,
                     seq: item.seq ?? 0,
                     summary: summary,
-                    initialIndex: selected,
-                    onDismiss: { self.selected = nil }
+                    initialIndex: selected
                 )
                 .id([model.activeId ?? "", sessionId, String(item.seq ?? 0)])
             }
@@ -235,7 +234,7 @@ private struct ChangesReviewSheet: View {
     let seq: Int64
     let summary: WorkspaceChangesSummary
     let initialIndex: Int
-    var onDismiss: () -> Void
+    @Environment(\.dismiss) private var dismiss
 
     @State private var index: Int
     @State private var retry = 0
@@ -250,15 +249,13 @@ private struct ChangesReviewSheet: View {
         sessionId: String,
         seq: Int64,
         summary: WorkspaceChangesSummary,
-        initialIndex: Int,
-        onDismiss: @escaping () -> Void
+        initialIndex: Int
     ) {
         self.model = model
         self.sessionId = sessionId
         self.seq = seq
         self.summary = summary
         self.initialIndex = initialIndex
-        self.onDismiss = onDismiss
         _index = State(initialValue: initialIndex)
     }
 
@@ -267,20 +264,35 @@ private struct ChangesReviewSheet: View {
             VStack(alignment: .leading, spacing: 8) {
                 if summary.files.indices.contains(index) {
                     let file = summary.files[index]
-                    Menu {
-                        ForEach(Array(summary.files.enumerated()), id: \.offset) { at, entry in
-                            Button(entry.display) { index = at }
-                                .accessibilityIdentifier("changesFile:\(at)")
+                    HStack(spacing: 6) {
+                        Menu {
+                            ForEach(Array(summary.files.enumerated()), id: \.offset) { at, entry in
+                                Button(entry.display) { index = at }
+                                    .accessibilityIdentifier("changesFile:\(at)")
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(file.display)
+                                    .font(.system(size: 12))
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                    .foregroundStyle(T.ink)
+                                OfficialGlyph(kind: .chevronDown, size: 12, color: T.text2)
+                            }
+                            .padding(.horizontal, 8)
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
                         }
-                    } label: {
-                        HStack {
-                            Text(file.display).lineLimit(2).foregroundStyle(T.ink)
-                            OfficialGlyph(kind: .chevronDown, size: 12, color: T.text2)
-                            Spacer()
-                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("changesFilePicker")
+                        ChangeCounts(added: file.added, deleted: file.deleted, file: file)
+                            .fixedSize()
+                        Spacer(minLength: 0)
                     }
-                    .accessibilityIdentifier("changesFilePicker")
-                    ChangeCounts(added: file.added, deleted: file.deleted, file: file)
+                    .padding(.horizontal, 8)
+                    .overlay(alignment: .bottom) {
+                        Rectangle().fill(T.borderL3).frame(height: 0.5)
+                    }
                 }
                 if loading || loadedIndex != index {
                     Spacer()
@@ -293,26 +305,35 @@ private struct ChangesReviewSheet: View {
                             .accessibilityIdentifier("changesDiffRetry")
                     }
                     .padding(.vertical, 8)
+                    .padding(.horizontal, 16)
                     Spacer()
                 } else {
                     ChangesDiffBody(diff: diff)
+                        .padding(.horizontal, 16)
                     if diff == nil {
                         Button(L.docRetry()) { retry += 1 }
                             .accessibilityIdentifier("changesDiffRetry")
                     }
                 }
             }
-            .padding(16)
             .background(T.bg)
             .navigationTitle(L.t("本轮改动 · \(summary.turn)", "Turn \(summary.turn) changes"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(L.close(), action: onDismiss)
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button { dismiss() } label: {
+                        OfficialGlyph(kind: .closeOutline, size: 14, color: T.text2)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(L.close())
+                    .accessibilityIdentifier("changesReviewClose")
                 }
             }
         }
         .presentationDetents([.large])
+        .presentationDragIndicator(.hidden)
         .task(id: "\(model.activeId ?? "")-\(sessionId)-\(seq)-\(index)-\(retry)") {
             let requestedIndex = index
             loading = true
@@ -352,7 +373,10 @@ private struct ChangesDiffBody: View {
         let truncated = (diff?.hunks.reduce(0) { $0 + $1.lines.count } ?? 0) > 5000
         VStack(alignment: .leading, spacing: 0) {
             if let notice {
-                Text(notice).foregroundStyle(T.text3).padding(.bottom, 8)
+                Text(notice)
+                    .font(.system(size: 13))
+                    .foregroundStyle(T.text3)
+                    .padding(.bottom, 8)
             }
             ScrollView(.vertical) {
                 LazyVStack(alignment: .leading, spacing: 0) {
