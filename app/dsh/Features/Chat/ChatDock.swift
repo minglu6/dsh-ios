@@ -762,6 +762,7 @@ struct PromptQueue: View {
             .overlay(alignment: .top) {
                 UnevenRoundedRectangle(topLeadingRadius: 12, topTrailingRadius: 12)
                     .stroke(T.border, lineWidth: 0.5)
+                    .allowsHitTesting(false)
             }
             .padding(.horizontal, 30)
             .accessibilityElement(children: .contain)
@@ -848,22 +849,19 @@ struct PromptQueue: View {
     }
 
     private func icon(_ official: OfficialGlyph.Kind, enabled: Bool, label: String? = nil, action: @escaping () -> Void) -> some View {
-        ZStack {
+        Button(action: action) {
             OfficialGlyph(
                 kind: official,
                 size: CGFloat(queueActionIconSizePoints),
                 color: T.text3.opacity(enabled ? 1 : 0.45)
             )
-            .allowsHitTesting(false)
-            Button(action: action) {
-                Color.clear.frame(width: 32, height: 32)
-            }
-            .buttonStyle(.plain)
-            .disabled(!enabled)
-            .accessibilityLabel(label ?? "")
-            .accessibilityHidden(label == nil)
+            .frame(width: 32, height: 32)
+            .contentShape(Rectangle())
         }
-        .frame(width: 32, height: 32)
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .accessibilityLabel(label ?? "")
+        .accessibilityHidden(label == nil)
     }
 
     @ViewBuilder
