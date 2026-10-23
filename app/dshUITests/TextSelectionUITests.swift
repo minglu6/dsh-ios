@@ -4,6 +4,10 @@ final class TextSelectionUITests: XCTestCase {
     func testUserMessageCopiesOnlyTheHeldWord() {
         let app = launch("chatLong")
         let text = app.textViews["userMentionText.run"].firstMatch
+        XCTAssertTrue(text.waitForExistence(timeout: 8))
+        XCTAssertFalse(app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", "userMessageMenu.")
+        ).firstMatch.exists)
         assertRangeCopy(text, in: app)
     }
 
