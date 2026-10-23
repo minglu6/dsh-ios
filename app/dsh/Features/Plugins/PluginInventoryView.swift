@@ -157,7 +157,7 @@ struct PluginInventoryView: View {
                 ForEach(Array(globalRows.enumerated()), id: \.offset) { _, row in
                     let rowKey = "global:\(row["entryId"].str() ?? "")"
                     let providers = inventoryProviders(entry: row, presets: presets)
-                    inventoryRow(row, english: english, expanded: expanded == rowKey, providers: providers, onPreset: { selectedId = $0["id"].str(); presetOpen = true }) {
+                    inventoryRow(row, english: english, expanded: expanded == rowKey, providers: providers) {
                         expanded = expanded == rowKey ? nil : rowKey
                     }
                 }
@@ -223,7 +223,6 @@ struct PluginInventoryView: View {
         expanded: Bool,
         preset: JSONValue? = nil,
         providers: [JSONValue] = [],
-        onPreset: ((JSONValue) -> Void)? = nil,
         onToggle: @escaping () -> Void
     ) -> some View {
         let state = inventoryEnablement(row, viaPresets: !providers.isEmpty)
@@ -297,10 +296,6 @@ struct PluginInventoryView: View {
                     }
                 }
                 .padding(14)
-                if !providers.isEmpty, let first = providers.first, let onPreset {
-                    Button(L.t("去预设分组查看", "View in the preset group")) { onPreset(first) }
-                        .padding(.horizontal, 8)
-                }
             }
         }
         .background(T.settingsCard, in: RoundedRectangle(cornerRadius: 12))
