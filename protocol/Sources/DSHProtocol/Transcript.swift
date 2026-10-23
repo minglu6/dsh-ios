@@ -817,6 +817,8 @@ public final class TranscriptReducer {
     private var nextTurnClaim = InboxClaimState.empty
     private var nextStepClaim = InboxClaimState.empty
     private var inboxClaimSeq: [String: Int64] = ["next-turn": -1, "next-step": -1]
+    // Claims follow event order; live projections may already include later splices.
+    private var claimInbox: [String: [JSONValue]] = ["next-turn": [], "next-step": []]
     private var live: LiveAttempt?
     private var assistantRevision: Int64 = 0
     private var streamSuppressed = false
@@ -1122,6 +1124,7 @@ public final class TranscriptReducer {
         nextTurnClaim = .empty
         nextStepClaim = .empty
         inboxClaimSeq = ["next-turn": -1, "next-step": -1]
+        claimInbox = ["next-turn": [], "next-step": []]
         live = nil
         assistantRevision = 0
         streamSuppressed = false
@@ -1861,6 +1864,10 @@ public final class TranscriptReducer {
         inboxSeq = seq
         for target in ["next-turn", "next-step"] {
             inbox[target] = value[target].arr() ?? []
+            if baseline {
+                claimInbox[target] = inbox[target]
+                inboxClaimSeq[target] = seq
+            }
             for (index, message) in (inbox[target] ?? []).enumerated() {
                 observeInboxMessage(target: target, message: message, seq: seq, index: index)
             }
@@ -2116,18 +2123,22 @@ public final class TranscriptReducer {
 
     /// Desktop `ui-chat` `inbox.ts` `applySplice` — per-target claim replacement.
     private func spliceInbox(_ data: JSONValue, seq: Int64) {
-        guard let target = data["target"].str(), var messages = inbox[target] else { return }
+        guard let target = data["target"].str(), var messages = claimInbox[target] else { return }
         guard let start = data["start"].int() else { return }
         let count = data["removedCount"].int() ?? 0
         let inserted = data["inserted"].arr() ?? []
         if start < 0 || count < 0 || start > messages.count || count > messages.count - start { return }
         if seq <= (inboxClaimSeq[target] ?? -1) { return }
         inboxClaimSeq[target] = seq
-        if seq > inboxSeq { inboxSeq = seq }
+        let updatesQueue = seq > inboxSeq
         let removed = Array(messages[start..<(start + count)])
         messages.removeSubrange(start..<(start + count))
         messages.insert(contentsOf: inserted, at: start)
-        inbox[target] = messages
+        claimInbox[target] = messages
+        if updatesQueue {
+            inbox[target] = messages
+            inboxSeq = seq
+        }
         let identities = removed.compactMap { message -> InboxClaimIdentity? in
             guard let id = message["id"].str()?.nilIfBlank else { return nil }
             return InboxClaimIdentity(id: id, sourceKind: message["source"]["kind"].str())
