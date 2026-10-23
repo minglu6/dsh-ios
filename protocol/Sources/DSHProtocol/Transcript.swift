@@ -218,6 +218,8 @@ public enum Item: Sendable, Equatable, Identifiable {
         public var key: String
         public var text: String
         public var images: Int
+        /// False for attachments or any content that cannot be replayed as prompt text.
+        public var textOnly: Bool
         public var pending: Bool
         public var at: Int64?
         public var seq: Int64?
@@ -232,6 +234,7 @@ public enum Item: Sendable, Equatable, Identifiable {
             key: String,
             text: String,
             images: Int = 0,
+            textOnly: Bool? = nil,
             pending: Bool = false,
             at: Int64? = nil,
             seq: Int64? = nil,
@@ -244,6 +247,7 @@ public enum Item: Sendable, Equatable, Identifiable {
             self.key = key
             self.text = text
             self.images = images
+            self.textOnly = textOnly ?? (images == 0 && imageRefs.isEmpty)
             self.pending = pending
             self.at = at
             self.seq = seq
@@ -1722,6 +1726,7 @@ public final class TranscriptReducer {
     private func upsertUser(_ msg: JSONValue, key: String, pending: Bool, at: Int64?, seq: Int64?) {
         let blocks = msg["content"].arr() ?? []
         let text = blocks.filter { $0["type"].str() == "text" }.map { $0["text"].str() ?? "" }.joined(separator: "\n")
+        let textOnly = blocks.allSatisfy { $0["type"].str() == "text" }
         let imageRefs = blocks.compactMap { block -> ImageRef? in
             guard block["type"].str() == "image" else { return nil }
             let att = block["attachment"]
@@ -1737,6 +1742,7 @@ public final class TranscriptReducer {
         if let idx, case .user(var old) = committed[idx] {
             old.text = text
             old.images = images
+            old.textOnly = textOnly
             old.pending = pending && old.pending
             old.at = at ?? old.at
             old.seq = seq ?? old.seq
@@ -1751,7 +1757,7 @@ public final class TranscriptReducer {
             if let rpc { userByRpc[rpc] = committed.count }
             if let messageId { userByMessage[messageId] = committed.count }
             committed.append(.user(Item.User(
-                key: key, text: text, images: images, pending: pending, at: at, seq: seq,
+                key: key, text: text, images: images, textOnly: textOnly, pending: pending, at: at, seq: seq,
                 imageRefs: imageRefs, requestId: rpc, messageId: messageId, messageSourceJson: sourceJson
             )))
         }
@@ -1761,7 +1767,8 @@ public final class TranscriptReducer {
         if userByRpc[prompt.id] != nil { return }
         userByRpc[prompt.id] = committed.count
         committed.append(.user(Item.User(
-            key: "local-\(prompt.id)", text: prompt.text, images: prompt.images, pending: true,
+            key: "local-\(prompt.id)", text: prompt.text, images: prompt.images,
+            textOnly: prompt.attachments.isEmpty, pending: true,
             at: nil, seq: nil, imageRefs: [], requestId: prompt.id, messageId: nil
         )))
     }

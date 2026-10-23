@@ -14,9 +14,9 @@ public enum MessageActionKind: String, Equatable, CaseIterable, Sendable {
 
 public enum MessageActionPolicy {
     public static var assistantRow: [MessageActionKind] { [.copy, .like, .dislike, .branch] }
-    /// Desktop `UserMessageNodeView` has no persistent copy control; mobile
-    /// only shows the start clock. Phone must not render a standalone copy
-    /// icon under the user bubble.
+    /// Desktop `UserMessageNodeView` has no persistent copy control. Phone
+    /// exposes sent-message actions in a separate overflow menu, not as a
+    /// standalone copy icon under the user bubble.
     public static var userRow: [MessageActionKind] { [] }
     public static var includesBranch: Bool { true }
     public static var includesShare: Bool { false }

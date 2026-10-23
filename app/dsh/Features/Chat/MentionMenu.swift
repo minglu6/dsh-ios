@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import DSHProtocol
 
 struct MentionMenuOverlay: View {
@@ -253,9 +254,7 @@ struct UserMentionText: View {
             ForEach(Array(mentionRuns(text).enumerated()), id: \.offset) { _, run in
                 switch run {
                 case .text(let value):
-                    Text(value)
-                        .font(LocalFonts.text())
-                        .foregroundStyle(color.opacity(pending ? 0.6 : 1))
+                    SelectableText(value, font: LocalFonts.uiText(), color: UIColor(color.opacity(pending ? 0.6 : 1)), identifier: "userMentionText.run")
                 case .chip(let ref):
                     MentionChipLabel(ref: ref, composer: false)
                 }

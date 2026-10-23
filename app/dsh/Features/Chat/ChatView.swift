@@ -9,6 +9,7 @@ struct ChatView: View {
     @State private var showModels = false
     @State private var tab = 0
     @State private var feedbackDraft: FeedbackDraft?
+    @State private var editingUserMessage: SentMessageTarget?
     @State private var highlightedRow: String?
     @ObservedObject private var inspectorNav = InspectorNavigation.shared
     @State private var openTurns: [String: Bool] = [:]
@@ -76,6 +77,12 @@ struct ChatView: View {
                     )
                 }
             )
+        }
+        .sheet(item: $editingUserMessage) { target in
+            UserMessageEditSheet(model: model, target: target) {
+                editingUserMessage = nil
+            }
+            .id(target.id)
         }
         .overlay {
             if let value = riskPermission {
@@ -631,6 +638,7 @@ struct ChatView: View {
                                 changes: attached,
                                 highlightedChanges: attached.map { inspectorNav.revealItemKey == $0.key } ?? false,
                                 onOpenFeedback: openFeedback,
+                                onEditUserMessage: { editingUserMessage = $0 },
                                 onTool: { inspectTool = $0 }
                             )
                         }
@@ -900,12 +908,14 @@ private struct ToolInspectSheet: View {
                     Text(summary.title).font(Font.headline).foregroundStyle(T.ink)
                     if let summary = summary.summary { Text(summary).foregroundStyle(T.text2) }
                     if !tool.arguments.isEmpty {
-                        Text(tool.arguments).font(LocalFonts.code()).foregroundStyle(T.text3).textSelection(.enabled)
+                        SelectableText(tool.arguments, font: LocalFonts.uiCode(), color: UIColor(T.text3))
                     }
                     if let result = tool.result, !result.isEmpty {
-                        Text(result).font(LocalFonts.code()).foregroundStyle(T.text2).textSelection(.enabled)
+                        SelectableText(result, font: LocalFonts.uiCode(), color: UIColor(T.text2))
                     }
-                    if let error = tool.error { Text(error).foregroundStyle(T.err) }
+                    if let error = tool.error {
+                        SelectableText(error, font: LocalFonts.uiText(), color: UIColor(T.err))
+                    }
                 }
                 .padding(16)
             }
@@ -923,12 +933,18 @@ struct ChatRowView: View {
     var changes: Item.Changes? = nil
     var highlightedChanges = false
     var onOpenFeedback: (String, String) -> Void
+    var onEditUserMessage: (SentMessageTarget) -> Void = { _ in }
     var onTool: (Item.Tool) -> Void
 
     var body: some View {
         switch row {
         case .user(let user):
-            MessageRow(item: .user(user), model: model, onOpenFeedback: onOpenFeedback)
+            MessageRow(
+                item: .user(user),
+                model: model,
+                onOpenFeedback: onOpenFeedback,
+                onEditUserMessage: onEditUserMessage
+            )
         case .answer(let text):
             MessageRow(
                 item: .text(text),
@@ -1116,10 +1132,11 @@ private struct CommandRow: View {
         VStack(alignment: .leading, spacing: 0) {
             header(title: title, summary: summary, expandable: expandable, running: running, color: summaryColor)
             if open, let text = item.outcomeText {
-                Text(text)
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundStyle(error ? T.err : T.ink)
-                    .textSelection(.enabled)
+                SelectableText(
+                    text,
+                    font: LocalFonts.uiCode(size: 12),
+                    color: UIColor(error ? T.err : T.ink)
+                )
                     .frame(maxWidth: .infinity, maxHeight: 260, alignment: .topLeading)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
@@ -1133,7 +1150,7 @@ private struct CommandRow: View {
             }
         }
         .padding(.vertical, 2)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: open ? .contain : .combine)
         .accessibilityLabel(commandRowStateLabel(item, english: L.en).map { "\($0) \(title)" } ?? title)
         .accessibilityValue(summary)
     }
@@ -1604,6 +1621,7 @@ struct MessageRow: View {
     var changes: Item.Changes? = nil
     var highlightedChanges = false
     var onOpenFeedback: (String, String) -> Void = { _, _ in }
+    var onEditUserMessage: (SentMessageTarget) -> Void = { _ in }
 
     var body: some View {
         switch item {
@@ -1652,7 +1670,14 @@ struct MessageRow: View {
                     clock: .end,
                     trailing: true,
                     showsCopy: userMessageShowsPersistentCopy,
-                    topPadding: 0
+                    topPadding: 0,
+                    userMenu: model.chat.map { chat in
+                        UserMessageMenu(
+                            model: model,
+                            target: SentMessageTarget(hostId: model.activeId, sessionId: chat.sessionId, user: user),
+                            onEdit: onEditUserMessage
+                        )
+                    }
                 )
             }
         case .text(let text):
@@ -1750,6 +1775,138 @@ struct MessageRow: View {
     }
 }
 
+private struct UserMessageMenu: View {
+    @ObservedObject var model: AppModel
+    let target: SentMessageTarget
+    var onEdit: (SentMessageTarget) -> Void
+    @State private var copied = false
+
+    private var restriction: String? {
+        userMessageReplayUnavailable(target.user, english: L.en)
+    }
+
+    var body: some View {
+        Menu {
+            Button {
+                UIPasteboard.general.string = target.user.text
+                copied = true
+                Task {
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                    copied = false
+                }
+            } label: {
+                Label(L.copy(), systemImage: "doc.on.doc")
+            }
+            .disabled(target.user.text.isEmpty)
+            .accessibilityIdentifier("userMessageCopy")
+            Button {
+                onEdit(target)
+            } label: {
+                Label(L.t("编辑为新消息", "Edit as new message"), systemImage: "pencil")
+            }
+            .disabled(restriction != nil || model.sendingSentMessage)
+            .accessibilityIdentifier("userMessageEdit")
+            Button {
+                Task { try? await model.sendSentMessage(target, text: target.user.text) }
+            } label: {
+                Label(L.t("重新发送", "Resend"), systemImage: "arrow.clockwise")
+            }
+            .disabled(restriction != nil || model.sendingSentMessage)
+            .accessibilityIdentifier("userMessageResend")
+            if let restriction {
+                Text(restriction)
+            }
+        } label: {
+            OfficialGlyph(kind: copied ? .checkOutline : .ellipsis, size: 16, color: T.text3)
+                .frame(width: 36, height: 48)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel(L.t("消息操作", "Message actions"))
+        .accessibilityIdentifier("userMessageMenu.\(target.user.key)")
+    }
+}
+
+private struct UserMessageEditSheet: View {
+    @ObservedObject var model: AppModel
+    let target: SentMessageTarget
+    var onDismiss: () -> Void
+    @State private var text: String
+    @State private var submitting = false
+    @State private var error: String?
+
+    init(model: AppModel, target: SentMessageTarget, onDismiss: @escaping () -> Void) {
+        self.model = model
+        self.target = target
+        self.onDismiss = onDismiss
+        _text = State(initialValue: target.user.text)
+    }
+
+    private var unavailable: String? { model.sentMessageUnavailableReason(target) }
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(L.t(
+                    "编辑后的内容将在原会话中作为新消息发送，不修改历史记录，也不会覆盖输入框中的草稿。",
+                    "The edited text will be sent as a new message in the original session. History and the composer draft stay unchanged."
+                ))
+                .font(.footnote)
+                .foregroundStyle(T.text3)
+                TextEditor(text: $text)
+                    .font(.body)
+                    .scrollContentBackground(.hidden)
+                    .padding(8)
+                    .background(T.fill2, in: RoundedRectangle(cornerRadius: 10))
+                    .frame(minHeight: 180)
+                    .disabled(submitting)
+                    .accessibilityIdentifier("userMessageEditInput")
+                if let message = error ?? unavailable {
+                    Text(message)
+                        .font(.footnote)
+                        .foregroundStyle(T.err)
+                        .accessibilityIdentifier("userMessageEditError")
+                }
+            }
+            .padding(16)
+            .background(T.surface)
+            .navigationTitle(L.t("编辑为新消息", "Edit as new message"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(L.close(), action: onDismiss).disabled(submitting)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button {
+                        let message = text
+                        submitting = true
+                        error = nil
+                        Task {
+                            do {
+                                try await model.sendSentMessage(target, text: message)
+                                onDismiss()
+                            } catch {
+                                self.error = error.localizedDescription
+                            }
+                            submitting = false
+                        }
+                    } label: {
+                        if submitting {
+                            ProgressView()
+                        } else {
+                            Text(L.t("作为新消息发送", "Send as new message"))
+                        }
+                    }
+                    .disabled(submitting || unavailable != nil || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .accessibilityIdentifier("userMessageEditSend")
+                }
+            }
+        }
+        .interactiveDismissDisabled(submitting)
+        .onChange(of: text) { _ in error = nil }
+        .accessibilityIdentifier("userMessageEditSheet")
+    }
+}
+
 private enum MessageClock { case start, end }
 
 /// Desktop MessageIconActions: copy → extraActions (like/dislike) → branch → usage → clock.
@@ -1767,6 +1924,7 @@ private struct MessageActions: View {
     var trailing = false
     var showsCopy = true
     var topPadding: CGFloat = 4
+    var userMenu: UserMessageMenu? = nil
     @State private var copied = false
 
     var body: some View {
@@ -1817,6 +1975,9 @@ private struct MessageActions: View {
                 usageAction()
             }
             Spacer(minLength: 0)
+            if let userMenu {
+                userMenu
+            }
             if clock == .end, let timeMs {
                 Text(formatMessageClock(timeMs, english: L.en))
                     .font(Font.system(size: 12))

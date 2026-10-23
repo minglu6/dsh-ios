@@ -166,6 +166,8 @@ jobs:
               -only-testing:dshUITests/TurnNavigationUITests
               -only-testing:dshUITests/TrajectoryUITests
               -only-testing:dshUITests/ComposerStatsUITests
+              -only-testing:dshUITests/MessageActionsUITests
+              -only-testing:dshUITests/TextSelectionUITests
               -only-testing:dshUITests/ScreenshotTests/testLightScreenshots
               -only-testing:dshUITests/ScreenshotTests/testDarkScreenshots
               -only-testing:dshUITests/ScreenshotTests/testNewSessionEntriesOpenSelectableDraftWithoutCreatingBlankChat
@@ -207,6 +209,8 @@ jobs:
               -only-testing:dshUITests/JobsLifecycleUITests
               -only-testing:dshUITests/SessionTitleUITests
               -only-testing:dshUITests/TurnNavigationUITests
+              -only-testing:dshUITests/MessageActionsUITests
+              -only-testing:dshUITests/TextSelectionUITests
             )
             MIN_SCREENSHOTS=20
           fi

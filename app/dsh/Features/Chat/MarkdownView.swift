@@ -23,9 +23,6 @@ struct MarkdownView: View {
                 MdBlockView(block: block, wrapCode: wrapCode, bodyColor: bodyColor, variant: variant)
             }
         }
-        .font(variant == .compact
-            ? LocalFonts.text(size: CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize)))
-            : LocalFonts.text(size: variant == .trajectory ? 13 : nil))
         .environment(\.openURL, OpenURLAction { url in
             if url.scheme == "dshfile",
                let path = URLComponents(url: url, resolvingAgainstBaseURL: false)?
@@ -57,26 +54,34 @@ private struct MdBlockView: View {
         max(0, CGFloat(reasoningBodyLineHeightPoints) - UIFont.systemFont(ofSize: compactSize).lineHeight)
     }
 
+    private var bodyFont: UIFont {
+        LocalFonts.uiText(size: variant == .compact ? compactSize : variant == .trajectory ? 13 : nil)
+    }
+
+    private var codeFont: UIFont {
+        LocalFonts.uiCode(size: variant == .trajectory ? 12 : nil)
+    }
+
+    private func headingFont(_ level: Int) -> UIFont {
+        let font: UIFont
+        if variant == .compact {
+            font = bodyFont
+        } else if variant == .trajectory {
+            font = LocalFonts.uiText(size: level == 1 ? 16 : level == 2 ? 15 : 14)
+        } else if level <= 1 {
+            font = bodyFont
+        } else {
+            return .preferredFont(forTextStyle: .headline)
+        }
+        return font.withWeight(.semibold)
+    }
+
     var body: some View {
         switch block {
         case .paragraph(let spans):
-            if variant == .compact {
-                wraps(spans)
-                    .font(LocalFonts.text(size: compactSize))
-                    .lineSpacing(compactLineSpacing)
-            } else {
-                wraps(spans)
-            }
+            wraps(spans)
         case .heading(let level, let spans):
-            if variant == .compact {
-                wraps(spans)
-                    .font(LocalFonts.text(size: compactSize).weight(.semibold))
-                    .lineSpacing(compactLineSpacing)
-            } else if variant == .trajectory {
-                wraps(spans).font(LocalFonts.text(size: level == 1 ? 16 : level == 2 ? 15 : 14).weight(.semibold))
-            } else {
-                wraps(spans).font(level <= 1 ? LocalFonts.text().weight(.semibold) : Font.headline)
-            }
+            wraps(spans, font: headingFont(level))
         case .bulletList(let items, _):
             VStack(alignment: .leading, spacing: 4) {
                 ForEach(Array(items.enumerated()), id: \.offset) { _, item in
@@ -93,7 +98,8 @@ private struct MdBlockView: View {
             VStack(alignment: .leading, spacing: 4) {
                 ForEach(Array(items.enumerated()), id: \.offset) { index, item in
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text("\(start + index).").foregroundStyle(T.text3)
+                        SelectableText("\(start + index).", font: bodyFont, color: UIColor(T.text3))
+                            .alignmentGuide(.firstTextBaseline) { _ in bodyFont.ascender }
                         nested(item)
                     }
                 }
@@ -106,21 +112,14 @@ private struct MdBlockView: View {
         case .code(let language, let literal, let incomplete):
             VStack(alignment: .leading, spacing: 4) {
                 if let language, !language.isEmpty {
-                    Text(language).font(Font.caption2).foregroundStyle(T.text3)
+                    SelectableText(language, font: .preferredFont(forTextStyle: .caption2), color: UIColor(T.text3))
                 }
                 Group {
                     if wrapCode {
-                        Text(literal)
-                            .font(LocalFonts.code(size: variant == .trajectory ? 12 : nil))
-                            .foregroundStyle(T.ink)
-                            .textSelection(.enabled)
-                            .fixedSize(horizontal: false, vertical: true)
+                        SelectableText(literal, font: codeFont, color: UIColor(T.ink), identifier: "markdown.code")
                     } else {
                         ScrollView(.horizontal, showsIndicators: false) {
-                            Text(literal)
-                                .font(LocalFonts.code(size: variant == .trajectory ? 12 : nil))
-                                .foregroundStyle(T.ink)
-                                .textSelection(.enabled)
+                            SelectableText(literal, font: codeFont, color: UIColor(T.ink), identifier: "markdown.code")
                         }
                     }
                 }
@@ -134,7 +133,8 @@ private struct MdBlockView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(spacing: 0) {
                         ForEach(Array((headers.first ?? []).enumerated()), id: \.offset) { _, cell in
-                            wraps(cell).font(Font.subheadline.weight(.semibold)).frame(minWidth: 72, alignment: .leading).padding(6)
+                            wraps(cell, font: UIFont.preferredFont(forTextStyle: .subheadline).withWeight(.semibold))
+                                .frame(minWidth: 72, alignment: .leading).padding(6)
                         }
                     }
                     .background(T.fill2)
@@ -163,21 +163,18 @@ private struct MdBlockView: View {
         }
     }
 
-    @ViewBuilder
-    private func wraps(_ spans: [MdSpan]) -> some View {
-        let text = spans.reduce(Text("")) { acc, span in acc + spanText(span) }
-        if spans.contains(where: Self.isFileChipSpan) {
-            text
-                .accessibilityIdentifier(markdownFileChipAccessibilityIdentifier)
-                .overlay(alignment: .leading) {
-                    Color.clear
-                        .frame(width: 16, height: 16)
-                        .accessibilityHidden(true)
-                        .accessibilityIdentifier(markdownFileChipAccessibilityIdentifier)
-                }
-        } else {
-            text
-        }
+    private func wraps(_ spans: [MdSpan], font: UIFont? = nil) -> some View {
+        let font = font ?? bodyFont
+        let attributed = NSMutableAttributedString()
+        for span in spans { attributed.append(spanText(span, font: font)) }
+        let paragraph = NSMutableParagraphStyle()
+        if variant == .compact { paragraph.lineSpacing = compactLineSpacing }
+        attributed.addAttribute(.paragraphStyle, value: paragraph, range: NSRange(location: 0, length: attributed.length))
+        return SelectableText(
+            attributedText: attributed,
+            identifier: spans.contains(where: Self.isFileChipSpan) ? markdownFileChipAccessibilityIdentifier : "markdown.text"
+        )
+        .alignmentGuide(.firstTextBaseline) { _ in font.ascender }
     }
 
     private static func isFileChipSpan(_ span: MdSpan) -> Bool {
@@ -191,45 +188,58 @@ private struct MdBlockView: View {
         }
     }
 
-    private func spanText(_ span: MdSpan) -> Text {
+    private func spanText(_ span: MdSpan, font: UIFont) -> NSAttributedString {
         switch span {
         case .text(let value, let bold, let italic):
-            var text = Text(value).foregroundColor(bodyColor)
-            if bold { text = text.bold() }
-            if italic { text = text.italic() }
-            return text
+            var traits = font.fontDescriptor.symbolicTraits
+            if bold { traits.insert(.traitBold) }
+            if italic { traits.insert(.traitItalic) }
+            let styled = font.fontDescriptor.withSymbolicTraits(traits).map { UIFont(descriptor: $0, size: font.pointSize) } ?? font
+            return NSAttributedString(string: value, attributes: [.font: styled, .foregroundColor: UIColor(bodyColor)])
         case .code(let value):
-            return Text(value).font(LocalFonts.code(size: variant == .trajectory ? 12 : nil)).foregroundColor(bodyColor)
+            return NSAttributedString(string: value, attributes: [.font: codeFont, .foregroundColor: UIColor(bodyColor)])
         case .link(let text, let dest):
             if let path = parseFileLink(dest) {
-                return fileChip(path: path, label: text)
+                return fileChip(path: path, label: text, font: font)
             }
-            if let url = URL(string: dest), isChatWebLink(url) {
-                var attributed = AttributedString(text)
-                attributed.link = url
-                attributed.foregroundColor = T.link
-                attributed.underlineStyle = .single
-                return Text(attributed)
-            }
-            return Text(text).foregroundColor(T.link).underline()
+            var attributes: [NSAttributedString.Key: Any] = [
+                .font: font, .foregroundColor: UIColor(T.link), .underlineStyle: NSUnderlineStyle.single.rawValue,
+            ]
+            if let url = URL(string: dest), isChatWebLink(url) { attributes[.link] = url }
+            return NSAttributedString(string: text, attributes: attributes)
         case .fileChip(let path, let label):
-            return fileChip(path: path, label: label)
+            return fileChip(path: path, label: label, font: font)
         }
     }
 
-    private func fileChip(path: String, label: String) -> Text {
+    private func fileChip(path: String, label: String, font: UIFont) -> NSAttributedString {
         let display = label.isEmpty ? path : label
         var components = URLComponents()
         components.scheme = "dshfile"
         components.host = "open"
         components.queryItems = [URLQueryItem(name: "p", value: path)]
-        guard let url = components.url else {
-            preconditionFailure("dshfile URL")
+        guard let url = components.url else { preconditionFailure("dshfile URL") }
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: font, .foregroundColor: UIColor(T.link), .link: url, .underlineStyle: 0,
+        ]
+        let result = NSMutableAttributedString()
+        if let image = UIImage(named: markdownFileChipAssetName)?.withTintColor(UIColor(T.link), renderingMode: .alwaysOriginal) {
+            let attachment = NSTextAttachment()
+            attachment.image = image
+            attachment.bounds = CGRect(x: 0, y: (font.capHeight - image.size.height) / 2, width: image.size.width, height: image.size.height)
+            let icon = NSMutableAttributedString(attachment: attachment)
+            icon.addAttributes(attributes, range: NSRange(location: 0, length: icon.length))
+            result.append(icon)
         }
-        var attributed = AttributedString(" \(display)")
-        attributed.link = url
-        attributed.foregroundColor = T.link
-        attributed.underlineStyle = NSUnderlineStyle()
-        return Text(Image(markdownFileChipAssetName)).foregroundColor(T.link) + Text(attributed)
+        result.append(NSAttributedString(string: " \(display)", attributes: attributes))
+        return result
+    }
+}
+
+private extension UIFont {
+    func withWeight(_ weight: UIFont.Weight) -> UIFont {
+        UIFont(descriptor: fontDescriptor.addingAttributes([
+            .traits: [UIFontDescriptor.TraitKey.weight: weight.rawValue],
+        ]), size: pointSize)
     }
 }

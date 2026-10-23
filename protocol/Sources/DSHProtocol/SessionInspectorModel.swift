@@ -514,6 +514,7 @@ private func inspectorItemRow(_ item: Item) -> InspectorRow {
         fields = jsonObject([
             "text": .string(v.text),
             "images": .number(Double(v.images)),
+            "textOnly": .bool(v.textOnly),
             "pending": .bool(v.pending),
             "at": v.at.map { .number(Double($0)) },
             "seq": v.seq.map { .number(Double($0)) },

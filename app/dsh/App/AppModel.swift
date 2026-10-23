@@ -39,6 +39,14 @@ struct ChatState {
     var agentPreset: String?
 }
 
+struct SentMessageTarget: Identifiable {
+    let hostId: String?
+    let sessionId: String
+    let user: Item.User
+
+    var id: String { "\(hostId ?? "")\n\(sessionId)\n\(user.key)" }
+}
+
 enum AttachStatus: String, Equatable {
     case pending, uploading, ready, failed
 }
@@ -201,6 +209,7 @@ final class AppModel: ObservableObject {
     @Published var feedback: [String: MessageFeedback] = [:]
     @Published var firstPrompt: FirstPrompt? = nil
     private var firstPromptSessionId: String?
+    @Published private(set) var sendingSentMessage = false
     @Published var sessionGroupBy: SessionGroupBy = AppPrefs.sessionGroupBy
     @Published var sessionOrderBy: SessionOrderBy = AppPrefs.sessionOrderBy
     @Published var archivedFilter: ArchivedFilter = AppPrefs.archivedFilter
@@ -698,6 +707,54 @@ final class AppModel: ObservableObject {
                 return
             }
             push(.panel(.browser))
+        }
+    }
+
+    func sentMessageUnavailableReason(_ target: SentMessageTarget) -> String? {
+        guard activeId == target.hostId, let state = chat, state.sessionId == target.sessionId else {
+            return L.t("会话或远程主机已切换，请返回原会话后再发送。", "The session or remote host changed. Return to the original session before sending.")
+        }
+        guard state.loaded else {
+            return L.t("会话仍在加载，请稍后再试。", "The session is still loading. Try again shortly.")
+        }
+        guard let item = state.items.first(where: { $0.key == target.user.key }),
+              case .user(let source) = item, source.text == target.user.text else {
+            return L.t("原消息已变化或不在当前记录中，请重新打开消息操作。", "The original message changed or is no longer loaded. Open its actions again.")
+        }
+        if let reason = userMessageReplayUnavailable(target.user, english: L.en)
+            ?? userMessageReplayUnavailable(source, english: L.en) {
+            return reason
+        }
+        guard isOnline, client != nil else {
+            return L.t("未连接到远程主机，恢复连接后可重新发送。", "Not connected to the remote host. Reconnect before sending.")
+        }
+        guard firstPrompt == nil else {
+            return L.t("另一条消息仍在提交，请稍后再试。", "Another message is still being submitted. Try again shortly.")
+        }
+        guard !sendingSentMessage else {
+            return L.t("消息仍在提交，请勿重复发送。", "The message is still being submitted. Do not send it again yet.")
+        }
+        return nil
+    }
+
+    /// Replays into the bound session without reading or modifying the composer draft.
+    func sendSentMessage(_ target: SentMessageTarget, text: String) async throws {
+        do {
+            if let reason = sentMessageUnavailableReason(target) {
+                throw PocketError(code: "message/unavailable", message: reason)
+            }
+            guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw PocketError(code: "invalid", message: L.t("消息不能为空", "Message cannot be empty"))
+            }
+            guard let client, let state = chat else {
+                throw PocketError(code: "transport", message: L.t("未连接到远程主机", "Not connected to the remote host"))
+            }
+            sendingSentMessage = true
+            defer { sendingSentMessage = false }
+            try await sendPrompt(client, chat: state, text: text)
+        } catch {
+            emit(error.localizedDescription)
+            throw error
         }
     }
 
@@ -2779,6 +2836,9 @@ final class AppModel: ObservableObject {
         gesture: ComposerSubmitGesture = .enter,
         requestId: String? = nil
     ) async throws {
+        guard self.client === client, self.chat?.sessionId == chat.sessionId else {
+            throw PocketError(code: "session/changed", message: L.t("会话或远程主机已切换，未发送消息。", "The session or remote host changed. The message was not sent."))
+        }
         let target = reducer
         let requestId = requestId ?? UUID().uuidString
         let mode = resolveSubmitMode(
@@ -2808,7 +2868,7 @@ final class AppModel: ObservableObject {
             )
         } catch {
             target.discardEcho(requestId)
-            publishChat()
+            if reducer === target { publishChat() }
             throw error
         }
     }
