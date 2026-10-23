@@ -8,6 +8,17 @@ enum MarkdownVariant {
     case trajectory
 }
 
+private struct MarkdownTextScaleKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 1
+}
+
+extension EnvironmentValues {
+    var markdownTextScale: CGFloat {
+        get { self[MarkdownTextScaleKey.self] }
+        set { self[MarkdownTextScaleKey.self] = newValue }
+    }
+}
+
 struct MarkdownView: View {
     let source: String
     var streaming = false
@@ -16,6 +27,8 @@ struct MarkdownView: View {
     var variant: MarkdownVariant = .body
     var onFile: ((String) -> Void)? = nil
     var onLink: ((URL) -> Void)? = nil
+    @State private var textScale: CGFloat = 1
+    @GestureState private var pinchScale: CGFloat = 1
 
     var body: some View {
         VStack(alignment: .leading, spacing: variant == .compact ? 4 : 8) {
@@ -23,6 +36,12 @@ struct MarkdownView: View {
                 MdBlockView(block: block, wrapCode: wrapCode, bodyColor: bodyColor, variant: variant)
             }
         }
+        .environment(\.markdownTextScale, boundedScale(textScale * pinchScale))
+        .simultaneousGesture(
+            MagnificationGesture()
+                .updating($pinchScale) { value, state, _ in state = value }
+                .onEnded { value in textScale = boundedScale(textScale * value) }
+        )
         .environment(\.openURL, OpenURLAction { url in
             if url.scheme == "dshfile",
                let path = URLComponents(url: url, resolvingAgainstBaseURL: false)?
@@ -37,29 +56,34 @@ struct MarkdownView: View {
             return .systemAction
         })
     }
+
+    private func boundedScale(_ value: CGFloat) -> CGFloat {
+        min(3, max(0.75, value))
+    }
 }
 
-private struct MdBlockView: View {
+struct MdBlockView: View {
     let block: MdBlock
     let wrapCode: Bool
     let bodyColor: Color
     var variant: MarkdownVariant = .body
+    @Environment(\.markdownTextScale) private var textScale
 
     private var compactSize: CGFloat {
-        CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize))
+        CGFloat(reasoningBodyFontSize(contentFontSize: AppPrefs.fontSize)) * textScale
     }
 
     /// Desktop compact `line-height: calc(20px + delta)` at the secondary size.
     private var compactLineSpacing: CGFloat {
-        max(0, CGFloat(reasoningBodyLineHeightPoints) - UIFont.systemFont(ofSize: compactSize).lineHeight)
+        max(0, CGFloat(reasoningBodyLineHeightPoints) * textScale - UIFont.systemFont(ofSize: compactSize).lineHeight)
     }
 
     private var bodyFont: UIFont {
-        LocalFonts.uiText(size: variant == .compact ? compactSize : variant == .trajectory ? 13 : nil)
+        LocalFonts.uiText(size: variant == .compact ? compactSize : (variant == .trajectory ? 13 : CGFloat(AppPrefs.fontSize)) * textScale)
     }
 
     private var codeFont: UIFont {
-        LocalFonts.uiCode(size: variant == .trajectory ? 12 : nil)
+        LocalFonts.uiCode(size: (variant == .trajectory ? 12 : CGFloat(AppPrefs.codeFontSize)) * textScale)
     }
 
     private func headingFont(_ level: Int) -> UIFont {
@@ -67,13 +91,18 @@ private struct MdBlockView: View {
         if variant == .compact {
             font = bodyFont
         } else if variant == .trajectory {
-            font = LocalFonts.uiText(size: level == 1 ? 16 : level == 2 ? 15 : 14)
+            font = LocalFonts.uiText(size: (level == 1 ? 16 : level == 2 ? 15 : 14) * textScale)
         } else if level <= 1 {
             font = bodyFont
         } else {
-            return .preferredFont(forTextStyle: .headline)
+            return scaledPreferredFont(.headline)
         }
         return font.withWeight(.semibold)
+    }
+
+    private func scaledPreferredFont(_ style: UIFont.TextStyle) -> UIFont {
+        let font = UIFont.preferredFont(forTextStyle: style)
+        return font.withSize(font.pointSize * textScale)
     }
 
     var body: some View {
@@ -89,7 +118,7 @@ private struct MdBlockView: View {
                         Circle()
                             .fill(T.text3)
                             .frame(width: 5, height: 5)
-                            .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + (variant == .trajectory ? 13 : CGFloat(AppPrefs.fontSize)) * 0.35 }
+                            .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + bodyFont.pointSize * 0.35 }
                         nested(item)
                     }
                 }
@@ -112,7 +141,7 @@ private struct MdBlockView: View {
         case .code(let language, let literal, let incomplete):
             VStack(alignment: .leading, spacing: 4) {
                 if let language, !language.isEmpty {
-                    SelectableText(language, font: .preferredFont(forTextStyle: .caption2), color: UIColor(T.text3))
+                    SelectableText(language, font: scaledPreferredFont(.caption2), color: UIColor(T.text3))
                 }
                 Group {
                     if wrapCode {
@@ -133,7 +162,7 @@ private struct MdBlockView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(spacing: 0) {
                         ForEach(Array((headers.first ?? []).enumerated()), id: \.offset) { _, cell in
-                            wraps(cell, font: UIFont.preferredFont(forTextStyle: .subheadline).withWeight(.semibold))
+                            wraps(cell, font: scaledPreferredFont(.subheadline).withWeight(.semibold))
                                 .frame(minWidth: 72, alignment: .leading).padding(6)
                         }
                     }

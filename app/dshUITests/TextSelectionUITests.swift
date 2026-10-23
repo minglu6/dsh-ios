@@ -13,6 +13,32 @@ final class TextSelectionUITests: XCTestCase {
         assertRangeCopy(paragraph, in: app)
     }
 
+    func testOutputPinchReflowsTextWithoutChangingComposerAndKeepsRangeCopy() {
+        let app = launch("chat")
+        let paragraph = app.textViews["official.markdownFileChip"].firstMatch
+        let composer = app.textViews["composerInput"].firstMatch
+        XCTAssertTrue(paragraph.waitForExistence(timeout: 8))
+        let source = paragraph.value as? String
+        let initialHeight = paragraph.frame.height
+        let composerHeight = composer.frame.height
+        paragraph.pinch(withScale: 2, velocity: 1)
+        let enlarged = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in paragraph.frame.height > initialHeight + 4 },
+            object: nil
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [enlarged], timeout: 4), .completed)
+        XCTAssertEqual(paragraph.value as? String, source)
+        XCTAssertEqual(composer.frame.height, composerHeight, accuracy: 1)
+        let enlargedHeight = paragraph.frame.height
+        paragraph.pinch(withScale: 0.7, velocity: -1)
+        let reduced = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in paragraph.frame.height < enlargedHeight - 4 },
+            object: nil
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [reduced], timeout: 4), .completed)
+        assertRangeCopy(paragraph, in: app)
+    }
+
     private func assertRangeCopy(_ target: XCUIElement, in app: XCUIApplication) {
         XCTAssertTrue(target.waitForExistence(timeout: 8), "Expected a native selectable text view")
         let transcript = app.scrollViews["chatTranscript"].firstMatch
