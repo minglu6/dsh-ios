@@ -19,6 +19,7 @@ struct UserQuestionCard: View {
 
     @State private var busy = false
     @State private var err: String?
+    @State private var minimized = false
 
     var body: some View {
         if question.questions.isEmpty { EmptyView() } else { card }
@@ -40,24 +41,52 @@ struct UserQuestionCard: View {
 
     private var card: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text(isPlan ? L.planReview() : "\(item.header ?? askRowTitle(english: L.en)) · \(currentIndex + 1)/\(question.questions.count)")
-                    .font(Font.subheadline)
-                    .foregroundStyle(T.text2)
-                Spacer()
-                Button(questionCollapseLabel(english: L.en), action: onDismiss).disabled(busy)
+            HStack(alignment: .top, spacing: 8) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(isPlan ? L.planReview() : (item.header ?? L.t("选择卡片", "Choice card")))
+                        .font(.system(size: 11)).foregroundStyle(T.text3)
+                    Text(item.question)
+                        .font(.system(size: 16, weight: .medium)).foregroundStyle(T.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+                if !isPlan {
+                    Button { minimized.toggle() } label: {
+                        OfficialGlyph(kind: minimized ? .chevronUp : .chevronDown, size: 16, color: T.text3)
+                            .frame(width: 28, height: 28)
+                    }
+                    .accessibilityLabel(minimized ? L.expand() : L.collapse())
+                    .disabled(busy)
+                }
+                Button(action: onDismiss) {
+                    OfficialGlyph(kind: .closeOutline, size: 18, color: T.text3)
+                        .frame(width: 28, height: 28)
+                }
+                .accessibilityLabel(L.t("关闭", "Close"))
+                .disabled(busy)
             }
+            .buttonStyle(.plain)
             .padding(.horizontal, 18)
-            .padding(.top, 10)
+            .padding(.top, 16)
+            .padding(.bottom, 8)
+            if !minimized || isPlan {
             ScrollView {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(item.question).font(Font.title3).foregroundStyle(T.ink)
+                VStack(alignment: .leading, spacing: 1) {
                     if let detail = item.detail, !detail.isEmpty {
                         MarkdownView(source: detail, wrapCode: AppModel.shared.codeWordWrap)
                     }
                     if !isPlan {
-                        ForEach(Array(item.options.enumerated()), id: \.offset) { _, opt in
-                            optionRow(opt)
+                        ForEach(Array(item.options.enumerated()), id: \.offset) { offset, opt in
+                            optionRow(opt, number: offset + 1)
+                        }
+                        HStack(alignment: .top, spacing: 8) {
+                        if !item.options.isEmpty {
+                            if item.multiSelect {
+                                checkbox(!draft.custom.isEmpty)
+                            } else {
+                                Image(systemName: "pencil").font(.system(size: 12))
+                                    .foregroundStyle(T.text2).frame(width: 20, height: 24)
+                            }
                         }
                         TextField(L.typeYourAnswer(), text: Binding(
                             get: { draft.custom },
@@ -72,12 +101,18 @@ struct UserQuestionCard: View {
                         ), axis: .vertical)
                         .lineLimit(1...4)
                         .disabled(!writable)
-                        .padding(10)
-                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 1))
+                        .font(.system(size: 14))
+                        .foregroundStyle(T.ink)
+                        .padding(.vertical, 2)
+                        }
+                        .padding(8)
+                        .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
+                        .background(draft.custom.isEmpty ? Color.clear : T.hoverBg, in: RoundedRectangle(cornerRadius: 8))
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(item.options.isEmpty ? T.border : .clear, lineWidth: 1))
                     }
                 }
-                .padding(.horizontal, 18)
-                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4)
             }
             VStack(alignment: .leading, spacing: 8) {
                 if let err { Text(err).font(.caption).foregroundStyle(T.err) }
@@ -101,36 +136,56 @@ struct UserQuestionCard: View {
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.border, lineWidth: 1))
                         .disabled(busy)
                 } else {
-                    HStack {
-                        if currentIndex > 0 {
-                            Button(questionPreviousLabel(english: L.en)) {
-                                index = currentIndex - 1
-                                err = nil
+                    HStack(spacing: 8) {
+                        HStack(spacing: 2) {
+                            Button { index = currentIndex - 1; err = nil } label: {
+                                OfficialGlyph(kind: .chevronLeft, size: 14, color: T.text3)
+                                    .frame(width: 24, height: 36)
                             }
-                            .disabled(busy)
+                            .accessibilityLabel(questionPreviousLabel(english: L.en))
+                            .disabled(busy || currentIndex == 0)
+                            Text("\(currentIndex + 1)/\(question.questions.count)")
+                                .font(.system(size: 14)).foregroundStyle(T.text2)
+                            Button { index = currentIndex + 1; err = nil } label: {
+                                OfficialGlyph(kind: .chevronRight, size: 14, color: T.text3)
+                                    .frame(width: 24, height: 36)
+                            }
+                            .accessibilityLabel(L.nextQuestion())
+                            .disabled(busy || currentIndex == question.questions.count - 1)
                         }
+                        Spacer(minLength: 0)
                         Button(L.skip()) { skipCurrent() }
+                            .padding(.horizontal, 14).frame(minHeight: 36)
+                            .foregroundStyle(T.ink)
+                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(T.border, lineWidth: 1))
                             .disabled(!writable)
-                        Spacer()
-                        Button(currentIndex < question.questions.count - 1
-                               ? L.nextQuestion()
-                               : questionSubmitAnswersLabel(english: L.en)) {
+                        Button(currentIndex < question.questions.count - 1 ? L.nextQuestion() : L.t("提交", "Submit")) {
                             continueOrSubmit()
                         }
+                        .padding(.horizontal, 14).frame(minHeight: 36)
+                        .foregroundStyle(T.onPrimary)
+                        .background(T.primaryButton, in: RoundedRectangle(cornerRadius: 10))
+                        .opacity(writable && draft.completed ? 1 : 0.4)
                         .disabled(!writable || !draft.completed)
                     }
+                    .font(.system(size: 14))
+                    .buttonStyle(.plain)
                 }
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 8)
+            }
         }
-        .frame(maxHeight: 420)
+        .frame(maxHeight: minimized && !isPlan ? nil : 420)
+        .background(T.surface, in: RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(T.border, lineWidth: 1))
         .padding(.horizontal, 14)
         .padding(.vertical, 6)
         .onChange(of: question.questionId) { _ in
             busy = false
             err = nil
+            minimized = false
         }
         .onChange(of: question.state) { state in
             if busy, state == "continued" {
@@ -140,33 +195,56 @@ struct UserQuestionCard: View {
         }
     }
 
-    private func optionRow(_ opt: UserQuestionOption) -> some View {
+    private func optionRow(_ opt: UserQuestionOption, number: Int) -> some View {
         let selected = draft.selected.contains(opt.label)
         let display = parseRecommendedLabel(opt.label)
         return Button {
             choose(opt.label)
         } label: {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(display.label).foregroundStyle(T.ink)
+            HStack(alignment: .top, spacing: 8) {
+                if item.multiSelect {
+                    checkbox(selected)
+                } else {
+                    Text("\(number)").font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(T.text2)
+                        .frame(width: 20, height: 20)
+                        .background(T.fill, in: RoundedRectangle(cornerRadius: 4))
+                        .padding(.top, 2)
+                }
+                QuestionOptionLine {
+                    Text(display.label).font(.system(size: 14, weight: .medium)).foregroundStyle(T.ink)
                     if display.recommended {
                         Text(questionRecommendedBadge(english: L.en))
-                            .font(Font.caption)
+                            .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(T.accent)
+                            .padding(.horizontal, 4).padding(.vertical, 2)
+                            .background(T.accent.opacity(0.1), in: RoundedRectangle(cornerRadius: 3))
                     }
                     if let description = opt.description, !description.isEmpty {
-                        Text(description).font(.caption).foregroundStyle(T.text3)
+                        Text(description).font(.system(size: 14)).foregroundStyle(T.text3)
                     }
                 }
-                Spacer()
-                if selected { OfficialGlyph(kind: .checkOutline, size: 14, color: T.accent) }
             }
-            .padding(12)
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(selected ? T.accent : T.border, lineWidth: 1))
+            .padding(8)
+            .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
+            .background(selected ? T.hoverBg : .clear, in: RoundedRectangle(cornerRadius: 8))
         }
         .buttonStyle(.plain)
         .disabled(!writable)
         .accessibilityAddTraits(selected ? [.isSelected] : [])
+    }
+
+    private func checkbox(_ checked: Bool) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 4)
+                .fill(checked ? T.ink : .clear)
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(checked ? T.ink : T.borderL3, lineWidth: 0.5)
+            if checked { OfficialGlyph(kind: .checkOutline, size: 12, color: T.onPrimary) }
+        }
+        .frame(width: 14, height: 14)
+        .frame(width: 20, height: 24)
+        .accessibilityHidden(true)
     }
 
     private func choose(_ label: String) {
@@ -221,6 +299,39 @@ struct UserQuestionCard: View {
                 busy = false
                 err = questionSubmitFailed(english: L.en)
             }
+        }
+    }
+}
+
+private struct QuestionOptionLine: Layout {
+    private func positions(_ subviews: Subviews, width: CGFloat) -> (CGSize, [CGRect]) {
+        var frames: [CGRect] = []
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 24
+        for view in subviews {
+            let size = view.sizeThatFits(ProposedViewSize(width: width, height: nil))
+            if x > 0 && x + size.width > width {
+                x = 0
+                y += rowHeight + 2
+                rowHeight = 24
+            }
+            frames.append(CGRect(x: x, y: y, width: size.width, height: size.height))
+            x += size.width + 6
+            rowHeight = max(rowHeight, size.height)
+        }
+        return (CGSize(width: width, height: y + rowHeight), frames)
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        positions(subviews, width: proposal.width ?? 320).0
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let frames = positions(subviews, width: bounds.width).1
+        for (view, frame) in zip(subviews, frames) {
+            view.place(at: CGPoint(x: bounds.minX + frame.minX, y: bounds.minY + frame.minY),
+                       proposal: ProposedViewSize(frame.size))
         }
     }
 }
