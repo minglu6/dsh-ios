@@ -50,7 +50,9 @@ private struct StatisticsPanelLayout: Layout {
         guard subviews.count == 2 else { return }
         subviews[0].place(at: bounds.origin, anchor: .topLeading, proposal: ProposedViewSize(bounds.size))
         let margin: CGFloat = 12
-        let width = min(CGFloat(composerStatDialogMaxWidth(screenWidth: Double(viewport.width))), max(0, viewport.width - 2 * margin))
+        let maxWidth = min(CGFloat(composerStatDialogMaxWidth(screenWidth: Double(viewport.width))), max(0, viewport.width - 2 * margin))
+        let idealWidth = subviews[1].sizeThatFits(.unspecified).width
+        let width = min(idealWidth, maxWidth)
         let size = subviews[1].sizeThatFits(ProposedViewSize(width: width, height: nil))
         let x = max(margin, min(anchor.midX - size.width / 2, viewport.width - margin - size.width))
         let y = max(margin, anchor.minY - 8 - size.height)
